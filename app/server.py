@@ -133,48 +133,50 @@ def _ask_stream(query, k):
     allowed_ns = set(range(1, len(res["hits"]) + 1))
     text_by_n = {i + 1: (h.get("text") or "") for i, h in enumerate(res["hits"])}
 
-    # 3) streaming VALIDADO por frase: só envia a frase depois de checá-la
+    # 3) streaming VALIDADO por frase: só envia a frase que passar nas checagens.
+    #    Frase que falhar é PULADA (não interrompe o resto) — uma frase ruim
+    #    nunca zera a resposta. Só recusa se NENHUMA frase passar.
     buf = validate.SentenceBuffer()
-    cited, emitted_any, first_checked = set(), False, False
+    cited, emitted_any, first_checked, skipped, stop = set(), False, False, 0, False
 
     def _handle(sentence):
-        """Valida e devolve (evento_sse, parar?)."""
-        nonlocal first_checked, emitted_any
+        """Valida e devolve (evento_sse ou None, parar?)."""
+        nonlocal first_checked, emitted_any, skipped
         if not first_checked:
             first_checked = True
             if sentence.upper().startswith(synthesize.SENTINEL):
-                return _sse("insufficient", {"text": synthesize.REFUSAL}), True
-        ok, reason = validate.validate_sentence(sentence, allowed_ns, text_by_n)
+                return None, True   # modelo sinalizou insuficiência
+        ok, _reason = validate.validate_sentence(sentence, allowed_ns, text_by_n)
         if not ok:
-            return _sse("halted", {"reason": reason,
-                                   "warning": "Não consegui sintetizar o restante com segurança. "
-                                              "Veja os trechos recuperados acima."}), True
+            skipped += 1
+            return None, False      # pula a frase, continua
         cited.update(validate.citations(sentence))
         emitted_any = True
         return _sse("sentence", {"text": sentence}), False
 
     try:
-        halted = False
         for delta in llm.stream_chat(messages):
             for sentence in buf.feed(delta):
                 ev, stop = _handle(sentence)
-                yield ev
+                if ev:
+                    yield ev
                 if stop:
-                    halted = True
                     break
-            if halted:
+            if stop:
                 break
-        if not halted:
+        if not stop:
             tail = buf.flush()
             if tail:
                 ev, stop = _handle(tail)
-                yield ev
-                halted = stop
+                if ev:
+                    yield ev
     except Exception as e:
         yield _sse("failed", {"message": str(e)[:200]})
         return
 
-    yield _sse("done", {"insufficient": not emitted_any, "cited": sorted(cited), "halted": halted})
+    if not emitted_any:
+        yield _sse("insufficient", {"text": synthesize.REFUSAL})
+    yield _sse("done", {"insufficient": not emitted_any, "cited": sorted(cited), "skipped": skipped})
 
 
 @app.get("/ask")

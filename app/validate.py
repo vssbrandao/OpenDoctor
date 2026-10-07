@@ -76,13 +76,12 @@ def validate_sentence(sentence, allowed_ns, text_by_n):
 
     cited_text = " ".join(text_by_n.get(n, "") for n in cites)
 
+    # Ancoragem de NÚMEROS (doses/estatísticas) — language-agnostic.
+    # (Nome de fármaco não é ancorado: a resposta é PT e os trechos EN,
+    #  ex. "dapagliflozina" vs "dapagliflozin" — causaria falso positivo.)
     for num, unit in doses:
         if not _number_in(num, cited_text):
             return False, f"número '{num} {unit}' não consta nos trechos citados"
-
-    for drug in drugs:
-        if drug.lower() not in _norm(cited_text):
-            return False, f"fármaco '{drug}' não consta nos trechos citados"
 
     return True, None
 

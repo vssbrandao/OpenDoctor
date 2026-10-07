@@ -45,11 +45,12 @@ def test_number_grounded_decimal_separator():
     assert ok, reason
 
 
-def test_drug_not_grounded():
+def test_drug_name_not_grounded_is_ok():
+    # nome de fármaco NÃO é ancorado (PT vs EN): basta ter citação válida
     ok, reason = v.validate_sentence(
-        "iniciar empagliflozina [1].", {1}, {1: "dapagliflozina reduziu eventos"}
+        "iniciar dapagliflozina [1].", {1}, {1: "dapagliflozin reduced events [HR 0.82]"}
     )
-    assert not ok and "empagliflozina" in reason
+    assert ok, reason
 
 
 def test_valid_sentence_passes():
