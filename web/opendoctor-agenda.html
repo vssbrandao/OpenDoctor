@@ -115,6 +115,19 @@
       font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.5;margin:8px 0}
     .msg-ai .mermaid{margin:12px 0;background:#fafafa;border:1px solid var(--sb-border);
       border-radius:12px;padding:14px;overflow-x:auto;text-align:center}
+    /* RAG: fontes + citações */
+    .ai-sources{margin-bottom:14px;padding:10px 14px;background:#fafafa;
+      border:1px solid var(--sb-border);border-radius:12px}
+    .ai-sources .src-title{font-family:var(--disp);font-weight:700;font-size:11px;color:var(--muted);
+      letter-spacing:.04em;text-transform:uppercase;margin-bottom:6px}
+    .ai-sources .src-item{display:block;font-family:var(--disp);font-size:13px;line-height:1.55;
+      color:#0842a0;text-decoration:none;margin:3px 0}
+    .ai-sources .src-item:hover{text-decoration:underline}
+    .ai-body.err{color:#b3261e;white-space:pre-wrap}
+    .ai-warn{margin-top:10px;font-family:var(--disp);font-size:13px;color:#8a6d00}
+    .msg-ai a.cite{color:#0842a0;text-decoration:none;font-weight:600;font-size:.82em;
+      vertical-align:super;padding:0 1px}
+    .msg-ai a.cite:hover{text-decoration:underline}
     .msg-ai hr{border:0;border-top:1px solid var(--sb-border);margin:12px 0}
     .msg-ai .tbl-wrap{overflow-x:auto;margin:8px 0 10px;border-radius:10px;border:1px solid var(--sb-border)}
     .msg-ai table{border-collapse:collapse;width:100%;font-size:13.5px;line-height:19px}
@@ -481,7 +494,17 @@
         return el;
       }
 
-      async function ask(text) {
+      // [n] no texto → link para a fonte correspondente
+      function renderAnswer(text, srcByN) {
+        var html = mdToHtml(text);
+        return html.replace(/\[(\d+)\]/g, function (m, n) {
+          var s = srcByN[+n];
+          return s ? '<a class="cite" href="' + s.url + '" target="_blank" rel="noopener noreferrer">[' + n + ']</a>' : m;
+        });
+      }
+
+      // RAG backend: GET /ask (SSE) — status → sources (antes da resposta) → sentence* → done
+      function ask(text) {
         text = (text || '').trim();
         if (!text || busy) return;
         busy = true;
@@ -490,32 +513,65 @@
         msgs.classList.add('on');
 
         addMsg('msg-user', text);
-        history.push({ role: 'user', content: text });
         input.value = '';
         autogrow();
 
-        var loading = addLoading();
-        try {
-          var res = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: history })
-          });
-          var data = await res.json();
-          if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
-          loading.className = 'msg-ai';
-          loading.innerHTML = mdToHtml(data.answer);
-          renderMermaid(loading);
-          history.push({ role: 'assistant', content: data.answer });
-        } catch (err) {
-          loading.className = 'msg-ai err';
-          loading.textContent = '⚠ ' + err.message;
-        } finally {
+        var wrap = document.createElement('div'); wrap.className = 'msg-ai';
+        var srcEl = document.createElement('div'); srcEl.className = 'ai-sources'; srcEl.style.display = 'none';
+        var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
+        bodyEl.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
+        wrap.appendChild(srcEl); wrap.appendChild(bodyEl);
+        msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
+
+        var srcByN = {}, fullText = '', started = false, closed = false;
+        function finish() { if (!closed) { closed = true; busy = false; sendBtn.disabled = false; input.focus(); } }
+
+        var es = new EventSource('/ask?query=' + encodeURIComponent(text) + '&k=5');
+
+        es.addEventListener('sources', function (e) {
+          var list = (JSON.parse(e.data).sources) || [];
+          list.forEach(function (s) { srcByN[s.n] = s; });
+          srcEl.innerHTML = '<div class="src-title">Fontes</div>' + list.map(function (s) {
+            return '<a class="src-item" href="' + s.url + '" target="_blank" rel="noopener noreferrer">[' +
+                   s.n + '] ' + esc(s.title || '') + (s.year ? ' (' + s.year + ')' : '') + '</a>';
+          }).join('');
+          srcEl.style.display = '';
           msgs.scrollTop = msgs.scrollHeight;
-          busy = false;
-          sendBtn.disabled = false;
-          input.focus();
-        }
+        });
+
+        es.addEventListener('sentence', function (e) {
+          if (!started) { started = true; bodyEl.innerHTML = ''; }
+          fullText += (fullText ? ' ' : '') + JSON.parse(e.data).text;
+          bodyEl.className = 'ai-body';
+          bodyEl.innerHTML = renderAnswer(fullText, srcByN);
+          renderMermaid(bodyEl);
+          msgs.scrollTop = msgs.scrollHeight;
+        });
+
+        es.addEventListener('insufficient', function (e) {
+          srcEl.style.display = 'none';
+          started = true;
+          bodyEl.className = 'ai-body'; bodyEl.textContent = JSON.parse(e.data).text;
+        });
+
+        es.addEventListener('halted', function (e) {
+          var w = document.createElement('div'); w.className = 'ai-warn';
+          w.textContent = '⚠ ' + (JSON.parse(e.data).warning || 'Interrompido por segurança.');
+          bodyEl.appendChild(w);
+        });
+
+        es.addEventListener('failed', function (e) {
+          started = true;
+          bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + (JSON.parse(e.data).message || 'erro');
+        });
+
+        es.addEventListener('done', function () { es.close(); finish(); });
+
+        es.onerror = function () {
+          es.close();
+          if (!started) { bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ Falha ao conectar ao servidor.'; }
+          finish();
+        };
       }
 
       sendBtn.addEventListener('click', function () { ask(input.value); });

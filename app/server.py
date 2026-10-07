@@ -6,14 +6,17 @@ decidida antes do LLM pelo limiar da busca.
 
 Rodar:  uvicorn app.server:app --reload --port 8000
 """
+import os
 import json
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from . import search, synthesize, llm, validate, db
+from . import search, synthesize, llm, validate, db, config
 
 app = FastAPI(title="OpenDoctor Assistant")
+WEB_DIR = os.path.join(config.ROOT, "web")
 
 
 @app.on_event("startup")
@@ -90,7 +93,7 @@ def _ask_stream(query, k):
                 yield ev
                 halted = stop
     except Exception as e:
-        yield _sse("error", {"message": str(e)[:200]})
+        yield _sse("failed", {"message": str(e)[:200]})
         return
 
     yield _sse("done", {"insufficient": not emitted_any, "cited": sorted(cited), "halted": halted})
@@ -101,3 +104,9 @@ def ask(query: str, k: int = 5):
     if not query.strip():
         return JSONResponse({"error": "query vazia"}, status_code=400)
     return StreamingResponse(_ask_stream(query, k), media_type="text/event-stream")
+
+
+# serve o front-end (web/) na mesma origem — registrado por último para não
+# sombrear /ask e /health. Abra http://127.0.0.1:8000/opendoctor-agenda.html
+if os.path.isdir(WEB_DIR):
+    app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")

@@ -4,19 +4,34 @@ Tela da **agenda** com o painel do assistente (Figma 946-31168). O painel direit
 conversa via `POST /api/chat`, servido pelo `proxy.py` (passa a pergunta à OpenAI,
 mantendo a chave só no servidor).
 
-> Este é o protótipo de UI. O assistente **com RAG** (busca em fontes + citações) é o
-> backend em `../app/` (servidor `uvicorn app.server:app`). Ligar a agenda ao backend RAG
-> é um passo futuro; hoje o painel usa o proxy simples.
+A agenda está **ligada ao backend RAG**: o painel usa `GET /ask` (SSE) — mostra as fontes
+antes da resposta, faz streaming das frases validadas e deixa as citações `[n]` clicáveis.
 
-## Rodar
+## Rodar (RAG — recomendado)
+
+O FastAPI serve a própria agenda, então é um servidor só:
 
 ```bash
-cd opendoctor-assistant/web
-python3 proxy.py
-# abra http://127.0.0.1:8899/opendoctor-agenda.html
+cd opendoctor-assistant
+source .venv/bin/activate
+uvicorn app.server:app --port 8000
+# abra http://127.0.0.1:8000/opendoctor-agenda.html
 ```
 
-Usa a `OPENAI_API_KEY` (e `OPENAI_MODEL`) do `.env` da raiz do projeto (`../.env`).
+Respostas vêm das fontes ingeridas (PubMed); fora do corpus, o assistente recusa.
+Para cobrir mais temas, ingira mais artigos (ver README da raiz, `app.ingest`).
+
+## Rodar (proxy GPT simples — alternativo, sem RAG)
+
+`proxy.py` ainda existe para usar o GPT puro (sem busca em fontes), com respostas
+mais "livres" e diagramas Mermaid:
+
+```bash
+cd opendoctor-assistant/web && python3 proxy.py
+# http://127.0.0.1:8899/opendoctor-agenda.html
+```
+
+Ambos usam a `OPENAI_API_KEY` do `.env` da raiz (`../.env`).
 
 ## Conteúdo
 - `opendoctor-agenda.html` — a tela (SVGs inline; fontes em `assets/fonts/`)
