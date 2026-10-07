@@ -8,12 +8,25 @@ Spec: ver `../docs/rag-plan.md` (diff estado atual × spec) e a spec enxuta orig
 
 ## Status
 
-Fase **F0 — Fundação**. Entregue até aqui:
-- Projeto git dedicado (só OpenDoctor; os demais protótipos ficam fora).
-- Schema do Postgres/pgvector: `supabase/migrations/0001_init.sql` (`documents`, `chunks`, índices HNSW+GIN).
-- Config trocável por env (`.env.example`): LLM, embeddings e rerank atrás de variáveis.
+- **F0 — Fundação** ✔ git dedicado, schema Postgres/pgvector aplicado no Supabase, config por env.
+- **F1 — Ingestão PubMed** ✔ `app/` com cliente E-utilities, chunking, embeddings e CLI `ingest`.
+- A construir: busca híbrida (F2), síntese com streaming (F3).
 
-A construir (próximas fatias): ingestão PubMed (F1), busca híbrida (F2), síntese com streaming (F3).
+## Rodar a ingestão (F1)
+
+```bash
+cd opendoctor-assistant
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # preencha DATABASE_URL e OPENAI_API_KEY
+
+# ingere artigos do PubMed para uma busca
+python -m app.ingest --source pubmed --query "heart failure preserved ejection fraction SGLT2" --retmax 20
+```
+
+- Idempotente: reexecutar não duplica (dedup por `content_hash`).
+- `DATABASE_URL`: use a string do Supabase (Project Settings → Database). Para o app, porta 6543 (pooler); para rodar scripts/migração, 5432 (direct) funciona bem.
+- Embeddings custam por token na OpenAI; `text-embedding-3-small` é barato.
 
 ## Stack
 
