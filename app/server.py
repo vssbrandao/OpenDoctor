@@ -22,7 +22,11 @@ WEB_DIR = os.path.join(config.ROOT, "web")
 
 # Abaixo deste cosseno, a evidência local é fraca → consulta o PubMed ao vivo
 # antes de responder (em vez de recusar). Acima, usa só o corpus (mais rápido).
-FETCH_SIM = 0.50
+FETCH_SIM = 0.62
+
+# filtro p/ priorizar artigos que RESUMEM conduta (revisões/diretrizes/metanálises)
+_EVID_FILTER = (" AND (review[ptyp] OR systematic review[ptyp] OR "
+                "meta-analysis[ptyp] OR practice guideline[ptyp])")
 
 
 @app.on_event("startup")
@@ -101,7 +105,11 @@ def _ask_stream(query, k):
         yield _sse("status", {"stage": "fetching"})
         per, vecs = [], []
         try:
-            per, vecs = ingest.fetch_and_embed(_pubmed_terms(query), 10)
+            terms = _pubmed_terms(query)
+            # 1º tenta revisões/diretrizes (resumem conduta); se vier vazio, busca ampla
+            per, vecs = ingest.fetch_and_embed(terms + _EVID_FILTER, 12)
+            if not per:
+                per, vecs = ingest.fetch_and_embed(terms, 12)
         except Exception as e:
             print("[ask] fetch on-demand falhou:", str(e)[:200])
         if per:
