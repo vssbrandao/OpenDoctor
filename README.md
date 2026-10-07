@@ -1,5 +1,7 @@
 # OpenDoctor — Assistente clínico (RAG)
 
+![CI](https://github.com/vssbrandao/OpenDoctor/actions/workflows/ci.yml/badge.svg)
+
 Backend do assistente clínico do OpenDoctor. RAG com fontes verificadas: o LLM é **redator**,
 não fonte; todo conteúdo clínico vem de trechos recuperados (PubMed, PCDTs). Sem evidência
 suficiente, o assistente **recusa** em vez de inventar.
