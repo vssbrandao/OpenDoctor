@@ -13,10 +13,14 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import search, synthesize, llm, validate, db, config
+from . import search, synthesize, llm, validate, db, config, ingest
 
 app = FastAPI(title="OpenDoctor Assistant")
 WEB_DIR = os.path.join(config.ROOT, "web")
+
+# Abaixo deste cosseno, a evidência local é fraca → consulta o PubMed ao vivo
+# antes de responder (em vez de recusar). Acima, usa só o corpus (mais rápido).
+FETCH_SIM = 0.50
 
 
 @app.on_event("startup")
@@ -37,10 +41,33 @@ def health():
     return {"ok": True, "model": llm.config.OPENAI_MODEL}
 
 
+def _pubmed_terms(question):
+    """Gera uma query do PubMed em inglês a partir da pergunta (PT) do médico."""
+    try:
+        t = llm.chat([
+            {"role": "system", "content": "Converta a pergunta clínica em uma consulta de busca do "
+             "PubMed em INGLÊS: apenas os termos-chave relevantes (condição, intervenção, desfecho), "
+             "sem aspas, sem operadores e sem explicação."},
+            {"role": "user", "content": question}], temperature=0, max_tokens=40).strip()
+        return t or question
+    except Exception:
+        return question
+
+
 def _ask_stream(query, k):
-    # 1) busca — decide suficiência antes de chamar o LLM
+    # 1) busca local — decide suficiência antes de chamar o LLM
     res = search.search(query, k=k)
     yield _sse("status", {"stage": "searched", "best_sim": round(res["best_sim"], 3)})
+
+    # 2) se a evidência local for fraca, CONSULTA o PubMed ao vivo antes de responder
+    if res["best_sim"] < FETCH_SIM or not res["hits"]:
+        yield _sse("status", {"stage": "fetching"})
+        try:
+            ingest.ingest_pubmed(_pubmed_terms(query), 10)
+        except Exception as e:
+            print("[ask] fetch on-demand falhou:", str(e)[:200])
+        res = search.search(query, k=k)
+        yield _sse("status", {"stage": "refetched", "best_sim": round(res["best_sim"], 3)})
 
     if res["insufficient"] or not res["hits"]:
         yield _sse("insufficient", {"text": synthesize.REFUSAL})

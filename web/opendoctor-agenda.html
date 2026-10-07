@@ -125,6 +125,7 @@
     .ai-sources .src-item:hover{text-decoration:underline}
     .ai-body.err{color:#b3261e;white-space:pre-wrap}
     .ai-warn{margin-top:10px;font-family:var(--disp);font-size:13px;color:#8a6d00}
+    .ai-status{font-family:var(--disp);font-size:14px;color:var(--muted)}
     .msg-ai a.cite{color:#0842a0;text-decoration:none;font-weight:600;font-size:.82em;
       vertical-align:super;padding:0 1px}
     .msg-ai a.cite:hover{text-decoration:underline}
@@ -527,6 +528,14 @@
         function finish() { if (!closed) { closed = true; busy = false; sendBtn.disabled = false; input.focus(); } }
 
         var es = new EventSource('/ask?query=' + encodeURIComponent(text) + '&k=5');
+
+        es.addEventListener('status', function (e) {
+          var d = JSON.parse(e.data);
+          if (d.stage === 'fetching' && !started) {
+            bodyEl.innerHTML = '<span class="ai-status">Consultando artigos científicos…</span>' +
+                               ' <span class="dots"><i></i><i></i><i></i></span>';
+          }
+        });
 
         es.addEventListener('sources', function (e) {
           var list = (JSON.parse(e.data).sources) || [];
