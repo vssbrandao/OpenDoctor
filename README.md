@@ -16,9 +16,18 @@ Spec: ver `../docs/rag-plan.md` (diff estado atual × spec) e a spec enxuta orig
   só após validar citação/ancoragem de números; `halted` se uma frase falha.
 - **F5 — Golden set + eval** ✔ `evals/golden.jsonl` + `evals/rubric.md` + `app.eval` (recall@6,
   fidelidade/cobertura via LLM-judge, recusa, latência p50/p95); baseline em `docs/eval-history.md`.
-- A construir: F6 rerank (se preciso) · F7 PCDTs · F8 CI.
+- **F8 — CI** ✔ `.github/workflows/ci.yml`: pytest sempre; eval como gate de regressão
+  (`app.eval --check` vs `evals/baseline.json`) quando os secrets existem.
+- A construir: F6 rerank (se preciso) · F7 PCDTs · expandir golden set.
 
-Testes: `python -m pytest tests/ -q`  ·  Eval: `python -m app.eval`
+Testes: `python -m pytest tests/ -q`  ·  Eval: `python -m app.eval`  ·  Gate: `python -m app.eval --check`
+
+### Secrets do CI (para o gate de eval rodar)
+Em GitHub → Settings → Secrets and variables → Actions, adicione:
+- `OPENAI_API_KEY`
+- `DATABASE_URL` (a URI do Supabase — Session pooler)
+
+Sem os secrets, o CI roda só os testes unitários.
 
 > ⚠️ O golden set tem 10 perguntas semente. Para o eval valer de verdade, expandir para ~30 com
 > **revisão médica** (pergunta, pontos-chave e documentos corretos).

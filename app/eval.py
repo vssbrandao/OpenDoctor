@@ -6,6 +6,7 @@ Rodar:  python -m app.eval            # usa evals/golden.jsonl
 """
 import os
 import re
+import sys
 import json
 import time
 import argparse
@@ -16,7 +17,23 @@ from . import config, search, synthesize, llm
 
 GOLDEN = os.path.join(config.ROOT, "evals", "golden.jsonl")
 RUBRIC = os.path.join(config.ROOT, "evals", "rubric.md")
+BASELINE = os.path.join(config.ROOT, "evals", "baseline.json")
 HISTORY = os.path.join(config.ROOT, "docs", "eval-history.md")
+
+
+def check_regression(metrics):
+    """Compara com os limiares de evals/baseline.json. Retorna lista de falhas."""
+    bl = json.load(open(BASELINE, encoding="utf-8"))
+    fails = []
+    for k, floor in bl.get("min", {}).items():
+        v = metrics.get(k)
+        if v is None or v < floor:
+            fails.append(f"{k}={v} abaixo do mínimo {floor}")
+    for k, ceil in bl.get("max", {}).items():
+        v = metrics.get(k)
+        if v is None or v > ceil:
+            fails.append(f"{k}={v} acima do máximo {ceil}")
+    return fails
 
 
 def _pct(xs, p):
@@ -138,6 +155,8 @@ def _write_history(metrics):
 def main(argv=None):
     p = argparse.ArgumentParser(prog="eval")
     p.add_argument("--no-history", action="store_true", help="não grava em docs/eval-history.md")
+    p.add_argument("--check", action="store_true",
+                   help="falha (exit 1) se alguma métrica cruzar os limiares de evals/baseline.json")
     args = p.parse_args(argv)
 
     metrics, rows = run()
@@ -150,6 +169,14 @@ def main(argv=None):
     if not args.no_history:
         _write_history(metrics)
         print(f"\nbaseline registrada em docs/eval-history.md")
+    if args.check:
+        fails = check_regression(metrics)
+        if fails:
+            print("\n❌ REGRESSÃO detectada:")
+            for f in fails:
+                print("  - " + f)
+            sys.exit(1)
+        print("\n✅ eval dentro dos limiares (evals/baseline.json)")
 
 
 if __name__ == "__main__":

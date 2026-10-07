@@ -1,0 +1,12 @@
+{
+  "_comment": "Limiares de regressão do eval (spec §6.2). CI falha se uma métrica cruzar o limite. Ajuste conforme a baseline evolui.",
+  "min": {
+    "recall@6": 0.9,
+    "refusal_accuracy": 0.9,
+    "faithfulness_mean": 0.8,
+    "coverage_mean": 0.8
+  },
+  "max": {
+    "false_refusal_rate": 0.1
+  }
+}
