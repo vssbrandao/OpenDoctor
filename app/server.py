@@ -11,9 +11,18 @@ import json
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, JSONResponse
 
-from . import search, synthesize, llm, validate
+from . import search, synthesize, llm, validate, db
 
 app = FastAPI(title="OpenDoctor Assistant")
+
+
+@app.on_event("startup")
+def _warm_pool():
+    # abre o pool no startup p/ a 1ª requisição já pegar conexão quente
+    try:
+        db.get_pool()
+    except Exception:
+        pass
 
 
 def _sse(event, data):

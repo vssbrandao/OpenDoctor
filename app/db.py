@@ -9,9 +9,31 @@ _TS = {"english": "english", "portuguese": "portuguese"}
 
 
 def connect():
+    """Conexão avulsa (usada por scripts one-shot, ex.: ingestão)."""
     conn = psycopg.connect(config.require_db())
     register_vector(conn)
     return conn
+
+
+# --- pool para o servidor (evita reconectar ~3s por request) ---
+_pool = None
+
+
+def get_pool():
+    global _pool
+    if _pool is None:
+        from psycopg_pool import ConnectionPool
+        _pool = ConnectionPool(
+            config.require_db(), min_size=1, max_size=5, open=True,
+            kwargs={"connect_timeout": 15},
+            configure=register_vector,
+        )
+    return _pool
+
+
+def connection():
+    """Context manager que empresta uma conexão do pool."""
+    return get_pool().connection()
 
 
 def upsert_document(conn, *, source, source_type, title, url, language,
