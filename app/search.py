@@ -95,18 +95,21 @@ def _fts_pooled(query, limit):
         return _fts_search(conn, query, limit)
 
 
-def search(query, k=FINAL_TOPK):
+def search(query, k=FINAL_TOPK, qvec=None):
     """Retorna dict: {insufficient: bool, best_sim: float, hits: [...]}
 
     Latência: embedding (API) roda em paralelo com o full-text (DB); a busca
     vetorial vem depois do embedding. Conexões vêm do pool (sem reconectar).
     """
-    import concurrent.futures
-    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
-        fut_emb = ex.submit(embeddings.embed, [query])
-        fut_fts = ex.submit(_fts_pooled, query, FTS_TOPN)
-        qvec = fut_emb.result()[0]
-        fts_rows = fut_fts.result()
+    if qvec is None:
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+            fut_emb = ex.submit(embeddings.embed, [query])
+            fut_fts = ex.submit(_fts_pooled, query, FTS_TOPN)
+            qvec = fut_emb.result()[0]
+            fts_rows = fut_fts.result()
+    else:
+        fts_rows = _fts_pooled(query, FTS_TOPN)   # embedding reaproveitado
     vec_rows = _vec_pooled(qvec, VEC_TOPN)
 
     vec_hits = [_row_to_hit(r) for r in vec_rows]
@@ -132,7 +135,7 @@ def search(query, k=FINAL_TOPK):
     candidates = candidates[:MAX_CANDIDATES]
 
     insufficient = best_sim < SIM_THRESHOLD
-    return {"insufficient": insufficient, "best_sim": best_sim, "hits": candidates[:k]}
+    return {"insufficient": insufficient, "best_sim": best_sim, "hits": candidates[:k], "qvec": qvec}
 
 
 def main(argv=None):

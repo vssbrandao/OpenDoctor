@@ -66,7 +66,7 @@ def _ask_stream(query, k):
             ingest.ingest_pubmed(_pubmed_terms(query), 10)
         except Exception as e:
             print("[ask] fetch on-demand falhou:", str(e)[:200])
-        res = search.search(query, k=k)
+        res = search.search(query, k=k, qvec=res.get("qvec"))  # reaproveita o embedding
         yield _sse("status", {"stage": "refetched", "best_sim": round(res["best_sim"], 3)})
 
     if res["insufficient"] or not res["hits"]:

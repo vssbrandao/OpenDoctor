@@ -76,6 +76,38 @@ def insert_chunks(conn, document_id, language, chunks, embeddings):
     conn.commit()
 
 
+def upsert_documents_bulk(conn, rows):
+    """rows: tuplas (source, source_type, title, url, language, publication_date,
+    license, raw_path, content_hash). 1 round-trip. Devolve {content_hash: id} dos NOVOS."""
+    if not rows:
+        return {}
+    ph = ",".join(["(%s,%s,%s,%s,%s,%s,%s,%s,%s)"] * len(rows))
+    sql = ("insert into documents (source, source_type, title, url, language, "
+           "publication_date, license, raw_path, content_hash) values " + ph +
+           " on conflict (source, content_hash) do nothing returning content_hash, id")
+    flat = [v for r in rows for v in r]
+    with conn.cursor() as cur:
+        cur.execute(sql, flat)
+        return {h: i for (h, i) in cur.fetchall()}
+
+
+def insert_chunks_bulk(conn, rows, language="english"):
+    """rows: (document_id, section_title, chunk_index, text, embedding). 1 round-trip."""
+    if not rows:
+        return
+    ts = _TS.get((language or "").lower(), "simple")
+    unit = "(%s,%s,%s,%s,%s, to_tsvector('" + ts + "', %s))"
+    ph = ",".join([unit] * len(rows))
+    sql = ("insert into chunks (document_id, section_title, chunk_index, text, embedding, tsv) "
+           "values " + ph + " on conflict (document_id, chunk_index) do nothing")
+    flat = []
+    for (doc_id, section, idx, text, emb) in rows:
+        flat += [doc_id, section, idx, text, emb, text]
+    with conn.cursor() as cur:
+        cur.execute(sql, flat)
+    conn.commit()
+
+
 def counts(conn):
     with conn.cursor() as cur:
         cur.execute("select count(*) from documents")
