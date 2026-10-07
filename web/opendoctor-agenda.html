@@ -390,11 +390,12 @@
           .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
           .replace(/__([^_]+)__/g,'<strong>$1</strong>')
           .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g,'$1<em>$2</em>')
-          // markdown links [text](url)
-          .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(_,t,u){ return link(u,t); })
+          // markdown links [text](url) — remove pontuação final que o modelo cola na URL
+          .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, function(_,t,u){
+                   u = u.replace(/[.,;]+$/,''); if(!/\s/.test(t)) t = t.replace(/[.,;]+$/,''); return link(u,t); })
           // DOI → doi.org  (handles "DOI: 10.x", "doi:10.x", "https://doi.org/10.x")
-          .replace(/\bdoi\s*:\s*(?:https?:\/\/(?:dx\.)?doi\.org\/)?(10\.\d{4,9}\/[^\s<]+?)(?=[\s<)\]]|[.,;]?$)/gi,
-                   function(_,d){ return 'DOI: ' + link('https://doi.org/'+d, d); })
+          .replace(/\bdoi\s*:\s*(?:https?:\/\/(?:dx\.)?doi\.org\/)?(10\.\d{4,9}\/[^\s<]+)/gi,
+                   function(_,d){ d = d.replace(/[.,;)\]]+$/,''); return 'DOI: ' + link('https://doi.org/'+d, d); })
           // PMID → PubMed
           .replace(/\bPMID\s*:?\s*(\d{5,9})\b/gi,
                    function(_,id){ return 'PMID: ' + link('https://pubmed.ncbi.nlm.nih.gov/'+id+'/', id); })
