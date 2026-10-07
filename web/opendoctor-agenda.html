@@ -111,6 +111,10 @@
     .msg-ai code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;
       background:#f3f3f3;padding:1px 5px;border-radius:5px}
     .msg-ai a{color:#0842a0;text-decoration:underline;word-break:break-all}
+    .msg-ai pre.code{background:#f3f3f3;border-radius:10px;padding:10px 12px;overflow-x:auto;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.5;margin:8px 0}
+    .msg-ai .mermaid{margin:12px 0;background:#fafafa;border:1px solid var(--sb-border);
+      border-radius:12px;padding:14px;overflow-x:auto;text-align:center}
     .msg-ai hr{border:0;border-top:1px solid var(--sb-border);margin:12px 0}
     .msg-ai .tbl-wrap{overflow-x:auto;margin:8px 0 10px;border-radius:10px;border:1px solid var(--sb-border)}
     .msg-ai table{border-collapse:collapse;width:100%;font-size:13.5px;line-height:19px}
@@ -413,6 +417,18 @@
         function closeL(){ if(list){ out+='</'+list+'>'; list=null; } }
         while(i<lines.length){
           var t=lines[i].replace(/\s+$/,'').trim();
+          // fenced code block ``` (```mermaid vira diagrama)
+          if(t.indexOf('```')===0){
+            var info=t.slice(3).trim().toLowerCase();
+            var code=[]; i++;
+            while(i<lines.length && lines[i].trim().indexOf('```')!==0){ code.push(lines[i]); i++; }
+            i++; // pula o ``` de fechamento
+            flushP(); closeL();
+            var body=code.join('\n');
+            if(info==='mermaid'){ out+='<div class="mermaid">'+body+'</div>'; }
+            else { out+='<pre class="code"><code>'+body+'</code></pre>'; }
+            continue;
+          }
           // Markdown table: a row with "|" followed by a separator row
           if(t.indexOf('|')!==-1 && i+1<lines.length && isTableSep(lines[i+1].trim())){
             flushP(); closeL();
@@ -489,6 +505,7 @@
           if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
           loading.className = 'msg-ai';
           loading.innerHTML = mdToHtml(data.answer);
+          renderMermaid(loading);
           history.push({ role: 'assistant', content: data.answer });
         } catch (err) {
           loading.className = 'msg-ai err';
@@ -509,6 +526,20 @@
         card.addEventListener('click', function () { ask(card.getAttribute('data-prompt')); });
       });
     })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    (function () {
+      if (window.mermaid) {
+        try { mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'strict' }); } catch (e) {}
+      }
+    })();
+    function renderMermaid(el) {
+      if (!window.mermaid || !el) return;
+      var nodes = el.querySelectorAll('.mermaid');
+      if (!nodes.length) return;
+      try { mermaid.run({ nodes: nodes }); } catch (e) { /* diagrama inválido: ignora */ }
+    }
   </script>
 </body>
 </html>
