@@ -103,9 +103,15 @@ class SentenceBuffer:
             m = _BOUNDARY.search(self.buf)
             if not m:
                 break
-            out.append(self.buf[:m.start()].strip())
+            sent = self.buf[:m.start()].rstrip()
+            sep = self.buf[m.start():m.end()]          # separador entre frases
             self.buf = self.buf[m.end():]
-        return [s for s in out if s]
+            if not sent:
+                continue
+            # preserva a estrutura do Markdown: quebra de linha → parágrafo
+            sent += "\n\n" if "\n" in sep else " "
+            out.append(sent)
+        return out
 
     def flush(self):
         s = self.buf.strip()

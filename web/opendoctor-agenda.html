@@ -125,6 +125,12 @@
     .ai-sources .src-item:hover{text-decoration:underline}
     .ai-body.err{color:#b3261e;white-space:pre-wrap}
     .ai-warn{margin-top:10px;font-family:var(--disp);font-size:13px;color:#8a6d00}
+    /* barra de ações da resposta (Figma 962-30702) */
+    .ai-actions{display:flex;gap:2px;margin-top:8px}
+    .act{width:32px;height:32px;border:0;background:none;border-radius:8px;cursor:pointer;
+      color:#666666;display:flex;align-items:center;justify-content:center;padding:0;transition:background .12s}
+    .act:hover{background:rgba(0,0,0,.05)}
+    .act.on{color:#0842a0}
     .ai-status{font-family:var(--disp);font-size:14px;color:var(--muted)}
     .msg-ai a.cite{color:#0842a0;text-decoration:none;font-weight:600;font-size:.82em;
       vertical-align:super;padding:0 1px}
@@ -496,32 +502,66 @@
       }
 
       // [n] no texto → link para a fonte correspondente
+      // [n] → link para a fonte (com tooltip do título). Sem quadro de fontes.
       function renderAnswer(text, srcByN) {
         var html = mdToHtml(text);
         return html.replace(/\[(\d+)\]/g, function (m, n) {
           var s = srcByN[+n];
-          return s ? '<a class="cite" href="' + s.url + '" target="_blank" rel="noopener noreferrer">[' + n + ']</a>' : m;
+          if (!s) return m;
+          var tip = ((s.title || '') + (s.year ? ' (' + s.year + ')' : '')).replace(/"/g, '');
+          return '<a class="cite" href="' + s.url + '" target="_blank" rel="noopener noreferrer" title="' + tip + '">[' + n + ']</a>';
         });
       }
 
-      // RAG backend: GET /ask (SSE) — status → sources (antes da resposta) → sentence* → done
+      var ICONS = {
+        copy: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v12h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>',
+        up: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>',
+        down: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>',
+        speak: '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>'
+      };
+      function addActions(container, getText) {
+        var bar = document.createElement('div'); bar.className = 'ai-actions';
+        bar.innerHTML =
+          '<button class="act" data-a="copy" title="Copiar">' + ICONS.copy + '</button>' +
+          '<button class="act" data-a="up" title="Útil">' + ICONS.up + '</button>' +
+          '<button class="act" data-a="down" title="Não útil">' + ICONS.down + '</button>' +
+          '<button class="act" data-a="speak" title="Ouvir">' + ICONS.speak + '</button>';
+        bar.addEventListener('click', function (e) {
+          var btn = e.target.closest('.act'); if (!btn) return;
+          var a = btn.getAttribute('data-a');
+          if (a === 'copy') {
+            try { navigator.clipboard.writeText(getText()); btn.classList.add('on');
+                  setTimeout(function () { btn.classList.remove('on'); }, 1200); } catch (_) {}
+          } else if (a === 'up' || a === 'down') {
+            var other = bar.querySelector('.act[data-a="' + (a === 'up' ? 'down' : 'up') + '"]');
+            if (other) other.classList.remove('on');
+            btn.classList.toggle('on');
+          } else if (a === 'speak') {
+            try {
+              if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); btn.classList.remove('on'); }
+              else { var u = new SpeechSynthesisUtterance(getText()); u.lang = 'pt-BR';
+                     u.onend = function () { btn.classList.remove('on'); };
+                     window.speechSynthesis.speak(u); btn.classList.add('on'); }
+            } catch (_) {}
+          }
+        });
+        container.appendChild(bar);
+      }
+
+      // RAG backend: GET /ask (SSE) — status → sources → sentence* → done
       function ask(text) {
         text = (text || '').trim();
         if (!text || busy) return;
-        busy = true;
-        sendBtn.disabled = true;
+        busy = true; sendBtn.disabled = true;
         if (suggest) suggest.style.display = 'none';
         msgs.classList.add('on');
-
         addMsg('msg-user', text);
-        input.value = '';
-        autogrow();
+        input.value = ''; autogrow();
 
         var wrap = document.createElement('div'); wrap.className = 'msg-ai';
-        var srcEl = document.createElement('div'); srcEl.className = 'ai-sources'; srcEl.style.display = 'none';
         var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
         bodyEl.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
-        wrap.appendChild(srcEl); wrap.appendChild(bodyEl);
+        wrap.appendChild(bodyEl);
         msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
 
         var srcByN = {}, fullText = '', started = false, closed = false;
@@ -530,52 +570,35 @@
         var es = new EventSource('/ask?query=' + encodeURIComponent(text) + '&k=5');
 
         es.addEventListener('status', function (e) {
-          var d = JSON.parse(e.data);
-          if (d.stage === 'fetching' && !started) {
+          if (JSON.parse(e.data).stage === 'fetching' && !started) {
             bodyEl.innerHTML = '<span class="ai-status">Consultando artigos científicos…</span>' +
                                ' <span class="dots"><i></i><i></i><i></i></span>';
           }
         });
-
         es.addEventListener('sources', function (e) {
-          var list = (JSON.parse(e.data).sources) || [];
-          list.forEach(function (s) { srcByN[s.n] = s; });
-          srcEl.innerHTML = '<div class="src-title">Fontes</div>' + list.map(function (s) {
-            return '<a class="src-item" href="' + s.url + '" target="_blank" rel="noopener noreferrer">[' +
-                   s.n + '] ' + esc(s.title || '') + (s.year ? ' (' + s.year + ')' : '') + '</a>';
-          }).join('');
-          srcEl.style.display = '';
-          msgs.scrollTop = msgs.scrollHeight;
+          ((JSON.parse(e.data).sources) || []).forEach(function (s) { srcByN[s.n] = s; });
         });
-
         es.addEventListener('sentence', function (e) {
           if (!started) { started = true; bodyEl.innerHTML = ''; }
-          fullText += (fullText ? ' ' : '') + JSON.parse(e.data).text;
+          fullText += JSON.parse(e.data).text;
           bodyEl.className = 'ai-body';
           bodyEl.innerHTML = renderAnswer(fullText, srcByN);
           renderMermaid(bodyEl);
           msgs.scrollTop = msgs.scrollHeight;
         });
-
         es.addEventListener('insufficient', function (e) {
-          srcEl.style.display = 'none';
           started = true;
           bodyEl.className = 'ai-body'; bodyEl.textContent = JSON.parse(e.data).text;
         });
-
-        es.addEventListener('halted', function (e) {
-          var w = document.createElement('div'); w.className = 'ai-warn';
-          w.textContent = '⚠ ' + (JSON.parse(e.data).warning || 'Interrompido por segurança.');
-          bodyEl.appendChild(w);
-        });
-
         es.addEventListener('failed', function (e) {
           started = true;
           bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + (JSON.parse(e.data).message || 'erro');
         });
-
-        es.addEventListener('done', function () { es.close(); finish(); });
-
+        es.addEventListener('done', function (e) {
+          es.close();
+          try { if (!JSON.parse(e.data).insufficient && fullText.trim()) addActions(wrap, function () { return bodyEl.innerText; }); } catch (_) {}
+          finish();
+        });
         es.onerror = function () {
           es.close();
           if (!started) { bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ Falha ao conectar ao servidor.'; }

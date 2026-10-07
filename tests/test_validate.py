@@ -68,8 +68,12 @@ def test_non_clinical_sentence_ok_without_citation():
 
 def test_sentence_buffer():
     b = v.SentenceBuffer()
-    assert b.feed("Primeira frase. Segunda ") == ["Primeira frase."]
-    assert b.feed("parte. ") == ["Segunda parte."]
+    out = b.feed("Primeira frase. Segunda ")
+    assert [s.strip() for s in out] == ["Primeira frase."]
+    # quebra de parágrafo é preservada (vira \n\n)
+    out = b.feed("parte.\n\nNovo")
+    assert out and out[0].strip() == "Segunda parte." and out[0].endswith("\n\n")
     # decimais não quebram a frase
-    assert b.feed("Valor 6.09 ok") == []
-    assert b.flush() == "Valor 6.09 ok"
+    b2 = v.SentenceBuffer()
+    assert b2.feed("Valor 6.09 ok") == []
+    assert b2.flush() == "Valor 6.09 ok"
