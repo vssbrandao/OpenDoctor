@@ -12,7 +12,11 @@ Spec: ver `../docs/rag-plan.md` (diff estado atual × spec) e a spec enxuta orig
 - **F1 — Ingestão PubMed** ✔ E-utilities → chunking → embeddings → pgvector (`app.ingest`).
 - **F2 — Busca híbrida** ✔ vetorial ∥ full-text → RRF → boost → limiar/recusa (`app.search`).
 - **F3 — Síntese** ✔ prompt versionado + `app.synthesize` + servidor SSE `app.server` (/ask).
-- A construir: F4 validação por frase · F5 golden set + eval · F6 rerank (se preciso) · F7 PCDTs · F8 CI.
+- **F4 — Validação por frase** ✔ `app.validate` (checagens puras + testes); o SSE emite `sentence`
+  só após validar citação/ancoragem de números; `halted` se uma frase falha.
+- A construir: F5 golden set + eval · F6 rerank (se preciso) · F7 PCDTs · F8 CI.
+
+Testes: `python -m pytest tests/ -q`
 
 ## Rodar o assistente (F3)
 

@@ -11,7 +11,7 @@ import json
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, JSONResponse
 
-from . import search, synthesize, llm
+from . import search, synthesize, llm, validate
 
 app = FastAPI(title="OpenDoctor Assistant")
 
@@ -39,25 +39,52 @@ def _ask_stream(query, k):
     messages, sources = synthesize.build(query, res["hits"])
     yield _sse("sources", {"sources": sources})
 
-    # 3) streaming do texto
-    full = []
+    # texto de cada trecho por número de citação, p/ a validação (spec §6.1)
+    allowed_ns = set(range(1, len(res["hits"]) + 1))
+    text_by_n = {i + 1: (h.get("text") or "") for i, h in enumerate(res["hits"])}
+
+    # 3) streaming VALIDADO por frase: só envia a frase depois de checá-la
+    buf = validate.SentenceBuffer()
+    cited, emitted_any, first_checked = set(), False, False
+
+    def _handle(sentence):
+        """Valida e devolve (evento_sse, parar?)."""
+        nonlocal first_checked, emitted_any
+        if not first_checked:
+            first_checked = True
+            if sentence.upper().startswith(synthesize.SENTINEL):
+                return _sse("insufficient", {"text": synthesize.REFUSAL}), True
+        ok, reason = validate.validate_sentence(sentence, allowed_ns, text_by_n)
+        if not ok:
+            return _sse("halted", {"reason": reason,
+                                   "warning": "Não consegui sintetizar o restante com segurança. "
+                                              "Veja os trechos recuperados acima."}), True
+        cited.update(validate.citations(sentence))
+        emitted_any = True
+        return _sse("sentence", {"text": sentence}), False
+
     try:
+        halted = False
         for delta in llm.stream_chat(messages):
-            full.append(delta)
-            yield _sse("token", {"delta": delta})
+            for sentence in buf.feed(delta):
+                ev, stop = _handle(sentence)
+                yield ev
+                if stop:
+                    halted = True
+                    break
+            if halted:
+                break
+        if not halted:
+            tail = buf.flush()
+            if tail:
+                ev, stop = _handle(tail)
+                yield ev
+                halted = stop
     except Exception as e:
         yield _sse("error", {"message": str(e)[:200]})
         return
 
-    text = "".join(full).strip()
-    if text.upper().startswith(synthesize.SENTINEL):
-        # modelo sinalizou insuficiência apesar do limiar
-        yield _sse("insufficient", {"text": synthesize.REFUSAL})
-        yield _sse("done", {"insufficient": True})
-        return
-
-    used = synthesize.used_sources(text, sources)
-    yield _sse("done", {"insufficient": False, "cited": [s["n"] for s in used]})
+    yield _sse("done", {"insufficient": not emitted_any, "cited": sorted(cited), "halted": halted})
 
 
 @app.get("/ask")
