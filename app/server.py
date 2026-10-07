@@ -8,6 +8,8 @@ Rodar:  uvicorn app.server:app --reload --port 8000
 """
 import os
 import json
+import datetime
+import threading
 
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -54,19 +56,60 @@ def _pubmed_terms(question):
         return question
 
 
+def _rank_fresh(qvec, per, vecs, k):
+    """Ranqueia em memória os chunks recém-buscados (cosseno), sem tocar no banco.
+    Embeddings da OpenAI são normalizados → produto escalar == cosseno."""
+    meta = []
+    for a, ch in per:
+        for section, text in ch:
+            meta.append((a, section, text))
+    scored = []
+    for i, v in enumerate(vecs):
+        dot = 0.0
+        for x, y in zip(qvec, v):
+            dot += x * y
+        scored.append((dot, i))
+    scored.sort(reverse=True)
+    hits = []
+    for sim, i in scored[:k]:
+        a, section, text = meta[i]
+        yr = a.get("year")
+        hits.append({
+            "chunk_id": -(i + 1), "document_id": None, "section_title": section,
+            "text": text, "title": a["title"], "url": a["url"], "source_type": "article",
+            "publication_date": datetime.date(yr, 1, 1) if yr else None,
+            "score": sim, "cosine_sim": sim,
+        })
+    return hits
+
+
+def _safe_persist(per, vecs):
+    try:
+        ingest.persist(per, vecs)
+    except Exception as e:
+        print("[ask] persist em background falhou:", str(e)[:200])
+
+
 def _ask_stream(query, k):
     # 1) busca local — decide suficiência antes de chamar o LLM
     res = search.search(query, k=k)
     yield _sse("status", {"stage": "searched", "best_sim": round(res["best_sim"], 3)})
 
-    # 2) se a evidência local for fraca, CONSULTA o PubMed ao vivo antes de responder
+    # 2) se a evidência local for fraca, CONSULTA o PubMed ao vivo antes de responder.
+    #    Ranqueia em memória (responde já) e persiste no banco em 2º plano (cache).
     if res["best_sim"] < FETCH_SIM or not res["hits"]:
         yield _sse("status", {"stage": "fetching"})
+        per, vecs = [], []
         try:
-            ingest.ingest_pubmed(_pubmed_terms(query), 10)
+            per, vecs = ingest.fetch_and_embed(_pubmed_terms(query), 10)
         except Exception as e:
             print("[ask] fetch on-demand falhou:", str(e)[:200])
-        res = search.search(query, k=k, qvec=res.get("qvec"))  # reaproveita o embedding
+        if per:
+            fresh = _rank_fresh(res.get("qvec"), per, vecs, k)
+            threading.Thread(target=_safe_persist, args=(per, vecs), daemon=True).start()
+            best = max((h["score"] for h in fresh), default=0.0)
+            res = {"insufficient": best < search.SIM_THRESHOLD, "best_sim": best,
+                   "hits": fresh, "qvec": res.get("qvec")}
         yield _sse("status", {"stage": "refetched", "best_sim": round(res["best_sim"], 3)})
 
     if res["insufficient"] or not res["hits"]:

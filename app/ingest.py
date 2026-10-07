@@ -8,50 +8,53 @@ from . import pubmed, chunking, embeddings, db
 EMBED_BATCH = 100  # chunks por chamada de embeddings
 
 
-def ingest_pubmed(query, retmax):
-    print(f"[pubmed] buscando: {query!r} (retmax={retmax})")
-    pmids = pubmed.search(query, retmax=retmax)
-    print(f"[pubmed] {len(pmids)} PMIDs")
-    articles = pubmed.fetch(pmids)
-    print(f"[pubmed] {len(articles)} artigos com abstract")
-
-    # dedupe por content_hash dentro do lote
+def _dedupe(articles):
     seen, uniq = set(), []
     for a in articles:
         if a["content_hash"] in seen:
             continue
         seen.add(a["content_hash"])
         uniq.append(a)
-    articles = uniq
+    return uniq
 
-    with db.connection() as conn:  # conexão do pool (evita reconectar ~3s)
-        # 1) upsert de TODOS os documentos em 1 round-trip → ids dos novos
+
+def fetch_and_embed(terms, retmax=10):
+    """Busca no PubMed, faz chunking e embeda — SEM tocar no banco.
+    Devolve (per, vecs): per=[(article, [(section,text),...])]; vecs alinhado aos chunks."""
+    articles = _dedupe(pubmed.fetch(pubmed.search(terms, retmax=retmax)))
+    per = [(a, chunking.chunk_article(a)) for a in articles]
+    texts = [t for (_, ch) in per for (_, t) in ch]
+    vecs = []
+    for i in range(0, len(texts), EMBED_BATCH):
+        vecs += embeddings.embed(texts[i:i + EMBED_BATCH])
+    return per, vecs
+
+
+def persist(per, vecs):
+    """Grava no banco (idempotente, em lote). Pode rodar em segundo plano."""
+    if not per:
+        return 0, 0
+    with db.connection() as conn:
         rows = [("pubmed", "article", a["title"], a["url"], "english",
                  (f"{a['year']}-01-01" if a.get("year") else None),
-                 "PubMed/PMC (verificar por artigo)", None, a["content_hash"]) for a in articles]
-        new_ids = db.upsert_documents_bulk(conn, rows)   # {content_hash: id}
-        new_articles = [a for a in articles if a["content_hash"] in new_ids]
-
-        # 2) chunk + embeda TODOS os chunks em lote (poucas chamadas)
-        per_article = [(a, chunking.chunk_article(a)) for a in new_articles]
-        flat = [c[1] for (_, ch) in per_article for c in ch]
-        vecs = []
-        for i in range(0, len(flat), EMBED_BATCH):
-            vecs += embeddings.embed(flat[i:i + EMBED_BATCH])
-
-        # 3) monta e insere TODOS os chunks em 1 round-trip
+                 "PubMed/PMC (verificar por artigo)", None, a["content_hash"]) for (a, _) in per]
+        new_ids = db.upsert_documents_bulk(conn, rows)
         chunk_rows, pos = [], 0
-        for a, ch in per_article:
-            doc_id = new_ids[a["content_hash"]]
+        for a, ch in per:
+            did = new_ids.get(a["content_hash"])
             for idx, (section, text) in enumerate(ch):
-                chunk_rows.append((doc_id, section, idx, text, vecs[pos]))
+                if did is not None:
+                    chunk_rows.append((did, section, idx, text, vecs[pos]))
                 pos += 1
         db.insert_chunks_bulk(conn, chunk_rows, "english")
+    return len(new_ids), len(chunk_rows)
 
-        d, c = db.counts(conn)
-    print(f"[ok] novos: {len(new_articles)} docs / {len(chunk_rows)} chunks · "
-          f"já existiam: {len(articles) - len(new_articles)}")
-    print(f"[ok] total no banco: {d} documents / {c} chunks")
+
+def ingest_pubmed(query, retmax):
+    print(f"[pubmed] buscando: {query!r} (retmax={retmax})")
+    per, vecs = fetch_and_embed(query, retmax)
+    nd, nc = persist(per, vecs)
+    print(f"[ok] novos: {nd} docs / {nc} chunks (de {len(per)} artigos com abstract)")
 
 
 def main(argv=None):
