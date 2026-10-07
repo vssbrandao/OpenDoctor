@@ -23,8 +23,8 @@ Spec: ver `../docs/rag-plan.md` (diff estado atual × spec) e a spec enxuta orig
 - A construir: F6 rerank (se preciso) · F7 PCDTs · expandir golden set.
 
 ### Front-end (`web/`)
-Protótipo da agenda com o painel do assistente. Hoje usa um proxy simples (`web/proxy.py`);
-ligar ao backend RAG é um passo futuro. Rodar: `cd web && python3 proxy.py` → http://127.0.0.1:8899/opendoctor-agenda.html
+Agenda com o painel do assistente, **ligada ao backend RAG** (`/ask` SSE). O próprio
+FastAPI serve a página: `uvicorn app.server:app --port 8000` → http://127.0.0.1:8000/opendoctor-agenda.html
 
 Testes: `python -m pytest tests/ -q`  ·  Eval: `python -m app.eval`  ·  Gate: `python -m app.eval --check`
 
