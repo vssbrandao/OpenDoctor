@@ -8,9 +8,26 @@ Spec: ver `../docs/rag-plan.md` (diff estado atual × spec) e a spec enxuta orig
 
 ## Status
 
-- **F0 — Fundação** ✔ git dedicado, schema Postgres/pgvector aplicado no Supabase, config por env.
-- **F1 — Ingestão PubMed** ✔ `app/` com cliente E-utilities, chunking, embeddings e CLI `ingest`.
-- A construir: busca híbrida (F2), síntese com streaming (F3).
+- **F0 — Fundação** ✔ git dedicado, schema Postgres/pgvector no Supabase, config por env.
+- **F1 — Ingestão PubMed** ✔ E-utilities → chunking → embeddings → pgvector (`app.ingest`).
+- **F2 — Busca híbrida** ✔ vetorial ∥ full-text → RRF → boost → limiar/recusa (`app.search`).
+- **F3 — Síntese** ✔ prompt versionado + `app.synthesize` + servidor SSE `app.server` (/ask).
+- A construir: F4 validação por frase · F5 golden set + eval · F6 rerank (se preciso) · F7 PCDTs · F8 CI.
+
+## Rodar o assistente (F3)
+
+```bash
+source .venv/bin/activate
+uvicorn app.server:app --port 8000
+# SSE: GET /ask?query=...  → eventos: status → sources → token* → done (ou insufficient)
+curl -N "http://127.0.0.1:8000/ask?query=SGLT2%20em%20HFpEF%20reduz%20mortalidade%3F"
+```
+
+Testes por CLI (sem servidor):
+```bash
+python -m app.search     --query "..."   # inspeciona os trechos recuperados
+python -m app.synthesize --query "..."   # resposta sintetizada + fontes citadas
+```
 
 ## Rodar a ingestão (F1)
 
