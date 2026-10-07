@@ -14,9 +14,14 @@ Spec: ver `../docs/rag-plan.md` (diff estado atual × spec) e a spec enxuta orig
 - **F3 — Síntese** ✔ prompt versionado + `app.synthesize` + servidor SSE `app.server` (/ask).
 - **F4 — Validação por frase** ✔ `app.validate` (checagens puras + testes); o SSE emite `sentence`
   só após validar citação/ancoragem de números; `halted` se uma frase falha.
-- A construir: F5 golden set + eval · F6 rerank (se preciso) · F7 PCDTs · F8 CI.
+- **F5 — Golden set + eval** ✔ `evals/golden.jsonl` + `evals/rubric.md` + `app.eval` (recall@6,
+  fidelidade/cobertura via LLM-judge, recusa, latência p50/p95); baseline em `docs/eval-history.md`.
+- A construir: F6 rerank (se preciso) · F7 PCDTs · F8 CI.
 
-Testes: `python -m pytest tests/ -q`
+Testes: `python -m pytest tests/ -q`  ·  Eval: `python -m app.eval`
+
+> ⚠️ O golden set tem 10 perguntas semente. Para o eval valer de verdade, expandir para ~30 com
+> **revisão médica** (pergunta, pontos-chave e documentos corretos).
 
 ## Rodar o assistente (F3)
 
