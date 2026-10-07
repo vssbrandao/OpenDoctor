@@ -1,0 +1,18 @@
+# Fontes de evidência (spec §3.1). Nova fonte só entra aqui com licença verificada.
+# Fase inicial: apenas fontes com API ou download estruturado. Sem crawler de HTML.
+
+sources:
+  - name: pubmed
+    type: article            # guideline | article | protocol
+    access: api              # PubMed / PMC Open Access via E-utilities
+    language: english
+    license: "PMC Open Access subset (verificar por artigo)"
+    enabled: true
+
+  - name: conitec_pcdt
+    type: protocol           # PCDTs do Ministério da Saúde / Conitec
+    access: pdf_batch        # PDFs baixados em lote
+    language: portuguese
+    license: "Domínio público / Gov.br (verificar)"
+    enabled: false           # habilitar na fase F7
+    urls: []                 # preencher com as URLs dos PDFs quando habilitar

@@ -1,0 +1,23 @@
+# segredos / config local
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# dados brutos de ingestão (guardados localmente, não no git)
+data/raw/
+*.sqlite
+
+# SO / editor
+.DS_Store
+.idea/
+.vscode/
+
+# supabase CLI local
+.supabase/
+supabase/.temp/
