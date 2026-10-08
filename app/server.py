@@ -42,6 +42,16 @@ def _sse(event, data):
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+@app.middleware("http")
+async def _no_cache_html(request: Request, call_next):
+    """Impede o navegador de servir HTML velho do cache após um deploy."""
+    resp = await call_next(request)
+    path = request.url.path
+    if path.endswith(".html") or path == "/":
+        resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    return resp
+
+
 @app.get("/")
 def root():
     # raiz do site cai na agenda (home do app)
