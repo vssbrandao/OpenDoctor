@@ -16,7 +16,7 @@
       --disp:"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif;
       --ink:#071216; --ink2:#1f1f1f; --muted:#666c6f; --sb-border:rgba(0,0,0,.08);
       --active:#f7f8f8; --pill:#f3f3f3; --line:rgba(0,0,0,.04);
-      --ev-bg:#f3f3f3; --ev-bg-hover:#e9e9e9; --avatar-bg:#d3e3fd; --avatar-ink:#0842a0; --now:#f78200;
+      --ev-bg:#f3f3f3; --ev-bg-hover:#e9e9e9; --avatar-bg:#d3e3fd; --avatar-ink:#0842a0; --now:#FA7000;
       --send-bg:#d3e3fd; --send-ink:#0842a0;
     }
     *{box-sizing:border-box;margin:0;padding:0}
@@ -107,7 +107,9 @@
 
     /* "now" indicator (orange line + dot) */
     .now{position:absolute;left:0;right:0;height:0;border-top:1.5px solid var(--now);z-index:4;pointer-events:none}
-    .now::before{content:"";position:absolute;left:-4px;top:-5px;width:9px;height:9px;border-radius:50%;background:var(--now)}
+    .now-time{position:absolute;left:0;top:0;transform:translateY(-50%);
+      background:var(--now);color:#fff;font-family:var(--disp);font-weight:700;font-size:11px;
+      line-height:1;padding:3px 6px;border-radius:5px;white-space:nowrap}
 
     /* ===== RIGHT PANEL (487) ===== */
     .right{flex:1 1 0;min-width:487px;max-width:720px;height:100%;background:#fff;position:relative;border-left:1px solid var(--sb-border)}
@@ -378,7 +380,7 @@
           <div class="hr-row"><span class="hr-label">23h</span></div>
 
           <!-- "now" marker: positioned by local time in JS -->
-          <div class="now" id="nowMarker" style="top:1343px"></div>
+          <div class="now" id="nowMarker" style="top:1343px"><span class="now-time" id="nowTime"></span></div>
         </div>
       </div>
     </div>
@@ -437,22 +439,32 @@
       if (t < FIRST_HOUR || t > LAST_HOUR) { el.style.display = 'none'; return; }
       el.style.display = '';
       el.style.top = ((t - FIRST_HOUR) * HOUR_PX) + 'px';
+      var tEl = document.getElementById('nowTime');
+      if (tEl) tEl.textContent = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
     }
     placeNow();
     setInterval(placeNow, 60 * 1000); // keep it live, update every minute
 
-    // open the agenda scrolled to the first appointment (8h)
-    (function () {
+    // abre a agenda com o PRIMEIRO compromisso no topo (real se conectado, senão exemplo)
+    function scrollToFirst() {
       var cal = document.querySelector('.cal');
-      var firstEv = document.querySelector('.cal-inner .ev');
-      if (cal && firstEv) {
-        var row = firstEv.closest('.hr-row');
-        cal.scrollTop = row ? row.offsetTop : 0;
+      if (!cal) return;
+      var real = document.querySelector('.cal-inner .ev-real');
+      var top;
+      if (real) {
+        top = parseFloat(real.style.top) || real.offsetTop;
+      } else {
+        var ev = document.querySelector('.cal-inner .ev');
+        var row = ev ? ev.closest('.hr-row') : null;
+        top = row ? row.offsetTop : 0;
       }
-    })();
+      cal.scrollTop = Math.max(top - 8, 0);
+    }
+    scrollToFirst();
 
     // ===== eventos reais do calendário conectado =====
     (function () {
+      var firstRender = true;
       function fmtTime(d) {
         var m = d.getMinutes();
         return d.getHours() + (m ? 'h' + String(m).padStart(2, '0') : 'h');
@@ -496,6 +508,7 @@
           empty.textContent = 'Nenhum evento no calendário hoje.';
           inner.appendChild(empty);
         }
+        if (firstRender) { scrollToFirst(); firstRender = false; }
       }
       function refresh() {
         var now = new Date();
