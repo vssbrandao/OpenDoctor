@@ -497,14 +497,23 @@
           inner.appendChild(empty);
         }
       }
-      var now = new Date();
-      var start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-      var end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
-      fetch('/calendar/events?start=' + encodeURIComponent(start.toISOString()) +
-            '&end=' + encodeURIComponent(end.toISOString()))
-        .then(function (r) { return r.json(); })
-        .then(function (d) { if (d && d.connected) render(d.events || []); })
-        .catch(function () {});
+      function refresh() {
+        var now = new Date();
+        var start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        var end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+        return fetch('/calendar/events?start=' + encodeURIComponent(start.toISOString()) +
+              '&end=' + encodeURIComponent(end.toISOString()))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { if (d && d.connected) render(d.events || []); })
+          .catch(function () {});
+      }
+      refresh();
+      // "tempo real": atualiza a cada 30s e quando você volta pra aba
+      setInterval(refresh, 30 * 1000);
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) refresh();
+      });
+      window.addEventListener('focus', refresh);
     })();
 
     // ===== right-panel AI assistant (local proxy → OpenAI) =====
