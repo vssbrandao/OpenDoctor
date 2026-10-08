@@ -41,7 +41,7 @@
     .item .ico svg{display:block}
 
     /* ===== CENTER: DAY AGENDA ===== */
-    .center{flex:1;min-width:0;height:100%;position:relative}
+    .center{flex:2 1 0;min-width:0;height:100%;position:relative}
     .cal-head{position:absolute;top:14px;left:24px;z-index:3;display:flex;align-items:center;gap:3px;cursor:pointer}
     .cal-head .date{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
     /* calendário (popover) */
@@ -97,7 +97,7 @@
     .now::before{content:"";position:absolute;left:-4px;top:-5px;width:9px;height:9px;border-radius:50%;background:var(--now)}
 
     /* ===== RIGHT PANEL (487) ===== */
-    .right{flex:none;width:487px;height:100%;background:#fff;position:relative;border-left:1px solid var(--sb-border)}
+    .right{flex:1 1 0;min-width:487px;max-width:720px;height:100%;background:#fff;position:relative;border-left:1px solid var(--sb-border)}
     .rp-head{display:flex;align-items:center;justify-content:space-between;padding:8px 24px}
     .rp-title{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
     .panel-ico{width:36px;height:36px;border:0;background:none;cursor:pointer;
@@ -105,7 +105,7 @@
     .panel-ico:hover{background:rgba(0,0,0,.05)}
 
     /* suggestion cards above the input */
-    .rp-suggest{position:absolute;left:24px;bottom:180px;width:439px;display:flex;gap:8px}
+    .rp-suggest{position:absolute;left:24px;right:24px;bottom:180px;display:flex;gap:8px}
     .sg-card{flex:1;height:140px;background:var(--pill);border:0;border-radius:40px;padding:24px;
       display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;
       text-align:left;cursor:pointer;transition:background .15s ease}
@@ -195,7 +195,7 @@
       text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .bi-send:disabled{opacity:.5;cursor:default}
 
-    .big-input{position:absolute;left:24px;bottom:44px;width:439px;max-width:calc(100% - 48px);
+    .big-input{position:absolute;left:24px;right:24px;bottom:44px;
       background:var(--pill);border-radius:40px;display:flex;flex-direction:column;gap:16px}
     .bi-top{display:flex;align-items:center;padding:24px 24px 0}
     .bi-ask{display:flex;align-items:center;gap:3px}
