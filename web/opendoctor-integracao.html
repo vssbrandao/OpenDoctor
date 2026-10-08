@@ -134,11 +134,13 @@
   </div>
   <script>
     (function () {
+      var CFG = {};
       function render(st) {
         ['google', 'microsoft'].forEach(function (prov) {
           var card = document.querySelector('.int-card[data-provider="' + prov + '"]');
           if (!card) return;
           var info = st && st[prov] || {};
+          CFG[prov] = info.configured !== false;
           var row = card.querySelector('.conn-row');
           var status = card.querySelector('.conn-status');
           var btn = card.querySelector('.int-btn');
@@ -153,7 +155,7 @@
             status.hidden = true;
             btn.textContent = 'Conectar';
             btn.dataset.action = 'connect';
-            if (info.configured === false) { btn.title = 'Defina as credenciais no .env'; }
+            btn.title = CFG[prov] ? '' : 'Credenciais ainda não configuradas no .env';
           }
         });
       }
@@ -165,6 +167,11 @@
           var prov = btn.dataset.provider;
           if (btn.dataset.action === 'disconnect') {
             fetch('/integrations/' + prov + '/disconnect', { method: 'POST' }).then(load);
+          } else if (CFG[prov] === false) {
+            alert('Credenciais do ' + (prov === 'google' ? 'Google' : 'Microsoft') +
+                  ' ainda não configuradas.\nCrie o app OAuth e preencha o .env (' +
+                  (prov === 'google' ? 'GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET' : 'MS_CLIENT_ID / MS_CLIENT_SECRET') +
+                  '), depois reinicie o servidor.');
           } else {
             location.href = '/auth/' + prov + '/login';
           }
