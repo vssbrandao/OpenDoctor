@@ -154,7 +154,7 @@
           if (info.connected) {
             row.classList.add('connected');
             status.hidden = false;
-            status.querySelector('.st-text').textContent = info.email || 'Conectado';
+            status.querySelector('.st-text').textContent = 'Conectado';
             btn.textContent = 'Desconectar';
             btn.dataset.action = 'disconnect';
           } else {
