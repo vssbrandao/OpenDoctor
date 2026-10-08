@@ -24,23 +24,16 @@ def test_invalid_citation():
     assert not ok and "inválida" in reason
 
 
-def test_clinical_without_citation():
-    ok, reason = v.validate_sentence("usar dapagliflozina 10 mg/dia.", {1}, {1: "dapagliflozina 10 mg/dia"})
-    assert not ok and "sem citação" in reason
+def test_clinical_without_citation_is_ok():
+    # frase sem citação é permitida (complemento com conhecimento consolidado)
+    ok, reason = v.validate_sentence("A conduta deve ser individualizada.", {1}, {1: "qualquer"})
+    assert ok, reason
 
 
-def test_number_not_grounded():
-    # cita [1], mas o número não está no trecho citado
+def test_number_not_grounded_is_ok():
+    # número não precisa constar no trecho citado (validação relaxada)
     ok, reason = v.validate_sentence(
         "reduziu 42% dos eventos [1].", {1}, {1: "reduziu os eventos de forma significativa"}
-    )
-    assert not ok and "não consta" in reason
-
-
-def test_number_grounded_decimal_separator():
-    # resposta usa vírgula, trecho usa ponto — deve casar
-    ok, reason = v.validate_sentence(
-        "redução de 6,09% dos eventos [1].", {1}, {1: "HF events 6.09% vs 15.65%"}
     )
     assert ok, reason
 

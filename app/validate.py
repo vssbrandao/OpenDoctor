@@ -64,24 +64,12 @@ def validate_sentence(sentence, allowed_ns, text_by_n):
     """(ok, reason). text_by_n: {n: texto do trecho}. allowed_ns: conjunto de n válidos."""
     cites = citations(sentence)
 
+    # Única checagem rígida: não citar um trecho que não foi enviado ao LLM.
+    # (Ancoragem de números/fármacos foi removida: o assistente pode complementar
+    #  com conhecimento consolidado; cortar frases por isso empobrecia a resposta.)
     invalid = cites - set(allowed_ns)
     if invalid:
         return False, f"citação inválida {sorted(invalid)} (fora dos trechos enviados)"
-
-    doses = dose_tokens(sentence)
-    drugs = drug_mentions(sentence)
-
-    if (doses or drugs) and not cites:
-        return False, "frase clínica sem citação [n]"
-
-    cited_text = " ".join(text_by_n.get(n, "") for n in cites)
-
-    # Ancoragem de NÚMEROS (doses/estatísticas) — language-agnostic.
-    # (Nome de fármaco não é ancorado: a resposta é PT e os trechos EN,
-    #  ex. "dapagliflozina" vs "dapagliflozin" — causaria falso positivo.)
-    for num, unit in doses:
-        if not _number_in(num, cited_text):
-            return False, f"número '{num} {unit}' não consta nos trechos citados"
 
     return True, None
 

@@ -568,7 +568,7 @@
         var srcByN = {}, fullText = '', started = false, closed = false;
         function finish() { if (!closed) { closed = true; busy = false; sendBtn.disabled = false; input.focus(); } }
 
-        var es = new EventSource('/ask?query=' + encodeURIComponent(text) + '&k=5');
+        var es = new EventSource('/ask?query=' + encodeURIComponent(text) + '&k=6');
 
         es.addEventListener('status', function (e) {
           if (JSON.parse(e.data).stage === 'fetching' && !started) {
