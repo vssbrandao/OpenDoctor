@@ -44,6 +44,29 @@
     .center{flex:1;min-width:0;height:100%;position:relative}
     .cal-head{position:absolute;top:14px;left:24px;z-index:3;display:flex;align-items:center;gap:3px;cursor:pointer}
     .cal-head .date{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    /* calendário (popover) */
+    .cal-pop{position:absolute;top:44px;left:24px;z-index:30;width:280px;background:#fff;
+      border:1px solid var(--sb-border);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);
+      padding:14px;font-family:var(--disp)}
+    .cal-pop[hidden]{display:none}
+    .cp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .cp-title{font-weight:700;font-size:14px;color:#071216;text-transform:capitalize}
+    .cp-nav{width:30px;height:30px;border:0;background:none;border-radius:8px;cursor:pointer;
+      font-size:20px;line-height:1;color:#444;display:flex;align-items:center;justify-content:center}
+    .cp-nav:hover{background:rgba(0,0,0,.05)}
+    .cp-dows{display:grid;grid-template-columns:repeat(7,1fr)}
+    .cp-dows span{text-align:center;font-size:11px;font-weight:600;color:var(--muted);padding:4px 0}
+    .cp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+    .cp-day{height:34px;border:0;background:none;border-radius:8px;cursor:pointer;font-size:13px;
+      font-family:var(--disp);color:#071216;display:flex;align-items:center;justify-content:center}
+    .cp-day:hover{background:rgba(0,0,0,.06)}
+    .cp-day.other{color:#c3c7c9}
+    .cp-day.today{font-weight:700;color:#0842a0}
+    .cp-day.sel{background:#0842a0;color:#fff;font-weight:700}
+    .cp-day.sel:hover{background:#0842a0}
+    .cp-today{margin-top:10px;width:100%;border:0;background:#f3f3f3;border-radius:999px;
+      padding:8px;font-size:13px;font-weight:600;color:#0842a0;cursor:pointer;font-family:var(--disp)}
+    .cp-today:hover{background:#e9e9e9}
     .cal{position:absolute;left:0;right:0;top:52px;bottom:0;overflow-y:auto;overflow-x:hidden;
       padding:0 0 0 24px;scrollbar-width:thin}
     .cal-inner{position:relative;padding-bottom:40px}
@@ -214,9 +237,19 @@
 
     <!-- ===== CENTER: DAY AGENDA ===== -->
     <div class="center">
-      <div class="cal-head">
+      <div class="cal-head" id="calHead">
         <span class="date">Seg, 30 Junho</span>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z" fill="#1C1B1F"/></svg>
+      </div>
+      <div class="cal-pop" id="calPop" hidden>
+        <div class="cp-head">
+          <button class="cp-nav" id="cpPrev" aria-label="Mês anterior">‹</button>
+          <span class="cp-title" id="cpTitle"></span>
+          <button class="cp-nav" id="cpNext" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="cp-dows"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+        <div class="cp-grid" id="cpGrid"></div>
+        <button class="cp-today" id="cpToday">Hoje</button>
       </div>
       <div class="cal">
         <div class="cal-inner">
@@ -660,6 +693,54 @@
       if (!nodes.length) return;
       try { mermaid.run({ nodes: nodes }); } catch (e) { /* diagrama inválido: ignora */ }
     }
+  </script>
+  <script>
+    // ===== calendário (seletor de data) =====
+    (function () {
+      var head = document.getElementById('calHead');
+      var dateEl = head && head.querySelector('.date');
+      var pop = document.getElementById('calPop');
+      if (!head || !dateEl || !pop) return;
+
+      var MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      var DOWS = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      var selected = new Date(today);
+      var view = new Date(selected.getFullYear(), selected.getMonth(), 1);
+
+      function fmt(d) { return DOWS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()]; }
+      function same(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+
+      function render() {
+        document.getElementById('cpTitle').textContent = MONTHS[view.getMonth()] + ' ' + view.getFullYear();
+        var grid = document.getElementById('cpGrid'); grid.innerHTML = '';
+        var first = new Date(view.getFullYear(), view.getMonth(), 1);
+        var start = new Date(first); start.setDate(1 - first.getDay());
+        for (var i = 0; i < 42; i++) {
+          var d = new Date(start); d.setDate(start.getDate() + i);
+          var btn = document.createElement('button'); btn.className = 'cp-day'; btn.textContent = d.getDate();
+          if (d.getMonth() !== view.getMonth()) btn.classList.add('other');
+          if (same(d, today)) btn.classList.add('today');
+          if (same(d, selected)) btn.classList.add('sel');
+          (function (dd) { btn.addEventListener('click', function () { selected = dd; dateEl.textContent = fmt(dd); close(); }); })(new Date(d));
+          grid.appendChild(btn);
+        }
+      }
+      function open() { view = new Date(selected.getFullYear(), selected.getMonth(), 1); render(); pop.hidden = false; }
+      function close() { pop.hidden = true; }
+
+      head.addEventListener('click', function (e) { e.stopPropagation(); pop.hidden ? open() : close(); });
+      pop.addEventListener('click', function (e) { e.stopPropagation(); });
+      document.addEventListener('click', function () { if (!pop.hidden) close(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+      document.getElementById('cpPrev').addEventListener('click', function () { view.setMonth(view.getMonth() - 1); render(); });
+      document.getElementById('cpNext').addEventListener('click', function () { view.setMonth(view.getMonth() + 1); render(); });
+      document.getElementById('cpToday').addEventListener('click', function () {
+        selected = new Date(today); dateEl.textContent = fmt(selected); open();
+      });
+
+      dateEl.textContent = fmt(selected);   // inicia no dia atual (real)
+    })();
   </script>
 </body>
 </html>
