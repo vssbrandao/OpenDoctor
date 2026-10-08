@@ -3,66 +3,68 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenDoctor — Política de Privacidade</title>
+  <title>Política de Privacidade — OpenDoctor</title>
   <style>
-    :root{--disp:"Helvetica Neue",Helvetica,Arial,sans-serif;--ink:#111;--muted:#555}
+    @font-face{font-family:"Helvetica Now Display";font-weight:400;font-style:normal;font-display:swap;
+      src:url("assets/fonts/HelveticaNowDisplay-Regular.woff2") format("woff2");}
+    @font-face{font-family:"Helvetica Now Display";font-weight:500;font-style:normal;font-display:swap;
+      src:url("assets/fonts/HelveticaNowDisplay-Medium.woff2") format("woff2");}
+    @font-face{font-family:"Helvetica Now Display";font-weight:700;font-style:normal;font-display:swap;
+      src:url("assets/fonts/HelveticaNowDisplay-Bold.woff2") format("woff2");}
+    :root{--disp:"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif}
     *{box-sizing:border-box}
-    body{margin:0;font-family:var(--disp);color:var(--ink);line-height:1.6;background:#fff}
-    .wrap{max-width:760px;margin:0 auto;padding:56px 24px 80px}
-    h1{font-size:28px;margin:0 0 4px}
-    .date{color:var(--muted);font-size:14px;margin-bottom:28px}
-    h2{font-size:18px;margin:28px 0 8px}
-    p,li{font-size:15px;color:#222}
+    body{margin:0;background:#fff;color:#111;font-family:var(--disp);
+      font-weight:400;font-size:15px;line-height:1.65}
+    .wrap{max-width:600px;margin:0 auto;padding:72px 24px 96px}
+    h1{font-weight:700;font-size:28px;line-height:1.2;margin:0 0 6px}
+    .date{color:#777;font-size:13px;margin-bottom:36px}
+    h2{font-weight:700;font-size:17px;margin:32px 0 8px}
+    p{margin:0 0 14px}
+    ul{margin:0 0 14px;padding-left:20px}
+    li{margin:4px 0}
     a{color:#0842a0}
-    ul{padding-left:20px}
-    .muted{color:var(--muted);font-size:13px;margin-top:40px}
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Política de Privacidade — OpenDoctor</h1>
-    <div class="date">Última atualização: 8 de outubro de 2026</div>
+    <h1>Política de Privacidade</h1>
+    <div class="date">OpenDoctor · Última atualização: 8 de outubro de 2026</div>
 
-    <p>O OpenDoctor é um assistente de apoio à decisão clínica que, opcionalmente, permite
-    conectar o calendário do profissional (Google Calendar e Microsoft Outlook) para exibir
-    seus compromissos. Esta política descreve quais dados tratamos e como.</p>
+    <p>O OpenDoctor é um assistente de apoio à decisão clínica para profissionais de saúde.
+    Opcionalmente, permite conectar o calendário do usuário (Google Calendar e Microsoft Outlook)
+    para exibir seus compromissos. Esta política descreve quais dados tratamos e como.</p>
 
-    <h2>1. Dados que acessamos</h2>
+    <h2>Dados que acessamos</h2>
     <ul>
-      <li><strong>Identificação:</strong> nome e e-mail da conta usada para conectar (Google/Microsoft).</li>
-      <li><strong>Calendário (somente leitura):</strong> eventos do seu calendário, para exibi-los na agenda.
+      <li><strong>Identificação:</strong> nome e e-mail da conta usada para entrar.</li>
+      <li><strong>Calendário (somente leitura):</strong> seus eventos, para exibi-los na agenda.
         Não criamos, editamos nem excluímos eventos.</li>
       <li><strong>Tokens de acesso:</strong> credenciais emitidas pelo provedor para manter a conexão.</li>
     </ul>
-    <p>Não coletamos dados de pacientes a partir do calendário além do que você mesmo visualiza na agenda.</p>
 
-    <h2>2. Como usamos os dados</h2>
-    <ul>
-      <li>Exibir seus compromissos de calendário dentro do OpenDoctor.</li>
-      <li>Manter sua sessão conectada ao provedor escolhido.</li>
-    </ul>
-    <p>Não vendemos seus dados e não os usamos para publicidade. Os dados de calendário
-    <strong>não</strong> são enviados a serviços de terceiros nem usados para treinar modelos de IA.</p>
+    <h2>Como usamos</h2>
+    <p>Usamos esses dados apenas para autenticar você e exibir seus compromissos dentro do OpenDoctor.
+    Não vendemos seus dados, não os usamos para publicidade e não os usamos para treinar modelos de IA.
+    Os dados de calendário não são compartilhados com terceiros.</p>
 
-    <h2>3. Uso em conformidade com as políticas do Google</h2>
+    <h2>Conformidade com o Google</h2>
     <p>O uso e a transferência de informações recebidas das APIs do Google seguem a
-    <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">
-    Política de Dados do Usuário dos Serviços de API do Google</a>, incluindo os requisitos de uso limitado.</p>
+    <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Política
+    de Dados do Usuário dos Serviços de API do Google</a>, incluindo os requisitos de uso limitado.</p>
 
-    <h2>4. Armazenamento e segurança</h2>
-    <p>Os tokens de acesso são armazenados de forma segura no nosso banco de dados e usados apenas
-    para acessar o calendário conforme a sua autorização. O acesso é restrito e trafega por HTTPS.</p>
+    <h2>Armazenamento e segurança</h2>
+    <p>Os tokens são armazenados de forma segura no nosso banco de dados e usados apenas conforme a sua
+    autorização. Todo o tráfego ocorre por HTTPS.</p>
 
-    <h2>5. Retenção e exclusão</h2>
-    <p>Você pode revogar a conexão a qualquer momento clicando em <strong>Desconectar</strong> no
-    OpenDoctor, o que remove os tokens armazenados. Também é possível revogar o acesso diretamente em
+    <h2>Retenção e exclusão</h2>
+    <p>Você pode revogar a conexão a qualquer momento em <strong>Desconectar</strong> no OpenDoctor,
+    o que remove os tokens armazenados. Também é possível revogar o acesso em
     <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">myaccount.google.com/permissions</a>
     (Google) ou em <a href="https://account.microsoft.com/privacy" target="_blank" rel="noopener">account.microsoft.com</a> (Microsoft).</p>
 
-    <h2>6. Contato</h2>
-    <p>Dúvidas sobre privacidade: <a href="mailto:privacidade@opendoctor.app">privacidade@opendoctor.app</a>.</p>
-
-    <p class="muted">OpenDoctor — <a href="/terms.html">Termos de Uso</a></p>
+    <h2>Contato</h2>
+    <p><a href="mailto:privacidade@opendoctor.app">privacidade@opendoctor.app</a> ·
+    <a href="/terms.html">Termos de Serviço</a></p>
   </div>
 </body>
 </html>
