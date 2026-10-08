@@ -884,50 +884,68 @@
         msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
 
         var srcByN = {}, fullText = '', started = false, closed = false;
+        var attempt = 0, MAX_RETRY = 6, RETRY_MS = [1000, 2000, 3000, 5000, 7000, 9000];
+        var es = null;
         function finish() { if (!closed) { closed = true; busy = false; sendBtn.disabled = false; input.focus(); } }
+        var dots = ' <span class="dots"><i></i><i></i><i></i></span>';
 
-        var es = new EventSource('/ask?query=' + encodeURIComponent(text) + '&k=6');
+        function connect() {
+          es = new EventSource('/ask?query=' + encodeURIComponent(text) + '&k=6');
 
-        es.addEventListener('status', function (e) {
-          if (JSON.parse(e.data).stage === 'fetching' && !started) {
-            bodyEl.innerHTML = '<span class="ai-status">Consultando artigos científicos…</span>' +
-                               ' <span class="dots"><i></i><i></i><i></i></span>';
-          }
-        });
-        es.addEventListener('sources', function (e) {
-          ((JSON.parse(e.data).sources) || []).forEach(function (s) { srcByN[s.n] = s; });
-        });
-        es.addEventListener('sentence', function (e) {
-          if (!started) { started = true; bodyEl.innerHTML = ''; }
-          fullText += JSON.parse(e.data).text;
-          bodyEl.className = 'ai-body';
-          bodyEl.innerHTML = renderAnswer(fullText, srcByN);
-          renderMermaid(bodyEl);
-          msgs.scrollTop = msgs.scrollHeight;
-        });
-        es.addEventListener('insufficient', function (e) {
-          started = true;
-          bodyEl.className = 'ai-body'; bodyEl.textContent = JSON.parse(e.data).text;
-        });
-        es.addEventListener('failed', function (e) {
-          started = true;
-          bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + (JSON.parse(e.data).message || 'erro');
-        });
-        es.addEventListener('done', function (e) {
-          es.close();
-          try {
-            if (!JSON.parse(e.data).insufficient && fullText.trim()) {
-              addRefs(wrap, srcByN, fullText);
-              addActions(wrap, function () { return bodyEl.innerText; });
+          es.addEventListener('status', function (e) {
+            if (JSON.parse(e.data).stage === 'fetching' && !started) {
+              bodyEl.innerHTML = '<span class="ai-status">Consultando artigos científicos…</span>' + dots;
             }
-          } catch (_) {}
-          finish();
-        });
-        es.onerror = function () {
-          es.close();
-          if (!started) { bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ Falha ao conectar ao servidor.'; }
-          finish();
-        };
+          });
+          es.addEventListener('sources', function (e) {
+            ((JSON.parse(e.data).sources) || []).forEach(function (s) { srcByN[s.n] = s; });
+          });
+          es.addEventListener('sentence', function (e) {
+            if (!started) { started = true; bodyEl.innerHTML = ''; }
+            fullText += JSON.parse(e.data).text;
+            bodyEl.className = 'ai-body';
+            bodyEl.innerHTML = renderAnswer(fullText, srcByN);
+            renderMermaid(bodyEl);
+            msgs.scrollTop = msgs.scrollHeight;
+          });
+          es.addEventListener('insufficient', function (e) {
+            started = true;
+            bodyEl.className = 'ai-body'; bodyEl.textContent = JSON.parse(e.data).text;
+          });
+          es.addEventListener('failed', function (e) {
+            started = true;
+            bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + (JSON.parse(e.data).message || 'erro');
+          });
+          es.addEventListener('done', function (e) {
+            es.close();
+            try {
+              if (!JSON.parse(e.data).insufficient && fullText.trim()) {
+                addRefs(wrap, srcByN, fullText);
+                addActions(wrap, function () { return bodyEl.innerText; });
+              }
+            } catch (_) {}
+            finish();
+          });
+          es.onerror = function () {
+            es.close();
+            if (closed) return;
+            // já começou a responder → encerra com o que veio (não duplica)
+            if (started) { finish(); return; }
+            // ainda não começou → o servidor pode estar reiniciando: reconecta sozinho
+            if (attempt < MAX_RETRY) {
+              var delay = RETRY_MS[attempt] || 9000;
+              attempt++;
+              bodyEl.className = 'ai-body';
+              bodyEl.innerHTML = '<span class="ai-status">Reconectando ao servidor…</span>' + dots;
+              setTimeout(function () { if (!closed) connect(); }, delay);
+            } else {
+              bodyEl.className = 'ai-body err';
+              bodyEl.textContent = '⚠ Servidor indisponível no momento. Tente novamente em instantes.';
+              finish();
+            }
+          };
+        }
+        connect();
       }
 
       sendBtn.addEventListener('click', function () { ask(input.value); });
