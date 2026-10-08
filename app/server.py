@@ -299,13 +299,29 @@ def integrations_disconnect(provider: str, request: Request):
 
 
 @app.get("/integrations/{provider}/events")
-def integrations_events(provider: str, request: Request, limit: int = 10):
+def integrations_events(provider: str, request: Request, limit: int = 50,
+                        start: str = "", end: str = ""):
     if provider not in integrations.PROVIDERS:
         return JSONResponse({"error": "provedor inválido"}, status_code=404)
     u = auth.current_user(request)
     if not u:
         return JSONResponse({"error": "não autenticado"}, status_code=401)
-    return {"events": integrations.events(u["id"], provider, limit)}
+    return {"events": integrations.events(u["id"], provider, limit,
+                                          start or None, end or None)}
+
+
+@app.get("/calendar/events")
+def calendar_events(request: Request, start: str = "", end: str = ""):
+    """Eventos do provedor conectado do usuário (o que a agenda consome)."""
+    u = auth.current_user(request)
+    if not u:
+        return {"logged_in": False, "connected": None, "events": []}
+    connected = db.connected_providers(u["id"])
+    if not connected:
+        return {"logged_in": True, "connected": None, "events": []}
+    prov = "google" if "google" in connected else next(iter(connected))
+    evs = integrations.events(u["id"], prov, 50, start or None, end or None)
+    return {"logged_in": True, "connected": prov, "events": evs}
 
 
 # serve o front-end (web/) na mesma origem — registrado por último para não

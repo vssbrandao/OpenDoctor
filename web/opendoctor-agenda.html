@@ -92,6 +92,19 @@
       display:flex;align-items:center;justify-content:center;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--avatar-ink)}
 
+    /* eventos reais do calendário conectado (posicionados por horário) */
+    .cal-inner.real .hr-row .ev{display:none}
+    .ev-real{position:absolute;left:121px;right:24px;background:var(--ev-bg);border-radius:40px;
+      padding:20px 24px;overflow:hidden;z-index:2;display:flex;flex-direction:column;
+      justify-content:space-between}
+    .ev-real:hover{background:var(--ev-bg-hover)}
+    .er-title{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .er-sub{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:var(--muted)}
+    .er-foot{display:flex;justify-content:flex-end}
+    .cal-empty{position:absolute;left:121px;right:24px;top:8px;padding:20px 24px;
+      font-family:var(--disp);font-size:14px;color:var(--muted)}
+
     /* "now" indicator (orange line + dot) */
     .now{position:absolute;left:0;right:0;height:0;border-top:1.5px solid var(--now);z-index:4;pointer-events:none}
     .now::before{content:"";position:absolute;left:-4px;top:-5px;width:9px;height:9px;border-radius:50%;background:var(--now)}
@@ -436,6 +449,62 @@
         var row = firstEv.closest('.hr-row');
         cal.scrollTop = row ? row.offsetTop : 0;
       }
+    })();
+
+    // ===== eventos reais do calendário conectado =====
+    (function () {
+      function fmtTime(d) {
+        var m = d.getMinutes();
+        return d.getHours() + (m ? 'h' + String(m).padStart(2, '0') : 'h');
+      }
+      function initials(t) {
+        var p = (t || '').split(/\s+/).filter(function (w) { return /[a-zA-Z0-9]/.test(w); });
+        return ((p[0] ? p[0][0] : '') + (p[1] ? p[1][0] : '')).toUpperCase() || '•';
+      }
+      function render(events) {
+        var inner = document.querySelector('.cal-inner');
+        if (!inner) return;
+        inner.querySelectorAll('.ev-real, .cal-empty').forEach(function (n) { n.remove(); });
+        inner.classList.add('real');          // esconde os exemplos fixos
+        var count = 0;
+        events.forEach(function (ev) {
+          if (ev.allDay || !ev.start) return;
+          var s = new Date(ev.start), e = ev.end ? new Date(ev.end) : new Date(s.getTime() + 18e5);
+          if (isNaN(s.getTime())) return;
+          var sh = s.getHours() + s.getMinutes() / 60;
+          var eh = (e.getDate() !== s.getDate()) ? (LAST_HOUR + 1) : (e.getHours() + e.getMinutes() / 60);
+          if (eh <= FIRST_HOUR || sh >= LAST_HOUR + 1) return;   // fora da faixa visível
+          sh = Math.max(sh, FIRST_HOUR);
+          var top = (sh - FIRST_HOUR) * HOUR_PX + 8;
+          var height = Math.max((eh - sh) * HOUR_PX - 16, 44);
+          var tall = height >= 110;
+          var card = document.createElement('div');
+          card.className = 'ev-real';
+          card.style.top = top + 'px';
+          card.style.height = height + 'px';
+          card.innerHTML = '<div><div class="er-title"></div><div class="er-sub"></div></div>' +
+                           (tall ? '<div class="er-foot"><span class="avatar"></span></div>' : '');
+          card.querySelector('.er-title').textContent = ev.title || '(sem título)';
+          card.querySelector('.er-sub').textContent = fmtTime(s) + '–' + fmtTime(e);
+          if (tall) card.querySelector('.avatar').textContent = initials(ev.title);
+          inner.appendChild(card);
+          count++;
+        });
+        if (count === 0) {
+          var empty = document.createElement('div');
+          empty.className = 'cal-empty';
+          empty.textContent = 'Nenhum evento no calendário hoje.';
+          inner.appendChild(empty);
+        }
+      }
+      var now = new Date();
+      var start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+      var end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+      fetch('/calendar/events?start=' + encodeURIComponent(start.toISOString()) +
+            '&end=' + encodeURIComponent(end.toISOString()))
+        .then(function (r) { return r.json(); })
+        .then(function (d) { if (d && d.connected) render(d.events || []); })
+        .catch(function () {});
     })();
 
     // ===== right-panel AI assistant (local proxy → OpenAI) =====

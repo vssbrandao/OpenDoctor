@@ -132,33 +132,43 @@ def disconnect(user_id, provider):
     db.delete_token(user_id, provider)
 
 
-def events(user_id, provider, limit=10):
-    """Próximos eventos do calendário do usuário."""
+def events(user_id, provider, limit=50, time_min=None, time_max=None):
+    """Eventos do calendário do usuário. Se time_min/time_max (ISO 8601) forem
+    passados, filtra por essa janela (ex.: o dia exibido na agenda); senão, lista
+    os próximos. Cada item: {title, start, end, allDay}."""
     at = _access_token(user_id, provider)
     if not at:
         return []
-    now = _utcnow()
+    now_iso = _utcnow().isoformat()
     hdr = {"Authorization": "Bearer " + at}
     out = []
     try:
         if provider == "google":
+            params = {"singleEvents": "true", "orderBy": "startTime",
+                      "maxResults": limit, "timeMin": time_min or now_iso}
+            if time_max:
+                params["timeMax"] = time_max
             r = httpx.get("https://www.googleapis.com/calendar/v3/calendars/primary/events",
-                          headers=hdr, timeout=25, params={
-                              "timeMin": now.isoformat(), "singleEvents": "true",
-                              "orderBy": "startTime", "maxResults": limit})
+                          headers=hdr, timeout=25, params=params)
             for e in r.json().get("items", []):
-                st = e.get("start", {})
+                st = e.get("start", {}); en = e.get("end", {})
+                all_day = "date" in st and "dateTime" not in st
                 out.append({"title": e.get("summary", "(sem título)"),
-                            "start": st.get("dateTime") or st.get("date")})
+                            "start": st.get("dateTime") or st.get("date"),
+                            "end": en.get("dateTime") or en.get("date"),
+                            "allDay": all_day})
         else:  # microsoft
-            end = now + datetime.timedelta(days=30)
+            start = time_min or now_iso
+            end = time_max or (_utcnow() + datetime.timedelta(days=30)).isoformat()
             r = httpx.get("https://graph.microsoft.com/v1.0/me/calendarview",
                           headers=hdr, timeout=25, params={
-                              "startDateTime": now.isoformat(), "endDateTime": end.isoformat(),
+                              "startDateTime": start, "endDateTime": end,
                               "$orderby": "start/dateTime", "$top": limit})
             for e in r.json().get("value", []):
                 out.append({"title": e.get("subject", "(sem título)"),
-                            "start": (e.get("start") or {}).get("dateTime")})
+                            "start": (e.get("start") or {}).get("dateTime"),
+                            "end": (e.get("end") or {}).get("dateTime"),
+                            "allDay": bool(e.get("isAllDay"))})
     except Exception:
         pass
     return out
