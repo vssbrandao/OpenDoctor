@@ -784,7 +784,14 @@
         input.style.height = 'auto';
         input.style.height = Math.min(input.scrollHeight, 120) + 'px';
       }
-      input.addEventListener('input', autogrow);
+      input.addEventListener('input', function () {
+        autogrow();
+        // esconde as sugestões ao começar a digitar; reexibe se limpar (e sem conversa ainda)
+        if (suggest) {
+          if (input.value.trim()) suggest.style.display = 'none';
+          else if (!msgs.classList.contains('on')) suggest.style.display = '';
+        }
+      });
 
       function addMsg(cls, text) {
         var el = document.createElement('div');
