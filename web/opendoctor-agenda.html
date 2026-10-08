@@ -620,6 +620,7 @@
       function close() { pop.hidden = true; }
 
       calInner.addEventListener('click', function (e) {
+        if (!pop.hidden) { close(); return; }                  // aberto → clicar na agenda fecha
         if (e.target.closest('.ev, .ev-real, .now')) return;   // clicou num evento/marcador
         if (!window.__calConnected) return;                    // só com calendário conectado
         var rect = calInner.getBoundingClientRect();
