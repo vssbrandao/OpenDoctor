@@ -67,16 +67,6 @@
       font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.01em;color:#000}
     .int-btn:hover{background:var(--active)}
 
-    .loginbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;
-      border:1px solid var(--card-border);border-radius:14px;
-      font-family:var(--disp);font-size:13px;color:#071216}
-    .loginbar .lb-msg{flex:1}
-    .loginbar .lb-btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;
-      border-radius:999px;border:1px solid var(--card-border);background:#fff;cursor:pointer;
-      font-family:var(--disp);font-weight:700;font-size:13px;color:#071216;text-decoration:none}
-    .loginbar .lb-btn:hover{background:var(--active)}
-    .loginbar .lb-user{font-weight:700}
-    .loginbar .lb-link{color:#5566ff;cursor:pointer;text-decoration:none;font-weight:700}
     .int-btn[disabled]{opacity:.45;cursor:not-allowed}
   </style>
 </head>
@@ -108,7 +98,6 @@
     <!-- ===== CENTER: INTEGRAÇÃO ===== -->
     <div class="center">
       <div class="int">
-        <div class="loginbar" id="loginbar" hidden></div>
         <div class="int-title">Integração</div>
 
         <!-- Card: Google Calendar -->
@@ -151,20 +140,6 @@
       var CFG = {};
       var LOGGED_IN = false;
 
-      function renderLogin(st, user) {
-        var bar = document.getElementById('loginbar');
-        bar.hidden = false;
-        if (st.logged_in && user) {
-          var who = user.name || user.email || 'conta Google';
-          bar.innerHTML = '<span class="lb-msg">Logado como <span class="lb-user"></span></span>' +
-                          '<a class="lb-link" href="/auth/logout">Sair</a>';
-          bar.querySelector('.lb-user').textContent = who;
-        } else {
-          bar.innerHTML = '<span class="lb-msg">Entre com sua conta Google para conectar um calendário.</span>' +
-                          '<a class="lb-btn" href="/auth/google/login">Entrar com Google</a>';
-        }
-      }
-
       function render(st) {
         var provs = st.providers || {};
         ['google', 'microsoft'].forEach(function (prov) {
@@ -202,15 +177,11 @@
       }
 
       function load() {
-        Promise.all([
-          fetch('/integrations/status').then(function (r) { return r.json(); }),
-          fetch('/me').then(function (r) { return r.json(); })
-        ]).then(function (res) {
-          var st = res[0], me = res[1];
-          LOGGED_IN = !!st.logged_in;
-          renderLogin(st, me && me.user);
-          render(st);
-        }).catch(function () {});
+        fetch('/integrations/status').then(function (r) { return r.json(); })
+          .then(function (st) {
+            LOGGED_IN = !!st.logged_in;
+            render(st);
+          }).catch(function () {});
       }
 
       document.querySelectorAll('.int-btn').forEach(function (btn) {
