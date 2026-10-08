@@ -1,0 +1,36 @@
+# Blueprint de deploy no Render (https://render.com) — backend OpenDoctor.
+# Conecte o repo vssbrandao/OpenDoctor; o Render lê este arquivo.
+# Variáveis marcadas sync:false são preenchidas no painel (segredos).
+services:
+  - type: web
+    name: opendoctor
+    runtime: python
+    region: ohio            # us-east; ajuste se preferir outra
+    plan: starter           # tier pago básico (mantém o serviço sempre ativo)
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: OAUTH_REDIRECT_BASE
+        value: https://opendoctor.app
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: EMBEDDING_DIM
+        value: "1536"
+      # segredos — preencher no painel do Render (Environment)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MS_CLIENT_ID
+        sync: false
+      - key: MS_CLIENT_SECRET
+        sync: false
