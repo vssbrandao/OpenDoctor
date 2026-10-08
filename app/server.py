@@ -12,7 +12,7 @@ import datetime
 import threading
 
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth
@@ -61,6 +61,16 @@ def root():
 @app.get("/health")
 def health():
     return {"ok": True, "model": llm.config.OPENAI_MODEL}
+
+
+@app.get("/privacy")
+def privacy():
+    return FileResponse(os.path.join(WEB_DIR, "privacy.html"))
+
+
+@app.get("/terms")
+def terms():
+    return FileResponse(os.path.join(WEB_DIR, "terms.html"))
 
 
 def _pubmed_terms(question):
