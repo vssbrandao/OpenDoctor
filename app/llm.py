@@ -13,7 +13,7 @@ def _headers():
             "Content-Type": "application/json"}
 
 
-def chat(messages, temperature=0.2, max_tokens=700):
+def chat(messages, temperature=0.2, max_tokens=2000):
     r = httpx.post(URL, headers=_headers(), timeout=60, json={
         "model": config.OPENAI_MODEL, "messages": messages,
         "temperature": temperature, "max_tokens": max_tokens,
@@ -23,7 +23,7 @@ def chat(messages, temperature=0.2, max_tokens=700):
     return r.json()["choices"][0]["message"]["content"]
 
 
-def stream_chat(messages, temperature=0.2, max_tokens=700):
+def stream_chat(messages, temperature=0.2, max_tokens=2000):
     """Gera os deltas de texto (str) conforme chegam do modelo."""
     body = {"model": config.OPENAI_MODEL, "messages": messages,
             "temperature": temperature, "max_tokens": max_tokens, "stream": True}

@@ -139,6 +139,14 @@
     .msg-ai a.cite{color:#0842a0;text-decoration:none;font-weight:600;font-size:.82em;
       vertical-align:super;padding:0 1px}
     .msg-ai a.cite:hover{text-decoration:underline}
+    /* referências no FIM da resposta */
+    .ai-refs{margin-top:16px;padding-top:12px;border-top:1px solid var(--sb-border)}
+    .ai-refs .refs-title{font-family:var(--disp);font-weight:700;font-size:11px;color:var(--muted);
+      letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}
+    .ai-refs .ref-item{display:block;font-family:var(--disp);font-size:13px;line-height:1.5;
+      color:#0842a0;text-decoration:none;margin:5px 0}
+    .ai-refs .ref-item:hover{text-decoration:underline}
+    .ai-refs .ref-n{color:var(--muted);font-weight:600}
     .msg-ai hr{border:0;border-top:1px solid var(--sb-border);margin:12px 0}
     .msg-ai .tbl-wrap{overflow-x:auto;margin:14px 0 16px;border:1px solid var(--sb-border);border-radius:12px}
     .msg-ai table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.5}
@@ -552,6 +560,21 @@
         container.appendChild(bar);
       }
 
+      // lista de Fontes no FIM da resposta (as citadas; se nenhuma, as consultadas)
+      function addRefs(container, srcByN, text) {
+        var all = Object.keys(srcByN).map(function (k) { return srcByN[k]; }).sort(function (a, b) { return a.n - b.n; });
+        if (!all.length) return;
+        var cited = {}; (text.match(/\[(\d+)\]/g) || []).forEach(function (m) { cited[parseInt(m.replace(/\D/g, ''), 10)] = 1; });
+        var list = all.filter(function (s) { return cited[s.n]; });
+        if (!list.length) list = all;
+        var div = document.createElement('div'); div.className = 'ai-refs';
+        div.innerHTML = '<div class="refs-title">Fontes</div>' + list.map(function (s) {
+          return '<a class="ref-item" href="' + s.url + '" target="_blank" rel="noopener noreferrer">' +
+            '<span class="ref-n">[' + s.n + ']</span> ' + esc(s.title || '') + (s.year ? ' (' + s.year + ')' : '') + '</a>';
+        }).join('');
+        container.appendChild(div);
+      }
+
       // RAG backend: GET /ask (SSE) — status → sources → sentence* → done
       function ask(text) {
         text = (text || '').trim();
@@ -600,7 +623,12 @@
         });
         es.addEventListener('done', function (e) {
           es.close();
-          try { if (!JSON.parse(e.data).insufficient && fullText.trim()) addActions(wrap, function () { return bodyEl.innerText; }); } catch (_) {}
+          try {
+            if (!JSON.parse(e.data).insufficient && fullText.trim()) {
+              addRefs(wrap, srcByN, fullText);
+              addActions(wrap, function () { return bodyEl.innerText; });
+            }
+          } catch (_) {}
           finish();
         });
         es.onerror = function () {
