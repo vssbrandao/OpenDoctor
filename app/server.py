@@ -12,10 +12,10 @@ import datetime
 import threading
 
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import search, synthesize, llm, validate, db, config, ingest
+from . import search, synthesize, llm, validate, db, config, ingest, integrations
 
 app = FastAPI(title="OpenDoctor Assistant")
 WEB_DIR = os.path.join(config.ROOT, "web")
@@ -186,7 +186,48 @@ def ask(query: str, k: int = 5):
     return StreamingResponse(_ask_stream(query, k), media_type="text/event-stream")
 
 
+# ===== integrações de calendário (OAuth) =====
+@app.get("/integrations/status")
+def integrations_status():
+    return integrations.status()
+
+
+@app.get("/auth/{provider}/login")
+def auth_login(provider: str):
+    if provider not in integrations.PROVIDERS:
+        return JSONResponse({"error": "provedor inválido"}, status_code=404)
+    if not integrations.configured(provider):
+        return JSONResponse({"error": f"{provider} não configurado (defina as credenciais no .env)"}, status_code=400)
+    return RedirectResponse(integrations.auth_url(provider))
+
+
+@app.get("/auth/{provider}/callback")
+def auth_callback(provider: str, code: str = "", state: str = "", error: str = ""):
+    dest = "/opendoctor-integracao.html"
+    if error or not code:
+        return RedirectResponse(dest + "?erro=" + (error or "sem_code"))
+    try:
+        integrations.exchange_code(provider, code, state)
+        return RedirectResponse(dest + "?conectado=" + provider)
+    except Exception as e:
+        print("[oauth] callback falhou:", str(e)[:200])
+        return RedirectResponse(dest + "?erro=" + provider)
+
+
+@app.post("/integrations/{provider}/disconnect")
+def integrations_disconnect(provider: str):
+    integrations.disconnect(provider)
+    return {"ok": True}
+
+
+@app.get("/integrations/{provider}/events")
+def integrations_events(provider: str, limit: int = 10):
+    if provider not in integrations.PROVIDERS:
+        return JSONResponse({"error": "provedor inválido"}, status_code=404)
+    return {"events": integrations.events(provider, limit)}
+
+
 # serve o front-end (web/) na mesma origem — registrado por último para não
-# sombrear /ask e /health. Abra http://127.0.0.1:8000/opendoctor-agenda.html
+# sombrear as rotas acima. Abra http://127.0.0.1:8000/opendoctor-agenda.html
 if os.path.isdir(WEB_DIR):
     app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")

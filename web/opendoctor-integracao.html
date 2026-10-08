@@ -97,37 +97,81 @@
       <div class="int">
         <div class="int-title">Integração</div>
 
-        <!-- Card 1: Google Calendar (não conectado) -->
-        <div class="int-card">
+        <!-- Card: Google Calendar -->
+        <div class="int-card" data-provider="google">
           <div class="card-head">
             <div class="card-name">Google Calendar</div>
             <div class="card-sub">Conecte seu calendário</div>
           </div>
           <div class="conn-row">
-            <img class="conn-logo" src="assets/int/google-calendar.png" alt="Google Calendar">
-            <span class="conn-name">Google Calendar</span>
+            <div class="conn-left">
+              <img class="conn-logo" src="assets/int/google-calendar.png" alt="Google Calendar">
+              <span class="conn-name">Google Calendar</span>
+            </div>
+            <div class="conn-status" hidden><span class="dot"></span><span class="st-text">Conectado</span></div>
           </div>
-          <button class="int-btn">Conectar</button>
+          <button class="int-btn" data-provider="google">Conectar</button>
         </div>
 
-        <!-- Card 2: Microsoft Outlook (conectado) -->
-        <div class="int-card">
+        <!-- Card: Microsoft Outlook -->
+        <div class="int-card" data-provider="microsoft">
           <div class="card-head">
             <div class="card-name">Microsoft Outlook</div>
             <div class="card-sub">Conecte seu calendário</div>
           </div>
-          <div class="conn-row connected">
+          <div class="conn-row">
             <div class="conn-left">
               <img class="conn-logo-sm" src="assets/int/outlook.svg" alt="Microsoft Outlook">
               <span class="conn-name">Microsoft Outlook</span>
             </div>
-            <div class="conn-status"><span class="dot"></span><span>Conectado</span></div>
+            <div class="conn-status" hidden><span class="dot"></span><span class="st-text">Conectado</span></div>
           </div>
-          <button class="int-btn">Desconectar</button>
+          <button class="int-btn" data-provider="microsoft">Conectar</button>
         </div>
       </div>
     </div>
 
   </div>
+  <script>
+    (function () {
+      function render(st) {
+        ['google', 'microsoft'].forEach(function (prov) {
+          var card = document.querySelector('.int-card[data-provider="' + prov + '"]');
+          if (!card) return;
+          var info = st && st[prov] || {};
+          var row = card.querySelector('.conn-row');
+          var status = card.querySelector('.conn-status');
+          var btn = card.querySelector('.int-btn');
+          if (info.connected) {
+            row.classList.add('connected');
+            status.hidden = false;
+            status.querySelector('.st-text').textContent = info.email || 'Conectado';
+            btn.textContent = 'Desconectar';
+            btn.dataset.action = 'disconnect';
+          } else {
+            row.classList.remove('connected');
+            status.hidden = true;
+            btn.textContent = 'Conectar';
+            btn.dataset.action = 'connect';
+            if (info.configured === false) { btn.title = 'Defina as credenciais no .env'; }
+          }
+        });
+      }
+      function load() {
+        fetch('/integrations/status').then(function (r) { return r.json(); }).then(render).catch(function () {});
+      }
+      document.querySelectorAll('.int-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var prov = btn.dataset.provider;
+          if (btn.dataset.action === 'disconnect') {
+            fetch('/integrations/' + prov + '/disconnect', { method: 'POST' }).then(load);
+          } else {
+            location.href = '/auth/' + prov + '/login';
+          }
+        });
+      });
+      load();
+    })();
+  </script>
 </body>
 </html>
