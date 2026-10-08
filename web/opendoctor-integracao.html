@@ -65,6 +65,18 @@
       border-radius:999px;cursor:pointer;
       font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.01em;color:#000}
     .int-btn:hover{background:var(--active)}
+
+    .loginbar{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;
+      border:1px solid var(--card-border);border-radius:14px;
+      font-family:var(--disp);font-size:13px;color:#071216}
+    .loginbar .lb-msg{flex:1}
+    .loginbar .lb-btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px;
+      border-radius:999px;border:1px solid var(--card-border);background:#fff;cursor:pointer;
+      font-family:var(--disp);font-weight:700;font-size:13px;color:#071216;text-decoration:none}
+    .loginbar .lb-btn:hover{background:var(--active)}
+    .loginbar .lb-user{font-weight:700}
+    .loginbar .lb-link{color:#5566ff;cursor:pointer;text-decoration:none;font-weight:700}
+    .int-btn[disabled]{opacity:.45;cursor:not-allowed}
   </style>
 </head>
 <body>
@@ -95,6 +107,7 @@
     <!-- ===== CENTER: INTEGRAÇÃO ===== -->
     <div class="center">
       <div class="int">
+        <div class="loginbar" id="loginbar" hidden></div>
         <div class="int-title">Integração</div>
 
         <!-- Card: Google Calendar -->
@@ -135,15 +148,33 @@
   <script>
     (function () {
       var CFG = {};
+      var LOGGED_IN = false;
+
+      function renderLogin(st, user) {
+        var bar = document.getElementById('loginbar');
+        bar.hidden = false;
+        if (st.logged_in && user) {
+          var who = user.name || user.email || 'conta Google';
+          bar.innerHTML = '<span class="lb-msg">Logado como <span class="lb-user"></span></span>' +
+                          '<a class="lb-link" href="/auth/logout">Sair</a>';
+          bar.querySelector('.lb-user').textContent = who;
+        } else {
+          bar.innerHTML = '<span class="lb-msg">Entre com sua conta Google para conectar um calendário.</span>' +
+                          '<a class="lb-btn" href="/auth/google/login">Entrar com Google</a>';
+        }
+      }
+
       function render(st) {
+        var provs = st.providers || {};
         ['google', 'microsoft'].forEach(function (prov) {
           var card = document.querySelector('.int-card[data-provider="' + prov + '"]');
           if (!card) return;
-          var info = st && st[prov] || {};
+          var info = provs[prov] || {};
           CFG[prov] = info.configured !== false;
           var row = card.querySelector('.conn-row');
           var status = card.querySelector('.conn-status');
           var btn = card.querySelector('.int-btn');
+          btn.disabled = false;
           if (info.connected) {
             row.classList.add('connected');
             status.hidden = false;
@@ -153,30 +184,56 @@
           } else {
             row.classList.remove('connected');
             status.hidden = true;
-            btn.textContent = 'Conectar';
             btn.dataset.action = 'connect';
-            btn.title = CFG[prov] ? '' : 'Credenciais ainda não configuradas no .env';
+            if (!LOGGED_IN) {
+              btn.textContent = 'Entrar com Google';
+              btn.title = 'Faça login para conectar';
+            } else if (CFG[prov] === false) {
+              btn.textContent = 'Indisponível';
+              btn.disabled = true;
+              btn.title = 'Credenciais do provedor ainda não configuradas';
+            } else {
+              btn.textContent = 'Conectar';
+              btn.title = '';
+            }
           }
         });
       }
+
       function load() {
-        fetch('/integrations/status').then(function (r) { return r.json(); }).then(render).catch(function () {});
+        Promise.all([
+          fetch('/integrations/status').then(function (r) { return r.json(); }),
+          fetch('/me').then(function (r) { return r.json(); })
+        ]).then(function (res) {
+          var st = res[0], me = res[1];
+          LOGGED_IN = !!st.logged_in;
+          renderLogin(st, me && me.user);
+          render(st);
+        }).catch(function () {});
       }
+
       document.querySelectorAll('.int-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var prov = btn.dataset.provider;
+          if (btn.disabled) return;
           if (btn.dataset.action === 'disconnect') {
             fetch('/integrations/' + prov + '/disconnect', { method: 'POST' }).then(load);
-          } else if (CFG[prov] === false) {
-            alert('Credenciais do ' + (prov === 'google' ? 'Google' : 'Microsoft') +
-                  ' ainda não configuradas.\nCrie o app OAuth e preencha o .env (' +
-                  (prov === 'google' ? 'GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET' : 'MS_CLIENT_ID / MS_CLIENT_SECRET') +
-                  '), depois reinicie o servidor.');
+          } else if (!LOGGED_IN) {
+            location.href = '/auth/google/login';
           } else {
-            location.href = '/auth/' + prov + '/login';
+            location.href = '/integrations/' + prov + '/connect';
           }
         });
       });
+
+      // feedback dos redirects de callback
+      var qs = new URLSearchParams(location.search);
+      if (qs.get('conectado')) {
+        history.replaceState({}, '', location.pathname);
+      } else if (qs.get('erro')) {
+        history.replaceState({}, '', location.pathname);
+      }
+
       load();
     })();
   </script>

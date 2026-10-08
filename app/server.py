@@ -11,11 +11,11 @@ import json
 import datetime
 import threading
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import search, synthesize, llm, validate, db, config, ingest, integrations
+from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth
 
 app = FastAPI(title="OpenDoctor Assistant")
 WEB_DIR = os.path.join(config.ROOT, "web")
@@ -192,45 +192,100 @@ def ask(query: str, k: int = 5):
     return StreamingResponse(_ask_stream(query, k), media_type="text/event-stream")
 
 
-# ===== integrações de calendário (OAuth) =====
+# ===== login do app (Google, escopos básicos) =====
+@app.get("/auth/google/login")
+def google_login():
+    if not integrations.configured("google"):
+        return JSONResponse({"error": "google não configurado"}, status_code=400)
+    return RedirectResponse(auth.login_url())
+
+
+@app.get("/auth/logout")
+def logout():
+    resp = RedirectResponse("/opendoctor-agenda.html")
+    auth.clear_session(resp)
+    return resp
+
+
+@app.get("/me")
+def me(request: Request):
+    u = auth.current_user(request)
+    return {"logged_in": bool(u), "user": u}
+
+
+# ===== integrações de calendário (OAuth, por usuário) =====
 @app.get("/integrations/status")
-def integrations_status():
-    return integrations.status()
+def integrations_status(request: Request):
+    u = auth.current_user(request)
+    out = integrations.status(u["id"] if u else None)
+    return {"logged_in": bool(u), "providers": out}
 
 
-@app.get("/auth/{provider}/login")
-def auth_login(provider: str):
+@app.get("/integrations/{provider}/connect")
+def integrations_connect(provider: str, request: Request):
     if provider not in integrations.PROVIDERS:
         return JSONResponse({"error": "provedor inválido"}, status_code=404)
     if not integrations.configured(provider):
-        return JSONResponse({"error": f"{provider} não configurado (defina as credenciais no .env)"}, status_code=400)
-    return RedirectResponse(integrations.auth_url(provider))
+        return JSONResponse({"error": f"{provider} não configurado"}, status_code=400)
+    u = auth.current_user(request)
+    if not u:
+        # precisa estar logado para conectar um calendário a uma conta
+        return RedirectResponse("/auth/google/login")
+    state = auth.sign({"k": "cal", "prov": provider, "uid": u["id"]})
+    return RedirectResponse(integrations.connect_url(provider, state))
 
 
 @app.get("/auth/{provider}/callback")
-def auth_callback(provider: str, code: str = "", state: str = "", error: str = ""):
-    dest = "/opendoctor-integracao.html"
-    if error or not code:
+def auth_callback(provider: str, request: Request, code: str = "", state: str = "", error: str = ""):
+    """Callback único por provedor: distingue login x conexão de calendário pelo `state`."""
+    payload = auth.unsign(state, auth.STATE_MAX_AGE) if state else None
+    if error or not code or not payload:
+        dest = "/opendoctor-integracao.html" if (payload or {}).get("k") == "cal" else "/opendoctor-agenda.html"
         return RedirectResponse(dest + "?erro=" + (error or "sem_code"))
-    try:
-        integrations.exchange_code(provider, code, state)
-        return RedirectResponse(dest + "?conectado=" + provider)
-    except Exception as e:
-        print("[oauth] callback falhou:", str(e)[:200])
-        return RedirectResponse(dest + "?erro=" + provider)
+
+    # --- login do app (só Google) ---
+    if payload.get("k") == "login":
+        try:
+            info = auth.exchange_login(code)
+            user = db.upsert_user(info["email"], info.get("name"),
+                                  info.get("picture"), info.get("sub"))
+            resp = RedirectResponse("/opendoctor-agenda.html?login=ok")
+            auth.set_session(resp, user["id"])
+            return resp
+        except Exception as e:
+            print("[auth] login falhou:", str(e)[:200])
+            return RedirectResponse("/opendoctor-agenda.html?erro=login")
+
+    # --- conexão de calendário ---
+    if payload.get("k") == "cal":
+        dest = "/opendoctor-integracao.html"
+        try:
+            integrations.exchange_and_store(provider, code, payload["uid"])
+            return RedirectResponse(dest + "?conectado=" + provider)
+        except Exception as e:
+            print("[oauth] callback falhou:", str(e)[:200])
+            return RedirectResponse(dest + "?erro=" + provider)
+
+    return RedirectResponse("/opendoctor-agenda.html?erro=state")
 
 
 @app.post("/integrations/{provider}/disconnect")
-def integrations_disconnect(provider: str):
-    integrations.disconnect(provider)
+def integrations_disconnect(provider: str, request: Request):
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    integrations.disconnect(u["id"], provider)
     return {"ok": True}
 
 
 @app.get("/integrations/{provider}/events")
-def integrations_events(provider: str, limit: int = 10):
+def integrations_events(provider: str, request: Request, limit: int = 10):
     if provider not in integrations.PROVIDERS:
         return JSONResponse({"error": "provedor inválido"}, status_code=404)
-    return {"events": integrations.events(provider, limit)}
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    return {"events": integrations.events(u["id"], provider, limit)}
 
 
 # serve o front-end (web/) na mesma origem — registrado por último para não

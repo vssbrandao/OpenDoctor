@@ -1,26 +1,24 @@
 """Integrações de calendário (OAuth 2.0): Google Calendar e Microsoft Outlook.
 
-Fluxo Authorization Code:
-  /auth/<provider>/login     → redireciona ao consentimento do provedor
-  /auth/<provider>/callback  → troca o code por tokens e guarda localmente
-  status()/disconnect()      → estado e desconexão
-  events()                   → lê os próximos eventos do calendário
+Fase B (multiusuário): os tokens ficam no Postgres (tabela oauth_tokens), um por
+(usuário, provedor) — não mais num arquivo único. O login do app é feito em
+auth.py; aqui tratamos só a CONEXÃO do calendário (escopo sensível) e a leitura
+de eventos, sempre no contexto de um user_id.
 
-Tokens ficam em opendoctor-assistant/.integrations.json (gitignored).
-Credenciais (client id/secret) vêm do .env — ver .env.example.
+Fluxo:
+  /integrations/<provider>/connect   → consentimento do provedor (escopo calendário)
+  /auth/<provider>/callback          → troca o code por tokens e guarda no DB
+  status(user_id) / disconnect(...)  → estado e desconexão por usuário
+  events(user_id, provider)          → próximos eventos do calendário
 """
 import os
-import json
-import time
-import secrets
 import datetime
 import urllib.parse
 
 import httpx
 
-from . import config
+from . import db
 
-STORE = os.path.join(config.ROOT, ".integrations.json")
 REDIRECT_BASE = os.environ.get("OAUTH_REDIRECT_BASE", "http://127.0.0.1:8000").rstrip("/")
 
 PROVIDERS = {
@@ -28,7 +26,8 @@ PROVIDERS = {
         "auth": "https://accounts.google.com/o/oauth2/v2/auth",
         "token": "https://oauth2.googleapis.com/token",
         "scope": "openid email https://www.googleapis.com/auth/calendar.readonly",
-        "extra_auth": {"access_type": "offline", "prompt": "consent"},
+        "extra_auth": {"access_type": "offline", "prompt": "consent",
+                       "include_granted_scopes": "true"},
         "userinfo": "https://www.googleapis.com/oauth2/v2/userinfo",
         "id_env": "GOOGLE_CLIENT_ID", "secret_env": "GOOGLE_CLIENT_SECRET",
     },
@@ -49,22 +48,14 @@ def configured(p): return bool(_cid(p) and _secret(p))
 def redirect_uri(p): return f"{REDIRECT_BASE}/auth/{p}/callback"
 
 
-def _load():
-    try:
-        return json.load(open(STORE, encoding="utf-8"))
-    except Exception:
-        return {}
+def _utcnow():
+    return datetime.datetime.now(datetime.timezone.utc)
 
 
-def _save(d):
-    with open(STORE, "w", encoding="utf-8") as fh:
-        json.dump(d, fh)
-
-
-def auth_url(provider):
+def connect_url(provider, state):
+    """URL de consentimento p/ CONECTAR o calendário. `state` é assinado pelo caller
+    (auth.sign) e carrega o user_id."""
     p = PROVIDERS[provider]
-    state = secrets.token_urlsafe(16)
-    store = _load(); store.setdefault("_state", {})[provider] = state; _save(store)
     params = {"client_id": _cid(provider), "redirect_uri": redirect_uri(provider),
               "response_type": "code", "scope": p["scope"], "state": state}
     params.update(p["extra_auth"])
@@ -81,10 +72,8 @@ def _userinfo_email(provider, access_token):
         return None
 
 
-def exchange_code(provider, code, state):
-    store = _load()
-    if store.get("_state", {}).get(provider) != state:
-        raise ValueError("state inválido")
+def exchange_and_store(provider, code, user_id):
+    """Troca o code por tokens de calendário e grava no DB para o usuário."""
     p = PROVIDERS[provider]
     r = httpx.post(p["token"], timeout=30, data={
         "client_id": _cid(provider), "client_secret": _secret(provider),
@@ -93,22 +82,25 @@ def exchange_code(provider, code, state):
     if r.status_code != 200:
         raise RuntimeError(f"token {r.status_code}: {r.text[:300]}")
     tok = r.json()
-    email = _userinfo_email(provider, tok.get("access_token"))
-    store[provider] = {
-        "access_token": tok.get("access_token"),
-        "refresh_token": tok.get("refresh_token"),
-        "expires_at": time.time() + int(tok.get("expires_in", 3600)) - 60,
-        "email": email,
-    }
-    store.get("_state", {}).pop(provider, None)
-    _save(store)
+    access = tok.get("access_token")
+    expires_at = _utcnow() + datetime.timedelta(seconds=int(tok.get("expires_in", 3600)) - 60)
+    db.set_token(
+        user_id, provider,
+        access_token=access,
+        refresh_token=tok.get("refresh_token"),
+        expires_at=expires_at,
+        scope=tok.get("scope"),
+        account_email=_userinfo_email(provider, access),
+    )
 
 
-def _access_token(provider):
-    store = _load(); t = store.get(provider)
+def _access_token(user_id, provider):
+    """Token válido do usuário (renova com refresh_token se expirou)."""
+    t = db.get_token(user_id, provider)
     if not t:
         return None
-    if t.get("expires_at", 0) > time.time():
+    exp = t.get("expires_at")
+    if exp and exp > _utcnow():
         return t["access_token"]
     if not t.get("refresh_token"):
         return None
@@ -119,33 +111,33 @@ def _access_token(provider):
     if r.status_code != 200:
         return None
     tok = r.json()
-    t["access_token"] = tok.get("access_token")
-    t["expires_at"] = time.time() + int(tok.get("expires_in", 3600)) - 60
-    if tok.get("refresh_token"):
-        t["refresh_token"] = tok["refresh_token"]
-    store[provider] = t; _save(store)
-    return t["access_token"]
+    access = tok.get("access_token")
+    expires_at = _utcnow() + datetime.timedelta(seconds=int(tok.get("expires_in", 3600)) - 60)
+    db.update_access_token(user_id, provider, access, expires_at, tok.get("refresh_token"))
+    return access
 
 
-def status():
-    store = _load(); out = {}
+def status(user_id):
+    """Estado das integrações do usuário (ou tudo desconectado se None)."""
+    connected = db.connected_providers(user_id) if user_id else {}
+    out = {}
     for prov in PROVIDERS:
-        t = store.get(prov)
-        out[prov] = {"connected": bool(t), "email": (t or {}).get("email"),
+        out[prov] = {"connected": prov in connected,
+                     "email": connected.get(prov),
                      "configured": configured(prov)}
     return out
 
 
-def disconnect(provider):
-    store = _load(); store.pop(provider, None); _save(store)
+def disconnect(user_id, provider):
+    db.delete_token(user_id, provider)
 
 
-def events(provider, limit=10):
-    """Próximos eventos do calendário (prova de que a conexão funciona)."""
-    at = _access_token(provider)
+def events(user_id, provider, limit=10):
+    """Próximos eventos do calendário do usuário."""
+    at = _access_token(user_id, provider)
     if not at:
         return []
-    now = datetime.datetime.now(datetime.timezone.utc)
+    now = _utcnow()
     hdr = {"Authorization": "Bearer " + at}
     out = []
     try:
