@@ -42,6 +42,12 @@ def _sse(event, data):
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+@app.get("/")
+def root():
+    # raiz do site cai na agenda (home do app)
+    return RedirectResponse("/opendoctor-agenda.html")
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "model": llm.config.OPENAI_MODEL}
