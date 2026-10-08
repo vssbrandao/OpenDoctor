@@ -132,10 +132,11 @@ def _ask_stream(query, k):
         per, vecs = [], []
         try:
             terms = _pubmed_terms(query)
-            # 1º tenta revisões/diretrizes (resumem conduta); se vier vazio, busca ampla
-            per, vecs = ingest.fetch_and_embed(terms + _EVID_FILTER, 12)
+            # 1º tenta revisões/diretrizes (resumem conduta); se vier vazio, busca ampla.
+            # retmax baixo p/ caber na memória do plano atual (evita derrubar o processo)
+            per, vecs = ingest.fetch_and_embed(terms + _EVID_FILTER, 6)
             if not per:
-                per, vecs = ingest.fetch_and_embed(terms, 12)
+                per, vecs = ingest.fetch_and_embed(terms, 6)
         except Exception as e:
             print("[ask] fetch on-demand falhou:", str(e)[:200])
         if per:

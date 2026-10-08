@@ -891,7 +891,7 @@
         msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
 
         var srcByN = {}, fullText = '', started = false, closed = false;
-        var attempt = 0, MAX_RETRY = 6, RETRY_MS = [1000, 2000, 3000, 5000, 7000, 9000];
+        var attempt = 0, MAX_RETRY = 2, RETRY_MS = [3000, 9000];
         var es = null;
         function finish() { if (!closed) { closed = true; busy = false; sendBtn.disabled = false; input.focus(); } }
         var dots = ' <span class="dots"><i></i><i></i><i></i></span>';
@@ -947,7 +947,7 @@
               setTimeout(function () { if (!closed) connect(); }, delay);
             } else {
               bodyEl.className = 'ai-body err';
-              bodyEl.textContent = '⚠ Servidor indisponível no momento. Tente novamente em instantes.';
+              bodyEl.textContent = '⚠ O servidor não respondeu a esta consulta. Tente de novo em instantes, ou reformule de forma mais curta.';
               finish();
             }
           };
