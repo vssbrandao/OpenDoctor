@@ -105,6 +105,34 @@
     .cal-empty{position:absolute;left:121px;right:24px;top:8px;padding:20px 24px;
       font-family:var(--disp);font-size:14px;color:var(--muted)}
 
+    /* popover de criar evento */
+    .evpop{position:fixed;z-index:60;width:300px;background:#fff;border:1px solid var(--sb-border);
+      border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:14px;
+      font-family:var(--disp);display:flex;flex-direction:column;gap:10px}
+    .evpop-head{display:flex;align-items:center;justify-content:space-between}
+    .evpop-title{font-weight:700;font-size:14px;color:#071216}
+    .evpop-close{border:0;background:none;cursor:pointer;line-height:0;padding:4px;border-radius:6px;display:flex}
+    .evpop-close:hover{background:rgba(0,0,0,.05)}
+    .evpop-input{border:0;outline:none;font-family:var(--disp);font-size:14px;color:#071216;width:100%;box-sizing:border-box}
+    .evpop-name{font-size:16px;font-weight:500;border-bottom:1px solid var(--sb-border);padding:6px 2px}
+    .evpop-name::placeholder{color:var(--ink2)}
+    .evpop-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .evpop-field{border:1px solid var(--sb-border);border-radius:8px;padding:7px 8px;
+      font-family:var(--disp);font-size:13px;color:#071216;background:#fff}
+    .evpop-time{width:110px}
+    .evpop-date{flex:1;width:100%}
+    .evpop-dash{color:#5f6368}
+    .evpop-desc{border:1px solid var(--sb-border);border-radius:8px;padding:8px;resize:vertical;min-height:40px}
+    .evpop-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
+    .evpop-btn{border-radius:999px;padding:8px 16px;font-family:var(--disp);font-weight:700;font-size:13px;
+      cursor:pointer;border:1px solid var(--sb-border);background:#fff;color:#071216}
+    .evpop-btn.primary{background:#0842a0;border-color:#0842a0;color:#fff}
+    .evpop-btn.primary:disabled{opacity:.5;cursor:default}
+    .evpop-btn.ghost:hover{background:rgba(0,0,0,.04)}
+    .evpop-msg{font-size:12px;color:#c5221f;line-height:1.4}
+    .evpop-msg.ok{color:#188038}
+    .evpop-msg a{color:#0842a0}
+
     /* "now" indicator (orange line + dot) */
     .now{position:absolute;left:0;right:0;height:0;border-top:1.5px solid var(--now);z-index:4;pointer-events:none}
     .now-time{position:absolute;left:0;top:0;transform:translateY(-50%);
@@ -424,6 +452,31 @@
       <div class="bi-note">Apoio à decisão — verifique sempre.</div>
     </div>
 
+    <!-- Popover: criar evento (abre ao clicar num espaço vazio da agenda) -->
+    <div class="evpop" id="evPop" hidden>
+      <div class="evpop-head">
+        <span class="evpop-title">Evento</span>
+        <button class="evpop-close" id="evClose" aria-label="Fechar">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="#5f6368" stroke-width="1.5" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <input class="evpop-input evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off">
+      <div class="evpop-row">
+        <input class="evpop-field evpop-date" id="evDate" type="date">
+      </div>
+      <div class="evpop-row">
+        <input class="evpop-field evpop-time" id="evStart" type="time">
+        <span class="evpop-dash">→</span>
+        <input class="evpop-field evpop-time" id="evEnd" type="time">
+      </div>
+      <textarea class="evpop-input evpop-desc" id="evDesc" rows="2" placeholder="Descrição (opcional)"></textarea>
+      <div class="evpop-msg" id="evMsg" hidden></div>
+      <div class="evpop-foot">
+        <button class="evpop-btn ghost" id="evCancel" type="button">Cancelar</button>
+        <button class="evpop-btn primary" id="evCreate" type="button">Criar</button>
+      </div>
+    </div>
+
   </div>
 
   <script>
@@ -517,9 +570,13 @@
         return fetch('/calendar/events?start=' + encodeURIComponent(start.toISOString()) +
               '&end=' + encodeURIComponent(end.toISOString()))
           .then(function (r) { return r.json(); })
-          .then(function (d) { if (d && d.connected) render(d.events || []); })
+          .then(function (d) {
+            window.__calConnected = !!(d && d.connected);
+            if (d && d.connected) render(d.events || []);
+          })
           .catch(function () {});
       }
+      window.__refreshAgenda = refresh;
       refresh();
       // "tempo real": atualiza a cada 5s e quando você volta pra aba
       setInterval(refresh, 5 * 1000);
@@ -527,6 +584,100 @@
         if (!document.hidden) refresh();
       });
       window.addEventListener('focus', refresh);
+    })();
+
+    // ===== criar evento ao clicar num espaço vazio da agenda =====
+    (function () {
+      var pop = document.getElementById('evPop');
+      var calInner = document.querySelector('.cal-inner');
+      if (!pop || !calInner) return;
+      var elTitle = document.getElementById('evTitle'), elDate = document.getElementById('evDate'),
+          elStart = document.getElementById('evStart'), elEnd = document.getElementById('evEnd'),
+          elDesc = document.getElementById('evDesc'), elMsg = document.getElementById('evMsg'),
+          elCreate = document.getElementById('evCreate');
+
+      function pad(n) { return String(n).padStart(2, '0'); }
+      function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+
+      function openAt(clientX, clientY, h, m) {
+        var now = new Date();
+        elTitle.value = ''; elDesc.value = '';
+        elMsg.hidden = true; elMsg.className = 'evpop-msg';
+        elCreate.disabled = false; elCreate.textContent = 'Criar';
+        elDate.value = fmtDate(now);
+        elStart.value = pad(h) + ':' + pad(m);
+        var eh = h, em = m + 30; if (em >= 60) { eh = (h + 1) % 24; em -= 60; }
+        elEnd.value = pad(eh) + ':' + pad(em);
+        pop.hidden = false;
+        // posiciona perto do clique, sem sair da tela
+        var w = 300, ph = pop.offsetHeight || 320;
+        var x = Math.min(clientX + 8, window.innerWidth - w - 12);
+        var y = Math.min(clientY, window.innerHeight - ph - 12);
+        pop.style.left = Math.max(12, x) + 'px';
+        pop.style.top = Math.max(12, y) + 'px';
+        elTitle.focus();
+      }
+      function close() { pop.hidden = true; }
+
+      calInner.addEventListener('click', function (e) {
+        if (e.target.closest('.ev, .ev-real, .now')) return;   // clicou num evento/marcador
+        if (!window.__calConnected) return;                    // só com calendário conectado
+        var rect = calInner.getBoundingClientRect();
+        var t = FIRST_HOUR + (e.clientY - rect.top) / HOUR_PX;
+        if (t < FIRST_HOUR || t > LAST_HOUR + 1) return;
+        var h = Math.floor(t);
+        var m = Math.round((t - h) * 60 / 30) * 30;            // arredonda p/ 30 min
+        if (m >= 60) { h += 1; m = 0; }
+        openAt(e.clientX, e.clientY, h, m);
+      });
+
+      document.getElementById('evClose').addEventListener('click', close);
+      document.getElementById('evCancel').addEventListener('click', close);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+      // clique fora fecha
+      document.addEventListener('mousedown', function (e) {
+        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.cal-inner')) close();
+      });
+
+      function isoFrom(dateStr, timeStr) {
+        // monta um Date no fuso local e devolve ISO (UTC) — o instante é preservado
+        return new Date(dateStr + 'T' + timeStr + ':00').toISOString();
+      }
+
+      elCreate.addEventListener('click', function () {
+        var title = elTitle.value.trim();
+        if (!elDate.value || !elStart.value || !elEnd.value) {
+          elMsg.textContent = 'Preencha data, início e fim.'; elMsg.hidden = false; return;
+        }
+        var startISO = isoFrom(elDate.value, elStart.value);
+        var endISO = isoFrom(elDate.value, elEnd.value);
+        if (new Date(endISO) <= new Date(startISO)) {
+          elMsg.textContent = 'O fim deve ser depois do início.'; elMsg.hidden = false; return;
+        }
+        elCreate.disabled = true; elCreate.textContent = 'Criando…'; elMsg.hidden = true;
+        fetch('/calendar/events', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: title, start: startISO, end: endISO, description: elDesc.value.trim() })
+        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (res.ok && res.j.ok) {
+              elMsg.className = 'evpop-msg ok'; elMsg.textContent = 'Evento criado!'; elMsg.hidden = false;
+              if (window.__refreshAgenda) window.__refreshAgenda();
+              setTimeout(close, 700);
+            } else if (res.j && res.j.needs_reconnect) {
+              elMsg.className = 'evpop-msg';
+              elMsg.innerHTML = 'Permissão só de leitura. <a href="/opendoctor-integracao.html">Reconecte o Google</a> para criar eventos.';
+              elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
+            } else {
+              elMsg.className = 'evpop-msg';
+              elMsg.textContent = 'Não foi possível criar o evento.';
+              elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
+            }
+          }).catch(function () {
+            elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.';
+            elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
+          });
+      });
     })();
 
     // ===== right-panel AI assistant (local proxy → OpenAI) =====

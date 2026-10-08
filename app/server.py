@@ -324,6 +324,36 @@ def calendar_events(request: Request, start: str = "", end: str = ""):
     return {"logged_in": True, "connected": prov, "events": evs}
 
 
+@app.post("/calendar/events")
+async def create_calendar_event(request: Request):
+    """Cria um evento no calendário conectado do usuário."""
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    connected = db.connected_providers(u["id"])
+    if not connected:
+        return JSONResponse({"error": "sem calendário conectado"}, status_code=400)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    start = payload.get("start"); end = payload.get("end")
+    if not start or not end:
+        return JSONResponse({"error": "início e fim são obrigatórios"}, status_code=400)
+    prov = "google" if "google" in connected else next(iter(connected))
+    try:
+        ev = integrations.create_event(u["id"], prov,
+                                       (payload.get("title") or "").strip(),
+                                       start, end, payload.get("description"))
+        return {"ok": True, "event": ev}
+    except Exception as e:
+        msg = str(e)
+        # token somente-leitura → precisa reconectar com permissão de escrita
+        needs_reconnect = msg.startswith("403") or "insufficient" in msg.lower()
+        return JSONResponse({"error": msg[:200], "needs_reconnect": needs_reconnect},
+                            status_code=403 if needs_reconnect else 400)
+
+
 # serve o front-end (web/) na mesma origem — registrado por último para não
 # sombrear as rotas acima. Abra http://127.0.0.1:8000/opendoctor-agenda.html
 if os.path.isdir(WEB_DIR):

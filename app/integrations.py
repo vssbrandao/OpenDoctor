@@ -25,7 +25,8 @@ PROVIDERS = {
     "google": {
         "auth": "https://accounts.google.com/o/oauth2/v2/auth",
         "token": "https://oauth2.googleapis.com/token",
-        "scope": "openid email https://www.googleapis.com/auth/calendar.readonly",
+        # calendar.events = ler E criar/editar eventos (precisa p/ criar pela agenda)
+        "scope": "openid email https://www.googleapis.com/auth/calendar.events",
         "extra_auth": {"access_type": "offline", "prompt": "consent",
                        "include_granted_scopes": "true"},
         "userinfo": "https://www.googleapis.com/oauth2/v2/userinfo",
@@ -115,6 +116,41 @@ def _access_token(user_id, provider):
     expires_at = _utcnow() + datetime.timedelta(seconds=int(tok.get("expires_in", 3600)) - 60)
     db.update_access_token(user_id, provider, access, expires_at, tok.get("refresh_token"))
     return access
+
+
+def create_event(user_id, provider, title, start, end, description=None):
+    """Cria um evento no calendário primário do usuário. start/end em ISO 8601
+    (com offset, ex.: 2026-10-09T13:30:00-03:00). Pode lançar exceção (ex.: 403
+    se o token for somente-leitura → precisa reconectar com escopo de escrita)."""
+    at = _access_token(user_id, provider)
+    if not at:
+        raise RuntimeError("sem token")
+    hdr = {"Authorization": "Bearer " + at, "Content-Type": "application/json"}
+    if provider == "google":
+        body = {"summary": title or "(sem título)",
+                "start": {"dateTime": start}, "end": {"dateTime": end}}
+        if description:
+            body["description"] = description
+        r = httpx.post("https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                       headers=hdr, json=body, timeout=25)
+        if r.status_code not in (200, 201):
+            raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+        e = r.json()
+        return {"title": e.get("summary"), "start": (e.get("start") or {}).get("dateTime"),
+                "end": (e.get("end") or {}).get("dateTime")}
+    else:  # microsoft
+        body = {"subject": title or "(sem título)",
+                "start": {"dateTime": start, "timeZone": "UTC"},
+                "end": {"dateTime": end, "timeZone": "UTC"}}
+        if description:
+            body["body"] = {"contentType": "text", "content": description}
+        r = httpx.post("https://graph.microsoft.com/v1.0/me/events",
+                       headers=hdr, json=body, timeout=25)
+        if r.status_code not in (200, 201):
+            raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+        e = r.json()
+        return {"title": e.get("subject"), "start": (e.get("start") or {}).get("dateTime"),
+                "end": (e.get("end") or {}).get("dateTime")}
 
 
 def status(user_id):
