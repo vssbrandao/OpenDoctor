@@ -11,7 +11,7 @@ import argparse
 
 from . import search, llm, config
 
-PROMPT_PATH = os.path.join(config.ROOT, "prompts", "clinical_answer.v1.md")
+PROMPT_PATH = os.path.join(config.ROOT, "prompts", "clinical_answer.v2.md")
 SENTINEL = "EVIDENCIA_INSUFICIENTE"
 REFUSAL = "Não encontrei evidência científica suficiente nas fontes para uma resposta segura."
 

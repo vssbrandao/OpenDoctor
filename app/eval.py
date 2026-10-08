@@ -137,7 +137,7 @@ def run(path=GOLDEN):
 
 def _write_history(metrics):
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    line = (f"| {ts} | {config.OPENAI_MODEL} | clinical_answer.v1 | "
+    line = (f"| {ts} | {config.OPENAI_MODEL} | clinical_answer.v2 | "
             f"{metrics['recall@6']} | {metrics['first_hit']} | {metrics['refusal_accuracy']} | "
             f"{metrics['false_refusal_rate']} | {metrics['faithfulness_mean']} | "
             f"{metrics['coverage_mean']} | {metrics['latency_total_p50']} | {metrics['latency_total_p95']} |\n")
