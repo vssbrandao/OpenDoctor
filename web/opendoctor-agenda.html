@@ -105,7 +105,7 @@
     .panel-ico:hover{background:rgba(0,0,0,.05)}
 
     /* suggestion cards above the input */
-    .rp-suggest{position:absolute;left:24px;bottom:160px;width:439px;display:flex;gap:8px}
+    .rp-suggest{position:absolute;left:24px;bottom:180px;width:439px;display:flex;gap:8px}
     .sg-card{flex:1;height:140px;background:var(--pill);border:0;border-radius:40px;padding:24px;
       display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;
       text-align:left;cursor:pointer;transition:background .15s ease}
@@ -115,7 +115,7 @@
     .sg-txt{font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#1f1f1f}
 
     /* conversation area */
-    .rp-msgs{position:absolute;left:0;right:0;top:44px;bottom:160px;overflow-y:auto;
+    .rp-msgs{position:absolute;left:0;right:0;top:44px;bottom:180px;overflow-y:auto;
       padding:16px 24px;display:none;flex-direction:column;gap:32px;scrollbar-width:thin}
     .rp-msgs.on{display:flex}
     .msg-user{align-self:flex-end;max-width:255px;background:var(--pill);border-radius:24px;
@@ -190,11 +190,12 @@
       font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#071216;
       max-height:120px}
     .bi-input::placeholder{color:var(--ink2)}
-    .bi-note{font-family:var(--disp);font-weight:400;font-size:11px;line-height:16px;color:var(--muted);
-      text-align:center;flex:1;padding:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bi-note{position:absolute;left:24px;right:24px;bottom:16px;
+      font-family:var(--disp);font-weight:400;font-size:11px;line-height:16px;color:var(--muted);
+      text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .bi-send:disabled{opacity:.5;cursor:default}
 
-    .big-input{position:absolute;left:24px;bottom:24px;width:439px;max-width:calc(100% - 48px);
+    .big-input{position:absolute;left:24px;bottom:44px;width:439px;max-width:calc(100% - 48px);
       background:var(--pill);border-radius:40px;display:flex;flex-direction:column;gap:16px}
     .bi-top{display:flex;align-items:center;padding:24px 24px 0}
     .bi-ask{display:flex;align-items:center;gap:3px}
@@ -397,7 +398,6 @@
               <path d="M6.25 14V7.75H1.19209e-07V6.25H6.25V-4.76837e-07H7.75V6.25H14V7.75H7.75V14H6.25Z" fill="#444746"/>
             </svg>
           </button>
-          <span class="bi-note">Apoio à decisão — verifique sempre.</span>
           <button class="bi-send" id="biSend" aria-label="Enviar">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7 16V3.825L1.4 9.425L1.19209e-07 8L8 -9.53674e-07L16 8L14.6 9.425L9 3.825V16H7Z" fill="#0842A0"/>
@@ -405,6 +405,8 @@
           </button>
         </div>
       </div>
+
+      <div class="bi-note">Apoio à decisão — verifique sempre.</div>
     </div>
 
   </div>
