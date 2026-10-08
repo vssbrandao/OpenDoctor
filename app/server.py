@@ -120,9 +120,15 @@ def _safe_persist(per, vecs):
         print("[ask] persist em background falhou:", str(e)[:200])
 
 
+def _log(*a):
+    print("[ask]", *a, flush=True)
+
+
 def _ask_stream(query, k):
+    _log("start len=", len(query))
     # 1) busca local — decide suficiência antes de chamar o LLM
     res = search.search(query, k=k)
+    _log("searched best_sim=", round(res["best_sim"], 3), "hits=", len(res.get("hits") or []))
     yield _sse("status", {"stage": "searched", "best_sim": round(res["best_sim"], 3)})
 
     # 2) se a evidência local for fraca, CONSULTA o PubMed ao vivo antes de responder.
@@ -131,16 +137,22 @@ def _ask_stream(query, k):
         yield _sse("status", {"stage": "fetching"})
         per, vecs = [], []
         try:
+            _log("pubmed_terms…")
             terms = _pubmed_terms(query)
+            _log("terms=", terms[:120])
             # 1º tenta revisões/diretrizes (resumem conduta); se vier vazio, busca ampla.
             # retmax baixo p/ caber na memória do plano atual (evita derrubar o processo)
             per, vecs = ingest.fetch_and_embed(terms + _EVID_FILTER, 6)
+            _log("fetch1 artigos=", len(per))
             if not per:
                 per, vecs = ingest.fetch_and_embed(terms, 6)
+                _log("fetch2 artigos=", len(per))
         except Exception as e:
-            print("[ask] fetch on-demand falhou:", str(e)[:200])
+            print("[ask] fetch on-demand falhou:", str(e)[:200], flush=True)
         if per:
+            _log("rank_fresh…")
             fresh = _rank_fresh(res.get("qvec"), per, vecs, k)
+            _log("rank ok; persist bg…")
             threading.Thread(target=_safe_persist, args=(per, vecs), daemon=True).start()
             best = max((h["score"] for h in fresh), default=0.0)
             res = {"insufficient": best < search.SIM_THRESHOLD, "best_sim": best,
@@ -153,6 +165,7 @@ def _ask_stream(query, k):
         return
 
     # 2) fontes ANTES da resposta (alavanca de latência percebida)
+    _log("synthesize.build + stream…")
     messages, sources = synthesize.build(query, res["hits"])
     yield _sse("sources", {"sources": sources})
 
