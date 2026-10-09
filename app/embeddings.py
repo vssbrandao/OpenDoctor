@@ -16,7 +16,9 @@ def embed(texts):
         timeout=60,
     )
     if r.status_code != 200:
-        raise SystemExit(f"Embeddings {r.status_code}: {r.text[:300]}")
+        # NUNCA SystemExit: isso derruba o processo inteiro (uvicorn).
+        # RuntimeError apenas falha a requisição atual, servidor segue de pé.
+        raise RuntimeError(f"Embeddings {r.status_code}: {r.text[:300]}")
     data = r.json()["data"]
     # a API devolve na mesma ordem do input
     return [d["embedding"] for d in sorted(data, key=lambda d: d["index"])]

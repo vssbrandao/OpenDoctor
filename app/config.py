@@ -39,12 +39,13 @@ NCBI_EMAIL = os.environ.get("NCBI_EMAIL", "").strip()
 
 
 def require_db():
+    # RuntimeError (não SystemExit): chamado em runtime; SystemExit mataria o processo.
     if not DATABASE_URL:
-        raise SystemExit("Config faltando: defina DATABASE_URL no .env (Supabase > Database).")
+        raise RuntimeError("Config faltando: defina DATABASE_URL no .env (Supabase > Database).")
     return DATABASE_URL
 
 
 def require_openai():
     if not OPENAI_API_KEY:
-        raise SystemExit("Config faltando: defina OPENAI_API_KEY no .env.")
+        raise RuntimeError("Config faltando: defina OPENAI_API_KEY no .env.")
     return OPENAI_API_KEY

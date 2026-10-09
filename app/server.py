@@ -127,7 +127,13 @@ def _log(*a):
 def _ask_stream(query, k):
     _log("start len=", len(query))
     # 1) busca local — decide suficiência antes de chamar o LLM
-    res = search.search(query, k=k)
+    try:
+        res = search.search(query, k=k)
+    except Exception as e:
+        _log("search falhou:", str(e)[:200])
+        yield _sse("failed", {"message": "Falha ao consultar o servidor. Tente novamente."})
+        yield _sse("done", {"insufficient": True})
+        return
     _log("searched best_sim=", round(res["best_sim"], 3), "hits=", len(res.get("hits") or []))
     yield _sse("status", {"stage": "searched", "best_sim": round(res["best_sim"], 3)})
 
