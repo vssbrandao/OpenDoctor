@@ -165,19 +165,21 @@ def _ask_stream(query, k):
                    "hits": fresh, "qvec": res.get("qvec")}
         yield _sse("status", {"stage": "refetched", "best_sim": round(res["best_sim"], 3)})
 
-    if res["insufficient"] or not res["hits"]:
-        yield _sse("insufficient", {"text": synthesize.REFUSAL})
-        yield _sse("done", {"insufficient": True})
-        return
+    # NÃO recusamos por falta de evidência: seguimos para a síntese sempre.
+    # O modelo usa os trechos quando há (citando [n]) e complementa com
+    # conhecimento clínico consolidado quando a evidência é fraca/ausente,
+    # sinalizando o nível de evidência. Só declina perguntas NÃO-médicas.
+    hits = res.get("hits") or []
+    _log("synthesize best_sim=", round(res["best_sim"], 3), "hits=", len(hits))
 
     # 2) fontes ANTES da resposta (alavanca de latência percebida)
     _log("synthesize.build + stream…")
-    messages, sources = synthesize.build(query, res["hits"])
+    messages, sources = synthesize.build(query, hits)
     yield _sse("sources", {"sources": sources})
 
     # texto de cada trecho por número de citação, p/ a validação (spec §6.1)
-    allowed_ns = set(range(1, len(res["hits"]) + 1))
-    text_by_n = {i + 1: (h.get("text") or "") for i, h in enumerate(res["hits"])}
+    allowed_ns = set(range(1, len(hits) + 1))
+    text_by_n = {i + 1: (h.get("text") or "") for i, h in enumerate(hits)}
 
     # 3) streaming VALIDADO por frase: só envia a frase que passar nas checagens.
     #    Frase que falhar é PULADA (não interrompe o resto) — uma frase ruim

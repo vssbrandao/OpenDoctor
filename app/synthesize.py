@@ -11,7 +11,7 @@ import argparse
 
 from . import search, llm, config
 
-PROMPT_PATH = os.path.join(config.ROOT, "prompts", "clinical_answer.v2.md")
+PROMPT_PATH = os.path.join(config.ROOT, "prompts", "clinical_answer.v3.md")
 SENTINEL = "EVIDENCIA_INSUFICIENTE"
 REFUSAL = "Não encontrei evidência científica suficiente nas fontes para uma resposta segura."
 
@@ -60,10 +60,9 @@ def used_sources(answer, sources):
 
 def answer(query, k=5):
     res = search.search(query, k=k)
-    if res["insufficient"] or not res["hits"]:
-        return {"insufficient": True, "answer": REFUSAL, "sources": [],
-                "best_sim": res["best_sim"]}
-    messages, sources = build(query, res["hits"])
+    # não recusa por falta de evidência: sintetiza com os trechos disponíveis
+    # (fracos ou vazios) e deixa o modelo complementar com conhecimento consolidado.
+    messages, sources = build(query, res.get("hits") or [])
     text = llm.chat(messages).strip()
     if text.upper().startswith(SENTINEL):
         return {"insufficient": True, "answer": REFUSAL, "sources": [],
