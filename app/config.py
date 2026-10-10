@@ -29,9 +29,13 @@ def _req(name):
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o").strip()
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.5").strip()
 # modelo barato p/ chamadas auxiliares (planejamento, extração, follow-ups)
 OPENAI_FAST_MODEL = os.environ.get("OPENAI_FAST_MODEL", "gpt-4o-mini").strip()
+# modelos de raciocínio (gpt-5.x): esforço e orçamento extra p/ o raciocínio
+REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "low").strip()
+REASONING_TOKEN_BUDGET = int(os.environ.get("OPENAI_REASONING_TOKEN_BUDGET", "4000"))
+VERBOSITY = os.environ.get("OPENAI_VERBOSITY", "low").strip()   # low | medium | high
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small").strip()
 EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1536"))
 

@@ -125,3 +125,58 @@ def test_plan_out_of_scope_short_circuits(monkeypatch):
     assert called == []                       # não busca nem grava nada
     assert "insufficient" in evs[0] and "fora do meu escopo" in evs[0]
     assert '"out_of_scope": true' in evs[1]
+
+
+# ---------- amplitude e recomendação ----------
+def test_same_guideline_in_several_journals_is_one_source():
+    t = "2022 AHA/ACC/HFSA Guideline for the Management of Heart Failure"
+    hits = [{"url": "doi/circ", "title": t + ".", "text": "a"},
+            {"url": "doi/jacc", "title": t + ": A Report of the American College", "text": "b"},
+            {"url": "doi/other", "title": "Outro artigo", "text": "c"}]
+    out = server._merge_by_doc(hits, 6)
+    # títulos iguais nos primeiros 90 caracteres normalizados → mesmo documento
+    assert len(out) == 2 and out[0]["url"] == "doi/circ"
+
+
+def test_recommend_prefers_relevant_strong_recent_evidence():
+    import datetime as dt
+    y = dt.date.today().year
+    docs = [
+        {"title": "Artigo pouco relevante", "url": "u0", "cosine_sim": 0.50, "evidence_w": 5,
+         "publication_date": dt.date(y, 1, 1)},                       # abaixo de REC_MIN_COS
+        {"title": "Artigo comum relevante", "url": "u1", "cosine_sim": 0.70, "evidence_w": 1,
+         "publication_date": dt.date(2017, 1, 1), "evidence": "Artigo"},
+        {"title": "Diretriz relevante", "url": "u2", "cosine_sim": 0.68, "evidence_w": 5,
+         "publication_date": dt.date(y - 1, 1, 1), "evidence": "Diretriz"},
+    ]
+    recs = server._recommend(docs)
+    assert [r["url"] for r in recs] == ["u2", "u1"]          # diretriz recente vence
+    assert recs[0]["evidence"] == "Diretriz" and recs[0]["year"] == y - 1
+
+
+def test_pubmed_search_uses_relevance_and_date(monkeypatch):
+    from app import pubmed
+    seen = {}
+
+    class R:
+        def raise_for_status(self): pass
+        def json(self): return {"esearchresult": {"idlist": ["1", "2"]}}
+
+    def fake_get(url, params=None, timeout=None):
+        seen.update(params); return R()
+
+    monkeypatch.setattr(pubmed.httpx, "get", fake_get)
+    assert pubmed.search("heart failure", retmax=5, mindate=2016) == ["1", "2"]
+    assert seen["sort"] == "relevance" and seen["mindate"] == "2016" and seen["datetype"] == "pdat"
+
+
+# ---------- cliente LLM: parâmetros por tipo de modelo ----------
+def test_llm_body_reasoning_vs_classic():
+    from app import llm, config
+    b = llm._body("gpt-5.5", [], 0.2, 2000, reasoning="low", verbosity="low")
+    assert "temperature" not in b and "max_tokens" not in b
+    assert b["max_completion_tokens"] == 2000 + config.REASONING_TOKEN_BUDGET
+    assert b["reasoning_effort"] == "low" and b["verbosity"] == "low"
+    c = llm._body("gpt-4o-mini", [], 0.2, 80)
+    assert c["temperature"] == 0.2 and c["max_tokens"] == 80
+    assert "reasoning_effort" not in c and "verbosity" not in c

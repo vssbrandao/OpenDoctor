@@ -67,6 +67,25 @@ def _judge(question, answer, cited_text, key_points):
         return None, None
 
 
+def _judge_recs(question, recs):
+    """Fração dos artigos recomendados que são relevantes para a pergunta."""
+    if not recs:
+        return None
+    titles = "\n".join(f"{i + 1}. {r.get('title', '')}" for i, r in enumerate(recs))
+    try:
+        out = llm.chat([
+            {"role": "system", "content": "Você avalia se artigos científicos são leitura "
+             "RELEVANTE e útil para um médico responder à pergunta clínica. Responda só JSON: "
+             "{\"relevant\": [1 ou 0 para cada artigo, na ordem]}."},
+            {"role": "user", "content": f"Pergunta: {question}\n\nArtigos:\n{titles}"}],
+            temperature=0, max_tokens=60, model=config.OPENAI_FAST_MODEL, json_mode=True)
+        flags = json.loads(out).get("relevant") or []
+        flags = [1 if f else 0 for f in flags][:len(recs)]
+        return sum(flags) / len(recs) if flags else None
+    except Exception:
+        return None
+
+
 def _parse_sse(chunks):
     """Converte as strings SSE do _ask_stream em eventos (nome, dict)."""
     for ch in chunks:
@@ -95,13 +114,14 @@ def _run_pipeline(question, history=None):
         t0 = time.perf_counter()
         out = {"answer": "", "sources": [], "insufficient": False, "out_of_scope": False,
                "done": {}, "msg": ""}
-        for ev, d in _parse_sse(server._ask_stream(question, 6, history or [])):
+        for ev, d in _parse_sse(server._ask_stream(question, 8, history or [])):
             if ev == "sentence":
                 if "first" not in out:
                     out["first"] = time.perf_counter() - t0
                 out["answer"] += d.get("text", "")
             elif ev == "sources":
                 out["sources"] = d.get("sources", [])
+                out["recommended"] = d.get("recommended", [])
             elif ev == "insufficient":
                 out["insufficient"] = True
                 out["msg"] = d.get("text", "")
@@ -120,7 +140,7 @@ def _run_pipeline(question, history=None):
 
 def run(path=GOLDEN):
     items = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
-    recalls, firsts, faiths, covs, lat, ttft = [], [], [], [], [], []
+    recalls, firsts, faiths, covs, lat, ttft, recp, recn = [], [], [], [], [], [], [], []
     n_medical = declined_medical = 0
     oos_total = oos_ok = 0
     ungrounded, cites_removed, calc_ok, calc_total = [], 0, 0, 0
@@ -163,10 +183,16 @@ def run(path=GOLDEN):
             ok = want and (want in r["answer"] or want.replace(",", ".") in r["answer"])
             calc_ok += 1 if ok else 0
 
+        recs = r.get("recommended") or []
+        recn.append(len(recs))
+        rp = _judge_recs(q, recs)
+        if rp is not None:
+            recp.append(rp)
+
         d = r["done"] or {}
         ungrounded.append(d.get("ungrounded", 0))
         cites_removed += d.get("citations_removed", 0) or 0
-        hit_text = "\n\n".join(f"[{i + 1}] {h.get('title', '')}\n{(h.get('text') or '')[:1500]}"
+        hit_text = "\n\n".join(f"[{i + 1}] {h.get('title', '')}\n{(h.get('text') or '')[:6000]}"
                                 for i, h in enumerate(r["hits"]))
         f, c = _judge(q, r["answer"], hit_text, it.get("key_points", []))
         if f is not None:
@@ -184,6 +210,8 @@ def run(path=GOLDEN):
         "faithfulness_mean": round(statistics.mean(faiths), 3) if faiths else None,
         "coverage_mean": round(statistics.mean(covs), 3) if covs else None,
         "ungrounded_mean": round(statistics.mean(ungrounded), 2) if ungrounded else None,
+        "rec_precision": round(statistics.mean(recp), 3) if recp else None,
+        "rec_per_answer": round(statistics.mean(recn), 2) if recn else None,
         "citations_removed": cites_removed,
         "latency_first_p50": round(_pct(ttft, .5), 2),
         "latency_first_p95": round(_pct(ttft, .95), 2),
@@ -199,7 +227,8 @@ def _write_history(metrics):
             f"{metrics['recall@6']} | {metrics['first_hit']} | {metrics['out_of_scope_accuracy']} | "
             f"{metrics['false_refusal_rate']} | {metrics['faithfulness_mean']} | "
             f"{metrics['coverage_mean']} | {metrics['latency_total_p50']} | {metrics['latency_total_p95']} |"
-            f" calc={metrics['calc_accuracy']} sem_fonte={metrics['ungrounded_mean']} |\n")
+            f" calc={metrics['calc_accuracy']} sem_fonte={metrics['ungrounded_mean']}"
+            f" rec_prec={metrics['rec_precision']} rec_n={metrics['rec_per_answer']} |\n")
     new = not os.path.exists(HISTORY)
     os.makedirs(os.path.dirname(HISTORY), exist_ok=True)
     with open(HISTORY, "a", encoding="utf-8") as fh:

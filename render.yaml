@@ -16,7 +16,11 @@ services:
       - key: OAUTH_REDIRECT_BASE
         value: https://opendoctor.app
       - key: OPENAI_MODEL
-        value: gpt-4o
+        value: gpt-5.5
+      - key: OPENAI_REASONING_EFFORT
+        value: low
+      - key: OPENAI_VERBOSITY
+        value: low
       - key: OPENAI_FAST_MODEL
         value: gpt-4o-mini
       - key: EMBEDDING_MODEL

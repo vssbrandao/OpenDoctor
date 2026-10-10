@@ -18,10 +18,11 @@ def _dedupe(articles):
     return uniq
 
 
-def fetch_and_embed(terms, retmax=10):
-    """Busca no PubMed, faz chunking e embeda — SEM tocar no banco.
-    Devolve (per, vecs): per=[(article, [(section,text),...])]; vecs alinhado aos chunks."""
-    articles = _dedupe(pubmed.fetch(pubmed.search(terms, retmax=retmax)))
+def fetch_and_embed(terms, retmax=10, mindate=None):
+    """Busca no PubMed (ordenado por RELEVÂNCIA), faz chunking e embeda — SEM tocar
+    no banco. Devolve (per, vecs): per=[(article, [(section,text),...])]; vecs
+    alinhado aos chunks."""
+    articles = _dedupe(pubmed.fetch(pubmed.search(terms, retmax=retmax, mindate=mindate)))
     per = [(a, chunking.chunk_article(a)) for a in articles]
     texts = [t for (_, ch) in per for (_, t) in ch]
     vecs = []

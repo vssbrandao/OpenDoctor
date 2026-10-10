@@ -29,6 +29,13 @@ WEB_DIR = os.path.join(config.ROOT, "web")
 # calibrado com a pergunta em INGLÊS (cosseno ~0,1 maior que em PT): temas bem
 # cobertos pelo corpus ficam em 0,69–0,79; abaixo disso, busca no PubMed.
 FETCH_SIM = 0.68
+# entre FETCH_BLOCK_SIM e FETCH_SIM a evidência local já é razoável: responde na
+# hora e busca no PubMed em 2º plano (enriquece o corpus p/ as próximas perguntas).
+# Abaixo de FETCH_BLOCK_SIM, espera a busca ao vivo antes de responder.
+FETCH_BLOCK_SIM = 0.60
+# busca ao vivo: artigos dos últimos ~12 anos, ordenados por relevância (Best Match)
+FETCH_MINDATE = 2014
+FETCH_RETMAX = 10
 
 # nunca usar artigos retratados
 _NOT_RETRACTED = " NOT retracted publication[ptyp] NOT retraction of publication[ptyp]"
@@ -165,11 +172,25 @@ def _rank_fresh(qvec, per, vecs, k):
     return hits
 
 
+def _doc_key(h):
+    """Identidade do documento: título normalizado (a mesma diretriz sai em várias
+    revistas com PMIDs/DOIs diferentes); URL só se não houver título."""
+    def norm(x):
+        return re.sub(r"[^a-z0-9]+", " ", x).strip()
+    title = (h.get("title") or "").lower()
+    main = norm(title.split(":")[0])
+    # título principal (antes dos ":") só quando é específico o bastante p/ não
+    # fundir artigos distintos de título genérico ("Heart failure: a review")
+    if len(main.split()) >= 6:
+        return main[:90]
+    return norm(title)[:90] or (h.get("url") or "")
+
+
 def _merge_by_doc(hits, k):
     """Junta trechos do MESMO documento num único item [n] (sem fontes duplicadas)."""
     merged, order = {}, []
     for h in hits:
-        key = (h.get("url") or "") or (h.get("title") or "")
+        key = _doc_key(h)
         if key in merged:
             m = merged[key]
             if len(m["text"] or "") < 3500:
@@ -178,6 +199,39 @@ def _merge_by_doc(hits, k):
         merged[key] = dict(h)
         order.append(key)
     return [merged[x] for x in order][:k]
+
+
+REC_MAX = 5            # artigos em "Leitura recomendada"
+REC_MIN_COS = 0.52     # mais exigente que o corte de relevância (alta precisão)
+
+
+def _recommend(docs):
+    """Melhores artigos para LER: relevância + força da evidência + recência.
+    docs: documentos relevantes já agrupados (_merge_by_doc)."""
+    this_year = datetime.date.today().year
+    scored = []
+    for h in docs:
+        cos = h.get("cosine_sim") or 0
+        if cos < REC_MIN_COS:
+            continue
+        d = h.get("publication_date")
+        yr = d.year if d is not None and hasattr(d, "year") else None
+        score = cos + 0.02 * (h.get("evidence_w") or 1) + (0.01 if yr and yr >= this_year - 5 else 0)
+        scored.append((score, h, yr))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    return [{"title": h.get("title"), "url": h.get("url"), "year": yr,
+             "evidence": h.get("evidence")} for _, h, yr in scored[:REC_MAX]]
+
+
+def _bg_enrich(terms):
+    """Busca evidência forte no PubMed e grava no corpus, sem bloquear a resposta."""
+    try:
+        per, vecs = ingest.fetch_and_embed(terms + _EVID_FILTER, FETCH_RETMAX, FETCH_MINDATE)
+        if per:
+            ingest.persist(per, vecs)
+            _log("enriquecimento em 2º plano: +", len(per), "artigos")
+    except Exception as e:
+        _log("enriquecimento falhou:", str(e)[:150])
 
 
 def _safe_persist(per, vecs):
@@ -276,21 +330,24 @@ def _ask_stream(query, k, history=None):
 
     # 2) evidência local fraca → PubMed ao vivo. Só o resultado FILTRADO por
     #    evidência (revisões/diretrizes/metanálises) é gravado no corpus.
-    if res["best_sim"] < FETCH_SIM or not res["hits"]:
+    if res["hits"] and FETCH_BLOCK_SIM <= res["best_sim"] < FETCH_SIM:
+        _log("evidência local razoável; enriquecendo o corpus em 2º plano")
+        threading.Thread(target=_bg_enrich, args=(terms,), daemon=True).start()
+    elif res["best_sim"] < FETCH_BLOCK_SIM or not res["hits"]:
         yield _sse("status", {"stage": "fetching"})
         per, vecs, cacheable = [], [], False
         try:
             # 1º termos completos c/ filtro de evidência; se vazio, alarga para os
             # 2 termos centrais; só a busca SEM filtro de evidência não é cacheada
             short = _short_terms(terms, 2)
-            per, vecs = ingest.fetch_and_embed(terms + _EVID_FILTER, 6)
+            per, vecs = ingest.fetch_and_embed(terms + _EVID_FILTER, FETCH_RETMAX, FETCH_MINDATE)
             _log("fetch1 artigos=", len(per))
             if not per and short and short != terms:
-                per, vecs = ingest.fetch_and_embed(short + _EVID_FILTER, 6)
+                per, vecs = ingest.fetch_and_embed(short + _EVID_FILTER, FETCH_RETMAX, FETCH_MINDATE)
                 _log("fetch1b (alargada) artigos=", len(per))
             cacheable = bool(per)
             if not per:
-                per, vecs = ingest.fetch_and_embed((short or terms) + _NOT_RETRACTED, 6)
+                per, vecs = ingest.fetch_and_embed((short or terms) + _NOT_RETRACTED, FETCH_RETMAX, FETCH_MINDATE)
                 _log("fetch2 (não cacheado) artigos=", len(per))
         except Exception as e:
             _log("fetch on-demand falhou:", str(e)[:200])
@@ -312,7 +369,9 @@ def _ask_stream(query, k, history=None):
                 if (h.get("cosine_sim") or 0) >= search.REL_FLOOR]
     if len(relevant) < len(res.get("hits") or []):
         _log("descartados por relevância:", len(res.get("hits") or []) - len(relevant))
-    hits = _merge_by_doc(relevant, k)
+    docs = _merge_by_doc(relevant, 50)      # todos os documentos relevantes
+    hits = docs[:k]                          # os k melhores vão ao modelo
+    recommended = _recommend(docs)
 
     # cálculos determinísticos (ex.: eGFR) — o código calcula, o modelo explica
     try:
@@ -322,7 +381,7 @@ def _ask_stream(query, k, history=None):
         extra = None
 
     messages, sources = synthesize.build(query, hits, history, extra)
-    yield _sse("sources", {"sources": sources})
+    yield _sse("sources", {"sources": sources, "recommended": recommended})
 
     allowed_ns = set(range(1, len(hits) + 1))
     text_by_n = {i + 1: (h.get("text") or "") for i, h in enumerate(hits)}

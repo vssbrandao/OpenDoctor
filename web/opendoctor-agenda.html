@@ -991,6 +991,23 @@
         }).join('');
         container.appendChild(div);
       }
+      // "Leitura recomendada": melhores artigos relevantes que NÃO foram citados
+      function addRecommended(container, recs, srcByN, text) {
+        if (!recs || !recs.length) return;
+        var citedUrls = {};
+        (text.match(/\[(\d+)\]/g) || []).forEach(function (m) {
+          var s = srcByN[parseInt(m.replace(/\D/g, ''), 10)]; if (s && s.url) citedUrls[s.url] = 1;
+        });
+        var list = recs.filter(function (r) { return r.url && !citedUrls[r.url]; }).slice(0, 4);
+        if (!list.length) return;
+        var div = document.createElement('div'); div.className = 'ai-refs ai-recs';
+        div.innerHTML = '<div class="refs-title">Leitura recomendada</div>' + list.map(function (r) {
+          var badge = r.evidence ? '<span class="ev-badge ev-' + evClass(r.evidence) + '">' + esc(r.evidence) + '</span> ' : '';
+          return '<a class="ref-item" href="' + esc(r.url) + '" target="_blank" rel="noopener noreferrer">' +
+            badge + esc(r.title || '') + (r.year ? ' (' + r.year + ')' : '') + '</a>';
+        }).join('');
+        container.appendChild(div);
+      }
       function evClass(label) {
         var m = { 'Diretriz': 'dir', 'Metanálise': 'meta', 'Revisão sistemática': 'meta',
                   'Ensaio clínico': 'rct', 'Observacional': 'obs', 'Revisão': 'rev' };
@@ -1057,7 +1074,7 @@
         wrap.appendChild(bodyEl);
         msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
 
-        var srcByN = {}, fullText = '', started = false, closed = false, insufficient = false;
+        var srcByN = {}, recs = [], fullText = '', started = false, closed = false, insufficient = false;
         var attempt = 0, MAX_RETRY = 2, RETRY_MS = [3000, 9000];
         function finish() { if (!closed) { closed = true; busy = false; sendBtn.disabled = false; input.focus(); } }
 
@@ -1068,6 +1085,7 @@
               bodyEl.innerHTML = '<span class="ai-status">Consultando artigos científicos…</span>' + dots;
           } else if (ev === 'sources') {
             (JSON.parse(data).sources || []).forEach(function (s) { srcByN[s.n] = s; });
+            recs = JSON.parse(data).recommended || [];
           } else if (ev === 'sentence') {
             if (!started) { started = true; bodyEl.innerHTML = ''; }
             fullText += JSON.parse(data).text;
@@ -1088,6 +1106,7 @@
               sig = dn.sig || null;
               if (!dn.insufficient && fullText.trim()) {
                 addRefs(wrap, srcByN, fullText);
+                addRecommended(wrap, recs, srcByN, fullText);
                 if (dn.ungrounded > 0) {
                   var note = document.createElement('div'); note.className = 'ai-ungrounded';
                   note.textContent = 'Parte desta resposta se baseia em conhecimento clínico geral, sem fonte específica citada.';
@@ -1101,7 +1120,7 @@
         var sig = null;
 
         function run() {
-          streamAsk({ query: q, k: 6, history: history.slice(-12) }, handle)
+          streamAsk({ query: q, k: 8, history: history.slice(-12) }, handle)
             .then(function () {
               if (!insufficient && fullText.trim()) {
                 history.push({ role: 'user', content: q });

@@ -24,3 +24,6 @@ supabase/.temp/
 
 # tokens de integração (OAuth)
 .integrations.json
+
+# estado local da ingestão em massa
+data/bulk_ingest_state.json*

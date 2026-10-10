@@ -20,13 +20,18 @@ def _params(extra):
     return p
 
 
-def search(query, retmax=20):
-    """Retorna lista de PMIDs para a query."""
-    r = httpx.get(
-        f"{EUTILS}/esearch.fcgi",
-        params=_params({"db": "pubmed", "term": query, "retmax": retmax, "retmode": "json"}),
-        timeout=30,
-    )
+def search(query, retmax=20, sort="relevance", mindate=None):
+    """Retorna lista de PMIDs para a query.
+    sort='relevance' = Best Match do PubMed. O padrão do E-utilities é por DATA
+    (mais recentes), o que trazia artigos tangenciais em vez dos mais relevantes
+    (ex.: a diretriz AHA/ACC de IC só aparece ordenando por relevância).
+    mindate: ano mínimo de publicação (ex.: 2015)."""
+    p = {"db": "pubmed", "term": query, "retmax": retmax, "retmode": "json"}
+    if sort:
+        p["sort"] = sort
+    if mindate:
+        p.update({"datetype": "pdat", "mindate": str(mindate), "maxdate": "3000"})
+    r = httpx.get(f"{EUTILS}/esearch.fcgi", params=_params(p), timeout=30)
     r.raise_for_status()
     return r.json().get("esearchresult", {}).get("idlist", [])
 

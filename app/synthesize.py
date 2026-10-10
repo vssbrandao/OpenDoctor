@@ -32,7 +32,8 @@ def _source_label(hit):
     url = hit.get("url") or ""
     if "doi.org/" in url:
         doi = " · DOI: " + url.split("doi.org/", 1)[1]
-    return f"{hit.get('source_type','?')}, {yr}{doi}"
+    kind = hit.get("evidence") or hit.get("source_type") or "artigo"
+    return f"{kind}, {yr}{doi}"
 
 
 def build(query, hits, history=None, extra=None):
