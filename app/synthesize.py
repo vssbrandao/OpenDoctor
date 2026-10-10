@@ -30,8 +30,9 @@ def _source_label(hit):
     return f"{hit.get('source_type','?')}, {yr}{doi}"
 
 
-def build(query, hits):
-    """Devolve (messages, sources) — sources[i] corresponde a [i+1]."""
+def build(query, hits, history=None):
+    """Devolve (messages, sources) — sources[i] corresponde a [i+1].
+    history: turnos anteriores [{role:'user'|'assistant', content}] p/ follow-ups."""
     blocks = []
     sources = []
     for i, h in enumerate(hits, start=1):
@@ -46,10 +47,16 @@ def build(query, hits):
             "year": h["publication_date"].year if h.get("publication_date") else None,
             "section_title": h.get("section_title"),
         })
-    user = ("Trechos (cite com [n]):\n\n" + "\n\n".join(blocks) +
+    excerpts = "\n\n".join(blocks) if blocks else "(nenhum trecho recuperado)"
+    user = ("Trechos (cite com [n]):\n\n" + excerpts +
             f"\n\nPergunta do médico: {query}")
-    messages = [{"role": "system", "content": load_prompt()},
-                {"role": "user", "content": user}]
+    messages = [{"role": "system", "content": load_prompt()}]
+    for m in (history or []):
+        role = m.get("role")
+        content = (m.get("content") or "").strip()
+        if role in ("user", "assistant") and content:
+            messages.append({"role": role, "content": content[:4000]})
+    messages.append({"role": "user", "content": user})
     return messages, sources
 
 

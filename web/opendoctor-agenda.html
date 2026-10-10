@@ -176,6 +176,12 @@
       font-family:var(--disp);font-weight:400;font-size:18px;line-height:24px;color:#1f1f1f}
     .sg-txt{font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#1f1f1f}
 
+    /* chips de acompanhamento (follow-up) abaixo da resposta */
+    .followups{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .fup-chip{border:1px solid var(--sb-border);background:#fff;border-radius:999px;padding:8px 14px;
+      font-family:var(--disp);font-size:13px;line-height:1.3;color:#071216;cursor:pointer;text-align:left}
+    .fup-chip:hover{background:var(--ev-bg)}
+
     /* conversation area */
     .rp-msgs{position:absolute;left:0;right:0;top:44px;bottom:180px;overflow-y:auto;
       padding:16px 24px;display:none;flex-direction:column;gap:32px;scrollbar-width:thin}
@@ -919,7 +925,48 @@
         container.appendChild(div);
       }
 
-      // RAG backend: GET /ask (SSE) — status → sources → sentence* → done
+      // lê um stream SSE vindo de um POST (fetch) e chama on(event, data)
+      async function streamAsk(payload, on) {
+        var resp = await fetch('/ask', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok || !resp.body) throw new Error('http ' + resp.status);
+        var reader = resp.body.getReader(), dec = new TextDecoder(), buf = '';
+        while (true) {
+          var r = await reader.read();
+          if (r.done) break;
+          buf += dec.decode(r.value, { stream: true });
+          var parts = buf.split('\n\n'); buf = parts.pop();
+          parts.forEach(function (block) {
+            var ev = 'message', data = '';
+            block.split('\n').forEach(function (line) {
+              if (line.indexOf('event:') === 0) ev = line.slice(6).trim();
+              else if (line.indexOf('data:') === 0) data += line.slice(5).trim();
+            });
+            if (data) on(ev, data);
+          });
+        }
+      }
+
+      function loadFollowups(wrap, q, ans) {
+        fetch('/followups', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: q, answer: ans })
+        }).then(function (r) { return r.json(); }).then(function (d) {
+          var sugg = (d && d.suggestions) || [];
+          if (!sugg.length) return;
+          var box = document.createElement('div'); box.className = 'followups';
+          sugg.forEach(function (s) {
+            var b = document.createElement('button'); b.className = 'fup-chip'; b.type = 'button';
+            b.textContent = s; b.addEventListener('click', function () { ask(s); });
+            box.appendChild(b);
+          });
+          wrap.appendChild(box); msgs.scrollTop = msgs.scrollHeight;
+        }).catch(function () {});
+      }
+
+      // RAG backend: POST /ask (SSE sobre fetch) — com histórico de conversa
       function ask(text) {
         text = (text || '').trim();
         if (!text || busy) return;
@@ -931,73 +978,71 @@
 
         var wrap = document.createElement('div'); wrap.className = 'msg-ai';
         var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
-        bodyEl.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
+        var dots = ' <span class="dots"><i></i><i></i><i></i></span>';
+        bodyEl.innerHTML = dots;
         wrap.appendChild(bodyEl);
         msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
 
-        var srcByN = {}, fullText = '', started = false, closed = false;
+        var srcByN = {}, fullText = '', started = false, closed = false, insufficient = false;
         var attempt = 0, MAX_RETRY = 2, RETRY_MS = [3000, 9000];
-        var es = null;
         function finish() { if (!closed) { closed = true; busy = false; sendBtn.disabled = false; input.focus(); } }
-        var dots = ' <span class="dots"><i></i><i></i><i></i></span>';
 
-        function connect() {
-          es = new EventSource('/ask?query=' + encodeURIComponent(text) + '&k=6');
-
-          es.addEventListener('status', function (e) {
-            if (JSON.parse(e.data).stage === 'fetching' && !started) {
+        function handle(ev, data) {
+          if (ev === 'status') {
+            var d = JSON.parse(data);
+            if (d.stage === 'fetching' && !started)
               bodyEl.innerHTML = '<span class="ai-status">Consultando artigos científicos…</span>' + dots;
-            }
-          });
-          es.addEventListener('sources', function (e) {
-            ((JSON.parse(e.data).sources) || []).forEach(function (s) { srcByN[s.n] = s; });
-          });
-          es.addEventListener('sentence', function (e) {
+          } else if (ev === 'sources') {
+            (JSON.parse(data).sources || []).forEach(function (s) { srcByN[s.n] = s; });
+          } else if (ev === 'sentence') {
             if (!started) { started = true; bodyEl.innerHTML = ''; }
-            fullText += JSON.parse(e.data).text;
+            fullText += JSON.parse(data).text;
             bodyEl.className = 'ai-body';
             bodyEl.innerHTML = renderAnswer(fullText, srcByN);
             renderMermaid(bodyEl);
             msgs.scrollTop = msgs.scrollHeight;
-          });
-          es.addEventListener('insufficient', function (e) {
+          } else if (ev === 'insufficient') {
+            started = true; insufficient = true;
+            bodyEl.className = 'ai-body'; bodyEl.textContent = JSON.parse(data).text;
+          } else if (ev === 'failed') {
             started = true;
-            bodyEl.className = 'ai-body'; bodyEl.textContent = JSON.parse(e.data).text;
-          });
-          es.addEventListener('failed', function (e) {
-            started = true;
-            bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + (JSON.parse(e.data).message || 'erro');
-          });
-          es.addEventListener('done', function (e) {
-            es.close();
+            bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + (JSON.parse(data).message || 'erro');
+          } else if (ev === 'done') {
             try {
-              if (!JSON.parse(e.data).insufficient && fullText.trim()) {
+              if (!JSON.parse(data).insufficient && fullText.trim()) {
                 addRefs(wrap, srcByN, fullText);
                 addActions(wrap, function () { return bodyEl.innerText; });
               }
             } catch (_) {}
-            finish();
-          });
-          es.onerror = function () {
-            es.close();
-            if (closed) return;
-            // já começou a responder → encerra com o que veio (não duplica)
-            if (started) { finish(); return; }
-            // ainda não começou → o servidor pode estar reiniciando: reconecta sozinho
-            if (attempt < MAX_RETRY) {
-              var delay = RETRY_MS[attempt] || 9000;
-              attempt++;
-              bodyEl.className = 'ai-body';
-              bodyEl.innerHTML = '<span class="ai-status">Reconectando ao servidor…</span>' + dots;
-              setTimeout(function () { if (!closed) connect(); }, delay);
-            } else {
-              bodyEl.className = 'ai-body err';
-              bodyEl.textContent = '⚠ O servidor não respondeu a esta consulta. Tente de novo em instantes, ou reformule de forma mais curta.';
-              finish();
-            }
-          };
+          }
         }
-        connect();
+
+        function run() {
+          streamAsk({ query: text, k: 6, history: history.slice(-8) }, handle)
+            .then(function () {
+              if (!insufficient && fullText.trim()) {
+                history.push({ role: 'user', content: text });
+                history.push({ role: 'assistant', content: fullText });
+                loadFollowups(wrap, text, fullText);
+              }
+              finish();
+            })
+            .catch(function () {
+              if (closed) return;
+              if (started) { finish(); return; }   // já começou → não duplica
+              if (attempt < MAX_RETRY) {
+                var delay = RETRY_MS[attempt] || 9000; attempt++;
+                bodyEl.className = 'ai-body';
+                bodyEl.innerHTML = '<span class="ai-status">Reconectando ao servidor…</span>' + dots;
+                setTimeout(function () { if (!closed) run(); }, delay);
+              } else {
+                bodyEl.className = 'ai-body err';
+                bodyEl.textContent = '⚠ O servidor não respondeu a esta consulta. Tente de novo em instantes, ou reformule de forma mais curta.';
+                finish();
+              }
+            });
+        }
+        run();
       }
 
       sendBtn.addEventListener('click', function () { ask(input.value); });

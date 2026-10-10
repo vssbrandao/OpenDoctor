@@ -124,11 +124,27 @@ def _log(*a):
     print("[ask]", *a, flush=True)
 
 
-def _ask_stream(query, k):
-    _log("start len=", len(query))
+def _ctx_query(query, history):
+    """Query de BUSCA sensível ao contexto: em follow-ups curtos ('e na gestante?'),
+    junta o último turno do usuário para recuperar evidência relevante."""
+    if not history:
+        return query
+    last_user = ""
+    for m in reversed(history):
+        if m.get("role") == "user" and (m.get("content") or "").strip():
+            last_user = m["content"].strip()
+            break
+    if last_user and len(query) < 80:
+        return (last_user + " " + query)[:500]
+    return query
+
+
+def _ask_stream(query, k, history=None):
+    _log("start len=", len(query), "hist=", len(history or []))
+    ctxq = _ctx_query(query, history)   # query de busca (contexto p/ follow-ups)
     # 1) busca local — decide suficiência antes de chamar o LLM
     try:
-        res = search.search(query, k=k)
+        res = search.search(ctxq, k=k)
     except Exception as e:
         _log("search falhou:", str(e)[:200])
         yield _sse("failed", {"message": "Falha ao consultar o servidor. Tente novamente."})
@@ -144,7 +160,7 @@ def _ask_stream(query, k):
         per, vecs = [], []
         try:
             _log("pubmed_terms…")
-            terms = _pubmed_terms(query)
+            terms = _pubmed_terms(ctxq)
             _log("terms=", terms[:120])
             # 1º tenta revisões/diretrizes (resumem conduta); se vier vazio, busca ampla.
             # retmax baixo p/ caber na memória do plano atual (evita derrubar o processo)
@@ -174,7 +190,7 @@ def _ask_stream(query, k):
 
     # 2) fontes ANTES da resposta (alavanca de latência percebida)
     _log("synthesize.build + stream…")
-    messages, sources = synthesize.build(query, hits)
+    messages, sources = synthesize.build(query, hits, history)
     yield _sse("sources", {"sources": sources})
 
     # texto de cada trecho por número de citação, p/ a validação (spec §6.1)
@@ -232,6 +248,54 @@ def ask(query: str, k: int = 5):
     if not query.strip():
         return JSONResponse({"error": "query vazia"}, status_code=400)
     return StreamingResponse(_ask_stream(query, k), media_type="text/event-stream")
+
+
+@app.post("/ask")
+async def ask_post(request: Request):
+    """Versão com histórico (conversa). Body: {query, k?, history?[{role,content}]}."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    query = (body.get("query") or "").strip()
+    if not query:
+        return JSONResponse({"error": "query vazia"}, status_code=400)
+    k = int(body.get("k") or 6)
+    history = body.get("history") or []
+    # mantém só os últimos turnos (controla custo/tokens)
+    if isinstance(history, list):
+        history = history[-8:]
+    else:
+        history = []
+    return StreamingResponse(_ask_stream(query, k, history),
+                             media_type="text/event-stream")
+
+
+@app.post("/followups")
+async def followups(request: Request):
+    """Sugere 3 perguntas de acompanhamento curtas a partir da última resposta."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    query = (body.get("query") or "").strip()
+    answer = (body.get("answer") or "").strip()
+    if not answer:
+        return {"suggestions": []}
+    try:
+        out = llm.chat([
+            {"role": "system", "content": "Você gera perguntas de acompanhamento para um "
+             "MÉDICO, a partir de uma resposta clínica. Devolva EXATAMENTE 3 perguntas curtas "
+             "(máx. 8 palavras cada), clínicas e úteis para aprofundar (ex.: subgrupo, dose, "
+             "alternativa, monitorização). Uma por linha, sem numeração, sem aspas."},
+            {"role": "user", "content": f"Pergunta: {query}\n\nResposta:\n{answer[:3000]}"}],
+            temperature=0.4, max_tokens=80).strip()
+        sugg = [s.strip(" -•\t").strip() for s in out.splitlines() if s.strip()]
+        sugg = [s for s in sugg if 3 <= len(s) <= 90][:3]
+        return {"suggestions": sugg}
+    except Exception as e:
+        print("[followups] falhou:", str(e)[:150], flush=True)
+        return {"suggestions": []}
 
 
 # ===== login do app (Google, escopos básicos) =====
