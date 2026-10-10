@@ -74,6 +74,12 @@ def fetch(pmids):
         if not abstract:
             continue  # sem abstract não há conteúdo recuperável nesta fase
 
+        # tipos de publicação (fonte oficial do PubMed p/ o nível de evidência)
+        pub_types = [_text(pt) for pt in art.findall(".//PublicationTypeList/PublicationType")]
+        if any(pt.lower() in ("retracted publication", "retraction of publication")
+               for pt in pub_types):
+            continue  # nunca usar artigo retratado
+
         url = f"https://doi.org/{doi}" if doi else f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
         body = (title + "\n\n" + abstract).strip()
         out.append({
@@ -85,6 +91,7 @@ def fetch(pmids):
             "url": url,
             "sections": sections,           # [(label|None, text)]
             "abstract": abstract,
+            "pub_types": pub_types,         # ex.: ["Meta-Analysis", "Review"]
             "content_hash": hashlib.sha256(body.encode("utf-8")).hexdigest(),
         })
     time.sleep(0.34)  # respeitar rate limit do E-utilities

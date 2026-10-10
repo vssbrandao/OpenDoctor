@@ -190,6 +190,7 @@
     .pt-ctx-x{border:0;background:none;color:#0842a0;cursor:pointer;font-size:13px;line-height:1;padding:2px 4px;border-radius:6px}
     .pt-ctx-x:hover{background:rgba(8,66,160,.12)}
     .ev,.ev-real{cursor:pointer}
+    .ai-ungrounded{margin-top:10px;font-family:var(--disp);font-size:12px;line-height:1.45;color:var(--muted)}
 
     /* conversation area */
     .rp-msgs{position:absolute;left:0;right:0;top:44px;bottom:180px;overflow-y:auto;
@@ -707,16 +708,19 @@
         // clicou numa CONSULTA existente → manda o paciente como contexto pro chat
         var evEl = e.target.closest('.ev, .ev-real');
         if (evEl) {
-          var ctx = '';
+          // display (com nome) fica só no navegador; llm (SEM nome) é o que vai à OpenAI (LGPD)
+          var ctx = '', llmCtx = '';
           if (evEl.classList.contains('ev-real')) {
             var rt = evEl.querySelector('.er-title'), rs = evEl.querySelector('.er-sub');
             ctx = (rt ? rt.textContent : '') + (rs ? ' · ' + rs.textContent : '');
+            llmCtx = 'consulta' + (rs ? ' das ' + rs.textContent : '');
           } else {
             var nm = evEl.querySelector('.ev-sub'), ti = evEl.querySelector('.ev-title'),
                 row = evEl.closest('.hr-row'), hr = row ? row.querySelector('.hr-label') : null;
             ctx = (nm ? nm.textContent : '') + (ti ? ' · ' + ti.textContent : '') + (hr ? ' · ' + hr.textContent : '');
+            llmCtx = (ti ? ti.textContent.toLowerCase() : 'consulta') + (hr ? ' das ' + hr.textContent : '');
           }
-          if (window.__setPatient) window.__setPatient(ctx.trim());
+          if (window.__setPatient) window.__setPatient(ctx.trim(), llmCtx.trim());
           return;
         }
         if (!window.__calConnected) return;                    // só com calendário conectado
@@ -798,10 +802,11 @@
       // banner de contexto do paciente
       var ptCtx = document.getElementById('ptCtx');
       var ptCtxText = document.getElementById('ptCtxText');
-      function setPatient(ctx) {
+      function setPatient(ctx, llmCtx) {
         ctx = (ctx || '').trim();
         if (!ctx) return;
-        patientCtx = ctx;
+        // o banner mostra o nome; ao modelo vai só o contexto SEM identificação (LGPD)
+        patientCtx = (llmCtx || '').trim() || 'consulta da agenda';
         if (ptCtxText) ptCtxText.textContent = ctx;
         if (ptCtx) ptCtx.hidden = false;
         // expande o chat se estiver recolhido e foca o input
@@ -975,8 +980,9 @@
         var all = Object.keys(srcByN).map(function (k) { return srcByN[k]; }).sort(function (a, b) { return a.n - b.n; });
         if (!all.length) return;
         var cited = {}; (text.match(/\[(\d+)\]/g) || []).forEach(function (m) { cited[parseInt(m.replace(/\D/g, ''), 10)] = 1; });
+        // só as fontes efetivamente citadas — nunca listar o que não sustenta a resposta
         var list = all.filter(function (s) { return cited[s.n]; });
-        if (!list.length) list = all;
+        if (!list.length) return;
         var div = document.createElement('div'); div.className = 'ai-refs';
         div.innerHTML = '<div class="refs-title">Fontes</div>' + list.map(function (s) {
           var badge = s.evidence ? '<span class="ev-badge ev-' + evClass(s.evidence) + '">' + esc(s.evidence) + '</span> ' : '';
@@ -1042,7 +1048,7 @@
         addMsg('msg-user', text);
         input.value = ''; autogrow();
         // envia o contexto do paciente junto (sem poluir a bolha exibida)
-        var q = patientCtx ? ('Contexto do paciente: ' + patientCtx + '. ' + text) : text;
+        var q = patientCtx ? ('Contexto: pergunta sobre o paciente da ' + patientCtx + '. ' + text) : text;
 
         var wrap = document.createElement('div'); wrap.className = 'msg-ai';
         var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
@@ -1077,26 +1083,41 @@
             bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + (JSON.parse(data).message || 'erro');
           } else if (ev === 'done') {
             try {
-              if (!JSON.parse(data).insufficient && fullText.trim()) {
+              var dn = JSON.parse(data);
+              if (dn.insufficient) insufficient = true;
+              sig = dn.sig || null;
+              if (!dn.insufficient && fullText.trim()) {
                 addRefs(wrap, srcByN, fullText);
+                if (dn.ungrounded > 0) {
+                  var note = document.createElement('div'); note.className = 'ai-ungrounded';
+                  note.textContent = 'Parte desta resposta se baseia em conhecimento clínico geral, sem fonte específica citada.';
+                  wrap.appendChild(note);
+                }
                 addActions(wrap, function () { return bodyEl.innerText; });
               }
             } catch (_) {}
           }
         }
+        var sig = null;
 
         function run() {
-          streamAsk({ query: q, k: 6, history: history.slice(-8) }, handle)
+          streamAsk({ query: q, k: 6, history: history.slice(-12) }, handle)
             .then(function () {
               if (!insufficient && fullText.trim()) {
                 history.push({ role: 'user', content: q });
-                history.push({ role: 'assistant', content: fullText });
+                // a assinatura prova ao servidor que este turno veio dele (não forjável)
+                if (sig) history.push({ role: 'assistant', content: fullText, sig: sig });
                 loadFollowups(wrap, q, fullText);
               }
               finish();
             })
-            .catch(function () {
+            .catch(function (err) {
               if (closed) return;
+              if (err && /http 429/.test(err.message)) {   // limite de uso: não insistir
+                bodyEl.className = 'ai-body err';
+                bodyEl.textContent = '⚠ Muitas perguntas em pouco tempo. Aguarde alguns minutos e tente de novo.';
+                finish(); return;
+              }
               if (started) { finish(); return; }   // já começou → não duplica
               if (attempt < MAX_RETRY) {
                 var delay = RETRY_MS[attempt] || 9000; attempt++;

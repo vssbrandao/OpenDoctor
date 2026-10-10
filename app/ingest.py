@@ -34,8 +34,9 @@ def persist(per, vecs):
     """Grava no banco (idempotente, em lote). Pode rodar em segundo plano."""
     if not per:
         return 0, 0
+    from .search import source_type_from_pubtypes
     with db.connection() as conn:
-        rows = [("pubmed", "article", a["title"], a["url"], "english",
+        rows = [("pubmed", source_type_from_pubtypes(a.get("pub_types")), a["title"], a["url"], "english",
                  (f"{a['year']}-01-01" if a.get("year") else None),
                  "PubMed/PMC (verificar por artigo)", None, a["content_hash"]) for (a, _) in per]
         new_ids = db.upsert_documents_bulk(conn, rows)

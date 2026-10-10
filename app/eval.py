@@ -1,6 +1,7 @@
-"""Eval offline (spec §6.2): busca (recall@6, 1º acerto), resposta (fidelidade/
-cobertura via LLM-as-judge), recusa, e latência p50/p95. Grava baseline em
-docs/eval-history.md.
+"""Eval offline (spec §6.2) sobre o MESMO pipeline do /ask de produção:
+busca (recall@6, 1º acerto), fidelidade/cobertura (LLM-as-judge), escopo,
+recusa indevida, cálculo determinístico, afirmações sem fonte e latência.
+Grava baseline em docs/eval-history.md.
 
 Rodar:  python -m app.eval            # usa evals/golden.jsonl
 """
@@ -46,15 +47,15 @@ def _pct(xs, p):
     return xs[lo] + (xs[hi] - xs[lo]) * (k - lo)
 
 
-def _relevant_hit(hit, terms):
-    blob = ((hit.get("title") or "") + " " + (hit.get("text") or "")).lower()
+def _relevant(title_or_text, terms):
+    blob = (title_or_text or "").lower()
     return all(t.lower() in blob for t in terms)
 
 
 def _judge(question, answer, cited_text, key_points):
     rubric = open(RUBRIC, encoding="utf-8").read()
     user = (f"Pergunta: {question}\n\nResposta do assistente:\n{answer}\n\n"
-            f"Trechos citados (evidência disponível):\n{cited_text or '(nenhum)'}\n\n"
+            f"Trechos recuperados (evidência disponível):\n{cited_text or '(nenhum)'}\n\n"
             f"Pontos-chave esperados: {json.dumps(key_points, ensure_ascii=False)}")
     try:
         out = llm.chat([{"role": "system", "content": rubric},
@@ -66,71 +67,128 @@ def _judge(question, answer, cited_text, key_points):
         return None, None
 
 
+def _parse_sse(chunks):
+    """Converte as strings SSE do _ask_stream em eventos (nome, dict)."""
+    for ch in chunks:
+        ev, data = None, None
+        for line in ch.splitlines():
+            if line.startswith("event: "):
+                ev = line[7:].strip()
+            elif line.startswith("data: "):
+                data = json.loads(line[6:])
+        if ev:
+            yield ev, (data or {})
+
+
+def _run_pipeline(question, history=None):
+    """Roda o MESMO pipeline do /ask de produção e coleta o resultado."""
+    from . import server
+    seen = {}
+    orig_build = synthesize.build
+
+    def spy(query, hits, history=None, extra=None):
+        seen["hits"] = hits
+        return orig_build(query, hits, history, extra)
+
+    synthesize.build = spy
+    try:
+        t0 = time.perf_counter()
+        out = {"answer": "", "sources": [], "insufficient": False, "out_of_scope": False,
+               "done": {}, "msg": ""}
+        for ev, d in _parse_sse(server._ask_stream(question, 6, history or [])):
+            if ev == "sentence":
+                if "first" not in out:
+                    out["first"] = time.perf_counter() - t0
+                out["answer"] += d.get("text", "")
+            elif ev == "sources":
+                out["sources"] = d.get("sources", [])
+            elif ev == "insufficient":
+                out["insufficient"] = True
+                out["msg"] = d.get("text", "")
+            elif ev == "failed":
+                out["insufficient"] = True
+                out["msg"] = "FALHA: " + d.get("message", "")
+            elif ev == "done":
+                out["done"] = d
+                out["out_of_scope"] = bool(d.get("out_of_scope"))
+        out["latency"] = time.perf_counter() - t0
+        out["hits"] = seen.get("hits") or []
+        return out
+    finally:
+        synthesize.build = orig_build
+
+
 def run(path=GOLDEN):
     items = [json.loads(l) for l in open(path, encoding="utf-8") if l.strip()]
-    recalls, firsts, faiths, covs = [], [], [], []
-    false_refusals = 0
-    refusal_total = refusal_ok = 0
-    t_search, t_total = [], []
+    recalls, firsts, faiths, covs, lat, ttft = [], [], [], [], [], []
+    n_medical = declined_medical = 0
+    oos_total = oos_ok = 0
+    ungrounded, cites_removed, calc_ok, calc_total = [], 0, 0, 0
     rows = []
 
     for it in items:
-        q = it["question"]
-        t0 = time.perf_counter()
-        res = search.search(q, k=6)
-        t_s = time.perf_counter() - t0
-        hits = res["hits"]
-
-        refused = res["insufficient"] or not hits
-        answer_text, cited_text = "", ""
-        if not refused:
-            messages, sources = synthesize.build(q, hits[:5])
-            answer_text = llm.chat(messages).strip()
-            if answer_text.upper().startswith(synthesize.SENTINEL):
-                refused = True
-            else:
-                tbn = {i + 1: (h.get("text") or "") for i, h in enumerate(hits[:5])}
-                used = synthesize.used_sources(answer_text, sources)
-                cited_text = "\n".join(tbn.get(s["n"], "") for s in used)
-        t_total.append(time.perf_counter() - t0)
-        t_search.append(t_s)
-
-        typ = it["type"]
+        q, typ = it["question"], it["type"]
+        r = _run_pipeline(q, it.get("history"))
+        lat.append(r["latency"])
+        if "first" in r:
+            ttft.append(r["first"])
         verdict = ""
-        if typ == "answerable":
-            terms = it.get("relevant_terms", [])
-            rec = any(_relevant_hit(h, terms) for h in hits) if terms else False
-            fst = _relevant_hit(hits[0], terms) if (hits and terms) else False
-            recalls.append(1 if rec else 0)
-            firsts.append(1 if fst else 0)
-            if refused:
-                false_refusals += 1
-                verdict = "RECUSA INDEVIDA"
+
+        if typ == "out_of_scope":
+            oos_total += 1
+            if r["out_of_scope"] or (r["insufficient"] and not r["answer"]):
+                oos_ok += 1; verdict = "declinou (ok)"
             else:
-                f, c = _judge(q, answer_text, cited_text, it.get("key_points", []))
-                if f is not None:
-                    faiths.append(f); covs.append(c)
-                verdict = f"fiel={f} cob={c}" if f is not None else "juiz falhou"
-        else:  # no_evidence | out_of_scope → espera recusa
-            refusal_total += 1
-            if refused:
-                refusal_ok += 1; verdict = "recusou (ok)"
-            else:
-                verdict = "RESPONDEU (deveria recusar)"
+                verdict = "RESPONDEU tema fora do escopo"
+            rows.append((it["id"], typ, verdict))
+            continue
+
+        # perguntas clínicas: devem SEMPRE ser respondidas
+        n_medical += 1
+        if r["insufficient"] or not r["answer"].strip():
+            declined_medical += 1
+            rows.append((it["id"], typ, "NÃO RESPONDEU: " + r["msg"][:60]))
+            continue
+
+        terms = it.get("relevant_terms") or []
+        if typ == "answerable" and terms:
+            # título + texto dos trechos que o modelo efetivamente recebeu
+            blobs = [(h.get("title") or "") + " " + (h.get("text") or "") for h in r["hits"]]
+            recalls.append(1 if any(_relevant(b, terms) for b in blobs) else 0)
+            firsts.append(1 if blobs and _relevant(blobs[0], terms) else 0)
+
+        if typ == "calc":
+            calc_total += 1
+            want = it.get("expect_number", "")
+            ok = want and (want in r["answer"] or want.replace(",", ".") in r["answer"])
+            calc_ok += 1 if ok else 0
+
+        d = r["done"] or {}
+        ungrounded.append(d.get("ungrounded", 0))
+        cites_removed += d.get("citations_removed", 0) or 0
+        hit_text = "\n\n".join(f"[{i + 1}] {h.get('title', '')}\n{(h.get('text') or '')[:1500]}"
+                                for i, h in enumerate(r["hits"]))
+        f, c = _judge(q, r["answer"], hit_text, it.get("key_points", []))
+        if f is not None:
+            faiths.append(f); covs.append(c)
+        verdict = (f"fiel={f} cob={c}" if f is not None else "juiz falhou") + \
+                  f" sem_fonte={d.get('ungrounded', 0)} cit_removidas={d.get('citations_removed', 0)}"
         rows.append((it["id"], typ, verdict))
 
-    n_ans = len(recalls)
     metrics = {
-        "recall@6": round(sum(recalls) / n_ans, 3) if n_ans else None,
-        "first_hit": round(sum(firsts) / n_ans, 3) if n_ans else None,
-        "false_refusal_rate": round(false_refusals / n_ans, 3) if n_ans else None,
-        "refusal_accuracy": round(refusal_ok / refusal_total, 3) if refusal_total else None,
+        "recall@6": round(sum(recalls) / len(recalls), 3) if recalls else None,
+        "first_hit": round(sum(firsts) / len(firsts), 3) if firsts else None,
+        "false_refusal_rate": round(declined_medical / n_medical, 3) if n_medical else None,
+        "out_of_scope_accuracy": round(oos_ok / oos_total, 3) if oos_total else None,
+        "calc_accuracy": round(calc_ok / calc_total, 3) if calc_total else None,
         "faithfulness_mean": round(statistics.mean(faiths), 3) if faiths else None,
         "coverage_mean": round(statistics.mean(covs), 3) if covs else None,
-        "latency_search_p50": round(_pct(t_search, .5), 2),
-        "latency_search_p95": round(_pct(t_search, .95), 2),
-        "latency_total_p50": round(_pct(t_total, .5), 2),
-        "latency_total_p95": round(_pct(t_total, .95), 2),
+        "ungrounded_mean": round(statistics.mean(ungrounded), 2) if ungrounded else None,
+        "citations_removed": cites_removed,
+        "latency_first_p50": round(_pct(ttft, .5), 2),
+        "latency_first_p95": round(_pct(ttft, .95), 2),
+        "latency_total_p50": round(_pct(lat, .5), 2),
+        "latency_total_p95": round(_pct(lat, .95), 2),
     }
     return metrics, rows
 
@@ -138,9 +196,10 @@ def run(path=GOLDEN):
 def _write_history(metrics):
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     line = (f"| {ts} | {config.OPENAI_MODEL} | clinical_answer.v3 | "
-            f"{metrics['recall@6']} | {metrics['first_hit']} | {metrics['refusal_accuracy']} | "
+            f"{metrics['recall@6']} | {metrics['first_hit']} | {metrics['out_of_scope_accuracy']} | "
             f"{metrics['false_refusal_rate']} | {metrics['faithfulness_mean']} | "
-            f"{metrics['coverage_mean']} | {metrics['latency_total_p50']} | {metrics['latency_total_p95']} |\n")
+            f"{metrics['coverage_mean']} | {metrics['latency_total_p50']} | {metrics['latency_total_p95']} |"
+            f" calc={metrics['calc_accuracy']} sem_fonte={metrics['ungrounded_mean']} |\n")
     new = not os.path.exists(HISTORY)
     os.makedirs(os.path.dirname(HISTORY), exist_ok=True)
     with open(HISTORY, "a", encoding="utf-8") as fh:

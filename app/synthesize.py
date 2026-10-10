@@ -14,6 +14,11 @@ from . import search, llm, config
 PROMPT_PATH = os.path.join(config.ROOT, "prompts", "clinical_answer.v3.md")
 SENTINEL = "EVIDENCIA_INSUFICIENTE"
 REFUSAL = "Não encontrei evidência científica suficiente nas fontes para uma resposta segura."
+OUT_OF_SCOPE = ("Sou o assistente clínico do OpenDoctor e ajudo profissionais de saúde em "
+                "temas médicos. Essa pergunta está fora do meu escopo.")
+EMPTY_ANSWER = "Não consegui gerar uma resposta agora. Tente reformular a pergunta."
+HISTORY_TURNS = 6          # turnos anteriores enviados ao LLM (custo/tokens)
+HISTORY_CHARS = 3000       # teto de caracteres por turno do histórico
 
 
 def load_prompt():
@@ -53,11 +58,11 @@ def build(query, hits, history=None, extra=None):
             (f"\n\n{extra}" if extra else "") +
             f"\n\nPergunta do médico: {query}")
     messages = [{"role": "system", "content": load_prompt()}]
-    for m in (history or []):
+    for m in (history or [])[-HISTORY_TURNS:]:
         role = m.get("role")
         content = (m.get("content") or "").strip()
         if role in ("user", "assistant") and content:
-            messages.append({"role": role, "content": content[:4000]})
+            messages.append({"role": role, "content": content[:HISTORY_CHARS]})
     messages.append({"role": "user", "content": user})
     return messages, sources
 

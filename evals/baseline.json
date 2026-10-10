@@ -1,10 +1,12 @@
 {
-  "_comment": "Limiares de regressão do eval (spec §6.2). CI falha se uma métrica cruzar o limite. Ajuste conforme a baseline evolui.",
+  "_comment": "Limiares de regressão do eval (spec §6.2), rodando o MESMO pipeline do /ask de produção. CI falha se uma métrica cruzar o limite. Baseline de 10/10/2026: recall@6=1.0, first_hit=1.0, false_refusal=0, out_of_scope=1.0, calc=1.0, faithfulness=0.9, coverage=1.0.",
   "min": {
     "recall@6": 0.9,
-    "refusal_accuracy": 0.9,
+    "first_hit": 0.8,
+    "out_of_scope_accuracy": 1.0,
+    "calc_accuracy": 1.0,
     "faithfulness_mean": 0.8,
-    "coverage_mean": 0.8
+    "coverage_mean": 0.85
   },
   "max": {
     "false_refusal_rate": 0.1

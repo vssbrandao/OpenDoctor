@@ -1,15 +1,22 @@
 # Rubrica do juiz (LLM-as-judge) — avaliação offline
 
 Usada apenas no eval (nunca em runtime). Avalia uma resposta do assistente contra
-os trechos efetivamente citados e os pontos-chave esperados.
+os trechos recuperados e os pontos-chave esperados.
+
+Política do assistente: ele USA a evidência recuperada (citando [n]) e PODE
+complementar com conhecimento clínico consolidado SEM citação, desde que não
+o apresente como vindo de uma fonte e não invente dados específicos.
 
 Pontue de 0.0 a 1.0:
 
-## faithfulness (fidelidade à evidência)
-- 1.0 — todas as afirmações clínicas são sustentadas pelos trechos citados; nenhum dado,
-  número ou fármaco inventado.
-- 0.5 — majoritariamente fiel, mas há ao menos uma afirmação sem suporte claro nos trechos.
-- 0.0 — contém afirmação clínica contrária ou ausente nos trechos (alucinação).
+## faithfulness (fidelidade / honestidade das fontes)
+- 1.0 — toda afirmação com [n] é sustentada pelo trecho [n]; nenhum número, ensaio,
+  estatística ou referência inventado; o conteúdo sem citação é conhecimento clínico
+  correto e consolidado.
+- 0.5 — majoritariamente fiel, mas ao menos uma afirmação atribuída a [n] não está
+  clara no trecho, OU um dado específico sem fonte parece impreciso.
+- 0.0 — atribui a um trecho algo que ele não diz, inventa dado/ensaio, ou contém
+  afirmação clínica incorreta/perigosa.
 
 ## coverage (cobertura dos pontos-chave)
 - Fração dos `key_points` esperados que a resposta aborda corretamente.

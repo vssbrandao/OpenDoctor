@@ -1,11 +1,17 @@
 """Validação determinística por frase (spec §6.1). Funções puras, testáveis.
 
-Checagens aplicadas a cada frase já fechada, ANTES de enviá-la ao cliente:
- 1. Frase com conteúdo clínico (dose/número com unidade ou fármaco) precisa de ≥1 citação [n].
- 2. Todo [n] citado deve estar no conjunto de trechos enviados ao LLM.
- 3. Todo número-com-unidade e todo fármaco da frase deve aparecer nos TRECHOS CITADOS.
+Aplicadas a cada frase já fechada, ANTES de enviá-la ao cliente:
+ 1. validate_sentence: todo [n] citado deve existir entre os trechos enviados
+    ao LLM (citação a trecho inexistente → frase descartada).
+ 2. ground_citations: FIDELIDADE da citação — se a frase cita [n] e contém
+    número com unidade (dose, %, mg/dL...), esse número precisa aparecer nos
+    trechos citados (ou nos dados do próprio médico/cálculo do sistema), com
+    tolerância de arredondamento. Se não aparecer, a CITAÇÃO é removida: a
+    frase continua, mas deixa de fingir que tem fonte.
+Frases clínicas sem citação são permitidas (conhecimento consolidado) e são
+contadas como "sem fonte" para transparência.
 
-Sem 2ª chamada ao LLM. Em caso de falha, o servidor interrompe e mostra só o validado.
+Sem 2ª chamada ao LLM.
 """
 import re
 
@@ -72,6 +78,64 @@ def validate_sentence(sentence, allowed_ns, text_by_n):
         return False, f"citação inválida {sorted(invalid)} (fora dos trechos enviados)"
 
     return True, None
+
+
+def _to_float(s):
+    try:
+        return float(s.replace(",", "."))
+    except ValueError:
+        return None
+
+
+def _supported(num, pool_numbers):
+    """O número da frase está no pool (com tolerância de arredondamento)?"""
+    x = _to_float(num)
+    if x is None:
+        return False
+    tol = max(0.5, abs(x) * 0.03)
+    return any(abs(x - y) <= tol for y in pool_numbers)
+
+
+def _numbers_in(text):
+    out = []
+    for m in _NUM_RE.finditer(text or ""):
+        v = _to_float(m.group(0))
+        if v is not None:
+            out.append(v)
+    return out
+
+
+def _percent_forms(pool):
+    """Percentuais que o texto pode legitimamente derivar de uma razão (RR/HR/OR):
+    'RR 0,68' → redução de 32%, '1,25' → aumento de 25%, '0,68' → 68%."""
+    out = []
+    for y in pool:
+        if 0 < y < 5:
+            out += [100 * (1 - y), 100 * (y - 1), 100 * y]
+    return out
+
+
+def ground_citations(sentence, text_by_n, extra_text=""):
+    """Remove citações [n] não sustentadas por números da frase.
+    Devolve (frase_final, removidas:set). extra_text: dados do médico/cálculo."""
+    cites = citations(sentence)
+    doses = dose_tokens(sentence)
+    if not cites or not doses:
+        return sentence, set()
+    pool = _numbers_in(" ".join(text_by_n.get(n, "") for n in cites) + " " + (extra_text or ""))
+    pct_pool = pool + _percent_forms(pool)
+    if all(_supported(num, pct_pool if unit == "%" else pool) for num, unit in doses):
+        return sentence, set()
+    # número sem respaldo nos trechos citados → tira a atribuição falsa
+    out = _CITE_RE.sub("", sentence)
+    out = re.sub(r"\s+([.,;:!?])", r"\1", out)
+    out = re.sub(r"[ \t]{2,}", " ", out)
+    return out, cites
+
+
+def is_ungrounded_claim(sentence):
+    """Frase com conteúdo clínico (dose/número/fármaco) e sem nenhuma citação."""
+    return is_clinical(sentence) and not citations(sentence)
 
 
 # ------- buffer de frases para o streaming -------

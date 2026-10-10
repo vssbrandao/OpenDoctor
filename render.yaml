@@ -17,6 +17,8 @@ services:
         value: https://opendoctor.app
       - key: OPENAI_MODEL
         value: gpt-4o
+      - key: OPENAI_FAST_MODEL
+        value: gpt-4o-mini
       - key: EMBEDDING_MODEL
         value: text-embedding-3-small
       - key: EMBEDDING_DIM

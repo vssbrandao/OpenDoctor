@@ -13,11 +13,12 @@ def _headers():
             "Content-Type": "application/json"}
 
 
-def chat(messages, temperature=0.2, max_tokens=2000):
-    r = httpx.post(URL, headers=_headers(), timeout=60, json={
-        "model": config.OPENAI_MODEL, "messages": messages,
-        "temperature": temperature, "max_tokens": max_tokens,
-    })
+def chat(messages, temperature=0.2, max_tokens=2000, model=None, json_mode=False):
+    body = {"model": model or config.OPENAI_MODEL, "messages": messages,
+            "temperature": temperature, "max_tokens": max_tokens}
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    r = httpx.post(URL, headers=_headers(), timeout=60, json=body)
     if r.status_code != 200:
         raise RuntimeError(f"OpenAI {r.status_code}: {r.text[:300]}")
     return r.json()["choices"][0]["message"]["content"]

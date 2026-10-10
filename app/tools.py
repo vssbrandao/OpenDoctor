@@ -6,7 +6,7 @@ calculados de forma exata e injetados no prompt; o modelo só explica.
 import re
 import json
 
-from . import llm
+from . import llm, config
 
 # palavras que indicam pedido de função renal
 _RENAL_RE = re.compile(r"\b(e?gfr|tfg|taxa de filtra[cç][aã]o|filtra[cç][aã]o glomerular|"
@@ -59,7 +59,7 @@ def _extract_renal_inputs(text):
              "\"weight\": peso em kg ou null}. Se a creatinina vier em µmol/L, divida por 88,4. "
              "Aceite vírgula decimal."},
             {"role": "user", "content": text[:1500]}],
-            temperature=0, max_tokens=60)
+            temperature=0, max_tokens=60, model=config.OPENAI_FAST_MODEL, json_mode=True)
         m = re.search(r"\{.*\}", out, re.DOTALL)
         return json.loads(m.group(0)) if m else {}
     except Exception:
