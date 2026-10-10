@@ -66,18 +66,45 @@ def _fts_search(conn, query, limit):
         return cur.fetchall()
 
 
+# classificação do nível de evidência pelo título/tipo (heurística) — usada no
+# rerank (prioriza evidência forte) e no selo mostrado ao médico.
+_EVIDENCE_RULES = [
+    (("practice guideline", "clinical guideline", " guideline", "guidelines", "consensus", "recommendation"), "Diretriz", 5),
+    (("meta-analysis", "meta analysis", "metanalysis", "metanálise", "pooled analysis", "umbrella review"), "Metanálise", 4),
+    (("systematic review",), "Revisão sistemática", 4),
+    (("randomized", "randomised", "randomized controlled", "double-blind", "placebo-controlled", "controlled trial"), "Ensaio clínico", 3),
+    (("cohort", "case-control", "case control", "observational", "prospective", "retrospective", "registry", "real-world"), "Observacional", 2),
+    (("narrative review", "review", "overview", "state of the art", "update on"), "Revisão", 2),
+]
+
+
+def evidence_level(title, source_type=None):
+    """Devolve (label, peso 1–5) estimando a força da evidência."""
+    if source_type in ("guideline", "protocol"):
+        return ("Diretriz", 5)
+    t = (title or "").lower()
+    for keys, label, w in _EVIDENCE_RULES:
+        if any(kk in t for kk in keys):
+            return (label, w)
+    return ("Artigo", 1)
+
+
 def _row_to_hit(row):
     (cid, doc_id, section, text, title, url, source_type, pub_date, score) = row
+    lbl, w = evidence_level(title, source_type)
     return {
         "chunk_id": cid, "document_id": doc_id, "section_title": section,
         "text": text, "title": title, "url": url,
         "source_type": source_type, "publication_date": pub_date,
+        "evidence": lbl, "evidence_w": w,
         "score": float(score) if score is not None else 0.0,
     }
 
 
 def _boost(hit):
     b = SOURCE_BOOST.get(hit.get("source_type"), 1.0)
+    # rerank ponderado por nível de evidência (diretriz/metanálise > artigo)
+    b *= 1.0 + 0.05 * (hit.get("evidence_w", 1) - 1)
     d = hit.get("publication_date")
     if d is not None:
         yr = d.year if hasattr(d, "year") else int(str(d)[:4])

@@ -238,6 +238,14 @@
       color:#0842a0;text-decoration:none;margin:5px 0}
     .ai-refs .ref-item:hover{text-decoration:underline}
     .ai-refs .ref-n{color:var(--muted);font-weight:600}
+    .ev-badge{display:inline-block;font-family:var(--disp);font-weight:700;font-size:10px;line-height:1;
+      padding:3px 7px;border-radius:999px;vertical-align:middle;white-space:nowrap}
+    .ev-dir{background:#e6f4ea;color:#188038}      /* Diretriz */
+    .ev-meta{background:#e8f0fe;color:#1a56db}      /* Metanálise / Revisão sistemática */
+    .ev-rct{background:#e0f2f1;color:#00796b}       /* Ensaio clínico */
+    .ev-obs{background:#fef7e0;color:#b06000}       /* Observacional */
+    .ev-rev{background:#f1f3f4;color:#5f6368}       /* Revisão */
+    .ev-art{background:#f1f3f4;color:#5f6368}       /* Artigo */
     .msg-ai hr{border:0;border-top:1px solid var(--sb-border);margin:12px 0}
     .msg-ai .tbl-wrap{overflow-x:auto;margin:14px 0 16px;border:1px solid var(--sb-border);border-radius:12px}
     .msg-ai table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.5}
@@ -919,10 +927,16 @@
         if (!list.length) list = all;
         var div = document.createElement('div'); div.className = 'ai-refs';
         div.innerHTML = '<div class="refs-title">Fontes</div>' + list.map(function (s) {
+          var badge = s.evidence ? '<span class="ev-badge ev-' + evClass(s.evidence) + '">' + esc(s.evidence) + '</span> ' : '';
           return '<a class="ref-item" href="' + s.url + '" target="_blank" rel="noopener noreferrer">' +
-            '<span class="ref-n">[' + s.n + ']</span> ' + esc(s.title || '') + (s.year ? ' (' + s.year + ')' : '') + '</a>';
+            '<span class="ref-n">[' + s.n + ']</span> ' + badge + esc(s.title || '') + (s.year ? ' (' + s.year + ')' : '') + '</a>';
         }).join('');
         container.appendChild(div);
+      }
+      function evClass(label) {
+        var m = { 'Diretriz': 'dir', 'Metanálise': 'meta', 'Revisão sistemática': 'meta',
+                  'Ensaio clínico': 'rct', 'Observacional': 'obs', 'Revisão': 'rev' };
+        return m[label] || 'art';
       }
 
       // lê um stream SSE vindo de um POST (fetch) e chama on(event, data)

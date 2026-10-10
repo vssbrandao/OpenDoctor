@@ -104,10 +104,12 @@ def _rank_fresh(qvec, per, vecs, k):
     for sim, i in scored[:k]:
         a, section, text = meta[i]
         yr = a.get("year")
+        lbl, w = search.evidence_level(a.get("title"))
         hits.append({
             "chunk_id": -(i + 1), "document_id": None, "section_title": section,
             "text": text, "title": a["title"], "url": a["url"], "source_type": "article",
             "publication_date": datetime.date(yr, 1, 1) if yr else None,
+            "evidence": lbl, "evidence_w": w,
             "score": sim, "cosine_sim": sim,
         })
     return hits

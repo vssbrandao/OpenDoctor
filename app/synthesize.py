@@ -43,7 +43,7 @@ def build(query, hits, history=None):
         sources.append({
             "n": i, "chunk_id": h["chunk_id"], "document_id": h["document_id"],
             "title": h.get("title"), "url": h.get("url"),
-            "source_type": h.get("source_type"),
+            "source_type": h.get("source_type"), "evidence": h.get("evidence"),
             "year": h["publication_date"].year if h.get("publication_date") else None,
             "section_title": h.get("section_title"),
         })
