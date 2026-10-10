@@ -182,6 +182,15 @@
       font-family:var(--disp);font-size:13px;line-height:1.3;color:#071216;cursor:pointer;text-align:left}
     .fup-chip:hover{background:var(--ev-bg)}
 
+    /* banner de contexto do paciente (vindo da agenda) */
+    .pt-ctx{display:flex;align-items:center;gap:8px;margin:12px 24px 0;padding:8px 12px;
+      background:#e8f0fe;border-radius:12px;font-family:var(--disp);font-size:13px;color:#0842a0}
+    .pt-ctx svg{flex:none}
+    .pt-ctx-text{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pt-ctx-x{border:0;background:none;color:#0842a0;cursor:pointer;font-size:13px;line-height:1;padding:2px 4px;border-radius:6px}
+    .pt-ctx-x:hover{background:rgba(8,66,160,.12)}
+    .ev,.ev-real{cursor:pointer}
+
     /* conversation area */
     .rp-msgs{position:absolute;left:0;right:0;top:44px;bottom:180px;overflow-y:auto;
       padding:16px 24px;display:none;flex-direction:column;gap:32px;scrollbar-width:thin}
@@ -466,6 +475,11 @@
       </div>
 
       <div class="big-input">
+        <div class="pt-ctx" id="ptCtx" hidden>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.6" stroke="#0842a0" stroke-width="1.3"/><path d="M3 13c0-2.2 2.2-3.6 5-3.6s5 1.4 5 3.6" stroke="#0842a0" stroke-width="1.3" stroke-linecap="round"/></svg>
+          <span class="pt-ctx-text" id="ptCtxText"></span>
+          <button class="pt-ctx-x" id="ptCtxClear" type="button" aria-label="Remover contexto">✕</button>
+        </div>
         <div class="bi-top">
           <textarea class="bi-input" id="biInput" rows="1" placeholder="Ask medical questions"></textarea>
         </div>
@@ -689,7 +703,22 @@
 
       calInner.addEventListener('click', function (e) {
         if (!pop.hidden) { close(); return; }                  // aberto → clicar na agenda fecha
-        if (e.target.closest('.ev, .ev-real, .now')) return;   // clicou num evento/marcador
+        if (e.target.closest('.now')) return;
+        // clicou numa CONSULTA existente → manda o paciente como contexto pro chat
+        var evEl = e.target.closest('.ev, .ev-real');
+        if (evEl) {
+          var ctx = '';
+          if (evEl.classList.contains('ev-real')) {
+            var rt = evEl.querySelector('.er-title'), rs = evEl.querySelector('.er-sub');
+            ctx = (rt ? rt.textContent : '') + (rs ? ' · ' + rs.textContent : '');
+          } else {
+            var nm = evEl.querySelector('.ev-sub'), ti = evEl.querySelector('.ev-title'),
+                row = evEl.closest('.hr-row'), hr = row ? row.querySelector('.hr-label') : null;
+            ctx = (nm ? nm.textContent : '') + (ti ? ' · ' + ti.textContent : '') + (hr ? ' · ' + hr.textContent : '');
+          }
+          if (window.__setPatient) window.__setPatient(ctx.trim());
+          return;
+        }
         if (!window.__calConnected) return;                    // só com calendário conectado
         var rect = calInner.getBoundingClientRect();
         var t = FIRST_HOUR + (e.clientY - rect.top) / HOUR_PX;
@@ -764,6 +793,29 @@
 
       var history = [];   // [{role:'user'|'assistant', content:string}]
       var busy = false;
+      var patientCtx = null;   // contexto do paciente vindo da agenda
+
+      // banner de contexto do paciente
+      var ptCtx = document.getElementById('ptCtx');
+      var ptCtxText = document.getElementById('ptCtxText');
+      function setPatient(ctx) {
+        ctx = (ctx || '').trim();
+        if (!ctx) return;
+        patientCtx = ctx;
+        if (ptCtxText) ptCtxText.textContent = ctx;
+        if (ptCtx) ptCtx.hidden = false;
+        // expande o chat se estiver recolhido e foca o input
+        var right = document.querySelector('.right');
+        if (right && right.classList.contains('collapsed')) {
+          right.classList.remove('collapsed');
+          var sc = document.getElementById('showChat'); if (sc) sc.hidden = true;
+        }
+        if (input) input.focus();
+      }
+      function clearPatient() { patientCtx = null; if (ptCtx) ptCtx.hidden = true; }
+      var ptClear = document.getElementById('ptCtxClear');
+      if (ptClear) ptClear.addEventListener('click', clearPatient);
+      window.__setPatient = setPatient;   // usado pelo clique nas consultas da agenda
 
       // --- minimal, safe Markdown → HTML (escapes first, then formats) ---
       function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -989,6 +1041,8 @@
         msgs.classList.add('on');
         addMsg('msg-user', text);
         input.value = ''; autogrow();
+        // envia o contexto do paciente junto (sem poluir a bolha exibida)
+        var q = patientCtx ? ('Contexto do paciente: ' + patientCtx + '. ' + text) : text;
 
         var wrap = document.createElement('div'); wrap.className = 'msg-ai';
         var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
@@ -1032,12 +1086,12 @@
         }
 
         function run() {
-          streamAsk({ query: text, k: 6, history: history.slice(-8) }, handle)
+          streamAsk({ query: q, k: 6, history: history.slice(-8) }, handle)
             .then(function () {
               if (!insufficient && fullText.trim()) {
-                history.push({ role: 'user', content: text });
+                history.push({ role: 'user', content: q });
                 history.push({ role: 'assistant', content: fullText });
-                loadFollowups(wrap, text, fullText);
+                loadFollowups(wrap, q, fullText);
               }
               finish();
             })
