@@ -15,7 +15,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth
+from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools
 
 app = FastAPI(title="OpenDoctor Assistant")
 WEB_DIR = os.path.join(config.ROOT, "web")
@@ -191,8 +191,17 @@ def _ask_stream(query, k, history=None):
     _log("synthesize best_sim=", round(res["best_sim"], 3), "hits=", len(hits))
 
     # 2) fontes ANTES da resposta (alavanca de latência percebida)
+    # cálculos determinísticos (ex.: eGFR) — o código calcula, o modelo explica
+    try:
+        extra = tools.renal_note(ctxq)
+    except Exception as e:
+        _log("tools falhou:", str(e)[:150])
+        extra = None
+    if extra:
+        _log("tool renal aplicado")
+
     _log("synthesize.build + stream…")
-    messages, sources = synthesize.build(query, hits, history)
+    messages, sources = synthesize.build(query, hits, history, extra)
     yield _sse("sources", {"sources": sources})
 
     # texto de cada trecho por número de citação, p/ a validação (spec §6.1)

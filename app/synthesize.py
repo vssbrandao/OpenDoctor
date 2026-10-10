@@ -30,9 +30,10 @@ def _source_label(hit):
     return f"{hit.get('source_type','?')}, {yr}{doi}"
 
 
-def build(query, hits, history=None):
+def build(query, hits, history=None, extra=None):
     """Devolve (messages, sources) — sources[i] corresponde a [i+1].
-    history: turnos anteriores [{role:'user'|'assistant', content}] p/ follow-ups."""
+    history: turnos anteriores [{role:'user'|'assistant', content}] p/ follow-ups.
+    extra: bloco determinístico (ex.: cálculo de eGFR) a ser usado pelo modelo."""
     blocks = []
     sources = []
     for i, h in enumerate(hits, start=1):
@@ -49,6 +50,7 @@ def build(query, hits, history=None):
         })
     excerpts = "\n\n".join(blocks) if blocks else "(nenhum trecho recuperado)"
     user = ("Trechos (cite com [n]):\n\n" + excerpts +
+            (f"\n\n{extra}" if extra else "") +
             f"\n\nPergunta do médico: {query}")
     messages = [{"role": "system", "content": load_prompt()}]
     for m in (history or []):
