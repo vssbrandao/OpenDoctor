@@ -60,6 +60,14 @@
     .pill-btn img{width:24px;height:24px;flex:none}
     .pill-btn:hover{background:#f7f7f7}
     .pill-btn.dark{background:#000;color:#fff;padding:0 20px}
+    /* menu Dia / Semana (abre abaixo do botão, alinhado à direita dele) */
+    .view-pop{position:absolute;top:48px;z-index:30;min-width:140px;background:#fff;border:1px solid var(--sb-border);
+      border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;display:flex;flex-direction:column;gap:2px}
+    .view-pop[hidden]{display:none}
+    .view-pop button{border:0;background:none;text-align:left;padding:8px 12px;border-radius:10px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .view-pop button:hover{background:var(--active)}
+    .view-pop button.on{font-weight:700}
     .pill-btn.dark:hover{background:#222}
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
@@ -397,9 +405,13 @@
       <div class="ag-head">
         <div class="cal-head" id="calHead"><span class="date">Seg, 30 Junho</span></div>
         <div class="ag-actions">
-          <button class="pill-btn" id="viewSel" type="button" title="Mudar visão"><span id="viewLabel">Semana</span><img src="assets/icons/caret-down.svg" width="24" height="24" alt=""></button>
+          <button class="pill-btn" id="viewSel" type="button" title="Mudar visão" aria-haspopup="true"><span id="viewLabel">Dia</span><img src="assets/icons/caret-down.svg" width="24" height="24" alt=""></button>
           <button class="pill-btn dark" id="agCreate" type="button">Criar</button>
         </div>
+      </div>
+      <div class="view-pop" id="viewPop" hidden>
+        <button type="button" data-v="dia">Dia</button>
+        <button type="button" data-v="semana">Semana</button>
       </div>
       <div class="wk" id="wk"><div class="wk-grid" id="wkGrid"></div></div>
       <div class="cal-pop" id="calPop" hidden>
@@ -1305,7 +1317,7 @@
     (function () {
       var stage = document.querySelector('.stage');
       var sel = document.getElementById('viewSel'), label = document.getElementById('viewLabel');
-      var grid = document.getElementById('wkGrid');
+      var pop = document.getElementById('viewPop'), grid = document.getElementById('wkGrid');
       var wk = document.getElementById('wk');
       if (!stage || !sel || !grid) return;
       var WK_PX = 142, WK_FIRST = 0, WK_LAST = 24;         // semana: 0h–24h, 142px por hora (Figma 1014:8609)
@@ -1401,8 +1413,8 @@
       function setView(v, save) {
         var week = v === 'semana';
         stage.classList.toggle('week', week);
-        label.textContent = week ? 'Dia' : 'Semana';          // o botão mostra a visão para onde vai
-        sel.title = week ? 'Ver o dia' : 'Ver a semana';
+        label.textContent = week ? 'Semana' : 'Dia';          // o botão mostra a visão atual
+        if (pop) pop.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
         if (save) { try { localStorage.setItem('od_agenda_view', v); } catch (_) {} }
         clearInterval(timer);
         if (week) {
@@ -1411,7 +1423,20 @@
         }
       }
 
-      sel.addEventListener('click', function () { setView(isWeek() ? 'dia' : 'semana', true); });
+      sel.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!pop) return;
+        var head = sel.offsetParent;                          // .ag-head
+        pop.style.right = (head.clientWidth - (sel.offsetLeft + sel.offsetWidth)) + 'px';
+        pop.hidden = !pop.hidden;
+      });
+      if (pop) pop.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var b = e.target.closest('button'); if (!b) return;
+        pop.hidden = true; setView(b.getAttribute('data-v'), true);
+      });
+      document.addEventListener('click', function () { if (pop) pop.hidden = true; });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && pop) pop.hidden = true; });
 
       // data escolhida no calendário (ou "hoje") → semana correspondente
       window.__onDateChange = function (d) { if (isWeek()) showWeek(d, true); };
