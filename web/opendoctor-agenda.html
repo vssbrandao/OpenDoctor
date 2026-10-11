@@ -42,8 +42,19 @@
 
     /* ===== CENTER: DAY AGENDA ===== */
     .center{flex:2 1 0;min-width:0;height:100%;position:relative}
-    .cal-head{position:absolute;top:14px;left:24px;z-index:3;display:flex;align-items:center;gap:3px;cursor:pointer}
-    .cal-head .date{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    /* cabeçalho da agenda (Figma 1014:8325 "Date Navigation"): 52px, padding 8 24 */
+    .ag-head{position:absolute;top:0;left:0;right:0;height:52px;padding:8px 24px;z-index:3;
+      display:flex;align-items:center;justify-content:space-between}
+    .cal-head{display:flex;align-items:center;cursor:pointer}
+    .cal-head .date{min-width:92px;font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    /* botões de ícone dos cabeçalhos: 36x36, raio 8, ícone #8B8B8B; grupos com gap 4 */
+    .hd-btn{width:36px;height:36px;border:0;padding:0;background:none;border-radius:8px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;flex:none}
+    .hd-btn:hover{background:rgba(0,0,0,.05)}
+    .hd-actions{display:flex;align-items:center;gap:4px}
+    /* ajuste óptico p/ cair na mesma posição do glifo no Figma */
+    .ic-cal{transform:translate(1px,2px)}
+    .ic-exp{transform:translateX(-1px)}
     /* calendário (popover) */
     .cal-pop{position:absolute;top:44px;left:24px;z-index:30;width:280px;background:#fff;
       border:1px solid var(--sb-border);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);
@@ -67,7 +78,7 @@
     .cp-today{margin-top:10px;width:100%;border:0;background:#f3f3f3;border-radius:999px;
       padding:8px;font-size:13px;font-weight:600;color:#0842a0;cursor:pointer;font-family:var(--disp)}
     .cp-today:hover{background:#e9e9e9}
-    .cal{position:absolute;left:0;right:0;top:52px;bottom:0;overflow-y:auto;overflow-x:hidden;
+    .cal{position:absolute;left:0;right:0;top:60px;bottom:0;overflow-y:auto;overflow-x:hidden;
       padding:0 0 0 24px;scrollbar-width:thin}
     .cal-inner{position:relative;padding-bottom:40px}
 
@@ -146,15 +157,23 @@
 
     /* ===== RIGHT PANEL (487) ===== */
     .right{flex:1 1 0;min-width:503px;max-width:720px;height:100%;background:#fff;position:relative;box-shadow:inset 1px 0 0 var(--sb-border)}
-    .rp-head{display:flex;align-items:center;justify-content:space-between;padding:14px 24px}
+    .rp-head{display:flex;align-items:center;justify-content:space-between;padding:8px 24px}
     .rp-title{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    /* cabeçalho (Figma 1012:6821): [expandir + título] à esquerda (gap 8), [nova conversa, agenda] à direita (gap 16) */
-    .rp-left{display:flex;align-items:center;gap:8px}
-    .rp-actions{display:flex;align-items:center;gap:16px}
-    .ra-btn{width:20px;height:24px;border:0;background:none;padding:0;cursor:pointer;border-radius:6px;
-      display:flex;align-items:center;justify-content:center;flex:none}
-    .ra-btn:hover{background:rgba(0,0,0,.06)}
-    .ra-btn.ra-expand{width:23px;height:21px}
+    /* agenda em tela cheia (botão expandir do cabeçalho da agenda) */
+    .stage.agenda-full .right{display:none}
+    /* histórico de conversas no menu (Figma 1014:8439), só na versão expandida com o menu aberto */
+    .nav{display:flex;flex-direction:column}
+    .nav-top,.nav-main{flex:none}
+    .nav-hist{display:none;flex:1;min-height:0;overflow-y:auto;margin-top:58px;padding-bottom:16px;
+      flex-direction:column;gap:4px;scrollbar-width:thin}
+    .stage.expanded:not(.hist-off) .nav:not(.collapsed) .nav-hist.has{display:flex}
+    .hist-group{display:flex;flex-direction:column;gap:8px}
+    .hist-list{display:flex;flex-direction:column;gap:4px}
+    .hist-head{padding:8px 16px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#6B7173}
+    .hist-item{display:block;width:100%;border:0;background:none;text-align:left;cursor:pointer;
+      padding:8px 16px;border-radius:10px;font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;
+      color:#071216;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .hist-item:hover,.hist-item.on{background:var(--active)}
     /* versão expandida (Figma 1012:7220): menu fica, agenda some, conversa e campo numa coluna de 700px
        em x=503 quando a tela tem 1440px (calc(50% - 351px) dentro do painel) */
     .stage.expanded .center{display:none}
@@ -340,13 +359,20 @@
           <div class="item" title="Configurações"><span class="ico"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 15.7712C8.32619 15.7712 8.15238 15.7637 7.97857 15.7486L7.5705 16.5194C7.44959 16.731 7.26067 16.8368 7.01885 16.7914C6.79214 16.7461 6.63345 16.5874 6.60322 16.3456L6.48231 15.4916C6.14225 15.3934 5.8173 15.2725 5.50747 15.1289L4.85757 15.7108C4.67621 15.8695 4.45706 15.8997 4.24547 15.7788C4.04143 15.6579 3.9583 15.4539 4.00365 15.2196L4.18501 14.3732C3.90541 14.1692 3.63336 13.95 3.38398 13.7007L2.58295 14.0256C2.35624 14.1163 2.14465 14.0709 1.98595 13.882C1.83482 13.7007 1.8197 13.474 1.94817 13.2699L2.40914 12.5445C2.21266 12.2497 2.03885 11.9475 1.88771 11.6376L1.02623 11.6603C0.776849 11.6679 0.595484 11.5545 0.512358 11.3278C0.436789 11.1011 0.489687 10.8819 0.686166 10.7384L1.36629 10.2094C1.28316 9.86931 1.22271 9.52925 1.18492 9.17408L0.36122 8.90958C0.126956 8.83401 -0.00151138 8.65265 -0.00151138 8.41839C-0.00151138 8.17656 0.126956 7.9952 0.36122 7.92719L1.18492 7.6627C1.22271 7.30752 1.28316 6.96746 1.36629 6.6274L0.686166 6.09842C0.489687 5.94728 0.429232 5.73569 0.512358 5.51654C0.595484 5.28983 0.776849 5.16136 1.02623 5.16892L1.88771 5.2067C2.03885 4.88931 2.21266 4.58704 2.40914 4.29988L1.94817 3.56686C1.8197 3.36282 1.82726 3.13611 1.98595 2.95475C2.14465 2.77338 2.35624 2.71293 2.58295 2.81117L3.38398 3.13611C3.63336 2.89429 3.89785 2.66759 4.18501 2.46355L4.00365 1.61718C3.9583 1.38291 4.03387 1.17132 4.24547 1.05797C4.45706 0.944612 4.68377 0.959726 4.85757 1.12598L5.49235 1.7003C5.8173 1.56428 6.13469 1.44337 6.47475 1.34513L6.60322 0.483642C6.641 0.249378 6.78458 0.0831259 7.0264 0.0453414C7.26067 0.0075569 7.45715 0.105797 7.5705 0.31739L7.97857 1.08819C8.15238 1.07308 8.32619 1.06552 8.5 1.06552C8.67381 1.06552 8.84762 1.07308 9.02143 1.08819L9.4295 0.31739C9.54285 0.105797 9.73933 0 9.9736 0.0453414C10.2079 0.0906828 10.359 0.249378 10.3968 0.491198L10.5101 1.34513C10.8502 1.44337 11.1827 1.55672 11.4925 1.7003L12.1424 1.12598C12.3162 0.967283 12.5429 0.929499 12.7545 1.05797C12.9586 1.17888 13.0417 1.37536 12.9964 1.61718L12.8074 2.45599C13.0946 2.66003 13.3666 2.88674 13.616 3.13611L14.4171 2.81117C14.6362 2.72048 14.8554 2.76583 15.014 2.95475C15.1576 3.13611 15.1803 3.36282 15.0518 3.56686L14.5909 4.29232C14.7798 4.57948 14.9611 4.88176 15.1123 5.19915L15.9738 5.17648C16.2156 5.16892 16.4045 5.27472 16.4876 5.50898C16.5632 5.73569 16.5103 5.95484 16.3138 6.09842L15.6262 6.6274C15.7168 6.9599 15.7773 7.30752 15.8151 7.6627L16.6388 7.92719C16.8655 7.9952 17.0015 8.17656 17.0015 8.41839C17.0015 8.65265 16.8655 8.83401 16.6388 8.90958L15.8151 9.17408C15.7773 9.52925 15.7168 9.86931 15.6262 10.2094L16.3138 10.7384C16.5103 10.8895 16.5708 11.1011 16.4876 11.3202C16.4045 11.5469 16.2156 11.6754 15.9738 11.6679L15.1123 11.6301C14.9611 11.9475 14.7798 12.2497 14.5909 12.5369L15.0518 13.2699C15.1803 13.474 15.1727 13.7007 15.014 13.882C14.8554 14.0634 14.6438 14.1163 14.4095 14.0256L13.616 13.7007C13.3666 13.9425 13.1022 14.1692 12.8074 14.3657L12.9888 15.2196C13.0417 15.4539 12.9586 15.6579 12.747 15.7788C12.5429 15.8922 12.3162 15.877 12.1424 15.7108L11.5001 15.1289C11.1827 15.2725 10.8578 15.3934 10.5177 15.4916L10.3892 16.3456C10.359 16.5874 10.2154 16.7536 9.9736 16.7914C9.73933 16.8217 9.54285 16.731 9.4295 16.5194L9.02143 15.7486C8.84762 15.7637 8.67381 15.7712 8.5 15.7712ZM8.5 6.31001C9.44461 6.31001 10.2456 6.92968 10.5177 7.79116H14.3566C14.0468 4.82886 11.5454 2.524 8.5 2.524C7.63096 2.524 6.80725 2.71293 6.05912 3.05299L7.99369 6.37047C8.15994 6.33268 8.32619 6.31001 8.5 6.31001ZM2.60562 8.41839C2.60562 10.3378 3.52 12.0381 4.9407 13.1188L6.94328 9.83908C6.60322 9.46124 6.39163 8.96248 6.39163 8.41839C6.39163 7.87429 6.60322 7.38309 6.93572 7.00525L4.9936 3.68021C3.54267 4.75329 2.60562 6.47626 2.60562 8.41839ZM8.5 9.27232C8.97608 9.27232 9.35393 8.88691 9.35393 8.41839C9.35393 7.9423 8.97608 7.56446 8.5 7.56446C8.03147 7.56446 7.64607 7.9423 7.64607 8.41839C7.64607 8.88691 8.03147 9.27232 8.5 9.27232ZM8.5 14.3128C11.553 14.3128 14.0543 11.9928 14.3642 9.02294H10.5252C10.2608 9.89198 9.45217 10.5268 8.5 10.5268C8.32619 10.5268 8.15994 10.5041 8.00124 10.4663L5.99867 13.7536C6.76191 14.1087 7.60829 14.3128 8.5 14.3128Z" fill="#071216"/></svg></span><span>Configurações</span></div>
         </div>
       </div>
+      <div class="nav-hist" id="navHist"></div>
     </aside>
 
     <!-- ===== CENTER: DAY AGENDA ===== -->
     <div class="center">
-      <div class="cal-head" id="calHead">
-        <span class="date">Seg, 30 Junho</span>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z" fill="#1C1B1F"/></svg>
+      <div class="ag-head">
+        <div class="cal-head" id="calHead">
+          <span class="date">Seg, 30 Junho</span>
+          <span class="hd-btn"><img src="assets/icons/date-dropdown.svg" width="20" height="20" alt=""></span>
+        </div>
+        <div class="hd-actions">
+          <button class="hd-btn" id="agToday" type="button" aria-label="Hoje" title="Hoje"><img class="ic-cal" src="assets/icons/agenda-calendar.svg" width="18" height="16" alt=""></button>
+          <button class="hd-btn" id="agExpand" type="button" aria-label="Expandir agenda" title="Expandir agenda"><img class="ic-exp" src="assets/icons/agenda-expand.svg" width="18" height="14" alt=""></button>
+        </div>
       </div>
       <div class="cal-pop" id="calPop" hidden>
         <div class="cp-head">
@@ -479,13 +505,11 @@
     <!-- ===== RIGHT PANEL ===== -->
     <div class="right">
       <div class="rp-head">
-        <div class="rp-left">
-          <button class="ra-btn ra-expand" id="raExpand" type="button" aria-label="Expandir" title="Expandir"><img src="assets/icons/chat-expand.svg" width="19" height="13" alt=""></button>
-          <span class="rp-title">Assistente AI</span>
-        </div>
-        <div class="rp-actions">
-          <button class="ra-btn" id="raNew" type="button" aria-label="Nova conversa" title="Nova conversa"><img src="assets/icons/chat-new.svg" width="15" height="15" alt=""></button>
-          <button class="ra-btn" id="raAgenda" type="button" aria-label="Esconder agenda" title="Esconder agenda"><img src="assets/icons/chat-agenda.svg" width="18" height="16" alt=""></button>
+        <span class="rp-title">Assistente AI</span>
+        <div class="hd-actions">
+          <button class="hd-btn" id="raNew" type="button" aria-label="Nova conversa" title="Nova conversa"><img src="assets/icons/chat-new.svg" width="15" height="15" alt=""></button>
+          <button class="hd-btn" id="raHist" type="button" aria-label="Histórico" title="Histórico"><img class="ic-cal" src="assets/icons/chat-history.svg" width="18" height="16" alt=""></button>
+          <button class="hd-btn" id="raExpand" type="button" aria-label="Expandir" title="Expandir"><img id="raExpandImg" class="ic-exp" src="assets/icons/chat-expand.svg" width="18" height="14" alt=""></button>
         </div>
       </div>
 
@@ -563,7 +587,10 @@
       var showChat = document.getElementById('showChat');
       var navToggle = document.getElementById('navToggle');
       var stage = document.querySelector('.stage');
-      var raAgenda = document.getElementById('raAgenda');
+      var raHist = document.getElementById('raHist');
+      var raExpandImg = document.getElementById('raExpandImg');
+      var agExpand = document.getElementById('agExpand');
+      var agToday = document.getElementById('agToday');
       var raExpand = document.getElementById('raExpand');
       function setNav(collapsed) {
         if (nav) nav.classList.toggle('collapsed', collapsed);
@@ -579,21 +606,42 @@
       }
       if (navToggle) navToggle.addEventListener('click', function () { setNav(!nav.classList.contains('collapsed')); });
       if (showNav) showNav.addEventListener('click', function () { setNav(false); });
-      // expandir (ao lado do título) e calendário levam à mesma versão expandida:
-      // agenda escondida, menu visível, conversa centralizada. Clicar de novo volta.
+      // assistente expandido (Figma 1014:8342): agenda escondida, histórico no menu.
+      // O ícone vira "recolher" (setas para dentro) enquanto expandido.
       function setExpanded(on) {
         stage.classList.toggle('expanded', on);
+        if (on) setAgendaFull(false);
         if (raExpand) {
-          raExpand.title = on ? 'Voltar à agenda' : 'Expandir';
+          raExpand.title = on ? 'Recolher' : 'Expandir';
           raExpand.setAttribute('aria-label', raExpand.title);
         }
-        if (raAgenda) {
-          raAgenda.title = on ? 'Mostrar agenda' : 'Esconder agenda';
-          raAgenda.setAttribute('aria-label', raAgenda.title);
+        if (raExpandImg) raExpandImg.src = on ? 'assets/icons/chat-collapse.svg' : 'assets/icons/chat-expand.svg';
+      }
+      if (raExpand) raExpand.addEventListener('click', function () { setExpanded(!stage.classList.contains('expanded')); });
+      // histórico: abre a versão expandida com a lista no menu; se já está à vista, esconde a lista
+      if (raHist) raHist.addEventListener('click', function () {
+        var visible = stage.classList.contains('expanded') && !stage.classList.contains('hist-off') &&
+                      !nav.classList.contains('collapsed');
+        if (visible) { stage.classList.add('hist-off'); return; }
+        stage.classList.remove('hist-off');
+        setNav(false);
+        setExpanded(true);
+      });
+      // agenda: expandir = agenda em tela cheia (esconde o assistente); clicar de novo volta
+      function setAgendaFull(on) {
+        stage.classList.toggle('agenda-full', on);
+        if (agExpand) {
+          agExpand.title = on ? 'Mostrar assistente' : 'Expandir agenda';
+          agExpand.setAttribute('aria-label', agExpand.title);
+          var img = agExpand.querySelector('img');
+          if (img) img.src = on ? 'assets/icons/chat-collapse.svg' : 'assets/icons/agenda-expand.svg';
         }
       }
-      [raExpand, raAgenda].forEach(function (b) {
-        if (b) b.addEventListener('click', function () { setExpanded(!stage.classList.contains('expanded')); });
+      if (agExpand) agExpand.addEventListener('click', function () { setAgendaFull(!stage.classList.contains('agenda-full')); });
+      // calendário: volta para hoje e centraliza no traço da hora atual
+      if (agToday) agToday.addEventListener('click', function () {
+        if (window.__calToday) window.__calToday();
+        if (typeof scrollToFirst === 'function') scrollToFirst();
       });
       if (showChat) showChat.addEventListener('click', function () { setChat(false); });
     })();
@@ -827,6 +875,7 @@
       if (raNew) raNew.addEventListener('click', function () {
         if (busy) return;                       // espera a resposta atual terminar
         history = [];
+        conv = null; renderHist();
         msgs.innerHTML = '';
         msgs.classList.remove('on');
         if (suggest) suggest.style.display = '';
@@ -921,6 +970,75 @@
           else if (!msgs.classList.contains('on')) suggest.style.display = '';
         }
       });
+
+      // ===== histórico de conversas (salvo só neste navegador) =====
+      var STORE = 'od_conversas_v1', MAX_CONVS = 50, conv = null;
+      function loadConvs() { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch (_) { return []; } }
+      function saveConvs(list) { try { localStorage.setItem(STORE, JSON.stringify(list.slice(0, MAX_CONVS))); } catch (_) {} }
+      function saveTurn(turn) {
+        if (!conv) conv = { id: 'c' + Date.now(), title: turn.q.slice(0, 80), turns: [] };
+        conv.turns.push(turn);
+        conv.hist = history.slice(-12);
+        conv.ts = Date.now();
+        var list = loadConvs().filter(function (c) { return c.id !== conv.id; });
+        list.unshift(conv);
+        saveConvs(list);
+        renderHist();
+      }
+      function renderHist() {
+        var box = document.getElementById('navHist');
+        if (!box) return;
+        var list = loadConvs();
+        box.innerHTML = '';
+        box.classList.toggle('has', list.length > 0);
+        var d0 = new Date(); d0.setHours(0, 0, 0, 0);
+        var t0 = d0.getTime(), y0 = t0 - 864e5;
+        var groups = [['Hoje', []], ['Ontem', []], ['Anteriores', []]];
+        list.forEach(function (c) { groups[c.ts >= t0 ? 0 : c.ts >= y0 ? 1 : 2][1].push(c); });
+        groups.forEach(function (g) {
+          if (!g[1].length) return;
+          var grp = document.createElement('div'); grp.className = 'hist-group';
+          var head = document.createElement('div'); head.className = 'hist-head'; head.textContent = g[0];
+          var ul = document.createElement('div'); ul.className = 'hist-list';
+          g[1].forEach(function (c) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'hist-item';
+            if (conv && conv.id === c.id) b.classList.add('on');
+            b.textContent = c.title; b.title = c.title;
+            b.addEventListener('click', function () { openConv(c.id); });
+            ul.appendChild(b);
+          });
+          grp.appendChild(head); grp.appendChild(ul); box.appendChild(grp);
+        });
+      }
+      function openConv(id) {
+        if (busy) return;
+        var c = loadConvs().filter(function (x) { return x.id === id; })[0];
+        if (!c) return;
+        conv = c;
+        history = (c.hist || []).slice();
+        msgs.innerHTML = '';
+        msgs.classList.add('on');
+        if (suggest) suggest.style.display = 'none';
+        (c.turns || []).forEach(function (t) {
+          addMsg('msg-user', t.q);
+          var wrap = document.createElement('div'); wrap.className = 'msg-ai';
+          var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
+          var srcByN = {}; (t.srcs || []).forEach(function (s) { srcByN[s.n] = s; });
+          bodyEl.innerHTML = renderAnswer(t.a || '', srcByN);
+          wrap.appendChild(bodyEl); msgs.appendChild(wrap);
+          if (typeof renderMermaid === 'function') renderMermaid(bodyEl);
+          addRefs(wrap, srcByN, t.a || '');
+          addRecommended(wrap, t.recs || [], srcByN, t.a || '');
+          if (t.ung) {
+            var note = document.createElement('div'); note.className = 'ai-ungrounded';
+            note.textContent = 'Parte desta resposta se baseia em conhecimento clínico geral, sem fonte específica citada.';
+            wrap.appendChild(note);
+          }
+          addActions(wrap, function () { return bodyEl.innerText; });
+        });
+        msgs.scrollTop = msgs.scrollHeight;
+        renderHist();
+      }
 
       function addMsg(cls, text) {
         var el = document.createElement('div');
@@ -1086,7 +1204,7 @@
         wrap.appendChild(bodyEl);
         msgs.appendChild(wrap); msgs.scrollTop = msgs.scrollHeight;
 
-        var srcByN = {}, recs = [], fullText = '', started = false, closed = false, insufficient = false;
+        var srcByN = {}, recs = [], fullText = '', started = false, closed = false, insufficient = false, ung = false;
         var attempt = 0, MAX_RETRY = 2, RETRY_MS = [3000, 9000];
         function finish() { if (!closed) { closed = true; busy = false; sendBtn.disabled = false; input.focus(); } }
 
@@ -1119,6 +1237,7 @@
               if (!dn.insufficient && fullText.trim()) {
                 addRefs(wrap, srcByN, fullText);
                 addRecommended(wrap, recs, srcByN, fullText);
+                ung = dn.ungrounded > 0;
                 if (dn.ungrounded > 0) {
                   var note = document.createElement('div'); note.className = 'ai-ungrounded';
                   note.textContent = 'Parte desta resposta se baseia em conhecimento clínico geral, sem fonte específica citada.';
@@ -1138,6 +1257,8 @@
                 history.push({ role: 'user', content: q });
                 // a assinatura prova ao servidor que este turno veio dele (não forjável)
                 if (sig) history.push({ role: 'assistant', content: fullText, sig: sig });
+                saveTurn({ q: q, a: fullText, ung: ung, recs: recs,
+                           srcs: Object.keys(srcByN).map(function (k) { return srcByN[k]; }) });
                 loadFollowups(wrap, q, fullText);
               }
               finish();
@@ -1165,6 +1286,7 @@
         run();
       }
 
+      renderHist();
       sendBtn.addEventListener('click', function () { ask(input.value); });
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); }
@@ -1234,6 +1356,7 @@
       });
 
       dateEl.textContent = fmt(selected);   // inicia no dia atual (real)
+      window.__calToday = function () { selected = new Date(today); dateEl.textContent = fmt(selected); close(); };
     })();
   </script>
 </body>
