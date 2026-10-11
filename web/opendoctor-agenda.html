@@ -1309,6 +1309,7 @@
       var wk = document.getElementById('wk');
       if (!stage || !sel || !grid) return;
       var WK_PX = 142, WK_FIRST = 0, WK_LAST = 24;         // semana: 0h–24h, 142px por hora (Figma 1014:8609)
+      var WK_HEAD = 48;                                    // altura do cabeçalho dos dias (= .wk-h)
       var DOWS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       var events = [], weekStart = null, timer = null;
 
@@ -1372,14 +1373,14 @@
         var ti = days.map(function (d) { return sameDay(d, now); }).indexOf(true);
         if (ti >= 0) {
           var y = (now.getHours() + now.getMinutes() / 60 - WK_FIRST) * WK_PX;
-          var line = el('div', 'wk-now'); line.style.top = (62 + y) + 'px'; grid.appendChild(line);
+          var line = el('div', 'wk-now'); line.style.top = (WK_HEAD + y) + 'px'; grid.appendChild(line);
           var thick = el('div', 'wk-now-today'); thick.style.top = y + 'px'; cols[ti].appendChild(thick);
           var seg = el('div', 'wk-now-gut'); seg.style.top = y + 'px'; gut.appendChild(seg);
           var cap = el('div', 'wk-now-cap', hhmm(now)); cap.style.top = y + 'px'; gut.appendChild(cap);
         }
         return ti >= 0 ? (now.getHours() + now.getMinutes() / 60 - WK_FIRST) * WK_PX : 8 * WK_PX;
       }
-      function center(y) { wk.scrollTop = Math.max(62 + y - wk.clientHeight / 2, 0); }
+      function center(y) { wk.scrollTop = Math.max(WK_HEAD + y - wk.clientHeight / 2, 0); }
 
       function fetchWeek() {
         var end = new Date(weekStart); end.setDate(weekStart.getDate() + 7);
