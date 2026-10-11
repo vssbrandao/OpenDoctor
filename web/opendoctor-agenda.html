@@ -146,16 +146,16 @@
 
     /* ===== RIGHT PANEL (487) ===== */
     .right{flex:1 1 0;min-width:503px;max-width:720px;height:100%;background:#fff;position:relative;box-shadow:inset 1px 0 0 var(--sb-border)}
-    .rp-head{display:flex;align-items:center;justify-content:space-between;padding:8px 24px}
+    .rp-head{display:flex;align-items:center;justify-content:space-between;padding:14px 24px}
     .rp-title{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    /* grupo de ações (Figma 1012:6823): h 36, padding 0 16, borda 1px, raio 24, gap 16 */
-    .rp-actions{height:36px;padding:0 16px;box-shadow:inset 0 0 0 1px var(--sb-border);border-radius:24px;
-      display:flex;align-items:center;gap:16px}
+    /* cabeçalho (Figma 1012:6821): [expandir + título] à esquerda (gap 8), [nova conversa, agenda] à direita (gap 16) */
+    .rp-left{display:flex;align-items:center;gap:8px}
+    .rp-actions{display:flex;align-items:center;gap:16px}
     .ra-btn{width:20px;height:24px;border:0;background:none;padding:0;cursor:pointer;border-radius:6px;
       display:flex;align-items:center;justify-content:center;flex:none}
     .ra-btn:hover{background:rgba(0,0,0,.06)}
     .ra-btn.on{background:rgba(8,66,160,.10)}
-    .ra-div{width:0;height:16px;border-left:1px solid var(--sb-border);margin-right:-1px;flex:none}
+    .ra-btn.ra-expand{width:23px;height:21px}
     /* modos da tela: sem agenda / chat em tela cheia */
     .stage.no-agenda .center,.stage.chat-full .center,.stage.chat-full .nav{display:none}
     .stage.no-agenda .right,.stage.chat-full .right{max-width:none}
@@ -463,13 +463,13 @@
     <!-- ===== RIGHT PANEL ===== -->
     <div class="right">
       <div class="rp-head">
-        <span class="rp-title">Assistente AI</span>
+        <div class="rp-left">
+          <button class="ra-btn ra-expand" id="raExpand" type="button" aria-label="Tela cheia" title="Tela cheia"><img src="assets/icons/chat-expand.svg" width="19" height="13" alt=""></button>
+          <span class="rp-title">Assistente AI</span>
+        </div>
         <div class="rp-actions">
           <button class="ra-btn" id="raNew" type="button" aria-label="Nova conversa" title="Nova conversa"><img src="assets/icons/chat-new.svg" width="15" height="15" alt=""></button>
-          <span class="ra-div"></span>
           <button class="ra-btn" id="raAgenda" type="button" aria-label="Esconder agenda" title="Esconder agenda"><img src="assets/icons/chat-agenda.svg" width="18" height="16" alt=""></button>
-          <span class="ra-div"></span>
-          <button class="ra-btn" id="raExpand" type="button" aria-label="Tela cheia" title="Tela cheia"><img src="assets/icons/chat-expand.svg" width="19" height="13" alt=""></button>
         </div>
       </div>
 
