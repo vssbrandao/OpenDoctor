@@ -114,8 +114,6 @@
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .er-sub{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:var(--muted)}
     .er-foot{display:flex;justify-content:flex-end}
-    .cal-empty{position:absolute;left:79px;right:24px;top:8px;padding:20px 24px;
-      font-family:var(--disp);font-size:14px;color:var(--muted)}
 
     /* popover de criar evento */
     .evpop{position:fixed;z-index:60;width:300px;background:#fff;border:1px solid var(--sb-border);
@@ -702,9 +700,8 @@
       function render(events) {
         var inner = document.querySelector('.cal-inner');
         if (!inner) return;
-        inner.querySelectorAll('.ev-real, .cal-empty').forEach(function (n) { n.remove(); });
+        inner.querySelectorAll('.ev-real').forEach(function (n) { n.remove(); });
         inner.classList.add('real');          // esconde os exemplos fixos
-        var count = 0;
         events.forEach(function (ev) {
           if (ev.allDay || !ev.start) return;
           var s = new Date(ev.start), e = ev.end ? new Date(ev.end) : new Date(s.getTime() + 18e5);
@@ -726,14 +723,7 @@
           card.querySelector('.er-sub').textContent = fmtTime(s) + '–' + fmtTime(e);
           if (tall) card.querySelector('.avatar').textContent = initials(ev.title);
           inner.appendChild(card);
-          count++;
         });
-        if (count === 0) {
-          var empty = document.createElement('div');
-          empty.className = 'cal-empty';
-          empty.textContent = 'Nenhum evento no calendário hoje.';
-          inner.appendChild(empty);
-        }
         if (firstRender) { scrollToFirst(); firstRender = false; }
       }
       function refresh() {
