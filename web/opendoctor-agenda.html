@@ -100,7 +100,6 @@
     .wk-now{position:absolute;left:79px;right:0;height:0;border-top:1px solid var(--now);z-index:2;pointer-events:none}
     /* trecho da linha dentro da calha das horas (a calha é fixa e tem fundo branco, cobriria a linha) */
     .wk-now-gut{position:absolute;left:79px;right:0;height:0;border-top:1px solid var(--now);z-index:3;pointer-events:none}
-    .wk-now-today{position:absolute;left:0;right:0;height:2px;margin-top:-1px;background:var(--now);z-index:2;pointer-events:none}
     .wk-now-cap{position:absolute;left:64px;transform:translateY(-50%);height:19px;padding:1px 6px;border-radius:100px;
       background:var(--now);color:#fff;font-family:var(--disp);font-weight:700;font-size:12px;line-height:140%;
       display:flex;align-items:center;white-space:nowrap;z-index:4}
@@ -1470,7 +1469,6 @@
         if (ti >= 0) {
           var y = (now.getHours() + now.getMinutes() / 60 - WK_FIRST) * WK_PX;
           var line = el('div', 'wk-now'); line.style.top = (WK_HEAD + y) + 'px'; grid.appendChild(line);
-          var thick = el('div', 'wk-now-today'); thick.style.top = y + 'px'; cols[ti].appendChild(thick);
           var seg = el('div', 'wk-now-gut'); seg.style.top = y + 'px'; gut.appendChild(seg);
           var cap = el('div', 'wk-now-cap', hhmm(now)); cap.style.top = y + 'px'; gut.appendChild(cap);
         }
