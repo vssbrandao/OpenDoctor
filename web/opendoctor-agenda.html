@@ -73,10 +73,11 @@
     .wk-h{position:sticky;top:0;z-index:4;height:62px;padding-top:25px;background:#fff;
       box-shadow:inset 0 -1px 0 rgba(26,26,26,.08);display:flex;justify-content:center;align-items:flex-start;gap:4px;
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F;white-space:nowrap}
-    .wk-h.gmt{left:0;z-index:5;justify-content:flex-start;padding-left:25px}
+    .wk-h.gmt{left:0;z-index:5;justify-content:flex-start;padding-left:24px}
     .wk-today{width:24px;height:24px;border-radius:50%;background:#D3E3FD;color:#0842A0;text-align:center;line-height:24px}
     .wk-gut{position:sticky;left:0;z-index:3;background:#fff}
-    .wk-lbl{position:absolute;right:56px;transform:translateY(-50%);
+    /* rótulo da hora: alinhado à esquerda (x 292), 24px abaixo da linha da sua hora (Figma 1014:10340) */
+    .wk-lbl{position:absolute;left:24px;width:40px;margin-top:24px;
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F}
     .wk-col{position:relative;cursor:pointer;box-shadow:inset 1px 0 0 rgba(26,26,26,.08);
       background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 141px,rgba(26,26,26,.08) 141px,rgba(26,26,26,.08) 142px)}
@@ -89,7 +90,7 @@
     .wk-ev-s{font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:#666C6F;white-space:nowrap}
     .wk-now{position:absolute;left:79px;right:0;height:0;border-top:1px solid var(--now);z-index:2;pointer-events:none}
     .wk-now-today{position:absolute;left:0;right:0;height:2px;margin-top:-1px;background:var(--now);z-index:2;pointer-events:none}
-    .wk-now-cap{position:absolute;left:58px;transform:translateY(-50%);height:19px;padding:1px 6px;border-radius:100px;
+    .wk-now-cap{position:absolute;left:60px;transform:translateY(-50%);height:19px;padding:1px 6px;border-radius:100px;
       background:var(--now);color:#fff;font-family:var(--disp);font-weight:700;font-size:12px;line-height:140%;
       display:flex;align-items:center;white-space:nowrap;z-index:4}
     /* ajuste óptico p/ cair na mesma posição do glifo no Figma */
@@ -1352,7 +1353,7 @@
         }
         // calha com as horas
         var gut = el('div', 'wk-gut'); gut.style.height = H + 'px';
-        for (var hr = WK_FIRST + 1; hr < WK_LAST; hr++) {
+        for (var hr = WK_FIRST; hr < WK_LAST; hr++) {
           var l = el('div', 'wk-lbl', hr + 'h'); l.style.top = ((hr - WK_FIRST) * WK_PX) + 'px'; gut.appendChild(l);
         }
         grid.appendChild(gut);
