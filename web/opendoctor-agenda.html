@@ -78,7 +78,7 @@
     .wk-gut{position:sticky;left:0;z-index:3;background:#fff}
     .wk-lbl{position:absolute;right:56px;transform:translateY(-50%);
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F}
-    .wk-col{position:relative;box-shadow:inset 1px 0 0 rgba(26,26,26,.08);
+    .wk-col{position:relative;cursor:pointer;box-shadow:inset 1px 0 0 rgba(26,26,26,.08);
       background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 63px,rgba(26,26,26,.08) 63px,rgba(26,26,26,.08) 64px)}
     .wk-col:last-child{box-shadow:inset 1px 0 0 rgba(26,26,26,.08),inset -1px 0 0 rgba(26,26,26,.08)}
     .wk-ev{position:absolute;left:1px;right:0;background:#F3F3F3;border-radius:24px;padding:8px 8px 8px 16px;
@@ -798,8 +798,8 @@
       function pad(n) { return String(n).padStart(2, '0'); }
       function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
-      function openAt(clientX, clientY, h, m) {
-        var now = new Date();
+      function openAt(clientX, clientY, h, m, day) {
+        var now = day || new Date();
         elTitle.value = ''; elDesc.value = ''; elPatient.value = '';
         elMsg.hidden = true; elMsg.className = 'evpop-msg';
         elCreate.disabled = false; elCreate.textContent = 'Criar';
@@ -817,6 +817,12 @@
         elTitle.focus();
       }
       function close() { pop.hidden = true; }
+      // usado pela visão Semana: abre o popover no dia/horário clicado
+      window.__openEventAt = function (x, y, day, h, m) {
+        if (!pop.hidden) { close(); return; }
+        if (!window.__calConnected) return;                    // só com calendário conectado
+        openAt(x, y, h, m, day);
+      };
 
       calInner.addEventListener('click', function (e) {
         if (!pop.hidden) { close(); return; }                  // aberto → clicar na agenda fecha
@@ -837,7 +843,7 @@
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
       // clique fora fecha
       document.addEventListener('mousedown', function (e) {
-        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.cal-inner')) close();
+        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.cal-inner, .wk-col')) close();
       });
 
       function isoFrom(dateStr, timeStr) {
@@ -869,6 +875,7 @@
             if (res.ok && res.j.ok) {
               elMsg.className = 'evpop-msg ok'; elMsg.textContent = 'Evento criado!'; elMsg.hidden = false;
               if (window.__refreshAgenda) window.__refreshAgenda();
+              if (window.__refreshWeek) window.__refreshWeek();
               setTimeout(close, 700);
             } else if (res.j && res.j.needs_reconnect) {
               elMsg.className = 'evpop-msg';
@@ -1351,7 +1358,16 @@
         grid.appendChild(gut);
         // colunas + eventos
         var cols = days.map(function (d) {
-          var c = el('div', 'wk-col'); c.style.height = H + 'px'; grid.appendChild(c); return c;
+          var c = el('div', 'wk-col'); c.style.height = H + 'px'; grid.appendChild(c);
+          c.addEventListener('click', function (e) {
+            if (e.target.closest('.wk-ev')) return;              // clique num evento existente
+            var t = WK_FIRST + (e.clientY - c.getBoundingClientRect().top) / WK_PX;
+            var hh = Math.floor(t), mm = Math.round((t - hh) * 2) * 30;
+            if (mm >= 60) { hh += 1; mm = 0; }
+            if (hh > 23) { hh = 23; mm = 30; }
+            if (window.__openEventAt) window.__openEventAt(e.clientX, e.clientY, d, hh, mm);
+          });
+          return c;
         });
         events.forEach(function (ev) {
           if (ev.allDay || !ev.start) return;
@@ -1426,6 +1442,7 @@
       // data escolhida no calendário (ou "hoje") → semana correspondente
       window.__onDateChange = function (d) { if (isWeek()) showWeek(d, true); };
       window.__isWeekView = isWeek;
+      window.__refreshWeek = function () { if (isWeek()) fetchWeek().then(function () { if (isWeek()) render(); }); };
 
       var saved = 'dia'; try { saved = localStorage.getItem('od_agenda_view') || 'dia'; } catch (_) {}
       setView(saved === 'semana' ? 'semana' : 'dia', false);
