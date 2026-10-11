@@ -59,6 +59,7 @@
     .conn-row.connected{justify-content:space-between}
     .conn-left{display:flex;align-items:center;gap:24px}
     .conn-logo{width:46px;height:48px;object-fit:cover;flex:none}
+    .conn-logo-apple{display:flex;align-items:center;justify-content:center}
     .conn-logo-sm{width:42.25px;height:40px;flex:none}
     .conn-name{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216;white-space:nowrap}
     .conn-name-ms{width:152px}
@@ -141,6 +142,29 @@
               <button class="int-btn" data-provider="microsoft" disabled>Conectar</button>
             </div>
           </div>
+
+          <!-- Card: Apple Calendar (sem backend por ora → botão desabilitado) -->
+          <div class="int-card" data-provider="apple">
+            <div class="card-inner">
+              <div class="card-head">
+                <div class="card-name">Apple Calendar</div>
+                <div class="card-sub">Conecte seu calendário</div>
+              </div>
+              <div class="conn-row">
+                <div class="conn-left">
+                  <span class="conn-logo conn-logo-apple" aria-label="Apple Calendar">
+                    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="0.5" y="0.5" width="43" height="43" rx="10" fill="#fff" stroke="rgba(0,0,0,.12)"/>
+                      <text id="apDow" x="22" y="14" text-anchor="middle" font-family="Helvetica Now Display, Helvetica, Arial, sans-serif" font-weight="700" font-size="8" letter-spacing=".3" fill="#FF3B30">DOM</text>
+                      <text id="apDay" x="22" y="35" text-anchor="middle" font-family="Helvetica Now Display, Helvetica, Arial, sans-serif" font-weight="400" font-size="22" fill="#1C1C1E">1</text>
+                    </svg>
+                  </span>
+                  <span class="conn-name">Apple Calendar</span>
+                </div>
+              </div>
+              <button class="int-btn" data-provider="apple" disabled>Conectar</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -209,6 +233,10 @@
       } else if (qs.get('erro')) {
         history.replaceState({}, '', location.pathname);
       }
+
+      var now = new Date();
+      document.getElementById('apDow').textContent = ['DOM','SEG','TER','QUA','QUI','SEX','SÁB'][now.getDay()];
+      document.getElementById('apDay').textContent = now.getDate();
 
       load();
     })();
