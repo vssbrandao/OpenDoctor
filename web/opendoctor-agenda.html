@@ -154,11 +154,14 @@
     .ra-btn{width:20px;height:24px;border:0;background:none;padding:0;cursor:pointer;border-radius:6px;
       display:flex;align-items:center;justify-content:center;flex:none}
     .ra-btn:hover{background:rgba(0,0,0,.06)}
-    .ra-btn.on{background:rgba(8,66,160,.10)}
     .ra-btn.ra-expand{width:23px;height:21px}
-    /* modos da tela: sem agenda / chat em tela cheia */
-    .stage.no-agenda .center,.stage.chat-full .center,.stage.chat-full .nav{display:none}
-    .stage.no-agenda .right,.stage.chat-full .right{max-width:none}
+    /* versão expandida (Figma 1012:7220): menu fica, agenda some, conversa e campo numa coluna de 700px
+       em x=503 quando a tela tem 1440px (calc(50% - 351px) dentro do painel) */
+    .stage.expanded .center{display:none}
+    .stage.expanded .right{max-width:none;box-shadow:none}
+    .stage.expanded .rp-msgs{padding-left:max(24px,calc(50% - 351px));padding-right:max(24px,calc(50% - 349px))}
+    .stage.expanded .big-input,.stage.expanded .rp-suggest,.stage.expanded .bi-note{
+      left:max(24px,calc(50% - 351px));right:max(24px,calc(50% - 349px))}
 
     /* recolher/expandir painéis */
     .nav-toggle{position:absolute;top:12px;right:12px;width:30px;height:30px;border:0;
@@ -464,7 +467,7 @@
     <div class="right">
       <div class="rp-head">
         <div class="rp-left">
-          <button class="ra-btn ra-expand" id="raExpand" type="button" aria-label="Tela cheia" title="Tela cheia"><img src="assets/icons/chat-expand.svg" width="19" height="13" alt=""></button>
+          <button class="ra-btn ra-expand" id="raExpand" type="button" aria-label="Expandir" title="Expandir"><img src="assets/icons/chat-expand.svg" width="19" height="13" alt=""></button>
           <span class="rp-title">Assistente AI</span>
         </div>
         <div class="rp-actions">
@@ -559,19 +562,21 @@
       }
       if (navToggle) navToggle.addEventListener('click', function () { setNav(true); });
       if (showNav) showNav.addEventListener('click', function () { setNav(false); });
-      // calendário: mostra/esconde a agenda
-      if (raAgenda) raAgenda.addEventListener('click', function () {
-        var off = stage.classList.toggle('no-agenda');
-        raAgenda.classList.toggle('on', off);
-        raAgenda.title = off ? 'Mostrar agenda' : 'Esconder agenda';
-        raAgenda.setAttribute('aria-label', raAgenda.title);
-      });
-      // expandir: chat em tela cheia (clicar de novo volta)
-      if (raExpand) raExpand.addEventListener('click', function () {
-        var full = stage.classList.toggle('chat-full');
-        raExpand.classList.toggle('on', full);
-        raExpand.title = full ? 'Sair da tela cheia' : 'Tela cheia';
-        raExpand.setAttribute('aria-label', raExpand.title);
+      // expandir (ao lado do título) e calendário levam à mesma versão expandida:
+      // agenda escondida, menu visível, conversa centralizada. Clicar de novo volta.
+      function setExpanded(on) {
+        stage.classList.toggle('expanded', on);
+        if (raExpand) {
+          raExpand.title = on ? 'Voltar à agenda' : 'Expandir';
+          raExpand.setAttribute('aria-label', raExpand.title);
+        }
+        if (raAgenda) {
+          raAgenda.title = on ? 'Mostrar agenda' : 'Esconder agenda';
+          raAgenda.setAttribute('aria-label', raAgenda.title);
+        }
+      }
+      [raExpand, raAgenda].forEach(function (b) {
+        if (b) b.addEventListener('click', function () { setExpanded(!stage.classList.contains('expanded')); });
       });
       if (showChat) showChat.addEventListener('click', function () { setChat(false); });
     })();
