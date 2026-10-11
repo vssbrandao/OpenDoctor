@@ -15,7 +15,7 @@
     :root{
       --disp:"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif;
       --ink:#071216; --ink2:#1f1f1f; --muted:#666c6f; --sb-border:rgba(0,0,0,.08);
-      --active:#f7f8f8; --pill:#f3f3f3; --line:rgba(0,0,0,.04);
+      --active:#f7f8f8; --pill:#f3f3f3; --line:rgba(0,0,0,.08);
       --ev-bg:#f3f3f3; --ev-bg-hover:#e9e9e9; --avatar-bg:#d3e3fd; --avatar-ink:#0842a0; --now:#FA7000;
       --send-bg:#d3e3fd; --send-ink:#0842a0;
     }
@@ -33,7 +33,7 @@
     .nav-main{padding:0 6px;display:flex;flex-direction:column;gap:42px}
     .nav-sec{display:flex;flex-direction:column;gap:4px}
     .item{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:100px;cursor:pointer;
-      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:var(--ink);
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--ink);
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .item:hover{background:var(--active);border-radius:10px}
     .item.active{background:var(--active);border-radius:10px}
@@ -71,12 +71,12 @@
       padding:0 0 0 24px;scrollbar-width:thin}
     .cal-inner{position:relative;padding-bottom:40px}
 
-    .hr-row{position:relative;height:158px;border-top:1px solid var(--line)}
-    .hr-label{position:absolute;left:0;top:4px;font-family:var(--disp);font-weight:400;font-size:12px;
+    .hr-row{position:relative;height:158px;box-shadow:inset 0 1px 0 var(--line)}
+    .hr-label{position:absolute;left:0;top:0;font-family:var(--disp);font-weight:400;font-size:12px;
       line-height:24px;color:var(--ink2)}
 
     /* event card (Figma "Big input" repurposed) */
-    .ev{position:absolute;left:121px;right:24px;top:8px;
+    .ev{position:absolute;left:79px;right:24px;top:8px;
       background:var(--ev-bg);border-radius:40px;display:flex;flex-direction:column;z-index:2;overflow:hidden;
       cursor:pointer;transition:background .15s ease}
     .ev:hover{background:var(--ev-bg-hover)}
@@ -94,7 +94,7 @@
 
     /* eventos reais do calendário conectado (posicionados por horário) */
     .cal-inner.real .hr-row .ev{display:none}
-    .ev-real{position:absolute;left:121px;right:24px;background:var(--ev-bg);border-radius:40px;
+    .ev-real{position:absolute;left:79px;right:24px;background:var(--ev-bg);border-radius:40px;
       padding:20px 24px;overflow:hidden;z-index:2;display:flex;flex-direction:column;
       justify-content:space-between}
     .ev-real:hover{background:var(--ev-bg-hover)}
@@ -102,7 +102,7 @@
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .er-sub{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:var(--muted)}
     .er-foot{display:flex;justify-content:flex-end}
-    .cal-empty{position:absolute;left:121px;right:24px;top:8px;padding:20px 24px;
+    .cal-empty{position:absolute;left:79px;right:24px;top:8px;padding:20px 24px;
       font-family:var(--disp);font-size:14px;color:var(--muted)}
 
     /* popover de criar evento */
@@ -139,18 +139,26 @@
     .evpop-msg a{color:#0842a0}
 
     /* "now" indicator (orange line + dot) */
-    .now{position:absolute;left:0;right:0;height:0;border-top:1.5px solid var(--now);z-index:4;pointer-events:none}
-    .now-time{position:absolute;left:0;top:0;transform:translateY(-50%);
-      background:var(--now);color:#fff;font-family:var(--disp);font-weight:700;font-size:11px;
-      line-height:1;padding:4px 9px;border-radius:999px;white-space:nowrap}
+    .now{position:absolute;left:24px;right:0;height:0;border-top:1px solid var(--now);z-index:4;pointer-events:none}
+    .now-time{position:absolute;left:0;top:0;transform:translateY(-50%);height:19px;display:flex;align-items:center;
+      background:var(--now);color:#fff;font-family:var(--disp);font-weight:500;font-size:12px;
+      line-height:140%;padding:1px 6px;border-radius:100px;white-space:nowrap}
 
     /* ===== RIGHT PANEL (487) ===== */
-    .right{flex:1 1 0;min-width:487px;max-width:720px;height:100%;background:#fff;position:relative;border-left:1px solid var(--sb-border)}
+    .right{flex:1 1 0;min-width:503px;max-width:720px;height:100%;background:#fff;position:relative;box-shadow:inset 1px 0 0 var(--sb-border)}
     .rp-head{display:flex;align-items:center;justify-content:space-between;padding:8px 24px}
     .rp-title{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    .panel-ico{width:36px;height:36px;border:0;background:none;cursor:pointer;
-      display:flex;align-items:center;justify-content:center;border-radius:8px}
-    .panel-ico:hover{background:rgba(0,0,0,.05)}
+    /* grupo de ações (Figma 1012:6823): h 36, padding 0 16, borda 1px, raio 24, gap 16 */
+    .rp-actions{height:36px;padding:0 16px;box-shadow:inset 0 0 0 1px var(--sb-border);border-radius:24px;
+      display:flex;align-items:center;gap:16px}
+    .ra-btn{width:20px;height:24px;border:0;background:none;padding:0;cursor:pointer;border-radius:6px;
+      display:flex;align-items:center;justify-content:center;flex:none}
+    .ra-btn:hover{background:rgba(0,0,0,.06)}
+    .ra-btn.on{background:rgba(8,66,160,.10)}
+    .ra-div{width:0;height:16px;border-left:1px solid var(--sb-border);margin-right:-1px;flex:none}
+    /* modos da tela: sem agenda / chat em tela cheia */
+    .stage.no-agenda .center,.stage.chat-full .center,.stage.chat-full .nav{display:none}
+    .stage.no-agenda .right,.stage.chat-full .right{max-width:none}
 
     /* recolher/expandir painéis */
     .nav-toggle{position:absolute;top:12px;right:12px;width:30px;height:30px;border:0;
@@ -167,7 +175,7 @@
     .fl-right{right:12px}
 
     /* suggestion cards above the input */
-    .rp-suggest{position:absolute;left:24px;right:24px;bottom:180px;display:flex;gap:8px}
+    .rp-suggest{position:absolute;left:24px;right:24px;bottom:160px;display:flex;gap:8px}
     .sg-card{flex:1;height:140px;background:var(--pill);border:0;border-radius:40px;padding:24px;
       display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;
       text-align:left;cursor:pointer;transition:background .15s ease}
@@ -185,13 +193,13 @@
     .ai-ungrounded{margin-top:10px;font-family:var(--disp);font-size:16px;line-height:1.45;color:var(--muted)}
 
     /* conversation area */
-    .rp-msgs{position:absolute;left:0;right:0;top:44px;bottom:180px;overflow-y:auto;
-      padding:16px 24px;display:none;flex-direction:column;gap:32px;scrollbar-width:thin}
+    .rp-msgs{position:absolute;left:0;right:0;top:52px;bottom:160px;overflow-y:auto;
+      padding:24px;display:none;flex-direction:column;gap:24px;scrollbar-width:thin}
     .rp-msgs.on{display:flex}
     .msg-user{align-self:flex-end;max-width:255px;background:var(--pill);border-radius:24px;
-      padding:16px;font-family:var(--disp);font-weight:400;font-size:16px;line-height:160%;color:#0D0D0D}
+      padding:16px;font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#0D0D0D}
     .msg-ai{align-self:flex-start;max-width:100%;font-family:var(--disp);font-weight:400;
-      font-size:16px;line-height:160%;color:#0D0D0D;word-wrap:break-word}
+      font-size:16px;line-height:26px;color:#0D0D0D;word-wrap:break-word}
     .msg-ai.err{color:#b3261e;white-space:pre-wrap}
     .msg-ai h1,.msg-ai h2,.msg-ai h3,.msg-ai h4{font-weight:700;color:#0D0D0D;line-height:1.3}
     .msg-ai h1{font-size:21px;margin:22px 0 10px}
@@ -223,7 +231,7 @@
     .ai-body.err{color:#b3261e;white-space:pre-wrap}
     .ai-warn{margin-top:10px;font-family:var(--disp);font-size:13px;color:#8a6d00}
     /* barra de ações da resposta (Figma 962-30702) */
-    .ai-actions{display:flex;gap:4px;margin-top:8px}
+    .ai-actions{display:flex;gap:4px;margin:10px 0 0 -6px}
     .act{width:32px;height:32px;border:0;background:none;border-radius:8px;cursor:pointer;
       color:#666666;display:flex;align-items:center;justify-content:center;padding:0;transition:background .12s}
     .act:hover{background:rgba(0,0,0,.05)}
@@ -259,6 +267,7 @@
     .msg-ai tbody tr:nth-child(even){background:#fafafa}
     .msg-ai>*:first-child{margin-top:0}
     .msg-ai>*:last-child{margin-bottom:0}
+    .ai-body>*:last-child{margin-bottom:0}
     .dots{display:inline-flex;gap:4px;align-items:center;height:23px}
     .dots i{width:7px;height:7px;border-radius:50%;background:#c3c7c9;animation:od-bounce 1.2s infinite ease-in-out}
     .dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
@@ -269,12 +278,12 @@
       font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#071216;
       max-height:120px}
     .bi-input::placeholder{color:var(--ink2)}
-    .bi-note{position:absolute;left:24px;right:24px;bottom:16px;
+    .bi-note{position:absolute;left:24px;right:24px;bottom:4px;
       font-family:var(--disp);font-weight:400;font-size:11px;line-height:16px;color:var(--muted);
       text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .bi-send:disabled{opacity:.5;cursor:default}
 
-    .big-input{position:absolute;left:24px;right:24px;bottom:44px;
+    .big-input{position:absolute;left:24px;right:24px;bottom:24px;
       background:var(--pill);border-radius:40px;display:flex;flex-direction:column;gap:16px}
     .bi-top{display:flex;align-items:center;padding:24px 24px 0}
     .bi-ask{display:flex;align-items:center;gap:3px}
@@ -282,9 +291,10 @@
     .bi-cursor{width:1.5px;height:22px;background:#0b57d0;flex:none;animation:od-blink 1.1s step-end infinite}
     @keyframes od-blink{50%{opacity:0}}
     .bi-bottom{display:flex;align-items:center;justify-content:space-between;padding:0 16px 16px 12px}
-    .bi-plus{width:36px;height:36px;border:0;background:none;cursor:pointer;border-radius:999px;
+    .bi-plus{width:48px;height:48px;padding:4px;border:0;background:none;cursor:pointer;
       display:flex;align-items:center;justify-content:center}
-    .bi-plus:hover{background:rgba(0,0,0,.04)}
+    .bi-plus span{width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center}
+    .bi-plus:hover span{background:rgba(0,0,0,.04)}
     .bi-send{width:60px;height:48px;flex:none;border:0;border-radius:999px;background:var(--send-bg);cursor:pointer;
       display:flex;align-items:center;justify-content:center;transition:background .12s ease}
     .bi-send:hover{background:#c2d8fb}
@@ -366,7 +376,7 @@
             </div>
           </div>
           <div class="hr-row"><span class="hr-label">11h</span>
-            <div class="ev" style="height:458px">
+            <div class="ev" style="height:392px">
               <div class="ev-body">
                 <div class="ev-top"><div class="ev-title">Plantão</div><div class="ev-sub">Einstein Hospital Israelita</div></div>
                 <div class="ev-foot"><span class="avatar">EH</span></div>
@@ -454,11 +464,13 @@
     <div class="right">
       <div class="rp-head">
         <span class="rp-title">Assistente AI</span>
-        <button class="panel-ico" id="chatToggle" aria-label="Recolher assistente" title="Recolher assistente">
-          <svg width="24" height="24" viewBox="6 6 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M23 10C25.2091 10 27 11.7909 27 14V21C27 23.2091 25.2091 25 23 25H14C11.7909 25 10 23.2091 10 21V14C10 11.7909 11.7909 10 14 10H23ZM14 11.5C12.6193 11.5 11.5 12.6193 11.5 14V21C11.5 22.3807 12.6193 23.5 14 23.5H23C24.3807 23.5 25.5 22.3807 25.5 21V14C25.5 12.6193 24.3807 11.5 23 11.5H14ZM15.75 14C16.1642 14 16.5 14.3358 16.5 14.75V20.25C16.5 20.6642 16.1642 21 15.75 21C15.3358 21 15 20.6642 15 20.25V14.75C15 14.3358 15.3358 14 15.75 14Z" fill="#8B8B8B"/>
-          </svg>
-        </button>
+        <div class="rp-actions">
+          <button class="ra-btn" id="raNew" type="button" aria-label="Nova conversa" title="Nova conversa"><img src="assets/icons/chat-new.svg" width="15" height="15" alt=""></button>
+          <span class="ra-div"></span>
+          <button class="ra-btn" id="raAgenda" type="button" aria-label="Esconder agenda" title="Esconder agenda"><img src="assets/icons/chat-agenda.svg" width="18" height="16" alt=""></button>
+          <span class="ra-div"></span>
+          <button class="ra-btn" id="raExpand" type="button" aria-label="Tela cheia" title="Tela cheia"><img src="assets/icons/chat-expand.svg" width="19" height="13" alt=""></button>
+        </div>
       </div>
 
       <div class="rp-msgs" id="rpMsgs"></div>
@@ -474,9 +486,7 @@
         </div>
         <div class="bi-bottom">
           <button class="bi-plus" aria-label="Adicionar">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6.25 14V7.75H1.19209e-07V6.25H6.25V-4.76837e-07H7.75V6.25H14V7.75H7.75V14H6.25Z" fill="#444746"/>
-            </svg>
+            <span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 21V13H3V11H11V3H13V11H21V13H13V21H11Z" fill="#444746"/></svg></span>
           </button>
           <button class="bi-send" id="biSend" aria-label="Enviar">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -536,7 +546,9 @@
       var showNav = document.getElementById('showNav');
       var showChat = document.getElementById('showChat');
       var navToggle = document.getElementById('navToggle');
-      var chatToggle = document.getElementById('chatToggle');
+      var stage = document.querySelector('.stage');
+      var raAgenda = document.getElementById('raAgenda');
+      var raExpand = document.getElementById('raExpand');
       function setNav(collapsed) {
         if (nav) nav.classList.toggle('collapsed', collapsed);
         if (showNav) showNav.hidden = !collapsed;
@@ -547,7 +559,20 @@
       }
       if (navToggle) navToggle.addEventListener('click', function () { setNav(true); });
       if (showNav) showNav.addEventListener('click', function () { setNav(false); });
-      if (chatToggle) chatToggle.addEventListener('click', function () { setChat(true); });
+      // calendário: mostra/esconde a agenda
+      if (raAgenda) raAgenda.addEventListener('click', function () {
+        var off = stage.classList.toggle('no-agenda');
+        raAgenda.classList.toggle('on', off);
+        raAgenda.title = off ? 'Mostrar agenda' : 'Esconder agenda';
+        raAgenda.setAttribute('aria-label', raAgenda.title);
+      });
+      // expandir: chat em tela cheia (clicar de novo volta)
+      if (raExpand) raExpand.addEventListener('click', function () {
+        var full = stage.classList.toggle('chat-full');
+        raExpand.classList.toggle('on', full);
+        raExpand.title = full ? 'Sair da tela cheia' : 'Tela cheia';
+        raExpand.setAttribute('aria-label', raExpand.title);
+      });
       if (showChat) showChat.addEventListener('click', function () { setChat(false); });
     })();
 
@@ -580,7 +605,7 @@
       } else {
         var ev = document.querySelector('.cal-inner .ev');
         var row = ev ? ev.closest('.hr-row') : null;
-        top = row ? row.offsetTop : 0;
+        top = row ? row.offsetTop + 8 : 0;
       }
       cal.scrollTop = Math.max(top - 8, 0);
     }
@@ -768,6 +793,18 @@
 
       var history = [];   // [{role:'user'|'assistant', content:string}]
       var busy = false;
+
+      // lápis do cabeçalho: nova conversa (limpa mensagens e histórico)
+      var raNew = document.getElementById('raNew');
+      if (raNew) raNew.addEventListener('click', function () {
+        if (busy) return;                       // espera a resposta atual terminar
+        history = [];
+        msgs.innerHTML = '';
+        msgs.classList.remove('on');
+        if (suggest) suggest.style.display = '';
+        input.value = ''; autogrow();
+        input.focus();
+      });
 
 
       // --- minimal, safe Markdown → HTML (escapes first, then formats) ---
