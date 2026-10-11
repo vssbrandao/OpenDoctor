@@ -167,37 +167,49 @@
     .er-foot{display:flex;justify-content:flex-end}
 
     /* popover de criar evento */
-    .evpop{position:fixed;z-index:60;width:300px;background:#fff;border:1px solid var(--sb-border);
-      border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.18);padding:14px;
-      font-family:var(--disp);display:flex;flex-direction:column;gap:10px}
+    /* janela de novo evento — painel em seções (referência estilo Notion Calendar) */
+    .evpop{position:fixed;z-index:60;width:300px;max-height:calc(100vh - 24px);overflow-y:auto;background:#fff;
+      border:1px solid rgba(0,0,0,.06);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.12);
+      font-family:var(--disp);color:#1F1F1F;display:flex;flex-direction:column}
     .evpop[hidden]{display:none}
-    .evpop-head{display:flex;align-items:center;justify-content:space-between}
-    .evpop-title{font-weight:700;font-size:14px;color:#071216}
-    .evpop-close{border:0;background:none;cursor:pointer;line-height:0;padding:4px;border-radius:6px;display:flex}
+    .evpop-head{display:flex;align-items:center;justify-content:space-between;padding:14px 12px 4px 20px}
+    .evpop-title{font-weight:700;font-size:14px;line-height:20px;color:#1F1F1F}
+    .evpop-close{width:28px;height:28px;border:0;background:none;cursor:pointer;border-radius:8px;
+      display:flex;align-items:center;justify-content:center}
     .evpop-close:hover{background:rgba(0,0,0,.05)}
-    .evpop-input{border:0;outline:none;font-family:var(--disp);font-size:14px;color:#071216;width:100%;box-sizing:border-box}
-    .evpop-name{font-size:16px;font-weight:500;border-bottom:1px solid var(--sb-border);padding:6px 2px}
-    .evpop-name::placeholder{color:var(--ink2)}
-    .evpop-person{display:flex;align-items:center;gap:8px;border:1px solid var(--sb-border);
-      border-radius:8px;padding:7px 10px}
-    .evpop-person svg{flex:none}
-    .evpop-person .evpop-input{font-size:14px}
-    .evpop-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .evpop-field{border:1px solid var(--sb-border);border-radius:8px;padding:7px 8px;
-      font-family:var(--disp);font-size:13px;color:#071216;background:#fff}
-    .evpop-time{width:110px}
-    .evpop-date{flex:1;width:100%}
-    .evpop-dash{color:#5f6368}
-    .evpop-desc{border:1px solid var(--sb-border);border-radius:8px;padding:8px;resize:vertical;min-height:40px}
-    .evpop-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:2px}
-    .evpop-btn{border-radius:999px;padding:8px 16px;font-family:var(--disp);font-weight:700;font-size:13px;
-      cursor:pointer;border:1px solid var(--sb-border);background:#fff;color:#071216}
-    .evpop-btn.primary{background:#0842a0;border-color:#0842a0;color:#fff}
-    .evpop-btn.primary:disabled{opacity:.5;cursor:default}
-    .evpop-btn.ghost:hover{background:rgba(0,0,0,.04)}
+    .evpop-name{border:0;outline:none;background:none;width:100%;padding:10px 20px 14px;
+      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#1F1F1F}
+    .evpop-name::placeholder{color:#A3A3A3}
+    .evpop-sec{border-top:1px solid #EDEDED;padding:10px 20px;display:flex;flex-direction:column}
+    .evpop-row{display:flex;align-items:center;gap:12px;min-height:32px}
+    .evpop-ico{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center}
+    .evpop-sub{padding-left:28px}                     /* alinha com o texto (ícone 16 + gap 12) */
+    .evpop-input{border:0;outline:none;background:none;width:100%;padding:0;
+      font-family:var(--disp);font-size:13px;line-height:20px;color:#1F1F1F}
+    .evpop-input::placeholder{color:#A3A3A3}
+    .evpop-time{width:auto;-webkit-appearance:none;appearance:none;cursor:pointer;
+      border-radius:6px;padding:2px 4px;margin:0 -4px}
+    .evpop-time:hover{background:rgba(0,0,0,.04)}
+    .evpop-arrow{color:#A3A3A3;font-size:13px}
+    .evpop-dur{color:#A3A3A3;font-size:13px;white-space:nowrap}
+    .evpop-date{position:relative;font-size:13px;line-height:20px;color:#1F1F1F;cursor:pointer;width:max-content}
+    .evpop-date input{position:absolute;inset:0;opacity:0;pointer-events:none}
+    .evpop-opt{border:0;background:none;padding:0;cursor:pointer;font-family:var(--disp);font-size:13px;
+      line-height:20px;color:#A3A3A3}
+    .evpop-opt.on{color:#1F1F1F;font-weight:500}
+    .evpop.allday .evpop-times{display:none}
+    .evpop-desc{border:0;outline:none;background:none;width:100%;resize:none;min-height:44px;padding:6px 0;
+      font-family:var(--disp);font-size:13px;line-height:20px;color:#1F1F1F}
+    .evpop-desc::placeholder{color:#A3A3A3}
+    .evpop-foot{border-top:1px solid #EDEDED;padding:12px 16px 14px 20px;display:flex;align-items:center;
+      justify-content:space-between;gap:8px}
     .evpop-msg{font-size:12px;color:#c5221f;line-height:1.4}
     .evpop-msg.ok{color:#188038}
     .evpop-msg a{color:#0842a0}
+    .evpop-create{margin-left:auto;height:32px;padding:0 18px;border:1px solid rgba(0,0,0,.1);border-radius:1000px;
+      background:#000;color:#fff;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:12px;letter-spacing:-.02em}
+    .evpop-create:hover{background:#222}
+    .evpop-create:disabled{opacity:.5;cursor:default}
 
     /* "now" indicator (orange line + dot) */
     .now{position:absolute;left:40px;right:0;height:0;border-top:1px solid var(--now);z-index:4;pointer-events:none}
@@ -578,28 +590,42 @@
     <div class="evpop" id="evPop" hidden>
       <div class="evpop-head">
         <span class="evpop-title">Evento</span>
-        <button class="evpop-close" id="evClose" aria-label="Fechar">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1 1l12 12M13 1L1 13" stroke="#5f6368" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <button class="evpop-close" id="evClose" type="button" aria-label="Fechar">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5l11 11M12.5 1.5l-11 11" stroke="#8B8B8B" stroke-width="1.5" stroke-linecap="round"/></svg>
         </button>
       </div>
-      <input class="evpop-input evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off">
-      <div class="evpop-person">
-        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5" r="2.6" stroke="#5f6368" stroke-width="1.3"/><path d="M3 13c0-2.2 2.2-3.6 5-3.6s5 1.4 5 3.6" stroke="#5f6368" stroke-width="1.3" stroke-linecap="round"/></svg>
-        <input class="evpop-input" id="evPatient" type="text" placeholder="Paciente" autocomplete="off">
+      <input class="evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off">
+      <div class="evpop-sec">
+        <div class="evpop-row evpop-times">
+          <span class="evpop-ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.3" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 4.6V8l2.2 1.4" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <select class="evpop-input evpop-time" id="evStart" aria-label="Início"></select>
+          <span class="evpop-arrow">→</span>
+          <select class="evpop-input evpop-time" id="evEnd" aria-label="Fim"></select>
+          <span class="evpop-dur" id="evDur"></span>
+        </div>
+        <div class="evpop-row evpop-sub">
+          <label class="evpop-date" id="evDateLbl"><span id="evDateTxt"></span><input id="evDate" type="date" aria-label="Data"></label>
+        </div>
+        <div class="evpop-row evpop-sub">
+          <button class="evpop-opt" id="evAllDay" type="button" aria-pressed="false">Dia todo</button>
+        </div>
       </div>
-      <div class="evpop-row">
-        <input class="evpop-field evpop-date" id="evDate" type="date">
+      <div class="evpop-sec">
+        <div class="evpop-row">
+          <span class="evpop-ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.4" r="2.6" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13.6c0-2.4 2.2-4 5-4s5 1.6 5 4" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <input class="evpop-input" id="evPatient" type="text" placeholder="Paciente" autocomplete="off">
+        </div>
+        <div class="evpop-row">
+          <span class="evpop-ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 14.2s4.6-4.1 4.6-7.6A4.6 4.6 0 0 0 3.4 6.6c0 3.5 4.6 7.6 4.6 7.6z" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="6.6" r="1.7" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <input class="evpop-input" id="evLocation" type="text" placeholder="Local" autocomplete="off">
+        </div>
       </div>
-      <div class="evpop-row">
-        <input class="evpop-field evpop-time" id="evStart" type="time">
-        <span class="evpop-dash">→</span>
-        <input class="evpop-field evpop-time" id="evEnd" type="time">
+      <div class="evpop-sec">
+        <textarea class="evpop-desc" id="evDesc" rows="2" placeholder="Descrição"></textarea>
       </div>
-      <textarea class="evpop-input evpop-desc" id="evDesc" rows="2" placeholder="Descrição (opcional)"></textarea>
-      <div class="evpop-msg" id="evMsg" hidden></div>
       <div class="evpop-foot">
-        <button class="evpop-btn ghost" id="evCancel" type="button">Cancelar</button>
-        <button class="evpop-btn primary" id="evCreate" type="button">Criar</button>
+        <div class="evpop-msg" id="evMsg" hidden></div>
+        <button class="evpop-create" id="evCreate" type="button">Criar</button>
       </div>
     </div>
 
@@ -774,20 +800,72 @@
       var elTitle = document.getElementById('evTitle'), elDate = document.getElementById('evDate'),
           elStart = document.getElementById('evStart'), elEnd = document.getElementById('evEnd'),
           elDesc = document.getElementById('evDesc'), elMsg = document.getElementById('evMsg'),
-          elPatient = document.getElementById('evPatient'), elCreate = document.getElementById('evCreate');
+          elPatient = document.getElementById('evPatient'), elCreate = document.getElementById('evCreate'),
+          elLoc = document.getElementById('evLocation'), elDur = document.getElementById('evDur'),
+          elDateTxt = document.getElementById('evDateTxt'), elAllDay = document.getElementById('evAllDay');
+      var allDay = false;
+      // horários a cada 15 min (formato 24h)
+      [elStart, elEnd].forEach(function (sel) {
+        for (var q = 0; q < 96; q++) {
+          var o = document.createElement('option');
+          o.value = o.textContent = pad(Math.floor(q / 4)) + ':' + pad((q % 4) * 15);
+          sel.appendChild(o);
+        }
+      });
+      var DOWS_S = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+      var MON_S = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      function dateLabel() {
+        if (!elDate.value) { elDateTxt.textContent = 'Escolher data'; return; }
+        var p = elDate.value.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
+        elDateTxt.textContent = DOWS_S[d.getDay()] + ', ' + d.getDate() + ' de ' + MON_S[d.getMonth()];
+      }
+      function durLabel() {
+        if (!elStart.value || !elEnd.value) { elDur.textContent = ''; return; }
+        var a = elStart.value.split(':'), b = elEnd.value.split(':');
+        var min = (+b[0] * 60 + +b[1]) - (+a[0] * 60 + +a[1]);
+        if (min <= 0) { elDur.textContent = ''; return; }
+        var h = Math.floor(min / 60), m = min % 60;
+        elDur.textContent = h ? (h + ' h' + (m ? ' ' + m + ' min' : '')) : (m + ' minutos');
+      }
+      function setAllDay(on) {
+        allDay = on; pop.classList.toggle('allday', on);
+        elAllDay.classList.toggle('on', on); elAllDay.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      elStart.addEventListener('change', function () {
+        // mantém a duração ao mudar o início
+        var a = elStart.value.split(':'); if (a.length < 2) return;
+        var dur = 30;
+        if (elDur.dataset.min) dur = +elDur.dataset.min;
+        var t = (+a[0] * 60 + +a[1] + dur) % (24 * 60);
+        elEnd.value = pad(Math.floor(t / 60)) + ':' + pad(t % 60); durLabel(); remember();
+      });
+      elEnd.addEventListener('change', function () { durLabel(); remember(); });
+      function remember() {
+        var a = elStart.value.split(':'), b = elEnd.value.split(':');
+        var min = (+b[0] * 60 + +b[1]) - (+a[0] * 60 + +a[1]);
+        if (min > 0) elDur.dataset.min = min;
+      }
+      document.getElementById('evDateLbl').addEventListener('click', function (e) {
+        e.preventDefault();
+        try { elDate.showPicker(); } catch (_) { elDate.focus(); }
+      });
+      elDate.addEventListener('change', dateLabel);
+      elAllDay.addEventListener('click', function () { setAllDay(!allDay); });
 
       function pad(n) { return String(n).padStart(2, '0'); }
       function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
       function openAt(clientX, clientY, h, m, day) {
         var now = day || new Date();
-        elTitle.value = ''; elDesc.value = ''; elPatient.value = '';
+        elTitle.value = ''; elDesc.value = ''; elPatient.value = ''; elLoc.value = '';
+        setAllDay(false); delete elDur.dataset.min;
         elMsg.hidden = true; elMsg.className = 'evpop-msg';
         elCreate.disabled = false; elCreate.textContent = 'Criar';
         elDate.value = fmtDate(now);
         elStart.value = pad(h) + ':' + pad(m);
         var eh = h, em = m + 30; if (em >= 60) { eh = (h + 1) % 24; em -= 60; }
         elEnd.value = pad(eh) + ':' + pad(em);
+        remember(); durLabel(); dateLabel();
         pop.hidden = false;
         // posiciona perto do clique, sem sair da tela
         var w = 300, ph = pop.offsetHeight || 320;
@@ -833,7 +911,6 @@
       });
 
       document.getElementById('evClose').addEventListener('click', close);
-      document.getElementById('evCancel').addEventListener('click', close);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
       // clique fora fecha
       document.addEventListener('mousedown', function (e) {
@@ -848,13 +925,19 @@
       elCreate.addEventListener('click', function () {
         var title = elTitle.value.trim();
         var patient = elPatient.value.trim();
-        if (!elDate.value || !elStart.value || !elEnd.value) {
+        if (!elDate.value || (!allDay && (!elStart.value || !elEnd.value))) {
           elMsg.textContent = 'Preencha data, início e fim.'; elMsg.hidden = false; return;
         }
-        var startISO = isoFrom(elDate.value, elStart.value);
-        var endISO = isoFrom(elDate.value, elEnd.value);
-        if (new Date(endISO) <= new Date(startISO)) {
-          elMsg.textContent = 'O fim deve ser depois do início.'; elMsg.hidden = false; return;
+        var startISO, endISO;
+        if (allDay) {                                        // dia inteiro: datas sem hora (fim exclusivo)
+          var p = elDate.value.split('-'), nx = new Date(+p[0], +p[1] - 1, +p[2] + 1);
+          startISO = elDate.value; endISO = fmtDate(nx);
+        } else {
+          startISO = isoFrom(elDate.value, elStart.value);
+          endISO = isoFrom(elDate.value, elEnd.value);
+          if (new Date(endISO) <= new Date(startISO)) {
+            elMsg.textContent = 'O fim deve ser depois do início.'; elMsg.hidden = false; return;
+          }
         }
         // compõe o título do evento com o paciente e guarda o paciente na descrição
         var summary = patient ? (title ? title + ' — ' + patient : patient) : title;
@@ -863,7 +946,8 @@
         elCreate.disabled = true; elCreate.textContent = 'Criando…'; elMsg.hidden = true;
         fetch('/calendar/events', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: summary, start: startISO, end: endISO, description: desc })
+          body: JSON.stringify({ title: summary, start: startISO, end: endISO, description: desc,
+                                 location: elLoc.value.trim(), all_day: allDay })
         }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
           .then(function (res) {
             if (res.ok && res.j.ok) {

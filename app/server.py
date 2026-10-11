@@ -638,7 +638,9 @@ async def create_calendar_event(request: Request):
     try:
         ev = integrations.create_event(u["id"], prov,
                                        (payload.get("title") or "").strip(),
-                                       start, end, payload.get("description"))
+                                       start, end, payload.get("description"),
+                                       location=(payload.get("location") or "").strip() or None,
+                                       all_day=bool(payload.get("all_day")))
         return {"ok": True, "event": ev}
     except Exception as e:
         msg = str(e)

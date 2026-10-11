@@ -118,32 +118,43 @@ def _access_token(user_id, provider):
     return access
 
 
-def create_event(user_id, provider, title, start, end, description=None):
+def create_event(user_id, provider, title, start, end, description=None, location=None, all_day=False):
     """Cria um evento no calendário primário do usuário. start/end em ISO 8601
-    (com offset, ex.: 2026-10-09T13:30:00-03:00). Pode lançar exceção (ex.: 403
-    se o token for somente-leitura → precisa reconectar com escopo de escrita)."""
+    (com offset, ex.: 2026-10-09T13:30:00-03:00) ou, se all_day, datas AAAA-MM-DD
+    (fim exclusivo). Pode lançar exceção (ex.: 403 se o token for somente-leitura
+    → precisa reconectar com escopo de escrita)."""
     at = _access_token(user_id, provider)
     if not at:
         raise RuntimeError("sem token")
     hdr = {"Authorization": "Bearer " + at, "Content-Type": "application/json"}
     if provider == "google":
+        key = "date" if all_day else "dateTime"
         body = {"summary": title or "(sem título)",
-                "start": {"dateTime": start}, "end": {"dateTime": end}}
+                "start": {key: start}, "end": {key: end}}
         if description:
             body["description"] = description
+        if location:
+            body["location"] = location
         r = httpx.post("https://www.googleapis.com/calendar/v3/calendars/primary/events",
                        headers=hdr, json=body, timeout=25)
         if r.status_code not in (200, 201):
             raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
         e = r.json()
-        return {"title": e.get("summary"), "start": (e.get("start") or {}).get("dateTime"),
-                "end": (e.get("end") or {}).get("dateTime")}
+        st, en = e.get("start") or {}, e.get("end") or {}
+        return {"title": e.get("summary"), "start": st.get("dateTime") or st.get("date"),
+                "end": en.get("dateTime") or en.get("date")}
     else:  # microsoft
+        if all_day:
+            start, end = start + "T00:00:00", end + "T00:00:00"
         body = {"subject": title or "(sem título)",
                 "start": {"dateTime": start, "timeZone": "UTC"},
                 "end": {"dateTime": end, "timeZone": "UTC"}}
+        if all_day:
+            body["isAllDay"] = True
         if description:
             body["body"] = {"contentType": "text", "content": description}
+        if location:
+            body["location"] = {"displayName": location}
         r = httpx.post("https://graph.microsoft.com/v1.0/me/events",
                        headers=hdr, json=body, timeout=25)
         if r.status_code not in (200, 201):
