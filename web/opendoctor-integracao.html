@@ -30,44 +30,49 @@
     .nav-main{padding:0 6px;display:flex;flex-direction:column;gap:42px}
     .nav-sec{display:flex;flex-direction:column;gap:4px}
     .item{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:100px;cursor:pointer;
-      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:var(--ink);
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--ink);
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .item:hover{background:var(--active);border-radius:10px}
     .item.active{background:var(--active);border-radius:10px}
     .item .ico{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center}
     .item .ico svg{display:block}
 
-    /* ===== CENTER: INTEGRAÇÃO (node 973:6631) ===== */
+    /* ===== CENTER: INTEGRAÇÃO (Figma 973:6411 → frame 1001:7840: x 586, y 42, w 516) ===== */
+    /* padding-right 20px: em 1440px a coluna fica em x=586, como no Figma */
     .center{flex:1;min-width:0;height:100%;overflow-y:auto;display:flex;justify-content:center;
-      padding:42px 0 40px}
-    .int{width:516px;display:flex;flex-direction:column;gap:25px}
+      padding:42px 20px 40px 0}
+    .int{width:516px;flex:none;display:flex;flex-direction:column;gap:42px}
     .int-title{font-family:var(--disp);font-weight:700;font-size:16px;line-height:20px;color:#071216}
+    .int-list{display:flex;flex-direction:column;gap:8px}
 
-    .int-card{position:relative;width:516px;height:369px;border:1px solid var(--card-border);border-radius:40px}
-    .card-head{position:absolute;left:42px;top:56px;width:339px}
-    .card-name{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    /* card (1001:7836): padding 42 + borda 1px (a borda conta no layout, como no Figma), h 369, raio 40 */
+    .int-card{height:369px;padding:42px;border-radius:40px;border:1px solid var(--card-border);
+      display:flex;flex-direction:column;gap:10px}
+    .card-inner{width:431px;display:flex;flex-direction:column;gap:48px}
+    .card-head{width:339px;display:flex;flex-direction:column}
+    .card-name{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .card-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;width:273px}
 
-    .conn-row{position:absolute;left:42px;top:150px;width:431px;height:84px;
-      border:1px solid var(--card-border);border-radius:8px;padding:24px;
+    /* campo (973:6646): padding 24, gap 24, raio 24 */
+    .conn-row{height:84px;padding:0 24px;border-radius:24px;box-shadow:inset 0 0 0 1px var(--card-border);
       display:flex;align-items:center;gap:24px}
     .conn-row.connected{justify-content:space-between}
     .conn-left{display:flex;align-items:center;gap:24px}
-    .conn-logo{width:46px;height:48px;object-fit:contain;flex:none}
+    .conn-logo{width:46px;height:48px;object-fit:cover;flex:none}
     .conn-logo-sm{width:42.25px;height:40px;flex:none}
     .conn-name{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216;white-space:nowrap}
-    .conn-status{display:flex;align-items:center;gap:8px;
+    .conn-name-ms{width:152px}
+    .conn-status{width:121.37px;display:flex;justify-content:flex-end;align-items:center;gap:8px;
       font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
     .conn-status[hidden]{display:none}
     .conn-status .dot{width:8px;height:8px;border-radius:50%;background:#3FDD09;flex:none}
 
-    .int-btn{position:absolute;left:42px;top:276px;height:64px;display:inline-flex;align-items:center;
-      justify-content:center;padding:0 48px;border:1px solid var(--card-border);background:none;
-      border-radius:999px;cursor:pointer;
-      font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.01em;color:#000}
+    /* botão (973:6642): h 64, padding 16 48, gap 8, raio 999 */
+    .int-btn{align-self:flex-start;height:64px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      padding:16px 48px;border:0;background:none;border-radius:999px;box-shadow:inset 0 0 0 1px var(--card-border);
+      cursor:pointer;font-family:var(--disp);font-weight:700;font-size:12px;letter-spacing:.01em;color:#000}
     .int-btn:hover{background:var(--active)}
-
-    .int-btn[disabled]{opacity:.45;cursor:not-allowed}
+    .int-btn[disabled]{opacity:.45;cursor:not-allowed;background:none}
   </style>
 </head>
 <body>
@@ -100,39 +105,43 @@
       <div class="int">
         <div class="int-title">Integração</div>
 
-        <!-- Card: Google Calendar -->
-        <div class="int-card" data-provider="google">
-          <div class="card-head">
-            <div class="card-name">Google Calendar</div>
-            <div class="card-sub">Conecte seu calendário</div>
-          </div>
-          <div class="conn-row">
-            <div class="conn-left">
-              <img class="conn-logo" src="assets/int/google-calendar.png" alt="Google Calendar">
-              <span class="conn-name">Google Calendar</span>
+        <div class="int-list">
+          <!-- Card: Google Calendar -->
+          <div class="int-card" data-provider="google">
+            <div class="card-inner">
+              <div class="card-head">
+                <div class="card-name">Google Calendar</div>
+                <div class="card-sub">Conecte seu calendário</div>
+              </div>
+              <div class="conn-row">
+                <div class="conn-left">
+                  <img class="conn-logo" src="assets/int/google-calendar.png" alt="Google Calendar">
+                  <span class="conn-name">Google Calendar</span>
+                </div>
+                <div class="conn-status" hidden><span class="dot"></span><span class="st-text">Conectado</span></div>
+              </div>
+              <button class="int-btn" data-provider="google">Conectar</button>
             </div>
-            <div class="conn-status" hidden><span class="dot"></span><span class="st-text">Conectado</span></div>
           </div>
-          <button class="int-btn" data-provider="google">Conectar</button>
-        </div>
 
-        <!-- Card: Microsoft Outlook — desativado por ora (só Google).
-             Para reativar, descomente este bloco; o backend já suporta 'microsoft'.
-        <div class="int-card" data-provider="microsoft">
-          <div class="card-head">
-            <div class="card-name">Microsoft Outlook</div>
-            <div class="card-sub">Conecte seu calendário</div>
-          </div>
-          <div class="conn-row">
-            <div class="conn-left">
-              <img class="conn-logo-sm" src="assets/int/outlook.svg" alt="Microsoft Outlook">
-              <span class="conn-name">Microsoft Outlook</span>
+          <!-- Card: Microsoft Outlook -->
+          <div class="int-card" data-provider="microsoft">
+            <div class="card-inner">
+              <div class="card-head">
+                <div class="card-name">Microsoft Outlook</div>
+                <div class="card-sub">Conecte seu calendário</div>
+              </div>
+              <div class="conn-row">
+                <div class="conn-left">
+                  <img class="conn-logo-sm" src="assets/int/outlook.svg" alt="Microsoft Outlook">
+                  <span class="conn-name conn-name-ms">Microsoft Outlook</span>
+                </div>
+                <div class="conn-status" hidden><span class="dot"></span><span class="st-text">Conectado</span></div>
+              </div>
+              <button class="int-btn" data-provider="microsoft" disabled>Conectar</button>
             </div>
-            <div class="conn-status" hidden><span class="dot"></span><span class="st-text">Conectado</span></div>
           </div>
-          <button class="int-btn" data-provider="microsoft">Conectar</button>
         </div>
-        -->
       </div>
     </div>
 
@@ -152,7 +161,6 @@
           var row = card.querySelector('.conn-row');
           var status = card.querySelector('.conn-status');
           var btn = card.querySelector('.int-btn');
-          btn.disabled = false;
           if (info.connected) {
             row.classList.add('connected');
             status.hidden = false;
@@ -163,16 +171,10 @@
             row.classList.remove('connected');
             status.hidden = true;
             btn.dataset.action = 'connect';
-            if (!LOGGED_IN) {
+            if (!LOGGED_IN && prov === 'google') {
               btn.textContent = 'Entrar com Google';
-              btn.title = 'Faça login para conectar';
-            } else if (CFG[prov] === false) {
-              btn.textContent = 'Indisponível';
-              btn.disabled = true;
-              btn.title = 'Credenciais do provedor ainda não configuradas';
             } else {
               btn.textContent = 'Conectar';
-              btn.title = '';
             }
           }
         });
@@ -189,7 +191,7 @@
       document.querySelectorAll('.int-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
           var prov = btn.dataset.provider;
-          if (btn.disabled) return;
+          if (btn.disabled) return;          // Outlook: desabilitado por ora
           if (btn.dataset.action === 'disconnect') {
             fetch('/integrations/' + prov + '/disconnect', { method: 'POST' }).then(load);
           } else if (!LOGGED_IN) {
