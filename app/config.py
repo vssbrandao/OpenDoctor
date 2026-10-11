@@ -29,7 +29,7 @@ def _req(name):
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.5").strip()
+OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4").strip()
 # modelo barato p/ chamadas auxiliares (planejamento, extração, follow-ups)
 OPENAI_FAST_MODEL = os.environ.get("OPENAI_FAST_MODEL", "gpt-4o-mini").strip()
 # modelos de raciocínio (gpt-5.x): esforço e orçamento extra p/ o raciocínio
