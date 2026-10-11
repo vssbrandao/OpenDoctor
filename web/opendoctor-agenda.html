@@ -178,10 +178,10 @@
     .stage.expanded .center{display:none}
     .stage.expanded .right{max-width:none;box-shadow:none}
     .stage.expanded .rp-msgs{padding-left:max(24px,calc(50% - 351px));padding-right:max(24px,calc(50% - 349px))}
-    .stage.expanded .big-input,.stage.expanded .rp-suggest,.stage.expanded .bi-note{
+    .stage.expanded .big-input,.stage.expanded .bi-note{
       left:max(24px,calc(50% - 351px));right:max(24px,calc(50% - 349px))}
     .stage.nav-mini.expanded .rp-msgs{padding-left:max(24px,calc(50% - 350px));padding-right:max(24px,calc(50% - 350px))}
-    .stage.nav-mini.expanded .big-input,.stage.nav-mini.expanded .rp-suggest,.stage.nav-mini.expanded .bi-note{
+    .stage.nav-mini.expanded .big-input,.stage.nav-mini.expanded .bi-note{
       left:max(24px,calc(50% - 350px));right:max(24px,calc(50% - 350px))}
     /* bolha da pergunta nessa versão (Figma 1012:7583): padding 16 x 24, até 466px */
     .stage.nav-mini.expanded .msg-user{max-width:466px;padding:16px 24px}
@@ -207,16 +207,6 @@
     .float-toggle[hidden]{display:none}
     .fl-left{left:12px}
     .fl-right{right:12px}
-
-    /* suggestion cards above the input */
-    .rp-suggest{position:absolute;left:24px;right:24px;bottom:160px;display:flex;gap:8px}
-    .sg-card{flex:1;height:140px;background:var(--pill);border:0;border-radius:40px;padding:24px;
-      display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;
-      text-align:left;cursor:pointer;transition:background .15s ease}
-    .sg-card:hover{background:var(--ev-bg-hover)}
-    .sg-ico{width:20px;height:24px;display:flex;align-items:center;
-      font-family:var(--disp);font-weight:400;font-size:18px;line-height:24px;color:#1f1f1f}
-    .sg-txt{font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#1f1f1f}
 
     /* chips de acompanhamento (follow-up) abaixo da resposta */
     .followups{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
@@ -513,11 +503,6 @@
       </div>
 
       <div class="rp-msgs" id="rpMsgs"></div>
-
-      <div class="rp-suggest" id="rpSuggest">
-        <button class="sg-card" data-prompt="Me ajude a calcular a dose pediátrica de um medicamento. Pergunte os dados que precisar (medicamento, peso e idade da criança)."><span class="sg-ico">≥</span><span class="sg-txt">Calcular dose pediátrica</span></button>
-        <button class="sg-card" data-prompt="Me ajude a estimar o eGFR (taxa de filtração glomerular). Pergunte os dados necessários (creatinina, idade, sexo e, se aplicável, raça/peso) e diga qual fórmula usou."><span class="sg-ico">≥</span><span class="sg-txt">Estimar eGFR</span></button>
-      </div>
 
       <div class="big-input">
         <div class="bi-top">
@@ -855,7 +840,6 @@
       var input = document.getElementById('biInput');
       var sendBtn = document.getElementById('biSend');
       var msgs = document.getElementById('rpMsgs');
-      var suggest = document.getElementById('rpSuggest');
       if (!input || !sendBtn || !msgs) return;
 
       var history = [];   // [{role:'user'|'assistant', content:string}]
@@ -869,7 +853,6 @@
         conv = null; renderHist();
         msgs.innerHTML = '';
         msgs.classList.remove('on');
-        if (suggest) suggest.style.display = '';
         input.value = ''; autogrow();
         input.focus();
       });
@@ -955,11 +938,6 @@
       }
       input.addEventListener('input', function () {
         autogrow();
-        // esconde as sugestões ao começar a digitar; reexibe se limpar (e sem conversa ainda)
-        if (suggest) {
-          if (input.value.trim()) suggest.style.display = 'none';
-          else if (!msgs.classList.contains('on')) suggest.style.display = '';
-        }
       });
 
       // ===== histórico de conversas (salvo só neste navegador) =====
@@ -1009,7 +987,6 @@
         history = (c.hist || []).slice();
         msgs.innerHTML = '';
         msgs.classList.add('on');
-        if (suggest) suggest.style.display = 'none';
         (c.turns || []).forEach(function (t) {
           addMsg('msg-user', t.q);
           var wrap = document.createElement('div'); wrap.className = 'msg-ai';
@@ -1182,7 +1159,6 @@
         text = (text || '').trim();
         if (!text || busy) return;
         busy = true; sendBtn.disabled = true;
-        if (suggest) suggest.style.display = 'none';
         msgs.classList.add('on');
         addMsg('msg-user', text);
         input.value = ''; autogrow();
@@ -1281,9 +1257,6 @@
       sendBtn.addEventListener('click', function () { ask(input.value); });
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); }
-      });
-      document.querySelectorAll('.sg-card').forEach(function (card) {
-        card.addEventListener('click', function () { ask(card.getAttribute('data-prompt')); });
       });
     })();
   </script>
