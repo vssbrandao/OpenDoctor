@@ -594,10 +594,16 @@
     placeNow();
     setInterval(placeNow, 60 * 1000); // keep it live, update every minute
 
-    // abre a agenda com o PRIMEIRO compromisso no topo (real se conectado, senão exemplo)
+    // abre a agenda com o traço da hora atual no MEIO da área visível;
+    // fora da faixa 1h–23h (traço escondido), cai no primeiro compromisso no topo
     function scrollToFirst() {
       var cal = document.querySelector('.cal');
       if (!cal) return;
+      var now = document.getElementById('nowMarker');
+      if (now && now.style.display !== 'none') {
+        cal.scrollTop = Math.max((parseFloat(now.style.top) || now.offsetTop) - cal.clientHeight / 2, 0);
+        return;
+      }
       var real = document.querySelector('.cal-inner .ev-real');
       var top;
       if (real) {
