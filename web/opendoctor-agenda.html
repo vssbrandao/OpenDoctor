@@ -52,6 +52,46 @@
       display:flex;align-items:center;justify-content:center;flex:none}
     .hd-btn:hover{background:rgba(0,0,0,.05)}
     .hd-actions{display:flex;align-items:center;gap:4px}
+    .ag-left{display:flex;align-items:center}
+    .view-sel{display:flex;align-items:center;cursor:pointer}
+    .view-sel .date{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    /* menu Dia / Semana */
+    .view-pop{position:absolute;top:44px;z-index:30;min-width:140px;background:#fff;border:1px solid var(--sb-border);
+      border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;display:flex;flex-direction:column;gap:2px}
+    .view-pop[hidden]{display:none}
+    .view-pop button{border:0;background:none;text-align:left;padding:8px 12px;border-radius:10px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .view-pop button:hover{background:var(--active)}
+    .view-pop button.on{font-weight:700}
+
+    /* ===== visão SEMANA (Figma 1014:9927) =====
+       calha de horas 109px, colunas >= 158px, 64px por hora, cabeçalho dos dias 62px */
+    .wk{display:none;position:absolute;top:52px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:thin}
+    .stage.week .wk{display:block}
+    .stage.week .cal{display:none}
+    .wk-grid{position:relative;display:grid;grid-template-columns:109px repeat(7,minmax(158px,1fr))}
+    .wk-h{position:sticky;top:0;z-index:4;height:62px;padding-top:25px;background:#fff;
+      box-shadow:inset 0 -1px 0 rgba(26,26,26,.08);display:flex;justify-content:center;align-items:flex-start;gap:4px;
+      font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F;white-space:nowrap}
+    .wk-h.gmt{left:0;z-index:5;justify-content:flex-start;padding-left:25px}
+    .wk-today{width:24px;height:24px;border-radius:50%;background:#D3E3FD;color:#0842A0;text-align:center;line-height:24px}
+    .wk-gut{position:sticky;left:0;z-index:3;background:#fff}
+    .wk-lbl{position:absolute;right:56px;transform:translateY(-50%);
+      font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F}
+    .wk-col{position:relative;box-shadow:inset 1px 0 0 rgba(26,26,26,.08);
+      background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 63px,rgba(26,26,26,.08) 63px,rgba(26,26,26,.08) 64px)}
+    .wk-col:last-child{box-shadow:inset 1px 0 0 rgba(26,26,26,.08),inset -1px 0 0 rgba(26,26,26,.08)}
+    .wk-ev{position:absolute;left:1px;right:0;background:#F3F3F3;border-radius:24px;padding:8px 8px 8px 16px;
+      overflow:hidden;display:flex;flex-direction:column;justify-content:center;z-index:1}
+    .wk-ev.tall{justify-content:flex-start}
+    .wk-ev-t{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#071216;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .wk-ev-s{font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:#666C6F;white-space:nowrap}
+    .wk-now{position:absolute;left:79px;right:0;height:0;border-top:1px solid var(--now);z-index:2;pointer-events:none}
+    .wk-now-today{position:absolute;left:0;right:0;height:2px;margin-top:-1px;background:var(--now);z-index:2;pointer-events:none}
+    .wk-now-cap{position:absolute;left:58px;transform:translateY(-50%);height:19px;padding:1px 6px;border-radius:100px;
+      background:var(--now);color:#fff;font-family:var(--disp);font-weight:700;font-size:12px;line-height:140%;
+      display:flex;align-items:center;white-space:nowrap;z-index:4}
     /* ajuste óptico p/ cair na mesma posição do glifo no Figma */
     .ic-cal{transform:translate(1px,1px)}
     .ic-hist{transform:none}
@@ -88,7 +128,7 @@
       line-height:24px;color:var(--ink2)}
 
     /* event card (Figma "Big input" repurposed) */
-    .ev{position:absolute;left:79px;right:24px;top:8px;
+    .ev{position:absolute;left:62px;right:24px;top:8px;
       background:var(--ev-bg);border-radius:40px;display:flex;flex-direction:column;z-index:2;overflow:hidden;
       cursor:pointer;transition:background .15s ease}
     .ev:hover{background:var(--ev-bg-hover)}
@@ -106,7 +146,7 @@
 
     /* eventos reais do calendário conectado (posicionados por horário) */
     .cal-inner.real .hr-row .ev{display:none}
-    .ev-real{position:absolute;left:79px;right:24px;background:var(--ev-bg);border-radius:40px;
+    .ev-real{position:absolute;left:62px;right:24px;background:var(--ev-bg);border-radius:40px;
       padding:20px 24px;overflow:hidden;z-index:2;display:flex;flex-direction:column;
       justify-content:space-between}
     .ev-real:hover{background:var(--ev-bg-hover)}
@@ -149,13 +189,13 @@
     .evpop-msg a{color:#0842a0}
 
     /* "now" indicator (orange line + dot) */
-    .now{position:absolute;left:24px;right:0;height:0;border-top:1px solid var(--now);z-index:4;pointer-events:none}
+    .now{position:absolute;left:16px;right:0;height:0;border-top:1px solid var(--now);z-index:4;pointer-events:none}
     .now-time{position:absolute;left:0;top:0;transform:translateY(-50%);height:19px;display:flex;align-items:center;
       background:var(--now);color:#fff;font-family:var(--disp);font-weight:500;font-size:12px;
       line-height:140%;padding:1px 6px;border-radius:100px;white-space:nowrap}
 
     /* ===== RIGHT PANEL (487) ===== */
-    .right{flex:1 1 0;min-width:503px;max-width:720px;height:100%;background:#fff;position:relative;box-shadow:inset 1px 0 0 var(--sb-border)}
+    .right{flex:1 1 0;min-width:520px;max-width:720px;height:100%;background:#fff;position:relative;box-shadow:inset 1px 0 0 var(--sb-border)}
     .rp-head{display:flex;align-items:center;justify-content:space-between;padding:8px 24px}
     .rp-title{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
     /* agenda em tela cheia (botão expandir do cabeçalho da agenda) */
@@ -354,15 +394,26 @@
     <!-- ===== CENTER: DAY AGENDA ===== -->
     <div class="center">
       <div class="ag-head">
-        <div class="cal-head" id="calHead">
-          <span class="date">Seg, 30 Junho</span>
-          <span class="hd-btn"><img src="assets/icons/date-dropdown.svg" width="36" height="36" alt=""></span>
+        <div class="ag-left">
+          <div class="cal-head" id="calHead">
+            <span class="date">Seg, 30 Junho</span>
+            <span class="hd-btn"><img src="assets/icons/date-dropdown.svg" width="36" height="36" alt=""></span>
+          </div>
+          <div class="view-sel" id="viewSel" role="button" aria-haspopup="true" title="Mudar visão">
+            <span class="date" id="viewLabel">Dia</span>
+            <span class="hd-btn"><img src="assets/icons/date-dropdown.svg" width="36" height="36" alt=""></span>
+          </div>
         </div>
         <div class="hd-actions">
           <button class="hd-btn" id="agToday" type="button" aria-label="Hoje" title="Hoje"><img class="ic-cal" src="assets/icons/agenda-calendar.svg" width="18" height="16" alt=""></button>
           <button class="hd-btn" id="agExpand" type="button" aria-label="Expandir agenda" title="Expandir agenda"><img class="ic-exp" src="assets/icons/agenda-expand.svg" width="18" height="14" alt=""></button>
         </div>
       </div>
+      <div class="view-pop" id="viewPop" hidden>
+        <button type="button" data-v="dia">Dia</button>
+        <button type="button" data-v="semana">Semana</button>
+      </div>
+      <div class="wk" id="wk"><div class="wk-grid" id="wkGrid"></div></div>
       <div class="cal-pop" id="calPop" hidden>
         <div class="cp-head">
           <button class="cp-nav" id="cpPrev" aria-label="Mês anterior">‹</button>
@@ -625,7 +676,7 @@
       // calendário: volta para hoje e centraliza no traço da hora atual
       if (agToday) agToday.addEventListener('click', function () {
         if (window.__calToday) window.__calToday();
-        if (typeof scrollToFirst === 'function') scrollToFirst();
+        if (!(window.__isWeekView && window.__isWeekView()) && typeof scrollToFirst === 'function') scrollToFirst();
       });
       if (showChat) showChat.addEventListener('click', function () { setChat(false); });
     })();
@@ -1260,6 +1311,126 @@
       });
     })();
   </script>
+  <script>
+    // ===== visão Dia / Semana =====
+    (function () {
+      var stage = document.querySelector('.stage');
+      var sel = document.getElementById('viewSel'), label = document.getElementById('viewLabel');
+      var pop = document.getElementById('viewPop'), grid = document.getElementById('wkGrid');
+      var wk = document.getElementById('wk');
+      if (!stage || !sel || !pop || !grid) return;
+      var WK_PX = 64, WK_FIRST = 0, WK_LAST = 24;          // semana: 0h–24h, 64px por hora
+      var DOWS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      var events = [], weekStart = null, timer = null;
+
+      function startOfWeek(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - x.getDay()); return x; }
+      function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+      function hhmm(d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+      function fmtT(d) { var m = d.getMinutes(); return d.getHours() + (m ? 'h' + String(m).padStart(2, '0') : 'h'); }
+      function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+
+      function render() {
+        var H = (WK_LAST - WK_FIRST) * WK_PX, now = new Date();
+        grid.innerHTML = '';
+        // cabeçalho: fuso + dias
+        var off = -now.getTimezoneOffset() / 60;
+        grid.appendChild(el('div', 'wk-h gmt', 'GMT' + (off >= 0 ? '+' : '') + off));
+        var days = [];
+        for (var i = 0; i < 7; i++) {
+          var d = new Date(weekStart); d.setDate(weekStart.getDate() + i); days.push(d);
+          var h = el('div', 'wk-h');
+          if (sameDay(d, now)) { h.appendChild(el('span', null, DOWS[i])); h.appendChild(el('span', 'wk-today', d.getDate())); }
+          else h.textContent = DOWS[i] + ' ' + d.getDate();
+          grid.appendChild(h);
+        }
+        // calha com as horas
+        var gut = el('div', 'wk-gut'); gut.style.height = H + 'px';
+        for (var hr = WK_FIRST + 1; hr < WK_LAST; hr++) {
+          var l = el('div', 'wk-lbl', hr + 'h'); l.style.top = ((hr - WK_FIRST) * WK_PX) + 'px'; gut.appendChild(l);
+        }
+        grid.appendChild(gut);
+        // colunas + eventos
+        var cols = days.map(function (d) {
+          var c = el('div', 'wk-col'); c.style.height = H + 'px'; grid.appendChild(c); return c;
+        });
+        events.forEach(function (ev) {
+          if (ev.allDay || !ev.start) return;
+          var s = new Date(ev.start), e = ev.end ? new Date(ev.end) : new Date(s.getTime() + 18e5);
+          if (isNaN(s.getTime())) return;
+          days.forEach(function (d, i) {
+            var d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()), d1 = new Date(d0); d1.setDate(d0.getDate() + 1);
+            var a = Math.max(s.getTime(), d0.getTime()), b = Math.min(e.getTime(), d1.getTime());
+            if (b <= a) return;
+            var top = (a - d0.getTime()) / 36e5 * WK_PX, hgt = Math.max((b - a) / 36e5 * WK_PX - 1, 24);
+            var box = el('div', 'wk-ev' + (hgt >= 80 ? ' tall' : '')); box.style.top = top + 'px'; box.style.height = hgt + 'px';
+            box.title = (ev.title || '(sem título)') + ' · ' + fmtT(s) + '–' + fmtT(e);
+            box.appendChild(el('div', 'wk-ev-t', ev.title || '(sem título)'));
+            if (hgt >= 44) box.appendChild(el('div', 'wk-ev-s', fmtT(s) + '–' + fmtT(e)));
+            cols[i].appendChild(box);
+          });
+        });
+        // traço da hora atual (só na semana de hoje)
+        var ti = days.map(function (d) { return sameDay(d, now); }).indexOf(true);
+        if (ti >= 0) {
+          var y = (now.getHours() + now.getMinutes() / 60 - WK_FIRST) * WK_PX;
+          var line = el('div', 'wk-now'); line.style.top = (62 + y) + 'px'; grid.appendChild(line);
+          var thick = el('div', 'wk-now-today'); thick.style.top = y + 'px'; cols[ti].appendChild(thick);
+          var cap = el('div', 'wk-now-cap', hhmm(now)); cap.style.top = y + 'px'; gut.appendChild(cap);
+        }
+        return ti >= 0 ? (now.getHours() + now.getMinutes() / 60 - WK_FIRST) * WK_PX : 8 * WK_PX;
+      }
+      function center(y) { wk.scrollTop = Math.max(62 + y - wk.clientHeight / 2, 0); }
+
+      function fetchWeek() {
+        var end = new Date(weekStart); end.setDate(weekStart.getDate() + 7);
+        return fetch('/calendar/events?start=' + encodeURIComponent(weekStart.toISOString()) +
+                     '&end=' + encodeURIComponent(end.toISOString()))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { events = (d && d.connected && d.events) || []; })
+          .catch(function () { events = []; });
+      }
+      function showWeek(date, recenter) {
+        weekStart = startOfWeek(date || (window.__calSelected ? window.__calSelected() : new Date()));
+        var y = render();
+        if (recenter) center(y);
+        fetchWeek().then(function () { if (isWeek()) render(); });
+      }
+      function isWeek() { return stage.classList.contains('week'); }
+
+      function setView(v, save) {
+        var week = v === 'semana';
+        stage.classList.toggle('week', week);
+        label.textContent = week ? 'Semana' : 'Dia';
+        pop.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
+        if (save) { try { localStorage.setItem('od_agenda_view', v); } catch (_) {} }
+        clearInterval(timer);
+        if (week) {
+          showWeek(null, true);
+          timer = setInterval(function () { fetchWeek().then(function () { if (isWeek()) render(); }); }, 5000);
+        }
+      }
+
+      sel.addEventListener('click', function (e) {
+        e.stopPropagation();
+        pop.style.left = sel.offsetLeft + 'px';
+        pop.hidden = !pop.hidden;
+      });
+      pop.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var b = e.target.closest('button'); if (!b) return;
+        pop.hidden = true; setView(b.getAttribute('data-v'), true);
+      });
+      document.addEventListener('click', function () { pop.hidden = true; });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') pop.hidden = true; });
+
+      // data escolhida no calendário (ou "hoje") → semana correspondente
+      window.__onDateChange = function (d) { if (isWeek()) showWeek(d, true); };
+      window.__isWeekView = isWeek;
+
+      var saved = 'dia'; try { saved = localStorage.getItem('od_agenda_view') || 'dia'; } catch (_) {}
+      setView(saved === 'semana' ? 'semana' : 'dia', false);
+    })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script>
     (function () {
@@ -1302,7 +1473,7 @@
           if (d.getMonth() !== view.getMonth()) btn.classList.add('other');
           if (same(d, today)) btn.classList.add('today');
           if (same(d, selected)) btn.classList.add('sel');
-          (function (dd) { btn.addEventListener('click', function () { selected = dd; dateEl.textContent = fmt(dd); close(); }); })(new Date(d));
+          (function (dd) { btn.addEventListener('click', function () { selected = dd; dateEl.textContent = fmt(dd); close(); changed(); }); })(new Date(d));
           grid.appendChild(btn);
         }
       }
@@ -1316,11 +1487,13 @@
       document.getElementById('cpPrev').addEventListener('click', function () { view.setMonth(view.getMonth() - 1); render(); });
       document.getElementById('cpNext').addEventListener('click', function () { view.setMonth(view.getMonth() + 1); render(); });
       document.getElementById('cpToday').addEventListener('click', function () {
-        selected = new Date(today); dateEl.textContent = fmt(selected); open();
+        selected = new Date(today); dateEl.textContent = fmt(selected); open(); changed();
       });
 
       dateEl.textContent = fmt(selected);   // inicia no dia atual (real)
-      window.__calToday = function () { selected = new Date(today); dateEl.textContent = fmt(selected); close(); };
+      function changed() { if (window.__onDateChange) window.__onDateChange(new Date(selected)); }
+      window.__calSelected = function () { return new Date(selected); };
+      window.__calToday = function () { selected = new Date(today); dateEl.textContent = fmt(selected); close(); changed(); };
     })();
   </script>
 </body>
