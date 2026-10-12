@@ -157,7 +157,6 @@
       display:flex;align-items:center;white-space:nowrap;z-index:4}
     /* ajuste óptico p/ cair na mesma posição do glifo no Figma */
     .ic-hist{transform:none}
-    .ic-exp{transform:translateX(-1px)}
     /* calendário (popover) */
     .cal-pop{position:absolute;top:78px;left:24px;z-index:30;width:280px;background:#fff;
       border:1px solid var(--sb-border);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);
@@ -659,7 +658,7 @@
         <div class="hd-actions">
           <button class="hd-btn" id="raNew" type="button" aria-label="Nova conversa" title="Nova conversa"><img src="assets/icons/chat-new.svg" width="15" height="15" alt=""></button>
           <button class="hd-btn" id="raHist" type="button" aria-label="Histórico" title="Histórico"><img class="ic-hist" src="assets/icons/chat-history.svg" width="19" height="16" alt=""></button>
-          <button class="hd-btn" id="raExpand" type="button" aria-label="Expandir" title="Expandir"><img id="raExpandImg" class="ic-exp" src="assets/icons/chat-expand.svg" width="18" height="14" alt=""></button>
+          <button class="hd-btn" id="raExpand" type="button" aria-label="Expandir" title="Expandir"><img id="raExpandImg" src="assets/icons/chat-expand.svg" width="36" height="36" alt=""></button>
         </div>
       </div>
 
@@ -752,7 +751,6 @@
       var navToggle = document.getElementById('navToggle');
       var stage = document.querySelector('.stage');
       var raHist = document.getElementById('raHist');
-      var raExpandImg = document.getElementById('raExpandImg');
       var raExpand = document.getElementById('raExpand');
       function setNav(collapsed) {
         if (nav) nav.classList.toggle('collapsed', collapsed);
@@ -771,14 +769,13 @@
       if (navToggle) navToggle.addEventListener('click', function () { setNav(!nav.classList.contains('collapsed')); });
       if (showNav) showNav.addEventListener('click', function () { setNav(false); });
       // assistente expandido (Figma 1014:8342): agenda escondida, histórico no menu.
-      // O ícone vira "recolher" (setas para dentro) enquanto expandido.
+      // Mesmo ícone de painel (Figma 1020:12622) nos dois estados; só o título muda.
       function setExpanded(on) {
         stage.classList.toggle('expanded', on);
         if (raExpand) {
           raExpand.title = on ? 'Recolher' : 'Expandir';
           raExpand.setAttribute('aria-label', raExpand.title);
         }
-        if (raExpandImg) raExpandImg.src = on ? 'assets/icons/chat-collapse.svg' : 'assets/icons/chat-expand.svg';
       }
       if (raExpand) raExpand.addEventListener('click', function () { setExpanded(!stage.classList.contains('expanded')); });
       // histórico: abre a versão expandida com a lista no menu; se já está à vista, esconde a lista
