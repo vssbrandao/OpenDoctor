@@ -535,6 +535,7 @@
       </div>
       <div class="cal">
         <div class="cal-inner">
+          <div class="hr-row"><span class="hr-label">0h</span></div>
           <div class="hr-row"><span class="hr-label">1h</span></div>
           <div class="hr-row"><span class="hr-label">2h</span></div>
           <div class="hr-row"><span class="hr-label">3h</span></div>
@@ -760,7 +761,9 @@
           navToggle.title = collapsed ? 'Abrir menu' : 'Recolher menu';
           navToggle.setAttribute('aria-label', navToggle.title);
         }
+        try { localStorage.setItem('od_nav_collapsed', collapsed ? '1' : '0'); } catch (_) {}
       }
+      try { if (localStorage.getItem('od_nav_collapsed') === '1') setNav(true); } catch (_) {}
       function setChat(collapsed) {
         if (right) right.classList.toggle('collapsed', collapsed);
         if (showChat) showChat.hidden = !collapsed;
@@ -791,8 +794,8 @@
     })();
 
     // position the orange "now" marker according to the local time
-    // timeline: 1h at the top, each hour row = 158px tall → top = (H-1)*158 + (M/60)*158
-    var HOUR_PX = 158, FIRST_HOUR = 1, LAST_HOUR = 23;
+    // linha do tempo: 0h no topo, cada hora = 158px → top = H*158 + (M/60)*158
+    var HOUR_PX = 158, FIRST_HOUR = 0, LAST_HOUR = 23;   // dia inteiro: linhas de 0h a 23h (até 24h)
     function placeNow() {
       var el = document.getElementById('nowMarker');
       if (!el) return;
@@ -802,7 +805,7 @@
       var sel = window.__calSelected ? window.__calSelected() : d;
       var isToday = sel.getFullYear() === d.getFullYear() && sel.getMonth() === d.getMonth() && sel.getDate() === d.getDate();
       var ci = document.querySelector('.cal-inner'); if (ci) ci.classList.toggle('other-day', !isToday);
-      if (!isToday || t < FIRST_HOUR || t > LAST_HOUR) { el.style.display = 'none'; return; }
+      if (!isToday || t < FIRST_HOUR || t >= LAST_HOUR + 1) { el.style.display = 'none'; return; }
       el.style.display = '';
       el.style.top = ((t - FIRST_HOUR) * HOUR_PX) + 'px';
       var tEl = document.getElementById('nowTime');
