@@ -70,6 +70,45 @@
     .view-pop button.on{font-weight:700}
     .pill-btn.dark:hover{background:#222}
 
+    /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) ===== */
+    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:42px 24px 48px;
+      background:#fff;z-index:5;scrollbar-width:thin}
+    .stage.prontuario .pr-view{display:flex}
+    .stage.prontuario .ag-head,.stage.prontuario .cal,.stage.prontuario .wk{display:none}
+    .pr{width:700px;max-width:100%;height:max-content;display:flex;flex-direction:column;gap:32px}
+    .pr-back{align-self:flex-start;border:0;background:none;padding:0;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-back:hover{color:#071216}
+    .pr-head{display:flex;align-items:center;gap:16px}
+    .pr-avatar{width:60px;height:48px;flex:none;border-radius:999px;background:#D3E3FD;color:#0842A0;
+      display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:500;font-size:14px}
+    .pr-name{font-family:var(--disp);font-weight:700;font-size:20px;line-height:26px;color:#071216}
+    .pr-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-label{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216;margin-bottom:12px}
+    .pr-card{background:#F3F3F3;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:4px}
+    .pr-card-title{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .pr-card-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-note{width:100%;min-height:220px;resize:vertical;border:1px solid rgba(26,26,26,.08);border-radius:24px;
+      padding:20px 24px;outline:none;background:#fff;
+      font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#0D0D0D}
+    .pr-note::placeholder{color:#A3A3A3}
+    .pr-note:focus{border-color:rgba(26,26,26,.2)}
+    .pr-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+    .pr-status{font-family:var(--disp);font-size:13px;line-height:18px;color:#8B8B8B}
+    .pr-status.err{color:#c5221f}
+    .pr-save{height:36px;padding:0 20px;border:1px solid rgba(0,0,0,.1);border-radius:1000px;background:#000;color:#fff;
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:12px;letter-spacing:-.02em}
+    .pr-save:hover{background:#222}
+    .pr-save:disabled{opacity:.5;cursor:default}
+    .pr-hist{display:flex;flex-direction:column}
+    .pr-item{padding:16px 0;border-top:1px solid rgba(26,26,26,.08)}
+    .pr-item:first-child{border-top:0;padding-top:0}
+    .pr-item-head{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#666C6F;margin-bottom:6px}
+    .pr-item-body{font-family:var(--disp);font-size:14px;line-height:22px;color:#0D0D0D;white-space:pre-wrap;word-wrap:break-word}
+    .pr-empty{font-family:var(--disp);font-size:14px;line-height:20px;color:#8B8B8B}
+    .pr-msg{font-family:var(--disp);font-size:16px;line-height:26px;color:#0D0D0D}
+    .pr-msg a{color:#0842a0}
+
     /* ===== visão SEMANA (Figma 1014:9927) =====
        calha das horas 84px, colunas >= 158px, 142px por hora, cabeçalho dos dias 51px */
     .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:none}
@@ -437,6 +476,42 @@
       <div class="view-pop" id="viewPop" hidden>
         <button type="button" data-v="dia">Dia</button>
         <button type="button" data-v="semana">Semana</button>
+      </div>
+      <div class="pr-view" id="prView">
+        <div class="pr">
+          <button class="pr-back" type="button" id="prBack">‹ Agenda</button>
+        <div class="pr-msg" id="prMsg" hidden></div>
+  
+          <div id="prMain" hidden>
+            <div class="pr-head" style="margin-bottom:32px">
+              <div class="pr-avatar" id="prAvatar"></div>
+              <div><div class="pr-name" id="prName"></div><div class="pr-sub">Prontuário</div></div>
+            </div>
+  
+            <div style="margin-bottom:32px" id="prConsultaBox">
+              <div class="pr-label">Consulta</div>
+              <div class="pr-card">
+                <div class="pr-card-title" id="prEvTitle"></div>
+                <div class="pr-card-sub" id="prEvWhen"></div>
+                <div class="pr-card-sub" id="prEvLoc"></div>
+              </div>
+            </div>
+  
+            <div style="margin-bottom:32px">
+              <div class="pr-label">Evolução</div>
+              <textarea class="pr-note" id="prNote" placeholder="Anamnese, exame físico, hipóteses, conduta…"></textarea>
+              <div class="pr-foot">
+                <span class="pr-status" id="prStatus"></span>
+                <button class="pr-save" id="prSave" type="button">Salvar</button>
+              </div>
+            </div>
+  
+            <div>
+              <div class="pr-label">Histórico</div>
+              <div class="pr-hist" id="prHist"></div>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="wk" id="wk"><div class="wk-grid" id="wkGrid"></div></div>
       <div class="cal-pop" id="calPop" hidden>
@@ -1039,10 +1114,10 @@
         var ctx = { event_id: editEv && editEv.id || null, title: p._title || '', patient: p._patient || p._title || '',
                     start: p.start || null, end: p.end || null, all_day: !!p.all_day, location: p.location || '' };
         var go = function () {
-          try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx)); } catch (_) {}
-          location.href = '/opendoctor-prontuario.html';
+          pop.hidden = true; mode = 'create'; editEv = null; elCreate.disabled = false;
+          if (window.__openProntuario) window.__openProntuario(ctx);
         };
-        if (canSave()) { elCreate.disabled = true; saveEdit(function () { mode = 'create'; go(); }); }
+        if (canSave()) { elCreate.disabled = true; saveEdit(function () { go(); }); }
         else go();
       }
       // botão "Criar" do cabeçalho: novo evento na data escolhida, próximo horário cheio/meia hora
@@ -1723,6 +1798,138 @@
 
       var saved = 'dia'; try { saved = localStorage.getItem('od_agenda_view') || 'dia'; } catch (_) {}
       setView(saved === 'semana' ? 'semana' : 'dia', false);
+    })();
+  </script>
+  <script>
+    // ===== prontuário dentro da agenda (o assistente e a conversa continuam) =====
+    (function () {
+      var stage = document.querySelector('.stage');
+      var $ = function (id) { return document.getElementById(id); };
+      var msg = $('prMsg'), main = $('prMain');
+      if (!stage || !main) return;
+      var ctx = null, saved = '', timer = null, saving = false;
+      var DOWS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+      var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      function pad(n) { return String(n).padStart(2, '0'); }
+      function parseStart(v) {
+        if (!v) return null;
+        if (v.length === 10) { var q = v.split('-'); return new Date(+q[0], +q[1] - 1, +q[2]); }
+        return new Date(v);
+      }
+      function fmtDay(d) { return DOWS[d.getDay()] + ', ' + d.getDate() + ' de ' + MON[d.getMonth()] + ' de ' + d.getFullYear(); }
+      function fmtWhen(s, e, allDay) {
+        var a = parseStart(s); if (!a) return '';
+        if (allDay) return fmtDay(a) + ' · dia todo';
+        var b = parseStart(e);
+        return fmtDay(a) + ' · ' + pad(a.getHours()) + ':' + pad(a.getMinutes()) + (b ? '–' + pad(b.getHours()) + ':' + pad(b.getMinutes()) : '');
+      }
+      function initials(n) {
+        var p = (n || '').split(/\s+/).filter(Boolean);
+        return ((p[0] ? p[0][0] : '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '•';
+      }
+
+      function fill() {
+      main.hidden = false; msg.hidden = true;
+      $('prName').textContent = ctx.patient;
+      $('prAvatar').textContent = initials(ctx.patient);
+      if (ctx.event_id || ctx.start) {
+        $('prEvTitle').textContent = ctx.title || 'Consulta';
+        $('prEvWhen').textContent = fmtWhen(ctx.start, ctx.end, ctx.all_day);
+        $('prEvLoc').textContent = ctx.location || '';
+        $('prEvLoc').hidden = !ctx.location;
+      } else { $('prConsultaBox').hidden = true; }
+      }
+
+      var note = $('prNote'), status = $('prStatus'), btn = $('prSave');
+      function setStatus(t, err) { status.textContent = t; status.className = 'pr-status' + (err ? ' err' : ''); }
+
+      function save() {
+        clearTimeout(timer);
+        if (saving || note.value === saved) return;
+        saving = true; btn.disabled = true; setStatus('Salvando…');
+        var content = note.value;
+        fetch('/prontuario/notes', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patient: ctx.patient, event_id: ctx.event_id, event_title: ctx.title,
+                                 event_start: ctx.start && ctx.start.length > 10 ? ctx.start : null, content: content })
+        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+          .then(function (res) {
+            saving = false; btn.disabled = false;
+            if (res.ok && res.j.ok) {
+              saved = content; var n = new Date();
+              setStatus('Salvo às ' + pad(n.getHours()) + ':' + pad(n.getMinutes()));
+              if (!ctx.event_id) loadHist();                  // nota avulsa entra no histórico
+            } else if (res.status === 401) {
+              setStatus('Entre com Google (tela de Integrações) para salvar o prontuário.', true);
+            } else setStatus('Não foi possível salvar.', true);
+          }).catch(function () { saving = false; btn.disabled = false; setStatus('Falha de conexão. Tente de novo.', true); });
+      }
+      note.addEventListener('input', function () {
+        setStatus(note.value === saved ? '' : 'Alterações não salvas');
+        clearTimeout(timer); timer = setTimeout(save, 1500);  // salva sozinho ao parar de digitar
+      });
+      note.addEventListener('blur', save);
+      btn.addEventListener('click', save);
+      window.addEventListener('beforeunload', function (e) {
+        if (stage.classList.contains('prontuario') && note.value !== saved) { e.preventDefault(); e.returnValue = ''; }
+      });
+
+      function loadHist() {
+        fetch('/prontuario/list', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patient: ctx.patient })
+        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+          .then(function (res) {
+            var box = $('prHist'); box.innerHTML = '';
+            if (res.status === 401) {
+              box.innerHTML = '<div class="pr-empty">Entre com Google na tela de <a href="opendoctor-integracao.html">Integrações</a> para ver e salvar o prontuário.</div>';
+              return;
+            }
+            var notes = (res.j && res.j.notes) || [];
+            notes.forEach(function (n) {
+              if (ctx.event_id && n.event_id === ctx.event_id) {   // a desta consulta vai no campo de evolução
+                if (!note.value) { note.value = n.content || ''; saved = note.value; }
+                return;
+              }
+              if (!(n.content || '').trim()) return;
+              var it = document.createElement('div'); it.className = 'pr-item';
+              var h = document.createElement('div'); h.className = 'pr-item-head';
+              var d = n.event_start ? new Date(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null);
+              h.textContent = (d ? fmtDay(d) : '') + (n.event_title ? ' · ' + n.event_title : '');
+              var b = document.createElement('div'); b.className = 'pr-item-body'; b.textContent = n.content;
+              it.appendChild(h); it.appendChild(b); box.appendChild(it);
+            });
+            if (!box.children.length) box.innerHTML = '<div class="pr-empty">Nenhuma anotação anterior deste paciente.</div>';
+          }).catch(function () { $('prHist').innerHTML = '<div class="pr-empty">Não foi possível carregar o histórico.</div>'; });
+      }
+      function open(c) {
+        ctx = c || null;
+        try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx)); } catch (_) {}
+        note.value = ''; saved = ''; setStatus('');
+        $('prHist').innerHTML = '';
+        stage.classList.add('prontuario');
+        $('prView').scrollTop = 0;
+        if (!ctx || !ctx.patient) { msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda.'; msg.hidden = false; main.hidden = true; return; }
+        fill(); loadHist();
+        if (location.hash !== '#prontuario') history.pushState({ pr: 1 }, '', '#prontuario');
+      }
+      function closePr(fromPop) {
+        if (!stage.classList.contains('prontuario')) return;
+        save();
+        stage.classList.remove('prontuario');
+        if (!fromPop && location.hash === '#prontuario') history.back();
+      }
+      $('prBack').addEventListener('click', function () { closePr(false); });
+      window.addEventListener('popstate', function () {
+        if (location.hash === '#prontuario') { var c = null; try { c = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {} open(c); }
+        else closePr(true);
+      });
+      window.__openProntuario = open;
+      // recarregou a página no prontuário (ou veio do link antigo): reabre com o contexto salvo
+      if (location.hash === '#prontuario') {
+        var c0 = null; try { c0 = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {}
+        open(c0);
+      }
     })();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
