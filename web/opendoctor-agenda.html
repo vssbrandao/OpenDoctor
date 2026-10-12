@@ -71,7 +71,7 @@
     .pill-btn.dark:hover{background:#222}
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
-       calha de horas 88px (24 + rótulo 40 + 24), colunas >= 158px, 142px por hora, cabeçalho dos dias 48px */
+       calha de horas 88px (24 + rótulo 40 + 24), colunas >= 158px, 71px por hora, caixas de 142px (2h), cabeçalho dos dias 48px */
     .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:thin}
     .stage.week .wk{display:block}
     .stage.week .cal{display:none}
@@ -83,16 +83,19 @@
     .wk-today{width:24px;height:24px;border-radius:50%;background:#D3E3FD;color:#0842A0;text-align:center;line-height:24px}
     /* calha fixa no scroll horizontal; a linha vertical da direita vai junto */
     .wk-gut{position:sticky;left:0;z-index:3;background:#fff;box-shadow:inset -1px 0 0 rgba(26,26,26,.08)}
-    /* rótulo da hora: alinhado à esquerda (x 292), 24px abaixo da linha da sua hora (Figma 1014:10340) */
-    .wk-lbl{position:absolute;left:24px;width:40px;margin-top:24px;
+    /* rótulo da hora: alinhado à esquerda (x 292), centralizado na altura da sua hora; horas a cada 71px
+       → a meia hora fica no meio, a ~24px de cada rótulo (Figma 1018:11791) */
+    .wk-lbl{position:absolute;left:24px;width:40px;transform:translateY(-50%);
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F}
     .wk-col{position:relative;cursor:pointer;box-shadow:inset 1px 0 0 rgba(26,26,26,.08);
-      background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 141px,rgba(26,26,26,.08) 141px,rgba(26,26,26,.08) 142px)}
+      background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 141px,rgba(26,26,26,.08) 141px,rgba(26,26,26,.08) 142px);
+      background-position:0 -35px}
     .wk-col.first{box-shadow:none}
     .wk-col.first:last-child{box-shadow:inset -1px 0 0 rgba(26,26,26,.08)}
     .wk-col:last-child{box-shadow:inset 1px 0 0 rgba(26,26,26,.08),inset -1px 0 0 rgba(26,26,26,.08)}
     .wk-ev{position:absolute;left:1px;right:0;background:#F3F3F3;border-radius:40px;padding:20px;
       overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;gap:4px;z-index:1}
+    .wk-ev.short{padding:6px 12px 6px 16px;justify-content:center}
     .wk-ev-t{font-family:var(--disp);font-weight:500;font-size:12px;line-height:120%;color:#071216;
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .wk-ev-s{font-family:var(--disp);font-weight:500;font-size:12px;line-height:120%;color:#666C6F;
@@ -1403,7 +1406,7 @@
       var pop = document.getElementById('viewPop'), grid = document.getElementById('wkGrid');
       var wk = document.getElementById('wk');
       if (!stage || !sel || !grid) return;
-      var WK_PX = 142, WK_FIRST = 0, WK_LAST = 24;         // semana: 0h–24h, 142px por hora (Figma 1014:8609)
+      var WK_PX = 71, WK_FIRST = 0, WK_LAST = 24;          // semana: 71px por hora (24 + rótulo 24 + 24); linhas a cada 2h = 142px (Figma 1018:11546)
       var WK_HEAD = 48;                                    // altura do cabeçalho dos dias (= .wk-h)
       var DOWS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       var events = [], weekStart = null, timer = null;
@@ -1430,7 +1433,7 @@
         }
         // calha com as horas
         var gut = el('div', 'wk-gut'); gut.style.height = H + 'px';
-        for (var hr = WK_FIRST; hr < WK_LAST; hr++) {
+        for (var hr = WK_FIRST + 1; hr < WK_LAST; hr++) {
           var l = el('div', 'wk-lbl', hr + 'h'); l.style.top = ((hr - WK_FIRST) * WK_PX) + 'px'; gut.appendChild(l);
         }
         grid.appendChild(gut);
@@ -1456,11 +1459,11 @@
             var a = Math.max(s.getTime(), d0.getTime()), b = Math.min(e.getTime(), d1.getTime());
             if (b <= a) return;
             var top = (a - d0.getTime()) / 36e5 * WK_PX, hgt = Math.max((b - a) / 36e5 * WK_PX - 1, 24);
-            var box = el('div', 'wk-ev'); box.style.top = top + 'px'; box.style.height = hgt + 'px';
+            var box = el('div', 'wk-ev' + (hgt < 60 ? ' short' : '')); box.style.top = top + 'px'; box.style.height = hgt + 'px';
             var full = ev.title || '(sem título)', parts = full.split(' — ');
             box.title = full + ' · ' + fmtT(s) + '–' + fmtT(e);
             box.appendChild(el('div', 'wk-ev-t', parts[0]));
-            if (hgt >= 70) box.appendChild(el('div', 'wk-ev-s', parts.length > 1 ? parts.slice(1).join(' — ') : fmtT(s) + '–' + fmtT(e)));
+            if (hgt >= 66) box.appendChild(el('div', 'wk-ev-s', parts.length > 1 ? parts.slice(1).join(' — ') : fmtT(s) + '–' + fmtT(e)));
             cols[i].appendChild(box);
           });
         });
