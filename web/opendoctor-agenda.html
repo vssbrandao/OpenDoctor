@@ -99,6 +99,11 @@
     .pr-save{height:36px;padding:0 20px;border:1px solid rgba(0,0,0,.1);border-radius:1000px;background:#000;color:#fff;
       cursor:pointer;font-family:var(--disp);font-weight:500;font-size:12px;letter-spacing:-.02em}
     .pr-save:hover{background:#222}
+    .pr-head{justify-content:flex-start}
+    .pr-visit{margin-left:auto;display:flex;align-items:center;gap:12px}
+    .pr-timer{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#FF5500;font-variant-numeric:tabular-nums}
+    .pr-save.live{background:#fff;color:#000}
+    .pr-save.live:hover{background:#f7f7f7}
     .pr-save:disabled{opacity:.5;cursor:default}
     .pr-hist{display:flex;flex-direction:column}
     .pr-item{padding:16px 0;border-top:1px solid rgba(26,26,26,.08)}
@@ -486,6 +491,10 @@
             <div class="pr-head" style="margin-bottom:32px">
               <div class="pr-avatar" id="prAvatar"></div>
               <div><div class="pr-name" id="prName"></div><div class="pr-sub">Prontuário</div></div>
+              <div class="pr-visit">
+                <span class="pr-timer" id="prTimer" hidden></span>
+                <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+              </div>
             </div>
   
             <div style="margin-bottom:32px" id="prConsultaBox">
@@ -1902,6 +1911,38 @@
             if (!box.children.length) box.innerHTML = '<div class="pr-empty">Nenhuma anotação anterior deste paciente.</div>';
           }).catch(function () { $('prHist').innerHTML = '<div class="pr-empty">Não foi possível carregar o histórico.</div>'; });
       }
+      // ===== iniciar / encerrar consulta =====
+      var visitBtn = $('prVisit'), timerEl = $('prTimer'), tick = null;
+      function vkey() { return 'od_visit_' + (ctx && (ctx.event_id || ctx.patient) || ''); }
+      function visitStart() { try { return +sessionStorage.getItem(vkey()) || 0; } catch (_) { return 0; } }
+      function hm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+      function renderVisit() {
+        clearInterval(tick);
+        var t0 = visitStart();
+        visitBtn.textContent = t0 ? 'Encerrar consulta' : 'Iniciar consulta';
+        visitBtn.classList.toggle('live', !!t0);
+        timerEl.hidden = !t0;
+        if (!t0) return;
+        var upd = function () {
+          var s = Math.max(0, Math.floor((Date.now() - t0) / 1000));
+          var h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+          timerEl.textContent = 'Em consulta · ' + (h ? h + ':' : '') + pad(m) + ':' + pad(ss);
+        };
+        upd(); tick = setInterval(upd, 1000);
+      }
+      visitBtn.addEventListener('click', function () {
+        var t0 = visitStart();
+        if (!t0) {
+          try { sessionStorage.setItem(vkey(), String(Date.now())); } catch (_) {}
+          renderVisit(); note.focus(); return;
+        }
+        var a = new Date(t0), b = new Date(), min = Math.max(1, Math.round((b - a) / 60000));
+        var line = 'Consulta: ' + hm(a) + '–' + hm(b) + ' (' + min + ' min)';
+        note.value = note.value.replace(/\s+$/, '') + (note.value.trim() ? '\n' : '') + line;
+        try { sessionStorage.removeItem(vkey()); } catch (_) {}
+        renderVisit(); save();
+      });
+
       function open(c) {
         ctx = c || null;
         try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx)); } catch (_) {}
@@ -1910,7 +1951,7 @@
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
         if (!ctx || !ctx.patient) { msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda.'; msg.hidden = false; main.hidden = true; return; }
-        fill(); loadHist();
+        fill(); loadHist(); renderVisit();
         if (location.hash !== '#prontuario') history.pushState({ pr: 1 }, '', '#prontuario');
       }
       function closePr(fromPop) {
