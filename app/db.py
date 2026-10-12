@@ -219,3 +219,50 @@ def connected_providers(user_id):
                 "select provider, account_email from oauth_tokens where user_id=%s",
                 (user_id,))
             return {p: email for (p, email) in cur.fetchall()}
+
+
+# --- prontuário (anotações clínicas por paciente) ---
+def patient_key(name):
+    """Chave estável do paciente a partir do nome: minúsculas, sem acento, espaços únicos."""
+    import unicodedata
+    n = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode()
+    return " ".join(n.lower().split())
+
+
+def list_notes(user_id, pkey):
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """select id, event_id, event_title, event_start, content, updated_at
+                   from clinical_notes where user_id = %s and patient_key = %s
+                   order by coalesce(event_start, created_at) desc limit 200""",
+                (user_id, pkey))
+            rows = cur.fetchall()
+    return [{"id": r[0], "event_id": r[1], "event_title": r[2],
+             "event_start": r[3].isoformat() if r[3] else None, "content": r[4],
+             "updated_at": r[5].isoformat() if r[5] else None} for r in rows]
+
+
+def upsert_note(user_id, pkey, patient_name, event_id, event_title, event_start, content):
+    """Uma anotação por consulta (event_id); sem consulta, cria uma nova."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            if event_id:
+                cur.execute(
+                    """insert into clinical_notes
+                         (user_id, patient_key, patient_name, event_id, event_title, event_start, content)
+                       values (%s,%s,%s,%s,%s,%s,%s)
+                       on conflict (user_id, event_id) where event_id is not null do update set
+                         content = excluded.content, patient_key = excluded.patient_key,
+                         patient_name = excluded.patient_name, event_title = excluded.event_title,
+                         event_start = excluded.event_start, updated_at = now()
+                       returning id""",
+                    (user_id, pkey, patient_name, event_id, event_title, event_start, content))
+            else:
+                cur.execute(
+                    """insert into clinical_notes (user_id, patient_key, patient_name, content)
+                       values (%s,%s,%s,%s) returning id""",
+                    (user_id, pkey, patient_name, content))
+            nid = cur.fetchone()[0]
+        conn.commit()
+    return nid

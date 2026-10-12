@@ -16,6 +16,7 @@ import datetime
 import urllib.parse
 
 import httpx
+from urllib.parse import quote
 
 from . import db
 
@@ -118,50 +119,81 @@ def _access_token(user_id, provider):
     return access
 
 
+def _event_body(provider, title, start, end, description=None, location=None, all_day=False):
+    """Corpo do evento no formato de cada provedor (usado em criar e editar)."""
+    if provider == "google":
+        key = "date" if all_day else "dateTime"
+        other = "dateTime" if all_day else "date"
+        # ao trocar entre dia inteiro e horário, zera o outro campo (o Google exige um só)
+        body = {"summary": title or "(sem título)",
+                "start": {key: start, other: None}, "end": {key: end, other: None},
+                "description": description or "", "location": location or ""}
+        return body
+    if all_day:
+        start, end = start + "T00:00:00", end + "T00:00:00"
+    return {"subject": title or "(sem título)",
+            "start": {"dateTime": start, "timeZone": "UTC"},
+            "end": {"dateTime": end, "timeZone": "UTC"},
+            "isAllDay": bool(all_day),
+            "body": {"contentType": "text", "content": description or ""},
+            "location": {"displayName": location or ""}}
+
+
+def _event_out(provider, e):
+    if provider == "google":
+        st, en = e.get("start") or {}, e.get("end") or {}
+        return {"id": e.get("id"), "title": e.get("summary"),
+                "start": st.get("dateTime") or st.get("date"), "end": en.get("dateTime") or en.get("date")}
+    return {"id": e.get("id"), "title": e.get("subject"),
+            "start": (e.get("start") or {}).get("dateTime"), "end": (e.get("end") or {}).get("dateTime")}
+
+
+def _headers(user_id, provider):
+    at = _access_token(user_id, provider)
+    if not at:
+        raise RuntimeError("sem token")
+    return {"Authorization": "Bearer " + at, "Content-Type": "application/json"}
+
+
+def _event_url(provider, event_id=None):
+    base = ("https://www.googleapis.com/calendar/v3/calendars/primary/events" if provider == "google"
+            else "https://graph.microsoft.com/v1.0/me/events")
+    return base + ("/" + quote(event_id, safe="") if event_id else "")
+
+
 def create_event(user_id, provider, title, start, end, description=None, location=None, all_day=False):
     """Cria um evento no calendário primário do usuário. start/end em ISO 8601
     (com offset, ex.: 2026-10-09T13:30:00-03:00) ou, se all_day, datas AAAA-MM-DD
     (fim exclusivo). Pode lançar exceção (ex.: 403 se o token for somente-leitura
     → precisa reconectar com escopo de escrita)."""
-    at = _access_token(user_id, provider)
-    if not at:
-        raise RuntimeError("sem token")
-    hdr = {"Authorization": "Bearer " + at, "Content-Type": "application/json"}
-    if provider == "google":
-        key = "date" if all_day else "dateTime"
-        body = {"summary": title or "(sem título)",
-                "start": {key: start}, "end": {key: end}}
-        if description:
-            body["description"] = description
-        if location:
-            body["location"] = location
-        r = httpx.post("https://www.googleapis.com/calendar/v3/calendars/primary/events",
-                       headers=hdr, json=body, timeout=25)
-        if r.status_code not in (200, 201):
-            raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
-        e = r.json()
-        st, en = e.get("start") or {}, e.get("end") or {}
-        return {"title": e.get("summary"), "start": st.get("dateTime") or st.get("date"),
-                "end": en.get("dateTime") or en.get("date")}
-    else:  # microsoft
-        if all_day:
-            start, end = start + "T00:00:00", end + "T00:00:00"
-        body = {"subject": title or "(sem título)",
-                "start": {"dateTime": start, "timeZone": "UTC"},
-                "end": {"dateTime": end, "timeZone": "UTC"}}
-        if all_day:
-            body["isAllDay"] = True
-        if description:
-            body["body"] = {"contentType": "text", "content": description}
-        if location:
-            body["location"] = {"displayName": location}
-        r = httpx.post("https://graph.microsoft.com/v1.0/me/events",
-                       headers=hdr, json=body, timeout=25)
-        if r.status_code not in (200, 201):
-            raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
-        e = r.json()
-        return {"title": e.get("subject"), "start": (e.get("start") or {}).get("dateTime"),
-                "end": (e.get("end") or {}).get("dateTime")}
+    body = _event_body(provider, title, start, end, description, location, all_day)
+    if provider == "google":                              # na criação não manda campos vazios
+        body["start"] = {k: v for k, v in body["start"].items() if v}
+        body["end"] = {k: v for k, v in body["end"].items() if v}
+        for k in ("description", "location"):
+            if not body[k]:
+                body.pop(k)
+    r = httpx.post(_event_url(provider), headers=_headers(user_id, provider), json=body, timeout=25)
+    if r.status_code not in (200, 201):
+        raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+    return _event_out(provider, r.json())
+
+
+def update_event(user_id, provider, event_id, title, start, end, description=None, location=None, all_day=False):
+    """Atualiza um evento existente (PATCH). Mesmos formatos de create_event."""
+    body = _event_body(provider, title, start, end, description, location, all_day)
+    r = httpx.patch(_event_url(provider, event_id), headers=_headers(user_id, provider), json=body, timeout=25)
+    if r.status_code not in (200, 201):
+        raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+    return _event_out(provider, r.json())
+
+
+def delete_event(user_id, provider, event_id):
+    """Exclui um evento do calendário. 404/410 = já não existe (tratado como sucesso)."""
+    r = httpx.delete(_event_url(provider, event_id), headers=_headers(user_id, provider), timeout=25)
+    if r.status_code not in (200, 204, 404, 410):
+        raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+    return True
 
 
 def status(user_id):
@@ -201,6 +233,7 @@ def events(user_id, provider, limit=50, time_min=None, time_max=None):
                 st = e.get("start", {}); en = e.get("end", {})
                 all_day = "date" in st and "dateTime" not in st
                 out.append({"id": e.get("id"), "title": e.get("summary", "(sem título)"),
+                            "description": e.get("description") or "", "location": e.get("location") or "",
                             "start": st.get("dateTime") or st.get("date"),
                             "end": en.get("dateTime") or en.get("date"),
                             "allDay": all_day})
@@ -213,6 +246,8 @@ def events(user_id, provider, limit=50, time_min=None, time_max=None):
                               "$orderby": "start/dateTime", "$top": limit})
             for e in r.json().get("value", []):
                 out.append({"id": e.get("id"), "title": e.get("subject", "(sem título)"),
+                            "description": e.get("bodyPreview") or "",
+                            "location": (e.get("location") or {}).get("displayName") or "",
                             "start": (e.get("start") or {}).get("dateTime"),
                             "end": (e.get("end") or {}).get("dateTime"),
                             "allDay": bool(e.get("isAllDay"))})

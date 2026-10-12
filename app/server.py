@@ -650,6 +650,102 @@ async def create_calendar_event(request: Request):
                             status_code=403 if needs_reconnect else 400)
 
 
+def _cal_error(e):
+    msg = str(e)
+    needs_reconnect = msg.startswith("403") or "insufficient" in msg.lower()
+    return JSONResponse({"error": msg[:200], "needs_reconnect": needs_reconnect},
+                        status_code=403 if needs_reconnect else 400)
+
+
+def _cal_user(request):
+    """(usuário, provedor conectado) ou JSONResponse de erro."""
+    u = auth.current_user(request)
+    if not u:
+        return None, JSONResponse({"error": "não autenticado"}, status_code=401)
+    connected = db.connected_providers(u["id"])
+    if not connected:
+        return None, JSONResponse({"error": "sem calendário conectado"}, status_code=400)
+    return (u, "google" if "google" in connected else next(iter(connected))), None
+
+
+@app.patch("/calendar/events/{event_id}")
+async def update_calendar_event(event_id: str, request: Request):
+    """Edita um evento (salvo ao fechar a janela do evento)."""
+    ctx, err = _cal_user(request)
+    if err:
+        return err
+    u, prov = ctx
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    start = payload.get("start"); end = payload.get("end")
+    if not start or not end:
+        return JSONResponse({"error": "início e fim são obrigatórios"}, status_code=400)
+    try:
+        ev = integrations.update_event(u["id"], prov, event_id,
+                                       (payload.get("title") or "").strip(), start, end,
+                                       payload.get("description"),
+                                       location=(payload.get("location") or "").strip() or None,
+                                       all_day=bool(payload.get("all_day")))
+        return {"ok": True, "event": ev}
+    except Exception as e:
+        return _cal_error(e)
+
+
+@app.delete("/calendar/events/{event_id}")
+def delete_calendar_event(event_id: str, request: Request):
+    """Exclui um evento do calendário conectado."""
+    ctx, err = _cal_user(request)
+    if err:
+        return err
+    u, prov = ctx
+    try:
+        integrations.delete_event(u["id"], prov, event_id)
+        return {"ok": True}
+    except Exception as e:
+        return _cal_error(e)
+
+
+# --- prontuário: anotações por paciente (POST p/ não levar o nome do paciente na URL) ---
+MAX_NOTE_CHARS = 20000
+
+
+@app.post("/prontuario/list")
+async def prontuario_list(request: Request):
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    name = (payload.get("patient") or "").strip()
+    if not name:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    return {"patient": name, "notes": db.list_notes(u["id"], db.patient_key(name))}
+
+
+@app.post("/prontuario/notes")
+async def prontuario_save(request: Request):
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    name = (payload.get("patient") or "").strip()
+    if not name:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    content = (payload.get("content") or "")[:MAX_NOTE_CHARS]
+    start = payload.get("event_start") or None
+    nid = db.upsert_note(u["id"], db.patient_key(name), name[:200],
+                         (payload.get("event_id") or None), (payload.get("event_title") or "")[:300] or None,
+                         start, content)
+    return {"ok": True, "id": nid}
+
+
 # serve o front-end (web/) na mesma origem — registrado por último para não
 # sombrear as rotas acima. Abra http://127.0.0.1:8000/opendoctor-agenda.html
 if os.path.isdir(WEB_DIR):
