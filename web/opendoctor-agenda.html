@@ -52,7 +52,8 @@
       display:flex;align-items:center;justify-content:center;flex:none}
     .hd-btn:hover{background:rgba(0,0,0,.05)}
     .hd-actions{display:flex;align-items:center;gap:4px}
-    /* ícones da agenda (Figma 1020:13108): visão, criar, buscar, expandir — 36x36, gap 4, em y 8, 8px da direita */
+    /* ícones da agenda (Figma 1021:6322 / 1020:13108): criar, data, visão (ícone da visão atual), buscar, expandir
+       — 36x36, gap 4, em y 8, 8px da direita */
     .ag-actions{position:absolute;top:8px;right:8px}
     .hd-btn.on{background:rgba(0,0,0,.05)}
     /* menus da agenda (abrem abaixo do ícone, alinhados à direita dele; posição calculada no JS) */
@@ -485,8 +486,9 @@
       <div class="ag-head">
         <div class="cal-head" id="calHead"><span class="date">Seg, 30 Junho</span></div>
         <div class="ag-actions hd-actions">
-          <button class="hd-btn" id="viewSel" type="button" title="Visão: Dia" aria-label="Visão: Dia" aria-haspopup="true"><img src="assets/icons/agenda-view.svg" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="agCreate" type="button" title="Criar evento" aria-label="Criar evento"><img src="assets/icons/agenda-add.svg" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="calBtn" type="button" title="Escolher data" aria-label="Escolher data" aria-haspopup="true"><img src="assets/icons/agenda-calendar.svg" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="viewSel" type="button" title="Visão: Dia" aria-label="Visão: Dia" aria-haspopup="true"><img id="viewIcon" src="assets/icons/agenda-day.svg" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="agSearch" type="button" title="Buscar consultas" aria-label="Buscar consultas" aria-haspopup="true"><img src="assets/icons/agenda-search.svg" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="agExpand" type="button" title="Expandir agenda" aria-label="Expandir agenda"><img src="assets/icons/chat-expand.svg" width="36" height="36" alt=""></button>
         </div>
@@ -819,6 +821,8 @@
       if (agExpand) agExpand.addEventListener('click', function () { setAgWide(!(right && right.classList.contains('collapsed'))); });
       // menus da agenda: logo abaixo do ícone, com a borda direita alinhada à dele
       window.__placePop = function (pop, btn) {
+        document.querySelectorAll('.view-pop, .srch-pop, .cal-pop').forEach(function (p) { if (p !== pop) p.hidden = true; });
+        document.querySelectorAll('.ag-actions .hd-btn.on').forEach(function (b) { if (b !== btn) b.classList.remove('on'); });
         var c = pop.parentNode.getBoundingClientRect(), r = btn.getBoundingClientRect();
         pop.style.right = Math.max(c.right - r.right, 0) + 'px';
         pop.style.top = (r.bottom - c.top + 8) + 'px';
@@ -1818,6 +1822,9 @@
         var week = v === 'semana';
         stage.classList.toggle('week', week);
         sel.title = 'Visão: ' + (week ? 'Semana' : 'Dia'); sel.setAttribute('aria-label', sel.title);
+        var vi = document.getElementById('viewIcon');       // o ícone mostra a visão atual (Figma 1021:6331 / 1021:6348)
+        if (vi) vi.src = 'assets/icons/agenda-' + (week ? 'week' : 'day') + '.svg';
+        if (window.__calRefreshLabel) window.__calRefreshLabel();
         if (pop) pop.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
         if (save) { try { localStorage.setItem('od_agenda_view', v); } catch (_) {} }
         clearInterval(timer);
@@ -2046,6 +2053,11 @@
       var view = new Date(selected.getFullYear(), selected.getMonth(), 1);
 
       function fmt(d) { return DOWS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()]; }
+      // título: na Semana mostra ano e mês ("2026 Junho", Figma 1020:12721); no Dia, "Seg, 30 Junho"
+      function label() {
+        var st = document.querySelector('.stage');
+        return st && st.classList.contains('week') ? selected.getFullYear() + ' ' + MONTHS[selected.getMonth()] : fmt(selected);
+      }
       function same(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
 
       function render() {
@@ -2059,32 +2071,40 @@
           if (d.getMonth() !== view.getMonth()) btn.classList.add('other');
           if (same(d, today)) btn.classList.add('today');
           if (same(d, selected)) btn.classList.add('sel');
-          (function (dd) { btn.addEventListener('click', function () { selected = dd; dateEl.textContent = fmt(dd); close(); changed(); }); })(new Date(d));
+          (function (dd) { btn.addEventListener('click', function () { selected = dd; dateEl.textContent = label(); close(); changed(); }); })(new Date(d));
           grid.appendChild(btn);
         }
       }
-      function open() { view = new Date(selected.getFullYear(), selected.getMonth(), 1); render(); pop.hidden = false; }
-      function close() { pop.hidden = true; }
+      function open() { view = new Date(selected.getFullYear(), selected.getMonth(), 1); render(); pop.hidden = false; if (calBtn) calBtn.classList.toggle('on', pop.style.left === 'auto'); }
+      function close() { pop.hidden = true; if (calBtn) calBtn.classList.remove('on'); }
 
-      head.addEventListener('click', function (e) { e.stopPropagation(); pop.hidden ? open() : close(); });
+      // abre embaixo da data (clique na data) ou embaixo do ícone de calendário
+      function under(btn) {
+        if (btn) { pop.style.left = 'auto'; window.__placePop(pop, btn); }
+        else { pop.style.left = pop.style.right = pop.style.top = ''; }
+      }
+      var calBtn = document.getElementById('calBtn');
+      head.addEventListener('click', function (e) { e.stopPropagation(); if (pop.hidden) { under(null); open(); } else close(); });
+      if (calBtn) calBtn.addEventListener('click', function (e) { e.stopPropagation(); if (pop.hidden) { under(calBtn); open(); } else close(); });
       pop.addEventListener('click', function (e) { e.stopPropagation(); });
       document.addEventListener('click', function () { if (!pop.hidden) close(); });
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
       document.getElementById('cpPrev').addEventListener('click', function () { view.setMonth(view.getMonth() - 1); render(); });
       document.getElementById('cpNext').addEventListener('click', function () { view.setMonth(view.getMonth() + 1); render(); });
       document.getElementById('cpToday').addEventListener('click', function () {
-        selected = new Date(today); dateEl.textContent = fmt(selected); open(); changed();
+        selected = new Date(today); dateEl.textContent = label(); open(); changed();
       });
 
-      dateEl.textContent = fmt(selected);   // inicia no dia atual (real)
+      dateEl.textContent = label();   // inicia no dia atual (real)
+      window.__calRefreshLabel = function () { dateEl.textContent = label(); };
       function changed() {
         if (window.__onDateChange) window.__onDateChange(new Date(selected));
         if (window.__onDayDateChange) window.__onDayDateChange(new Date(selected));
       }
       window.__calSelected = function () { return new Date(selected); };
-      window.__calToday = function () { selected = new Date(today); dateEl.textContent = fmt(selected); close(); changed(); };
+      window.__calToday = function () { selected = new Date(today); dateEl.textContent = label(); close(); changed(); };
       window.__calGoto = function (d) {
-        selected = new Date(d.getFullYear(), d.getMonth(), d.getDate()); dateEl.textContent = fmt(selected); close(); changed();
+        selected = new Date(d.getFullYear(), d.getMonth(), d.getDate()); dateEl.textContent = label(); close(); changed();
       };
     })();
   </script>
