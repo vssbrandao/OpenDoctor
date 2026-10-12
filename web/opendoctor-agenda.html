@@ -52,13 +52,11 @@
       display:flex;align-items:center;justify-content:center;flex:none}
     .hd-btn:hover{background:rgba(0,0,0,.05)}
     .hd-actions{display:flex;align-items:center;gap:4px}
-    /* ícones da agenda (Figma 1021:6322 / 1020:13108): criar, data, visão (ícone da visão atual), buscar, expandir
+    /* ícones da agenda (Figma 1021:6322 / 1020:13108): criar, data, visão (ícone da visão atual; clique alterna), buscar, expandir
        — 36x36, gap 4, em y 8, 8px da direita */
     .ag-actions{position:absolute;top:8px;right:8px}
     .hd-btn.on{background:rgba(0,0,0,.05)}
     /* menus da agenda (abrem abaixo do ícone, alinhados à direita dele; posição calculada no JS) */
-    .view-pop{position:absolute;top:52px;z-index:30;min-width:140px;background:#fff;border:1px solid var(--sb-border);
-      border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;display:flex;flex-direction:column;gap:2px}
     .srch-pop{position:absolute;top:52px;z-index:30;width:340px;max-width:calc(100% - 48px);background:#fff;
       border:1px solid var(--sb-border);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;
       display:flex;flex-direction:column;gap:4px}
@@ -77,11 +75,6 @@
     .srch-d{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#666C6F}
     .srch-msg{padding:8px 12px;font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#8B8B8B}
     .srch-msg a{color:#0842a0}
-    .view-pop[hidden]{display:none}
-    .view-pop button{border:0;background:none;text-align:left;padding:8px 12px;border-radius:10px;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .view-pop button:hover{background:var(--active)}
-    .view-pop button.on{font-weight:700}
 
     /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) ===== */
     .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:42px 24px 48px;
@@ -488,14 +481,10 @@
         <div class="ag-actions hd-actions">
           <button class="hd-btn" id="agCreate" type="button" title="Criar evento" aria-label="Criar evento"><img src="assets/icons/agenda-add.svg" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="calBtn" type="button" title="Escolher data" aria-label="Escolher data" aria-haspopup="true"><img src="assets/icons/agenda-calendar.svg" width="36" height="36" alt=""></button>
-          <button class="hd-btn" id="viewSel" type="button" title="Visão: Dia" aria-label="Visão: Dia" aria-haspopup="true"><img id="viewIcon" src="assets/icons/agenda-day.svg" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="viewSel" type="button" title="Mudar para Semana" aria-label="Mudar para Semana"><img id="viewIcon" src="assets/icons/agenda-day.svg" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="agSearch" type="button" title="Buscar consultas" aria-label="Buscar consultas" aria-haspopup="true"><img src="assets/icons/agenda-search.svg" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="agExpand" type="button" title="Expandir agenda" aria-label="Expandir agenda"><img src="assets/icons/chat-expand.svg" width="36" height="36" alt=""></button>
         </div>
-      </div>
-      <div class="view-pop" id="viewPop" hidden>
-        <button type="button" data-v="dia">Dia</button>
-        <button type="button" data-v="semana">Semana</button>
       </div>
       <div class="srch-pop" id="srchPop" hidden>
         <input class="srch-in" id="srchIn" type="search" placeholder="Buscar consultas" autocomplete="off" spellcheck="false">
@@ -821,7 +810,7 @@
       if (agExpand) agExpand.addEventListener('click', function () { setAgWide(!(right && right.classList.contains('collapsed'))); });
       // menus da agenda: logo abaixo do ícone, com a borda direita alinhada à dele
       window.__placePop = function (pop, btn) {
-        document.querySelectorAll('.view-pop, .srch-pop, .cal-pop').forEach(function (p) { if (p !== pop) p.hidden = true; });
+        document.querySelectorAll('.srch-pop, .cal-pop').forEach(function (p) { if (p !== pop) p.hidden = true; });
         document.querySelectorAll('.ag-actions .hd-btn.on').forEach(function (b) { if (b !== btn) b.classList.remove('on'); });
         var c = pop.parentNode.getBoundingClientRect(), r = btn.getBoundingClientRect();
         pop.style.right = Math.max(c.right - r.right, 0) + 'px';
@@ -1712,7 +1701,7 @@
     (function () {
       var stage = document.querySelector('.stage');
       var sel = document.getElementById('viewSel');
-      var pop = document.getElementById('viewPop'), grid = document.getElementById('wkGrid');
+      var grid = document.getElementById('wkGrid');
       var wk = document.getElementById('wk');
       if (!stage || !sel || !grid) return;
       var WK_PX = 142, WK_FIRST = 0, WK_LAST = 24;         // semana: 142px por hora; rótulo centralizado na linha da hora (Figma 1018:11546)
@@ -1821,11 +1810,10 @@
       function setView(v, save) {
         var week = v === 'semana';
         stage.classList.toggle('week', week);
-        sel.title = 'Visão: ' + (week ? 'Semana' : 'Dia'); sel.setAttribute('aria-label', sel.title);
+        sel.title = 'Mudar para ' + (week ? 'Dia' : 'Semana'); sel.setAttribute('aria-label', sel.title);
         var vi = document.getElementById('viewIcon');       // o ícone mostra a visão atual (Figma 1021:6331 / 1021:6348)
         if (vi) vi.src = 'assets/icons/agenda-' + (week ? 'week' : 'day') + '.svg';
         if (window.__calRefreshLabel) window.__calRefreshLabel();
-        if (pop) pop.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
         if (save) { try { localStorage.setItem('od_agenda_view', v); } catch (_) {} }
         clearInterval(timer);
         if (week) {
@@ -1836,20 +1824,8 @@
         }
       }
 
-      sel.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (!pop) return;
-        window.__placePop(pop, sel);
-        pop.hidden = !pop.hidden;
-        sel.classList.toggle('on', !pop.hidden);
-      });
-      if (pop) pop.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var b = e.target.closest('button'); if (!b) return;
-        pop.hidden = true; sel.classList.remove('on'); setView(b.getAttribute('data-v'), true);
-      });
-      document.addEventListener('click', function () { if (pop) { pop.hidden = true; sel.classList.remove('on'); } });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && pop) { pop.hidden = true; sel.classList.remove('on'); } });
+      // ícone da visão: um clique alterna direto entre Dia e Semana (sem menu)
+      sel.addEventListener('click', function () { setView(isWeek() ? 'dia' : 'semana', true); });
 
       // data escolhida no calendário (ou "hoje") → semana correspondente
       window.__onDateChange = function (d) { if (isWeek()) showWeek(d, true); };
