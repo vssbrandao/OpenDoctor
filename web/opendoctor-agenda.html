@@ -160,6 +160,7 @@
 
     /* eventos reais do calendário conectado (posicionados por horário) */
     .cal-inner.real .hr-row .ev{display:none}
+    .cal-inner.other-day .hr-row .ev{display:none}
     .ev-real{position:absolute;left:86px;right:24px;background:var(--ev-bg);border-radius:40px;
       padding:20px 24px;overflow:hidden;z-index:2;display:flex;flex-direction:column;
       justify-content:space-between}
@@ -700,7 +701,10 @@
       var d = new Date();
       var h = d.getHours(), m = d.getMinutes();
       var t = h + m / 60;
-      if (t < FIRST_HOUR || t > LAST_HOUR) { el.style.display = 'none'; return; }
+      var sel = window.__calSelected ? window.__calSelected() : d;
+      var isToday = sel.getFullYear() === d.getFullYear() && sel.getMonth() === d.getMonth() && sel.getDate() === d.getDate();
+      var ci = document.querySelector('.cal-inner'); if (ci) ci.classList.toggle('other-day', !isToday);
+      if (!isToday || t < FIRST_HOUR || t > LAST_HOUR) { el.style.display = 'none'; return; }
       el.style.display = '';
       el.style.top = ((t - FIRST_HOUR) * HOUR_PX) + 'px';
       var tEl = document.getElementById('nowTime');
@@ -752,8 +756,10 @@
           if (ev.allDay || !ev.start) return;
           var s = new Date(ev.start), e = ev.end ? new Date(ev.end) : new Date(s.getTime() + 18e5);
           if (isNaN(s.getTime())) return;
-          var sh = s.getHours() + s.getMinutes() / 60;
-          var eh = (e.getDate() !== s.getDate()) ? (LAST_HOUR + 1) : (e.getHours() + e.getMinutes() / 60);
+          var sh = (s.getTime() - dayStart.getTime()) / 36e5;            // horas desde 0h do dia mostrado
+          var eh = (e.getTime() - dayStart.getTime()) / 36e5;
+          if (eh <= 0 || sh >= 24) return;                               // não toca este dia
+          sh = Math.max(sh, 0); eh = Math.min(eh, LAST_HOUR + 1);
           if (eh <= FIRST_HOUR || sh >= LAST_HOUR + 1) return;   // fora da faixa visível
           sh = Math.max(sh, FIRST_HOUR);
           var top = (sh - FIRST_HOUR) * HOUR_PX + 8;
@@ -772,20 +778,32 @@
         });
         if (firstRender) { scrollToFirst(); firstRender = false; }
       }
+      var dayStart = new Date(), reqSeq = 0;
       function refresh() {
-        var now = new Date();
-        var start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-        var end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+        var sel = window.__calSelected ? window.__calSelected() : new Date();
+        var start = new Date(sel.getFullYear(), sel.getMonth(), sel.getDate(), 0, 0, 0);
+        var end = new Date(sel.getFullYear(), sel.getMonth(), sel.getDate() + 1, 0, 0, 0);
+        var my = ++reqSeq;                                       // ignora respostas de um dia anterior
         return fetch('/calendar/events?start=' + encodeURIComponent(start.toISOString()) +
               '&end=' + encodeURIComponent(end.toISOString()))
           .then(function (r) { return r.json(); })
           .then(function (d) {
+            if (my !== reqSeq) return;
+            dayStart = start;
             window.__calConnected = !!(d && d.connected);
             if (d && d.connected) render(d.events || []);
           })
           .catch(function () {});
       }
       window.__refreshAgenda = refresh;
+      window.__onDayDateChange = function () {
+        var inner = document.querySelector('.cal-inner');
+        if (inner) inner.querySelectorAll('.ev-real').forEach(function (n) { n.remove(); });   // limpa o dia anterior já
+        firstRender = true;
+        placeNow();
+        refresh();
+        if (!window.__calConnected) scrollToFirst();
+      };
       refresh();
       // "tempo real": atualiza a cada 5s e quando você volta pra aba
       setInterval(refresh, 5 * 1000);
@@ -910,7 +928,7 @@
         var h = Math.floor(t);
         var m = Math.round((t - h) * 60 / 30) * 30;            // arredonda p/ 30 min
         if (m >= 60) { h += 1; m = 0; }
-        openAt(e.clientX, e.clientY, h, m);
+        openAt(e.clientX, e.clientY, h, m, window.__calSelected ? window.__calSelected() : null);
       });
 
       document.getElementById('evClose').addEventListener('click', close);
@@ -1597,7 +1615,10 @@
       });
 
       dateEl.textContent = fmt(selected);   // inicia no dia atual (real)
-      function changed() { if (window.__onDateChange) window.__onDateChange(new Date(selected)); }
+      function changed() {
+        if (window.__onDateChange) window.__onDateChange(new Date(selected));
+        if (window.__onDayDateChange) window.__onDayDateChange(new Date(selected));
+      }
       window.__calSelected = function () { return new Date(selected); };
       window.__calToday = function () { selected = new Date(today); dateEl.textContent = fmt(selected); close(); changed(); };
     })();
