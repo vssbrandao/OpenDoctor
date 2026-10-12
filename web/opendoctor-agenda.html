@@ -98,6 +98,9 @@
     .wk-ev.short{padding:6px 12px 6px 16px;justify-content:center}
     /* 1px de folga das linhas da grade dos dois lados (linha esquerda é da própria coluna; na última, a direita também) */
     .wk-col:last-child .wk-ev{right:2px}
+    /* hover igual ao dos cards da visão Dia */
+    .wk-ev{cursor:pointer;transition:background .15s ease}
+    .wk-ev:hover{background:var(--ev-bg-hover)}
     .wk-ev-t{font-family:var(--disp);font-weight:500;font-size:12px;line-height:120%;color:#071216;
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .wk-ev-s{font-family:var(--disp);font-weight:500;font-size:12px;line-height:120%;color:#666C6F;
