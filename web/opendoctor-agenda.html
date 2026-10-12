@@ -165,6 +165,9 @@
     /* eventos reais do calendário conectado (posicionados por horário) */
     .cal-inner.real .hr-row .ev{display:none}
     .cal-inner.other-day .hr-row .ev{display:none}
+    /* evento selecionado (clique): fundo azul claro, iniciais em círculo branco — Figma 1019:12340 */
+    .ev.sel,.ev.sel:hover,.ev-real.sel,.ev-real.sel:hover,.wk-ev.sel,.wk-ev.sel:hover{background:#D3E3FD}
+    .ev.sel .avatar,.ev-real.sel .avatar{background:#FEFEFE}
     .ev-real{position:absolute;left:86px;right:24px;background:var(--ev-bg);border-radius:40px;
       padding:20px 24px;overflow:hidden;z-index:2;display:flex;flex-direction:column;
       justify-content:space-between}
@@ -717,6 +720,22 @@
     placeNow();
     setInterval(placeNow, 60 * 1000); // keep it live, update every minute
 
+    // ===== seleção de evento (vale para Dia e Semana; sobrevive às atualizações a cada 5s) =====
+    window.__selEv = null;
+    function evKey(ev) { return ev.id || ((ev.title || '') + '|' + ev.start); }
+    function applySel() {
+      document.querySelectorAll('[data-evkey]').forEach(function (n) {
+        n.classList.toggle('sel', n.getAttribute('data-evkey') === window.__selEv);
+      });
+    }
+    window.__evSelect = function (key) {
+      window.__selEv = (key && key !== window.__selEv) ? key : null;   // clicar de novo desmarca
+      applySel();
+    };
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && window.__selEv) window.__evSelect(null); });
+    // consultas de exemplo (sem calendário conectado) também podem ser selecionadas
+    document.querySelectorAll('.cal-inner .ev').forEach(function (n, i) { n.setAttribute('data-evkey', 'demo-' + i); });
+
     // abre a agenda com o traço da hora atual no MEIO da área visível;
     // fora da faixa 1h–23h (traço escondido), cai no primeiro compromisso no topo
     function scrollToFirst() {
@@ -771,6 +790,8 @@
           var tall = height >= 110;
           var card = document.createElement('div');
           card.className = 'ev-real';
+          card.setAttribute('data-evkey', evKey(ev));
+          if (evKey(ev) === window.__selEv) card.classList.add('sel');
           card.style.top = top + 'px';
           card.style.height = height + 'px';
           card.innerHTML = '<div><div class="er-title"></div><div class="er-sub"></div></div>' +
@@ -924,7 +945,9 @@
       calInner.addEventListener('click', function (e) {
         if (!pop.hidden) { close(); return; }                  // aberto → clicar na agenda fecha
         if (e.target.closest('.now')) return;
-        if (e.target.closest('.ev, .ev-real')) return;         // clique numa consulta existente
+        var evEl = e.target.closest('.ev, .ev-real');
+        if (evEl) { window.__evSelect(evEl.getAttribute('data-evkey')); return; }   // seleciona a consulta
+        if (window.__selEv) window.__evSelect(null);
         if (!window.__calConnected) return;                    // só com calendário conectado
         var rect = calInner.getBoundingClientRect();
         var t = FIRST_HOUR + (e.clientY - rect.top) / HOUR_PX;
@@ -1464,7 +1487,9 @@
         var cols = days.map(function (d) {
           var c = el('div', 'wk-col' + (d === days[0] ? ' first' : '')); c.style.height = H + 'px'; grid.appendChild(c);
           c.addEventListener('click', function (e) {
-            if (e.target.closest('.wk-ev')) return;              // clique num evento existente
+            var we = e.target.closest('.wk-ev');
+            if (we) { window.__evSelect(we.getAttribute('data-evkey')); return; }   // seleciona o evento
+            if (window.__selEv) window.__evSelect(null);
             var t = WK_FIRST + (e.clientY - c.getBoundingClientRect().top) / WK_PX;
             var hh = Math.floor(t), mm = Math.round((t - hh) * 2) * 30;
             if (mm >= 60) { hh += 1; mm = 0; }
@@ -1483,6 +1508,8 @@
             if (b <= a) return;
             var top = (a - d0.getTime()) / 36e5 * WK_PX, hgt = Math.max((b - a) / 36e5 * WK_PX - 1, 24);
             var box = el('div', 'wk-ev' + (hgt < 60 ? ' short' : '')); box.style.top = top + 'px'; box.style.height = hgt + 'px';
+            box.setAttribute('data-evkey', evKey(ev));
+            if (evKey(ev) === window.__selEv) box.classList.add('sel');
             var full = ev.title || '(sem título)', parts = full.split(' — ');
             box.title = full + ' · ' + fmtT(s) + '–' + fmtT(e);
             box.appendChild(el('div', 'wk-ev-t', parts[0]));

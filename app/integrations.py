@@ -200,7 +200,7 @@ def events(user_id, provider, limit=50, time_min=None, time_max=None):
             for e in r.json().get("items", []):
                 st = e.get("start", {}); en = e.get("end", {})
                 all_day = "date" in st and "dateTime" not in st
-                out.append({"title": e.get("summary", "(sem título)"),
+                out.append({"id": e.get("id"), "title": e.get("summary", "(sem título)"),
                             "start": st.get("dateTime") or st.get("date"),
                             "end": en.get("dateTime") or en.get("date"),
                             "allDay": all_day})
@@ -212,7 +212,7 @@ def events(user_id, provider, limit=50, time_min=None, time_max=None):
                               "startDateTime": start, "endDateTime": end,
                               "$orderby": "start/dateTime", "$top": limit})
             for e in r.json().get("value", []):
-                out.append({"title": e.get("subject", "(sem título)"),
+                out.append({"id": e.get("id"), "title": e.get("subject", "(sem título)"),
                             "start": (e.get("start") or {}).get("dateTime"),
                             "end": (e.get("end") or {}).get("dateTime"),
                             "allDay": bool(e.get("isAllDay"))})
