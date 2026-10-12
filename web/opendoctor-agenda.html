@@ -72,7 +72,8 @@
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
        calha de horas 88px (24 + rótulo 40 + 24), colunas >= 158px, 71px por hora, caixas de 142px (2h), cabeçalho dos dias 48px */
-    .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:thin}
+    .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:none}
+    .wk::-webkit-scrollbar{display:none}
     .stage.week .wk{display:block}
     .stage.week .cal{display:none}
     .wk-grid{position:relative;display:grid;grid-template-columns:88px repeat(7,minmax(158px,1fr))}
@@ -85,7 +86,7 @@
     .wk-gut{position:sticky;left:0;z-index:3;background:#fff;box-shadow:inset -1px 0 0 rgba(26,26,26,.08)}
     /* rótulo da hora: alinhado à esquerda (x 292), centralizado na altura da sua hora; horas a cada 71px
        → a meia hora fica no meio, a ~24px de cada rótulo (Figma 1018:11791) */
-    .wk-lbl{position:absolute;left:24px;width:40px;transform:translateY(-50%);
+    .wk-lbl{position:absolute;left:24px;white-space:nowrap;transform:translateY(-50%);
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F}
     .wk-col{position:relative;cursor:pointer;box-shadow:inset 1px 0 0 rgba(26,26,26,.08);
       background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 141px,rgba(26,26,26,.08) 141px,rgba(26,26,26,.08) 142px);
@@ -1437,6 +1438,10 @@
           var l = el('div', 'wk-lbl', hr + 'h'); l.style.top = ((hr - WK_FIRST) * WK_PX) + 'px'; gut.appendChild(l);
         }
         grid.appendChild(gut);
+        // calha = 24px + horário mais largo + 24px (o espaço vale só p/ os horários em preto)
+        var lw = 0;
+        gut.querySelectorAll('.wk-lbl').forEach(function (l) { lw = Math.max(lw, l.offsetWidth); });
+        if (lw) grid.style.gridTemplateColumns = (48 + Math.ceil(lw)) + 'px repeat(7,minmax(158px,1fr))';
         // colunas + eventos
         var cols = days.map(function (d) {
           var c = el('div', 'wk-col' + (d === days[0] ? ' first' : '')); c.style.height = H + 'px'; grid.appendChild(c);
