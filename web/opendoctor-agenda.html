@@ -71,11 +71,11 @@
     .pill-btn.dark:hover{background:#222}
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
-       calha de horas 109px, colunas >= 158px, 142px por hora, cabeçalho dos dias 48px */
+       calha de horas 88px (24 + rótulo 40 + 24), colunas >= 158px, 142px por hora, cabeçalho dos dias 48px */
     .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:thin}
     .stage.week .wk{display:block}
     .stage.week .cal{display:none}
-    .wk-grid{position:relative;display:grid;grid-template-columns:109px repeat(7,minmax(158px,1fr))}
+    .wk-grid{position:relative;display:grid;grid-template-columns:88px repeat(7,minmax(158px,1fr))}
     .wk-h{position:sticky;top:0;z-index:4;height:48px;padding-top:12px;background:#fff;
       box-shadow:inset 0 -1px 0 rgba(26,26,26,.08);display:flex;justify-content:center;align-items:flex-start;gap:4px;
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F;white-space:nowrap}
