@@ -52,23 +52,35 @@
       display:flex;align-items:center;justify-content:center;flex:none}
     .hd-btn:hover{background:rgba(0,0,0,.05)}
     .hd-actions{display:flex;align-items:center;gap:4px}
-    /* botões do cabeçalho da agenda (Figma "UI / Button / Small"): 36px, borda rgba(0,0,0,.1), raio 1000 */
-    .ag-actions{display:flex;align-items:center;gap:4px}
-    .pill-btn{height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.1);
-      border-radius:1000px;background:#fff;cursor:pointer;padding:0 12px 0 20px;
-      font-family:var(--disp);font-weight:500;font-size:12px;line-height:120%;letter-spacing:-.02em;color:#000;white-space:nowrap}
-    .pill-btn img{width:24px;height:24px;flex:none}
-    .pill-btn:hover{background:#f7f7f7}
-    .pill-btn.dark{background:#000;color:#fff;padding:0 20px}
-    /* menu Dia / Semana (abre abaixo do botão, alinhado à direita dele) */
-    .view-pop{position:absolute;top:78px;z-index:30;min-width:140px;background:#fff;border:1px solid var(--sb-border);
+    /* ícones da agenda (Figma 1020:13108): visão, criar, buscar, expandir — 36x36, gap 4, em y 8, 24px da direita */
+    .ag-actions{position:absolute;top:8px;right:24px}
+    .hd-btn.on{background:rgba(0,0,0,.05)}
+    /* menus da agenda (abrem abaixo do ícone, alinhados à direita dele; posição calculada no JS) */
+    .view-pop{position:absolute;top:52px;z-index:30;min-width:140px;background:#fff;border:1px solid var(--sb-border);
       border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;display:flex;flex-direction:column;gap:2px}
+    .srch-pop{position:absolute;top:52px;z-index:30;width:340px;max-width:calc(100% - 48px);background:#fff;
+      border:1px solid var(--sb-border);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;
+      display:flex;flex-direction:column;gap:4px}
+    .srch-pop[hidden]{display:none}
+    .srch-in{height:40px;border:0;border-radius:10px;background:#F3F3F3;padding:0 12px;outline:none;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .srch-in::placeholder{color:#8B8B8B}
+    .srch-list{max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin}
+    .srch-list:empty{display:none}
+    .srch-head{padding:8px 12px 4px;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#8B8B8B}
+    .srch-item{border:0;background:none;text-align:left;padding:8px 12px;border-radius:10px;cursor:pointer;
+      display:flex;flex-direction:column;gap:2px;min-width:0}
+    .srch-item:hover,.srch-item.on{background:var(--active)}
+    .srch-t{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .srch-d{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#666C6F}
+    .srch-msg{padding:8px 12px;font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#8B8B8B}
+    .srch-msg a{color:#0842a0}
     .view-pop[hidden]{display:none}
     .view-pop button{border:0;background:none;text-align:left;padding:8px 12px;border-radius:10px;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .view-pop button:hover{background:var(--active)}
     .view-pop button.on{font-weight:700}
-    .pill-btn.dark:hover{background:#222}
 
     /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) ===== */
     .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:42px 24px 48px;
@@ -121,7 +133,7 @@
     .stage.week .wk{display:block}
     .stage.week .cal{display:none}
     .wk-grid{position:relative;display:grid;grid-template-columns:84px repeat(7,minmax(158px,1fr))}
-    .wk-h{position:sticky;top:0;z-index:4;height:51px;padding-top:16px;background:#fff;
+    .wk-h{position:sticky;top:0;z-index:4;height:51px;padding-top:15px;background:#fff;
       box-shadow:inset 0 -1px 0 rgba(26,26,26,.08);display:flex;justify-content:center;align-items:flex-start;gap:4px;
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F;white-space:nowrap}
     .wk-h.gmt{left:0;z-index:5;justify-content:flex-start;padding-left:24px}
@@ -472,14 +484,20 @@
     <div class="center">
       <div class="ag-head">
         <div class="cal-head" id="calHead"><span class="date">Seg, 30 Junho</span></div>
-        <div class="ag-actions">
-          <button class="pill-btn" id="viewSel" type="button" title="Mudar visão" aria-haspopup="true"><span id="viewLabel">Dia</span><img src="assets/icons/caret-down.svg" width="24" height="24" alt=""></button>
-          <button class="pill-btn dark" id="agCreate" type="button">Criar</button>
+        <div class="ag-actions hd-actions">
+          <button class="hd-btn" id="viewSel" type="button" title="Visão: Dia" aria-label="Visão: Dia" aria-haspopup="true"><img src="assets/icons/agenda-view.svg" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="agCreate" type="button" title="Criar evento" aria-label="Criar evento"><img src="assets/icons/agenda-add.svg" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="agSearch" type="button" title="Buscar consultas" aria-label="Buscar consultas" aria-haspopup="true"><img src="assets/icons/agenda-search.svg" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="agExpand" type="button" title="Expandir agenda" aria-label="Expandir agenda"><img src="assets/icons/chat-expand.svg" width="36" height="36" alt=""></button>
         </div>
       </div>
       <div class="view-pop" id="viewPop" hidden>
         <button type="button" data-v="dia">Dia</button>
         <button type="button" data-v="semana">Semana</button>
+      </div>
+      <div class="srch-pop" id="srchPop" hidden>
+        <input class="srch-in" id="srchIn" type="search" placeholder="Buscar consultas" autocomplete="off" spellcheck="false">
+        <div class="srch-list" id="srchList"></div>
       </div>
       <div class="pr-view" id="prView">
         <div class="pr">
@@ -788,6 +806,23 @@
         setExpanded(true);
       });
       if (showChat) showChat.addEventListener('click', function () { setChat(false); });
+      // agenda expandida (ícone de painel da agenda): esconde o assistente; o mesmo ícone traz ele de volta
+      var agExpand = document.getElementById('agExpand');
+      function setAgWide(on) {
+        setChat(on);
+        if (showChat) showChat.hidden = true;                // quem traz de volta é o próprio ícone
+        if (agExpand) {
+          agExpand.title = on ? 'Mostrar assistente' : 'Expandir agenda';
+          agExpand.setAttribute('aria-label', agExpand.title);
+        }
+      }
+      if (agExpand) agExpand.addEventListener('click', function () { setAgWide(!(right && right.classList.contains('collapsed'))); });
+      // menus da agenda: logo abaixo do ícone, com a borda direita alinhada à dele
+      window.__placePop = function (pop, btn) {
+        var c = pop.parentNode.getBoundingClientRect(), r = btn.getBoundingClientRect();
+        pop.style.right = Math.max(c.right - r.right, 0) + 'px';
+        pop.style.top = (r.bottom - c.top + 8) + 'px';
+      };
     })();
 
     // position the orange "now" marker according to the local time
@@ -833,6 +868,8 @@
     function scrollToFirst() {
       var cal = document.querySelector('.cal');
       if (!cal) return;
+      var picked = document.querySelector('.cal-inner .ev-real.sel');   // evento escolhido na busca
+      if (picked) { cal.scrollTop = Math.max((parseFloat(picked.style.top) || picked.offsetTop) - 24, 0); return; }
       var now = document.getElementById('nowMarker');
       if (now && now.style.display !== 'none') {
         cal.scrollTop = Math.max((parseFloat(now.style.top) || now.offsetTop) - cal.clientHeight / 2, 0);
@@ -1670,7 +1707,7 @@
     // ===== visão Dia / Semana =====
     (function () {
       var stage = document.querySelector('.stage');
-      var sel = document.getElementById('viewSel'), label = document.getElementById('viewLabel');
+      var sel = document.getElementById('viewSel');
       var pop = document.getElementById('viewPop'), grid = document.getElementById('wkGrid');
       var wk = document.getElementById('wk');
       if (!stage || !sel || !grid) return;
@@ -1768,37 +1805,44 @@
         weekStart = startOfWeek(date || (window.__calSelected ? window.__calSelected() : new Date()));
         var y = render();
         if (recenter) center(y);
-        fetchWeek().then(function () { if (isWeek()) render(); });
+        fetchWeek().then(function () {
+          if (!isWeek()) return;
+          render();
+          var picked = recenter && grid.querySelector('.wk-ev.sel');          // evento escolhido na busca
+          if (picked) wk.scrollTop = Math.max(parseFloat(picked.style.top) - 24, 0);
+        });
       }
       function isWeek() { return stage.classList.contains('week'); }
 
       function setView(v, save) {
         var week = v === 'semana';
         stage.classList.toggle('week', week);
-        label.textContent = week ? 'Semana' : 'Dia';          // o botão mostra a visão atual
+        sel.title = 'Visão: ' + (week ? 'Semana' : 'Dia'); sel.setAttribute('aria-label', sel.title);
         if (pop) pop.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
         if (save) { try { localStorage.setItem('od_agenda_view', v); } catch (_) {} }
         clearInterval(timer);
         if (week) {
           showWeek(null, true);
           timer = setInterval(function () { fetchWeek().then(function () { if (isWeek()) render(); }); }, 5000);
+        } else if (typeof scrollToFirst === 'function') {
+          scrollToFirst();                                   // a visão Dia estava escondida: recentra (hora atual ou evento escolhido)
         }
       }
 
       sel.addEventListener('click', function (e) {
         e.stopPropagation();
         if (!pop) return;
-        var head = sel.offsetParent;                          // .ag-head
-        pop.style.right = (head.clientWidth - (sel.offsetLeft + sel.offsetWidth)) + 'px';
+        window.__placePop(pop, sel);
         pop.hidden = !pop.hidden;
+        sel.classList.toggle('on', !pop.hidden);
       });
       if (pop) pop.addEventListener('click', function (e) {
         e.stopPropagation();
         var b = e.target.closest('button'); if (!b) return;
-        pop.hidden = true; setView(b.getAttribute('data-v'), true);
+        pop.hidden = true; sel.classList.remove('on'); setView(b.getAttribute('data-v'), true);
       });
-      document.addEventListener('click', function () { if (pop) pop.hidden = true; });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && pop) pop.hidden = true; });
+      document.addEventListener('click', function () { if (pop) { pop.hidden = true; sel.classList.remove('on'); } });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && pop) { pop.hidden = true; sel.classList.remove('on'); } });
 
       // data escolhida no calendário (ou "hoje") → semana correspondente
       window.__onDateChange = function (d) { if (isWeek()) showWeek(d, true); };
@@ -2039,6 +2083,109 @@
       }
       window.__calSelected = function () { return new Date(selected); };
       window.__calToday = function () { selected = new Date(today); dateEl.textContent = fmt(selected); close(); changed(); };
+      window.__calGoto = function (d) {
+        selected = new Date(d.getFullYear(), d.getMonth(), d.getDate()); dateEl.textContent = fmt(selected); close(); changed();
+      };
+    })();
+  </script>
+  <script>
+    // ===== buscar consultas (ícone de lupa) =====
+    // Busca local: baixa os eventos de 6 meses atrás a 1 ano à frente e filtra no navegador,
+    // então o termo buscado (ex.: nome do paciente) não vai em URL nem sai do navegador.
+    (function () {
+      var btn = document.getElementById('agSearch'), pop = document.getElementById('srchPop');
+      var input = document.getElementById('srchIn'), list = document.getElementById('srchList');
+      if (!btn || !pop || !input || !list) return;
+      var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      var DOWS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+      var cache, cacheAt = 0, loading = null, items = [], active = -1;
+      function pad(n) { return String(n).padStart(2, '0'); }
+      function norm(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+      function parse(v) {                                    // "AAAA-MM-DD" (dia todo) é data local, não UTC
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
+        return m ? new Date(+m[1], m[2] - 1, +m[3]) : new Date(v);
+      }
+      function when(ev, s) {
+        var d = DOWS[s.getDay()] + ', ' + s.getDate() + ' ' + MON[s.getMonth()] +
+                (s.getFullYear() !== new Date().getFullYear() ? ' ' + s.getFullYear() : '');
+        return d + ' · ' + (ev.allDay ? 'dia todo' : pad(s.getHours()) + ':' + pad(s.getMinutes()));
+      }
+      // undefined = erro; null = sem calendário conectado; [] = eventos
+      function load() {
+        if (cache !== undefined && Date.now() - cacheAt < 60e3) return Promise.resolve(cache);
+        if (loading) return loading;
+        var a = new Date(), b = new Date();
+        a.setDate(a.getDate() - 180); b.setDate(b.getDate() + 365);
+        loading = fetch('/calendar/events?limit=250&start=' + encodeURIComponent(a.toISOString()) +
+                        '&end=' + encodeURIComponent(b.toISOString()))
+          .then(function (r) { return r.json(); })
+          .then(function (d) { cache = d && d.connected ? (d.events || []) : null; cacheAt = Date.now(); return cache; })
+          .catch(function () { return undefined; })
+          .then(function (v) { loading = null; return v; });
+        return loading;
+      }
+      function msg(html) { list.innerHTML = '<div class="srch-msg">' + html + '</div>'; items = []; active = -1; }
+      function group(title, arr) {
+        if (!arr.length) return;
+        var h = document.createElement('div'); h.className = 'srch-head'; h.textContent = title; list.appendChild(h);
+        arr.forEach(function (x) {
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'srch-item';
+          var t = document.createElement('span'); t.className = 'srch-t'; t.textContent = x.ev.title || '(sem título)';
+          var d = document.createElement('span'); d.className = 'srch-d'; d.textContent = when(x.ev, x.s);
+          b.appendChild(t); b.appendChild(d);
+          b.addEventListener('click', function () { pick(x); });
+          list.appendChild(b); items.push({ el: b, x: x });
+        });
+      }
+      function show() {
+        var raw = input.value.trim();
+        load().then(function (evs) {
+          if (pop.hidden || raw !== input.value.trim()) return;           // fechou ou digitou de novo
+          if (evs === undefined) return msg('Não foi possível carregar as consultas.');
+          if (evs === null) return msg('Conecte um calendário em <a href="/opendoctor-integracao.html">Integrações</a>.');
+          var q = norm(raw), t0 = new Date(); t0.setHours(0, 0, 0, 0);
+          var hits = evs.filter(function (ev) {
+            return ev.start && (!q || norm([ev.title, ev.description, ev.location].join(' ')).indexOf(q) >= 0);
+          }).map(function (ev) { return { ev: ev, s: parse(ev.start) }; })
+            .filter(function (x) { return !isNaN(x.s.getTime()); });
+          var next = hits.filter(function (x) { return x.s >= t0; }).sort(function (a, b) { return a.s - b.s; });
+          var past = q ? hits.filter(function (x) { return x.s < t0; }).sort(function (a, b) { return b.s - a.s; }) : [];
+          list.innerHTML = ''; items = []; active = -1;
+          if (!next.length && !past.length) return msg(q ? 'Nenhuma consulta encontrada.' : 'Nenhuma consulta nos próximos dias.');
+          group('Próximas', next.slice(0, q ? 30 : 8));
+          group('Anteriores', past.slice(0, 30));
+        });
+      }
+      function mark(i) {
+        if (!items.length) return;
+        active = (i + items.length) % items.length;
+        items.forEach(function (it, j) { it.el.classList.toggle('on', j === active); });
+        items[active].el.scrollIntoView({ block: 'nearest' });
+      }
+      // vai para o dia da consulta e deixa ela selecionada (a agenda rola até ela)
+      function pick(x) {
+        close();
+        var k = evKey(x.ev);
+        window.__evData[k] = x.ev;
+        window.__selEv = k;
+        if (window.__calGoto) window.__calGoto(x.s);
+      }
+      function open() {
+        window.__placePop(pop, btn);
+        pop.hidden = false; btn.classList.add('on');
+        input.value = ''; input.focus(); show();
+      }
+      function close() { pop.hidden = true; btn.classList.remove('on'); }
+      btn.addEventListener('click', function (e) { e.stopPropagation(); pop.hidden ? open() : close(); });
+      pop.addEventListener('click', function (e) { e.stopPropagation(); });
+      document.addEventListener('click', function () { if (!pop.hidden) close(); });
+      input.addEventListener('input', show);
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); mark(active + 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); mark(active - 1); }
+        else if (e.key === 'Enter') { e.preventDefault(); var it = items[active >= 0 ? active : 0]; if (it) pick(it.x); }
+        else if (e.key === 'Escape') { e.stopPropagation(); close(); }
+      });
     })();
   </script>
 </body>

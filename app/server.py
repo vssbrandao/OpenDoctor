@@ -605,8 +605,9 @@ def integrations_events(provider: str, request: Request, limit: int = 50,
 
 
 @app.get("/calendar/events")
-def calendar_events(request: Request, start: str = "", end: str = ""):
-    """Eventos do provedor conectado do usuário (o que a agenda consome)."""
+def calendar_events(request: Request, start: str = "", end: str = "", limit: int = 50):
+    """Eventos do provedor conectado do usuário (o que a agenda consome).
+    `limit` maior (até 250) é usado pela busca, que filtra no navegador."""
     u = auth.current_user(request)
     if not u:
         return {"logged_in": False, "connected": None, "events": []}
@@ -614,7 +615,7 @@ def calendar_events(request: Request, start: str = "", end: str = ""):
     if not connected:
         return {"logged_in": True, "connected": None, "events": []}
     prov = "google" if "google" in connected else next(iter(connected))
-    evs = integrations.events(u["id"], prov, 50, start or None, end or None)
+    evs = integrations.events(u["id"], prov, max(1, min(limit, 250)), start or None, end or None)
     return {"logged_in": True, "connected": prov, "events": evs}
 
 
