@@ -93,9 +93,11 @@
     .wk-col.first{box-shadow:none}
     .wk-col.first:last-child{box-shadow:inset -1px 0 0 rgba(26,26,26,.08)}
     .wk-col:last-child{box-shadow:inset 1px 0 0 rgba(26,26,26,.08),inset -1px 0 0 rgba(26,26,26,.08)}
-    .wk-ev{position:absolute;left:2px;right:0;background:#F3F3F3;border-radius:40px;padding:20px;
+    .wk-ev{position:absolute;left:2px;right:1px;background:#F3F3F3;border-radius:40px;padding:20px;
       overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;gap:4px;z-index:1}
     .wk-ev.short{padding:6px 12px 6px 16px;justify-content:center}
+    /* 1px de folga das linhas da grade dos dois lados (linha esquerda é da própria coluna; na última, a direita também) */
+    .wk-col:last-child .wk-ev{right:2px}
     .wk-ev-t{font-family:var(--disp);font-weight:500;font-size:12px;line-height:120%;color:#071216;
       white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .wk-ev-s{font-family:var(--disp);font-weight:500;font-size:12px;line-height:120%;color:#666C6F;
