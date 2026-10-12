@@ -226,50 +226,63 @@
     .er-sub{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:var(--muted)}
     .er-foot{display:flex;justify-content:flex-end}
 
-    /* popover de criar evento */
-    /* janela de novo evento — painel em seções (referência estilo Notion Calendar) */
-    .evpop{position:fixed;z-index:60;width:300px;max-height:calc(100vh - 24px);overflow-y:auto;background:#fff;
-      border:1px solid rgba(0,0,0,.06);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.12);
-      font-family:var(--disp);color:#1F1F1F;display:flex;flex-direction:column}
+    /* janela de evento: blocos cinza suaves (sem divisórias), título em destaque, horários em pílulas,
+       "Dia todo" como interruptor e avatar do paciente igual ao dos cards da agenda */
+    .evpop{position:fixed;z-index:60;width:360px;max-height:calc(100vh - 24px);overflow-y:auto;background:#fff;
+      border-radius:24px;box-shadow:0 0 0 1px rgba(0,0,0,.05),0 16px 48px rgba(0,0,0,.16);padding:12px;
+      font-family:var(--disp);color:#071216;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
+    .evpop::-webkit-scrollbar{display:none}
     .evpop[hidden]{display:none}
-    .evpop-head{display:flex;align-items:center;justify-content:space-between;padding:14px 12px 4px 20px}
-    .evpop-title{font-weight:700;font-size:14px;line-height:20px;color:#1F1F1F}
-    .evpop-close{width:28px;height:28px;border:0;background:none;cursor:pointer;border-radius:8px;
+    .evpop-head{display:flex;align-items:flex-start;gap:8px;padding:6px 0 6px 12px}
+    .evpop-headtxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+    .evpop-kicker{font-weight:500;font-size:12px;line-height:16px;color:#8B8B8B}
+    .evpop-name{border:0;outline:none;background:none;width:100%;padding:0;
+      font-family:var(--disp);font-weight:500;font-size:20px;line-height:28px;color:#071216}
+    .evpop-name::placeholder{color:#B5B5B5}
+    .evpop-hbtns{display:flex;align-items:center;gap:2px;flex:none}
+    .evpop-close{width:32px;height:32px;border:0;background:none;cursor:pointer;border-radius:10px;
       display:flex;align-items:center;justify-content:center}
     .evpop-close:hover{background:rgba(0,0,0,.05)}
     .evpop-close[hidden]{display:none}
-    .evpop-hbtns{display:flex;align-items:center;gap:2px}
-    .evpop-name{border:0;outline:none;background:none;width:100%;padding:10px 20px 14px;
-      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#1F1F1F}
-    .evpop-name::placeholder{color:#A3A3A3}
-    .evpop-sec{border-top:1px solid #EDEDED;padding:10px 20px;display:flex;flex-direction:column}
-    .evpop-row{display:flex;align-items:center;gap:12px;min-height:32px}
-    .evpop-ico{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center}
-    .evpop-sub{padding-left:28px}                     /* alinha com o texto (ícone 16 + gap 12) */
+    .evpop-card{background:#F6F6F6;border-radius:16px;padding:4px;display:flex;flex-direction:column}
+    .evpop-row{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;
+      transition:background .12s ease}
+    .evpop-row.click{cursor:pointer}
+    .evpop-row.click:hover,.evpop-row:focus-within{background:#EDEDED}
+    .evpop-ico{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center}
     .evpop-input{border:0;outline:none;background:none;width:100%;padding:0;
-      font-family:var(--disp);font-size:13px;line-height:20px;color:#1F1F1F}
-    .evpop-input::placeholder{color:#A3A3A3}
-    .evpop-time{width:auto;-webkit-appearance:none;appearance:none;cursor:pointer;
-      border-radius:6px;padding:2px 4px;margin:0 -4px}
-    .evpop-time:hover{background:rgba(0,0,0,.04)}
-    .evpop-arrow{color:#A3A3A3;font-size:13px}
-    .evpop-dur{color:#A3A3A3;font-size:13px;white-space:nowrap}
-    .evpop-date{position:relative;font-size:13px;line-height:20px;color:#1F1F1F;cursor:pointer;width:max-content}
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .evpop-input::placeholder{color:#8B8B8B;font-weight:400}
+    .evpop-time{width:auto;flex:none;-webkit-appearance:none;appearance:none;cursor:pointer;background:#fff;
+      border:1px solid rgba(0,0,0,.08);border-radius:10px;padding:5px 10px}
+    .evpop-time:hover,.evpop-time:focus{border-color:rgba(0,0,0,.22)}
+    .evpop-arrow{color:#8B8B8B;font-size:14px;flex:none}
+    .evpop-dur{margin-left:auto;color:#8B8B8B;font-weight:500;font-size:13px;line-height:18px;white-space:nowrap}
+    .evpop-date{position:relative;font-weight:500;font-size:14px;line-height:20px;color:#071216;flex:1}
     .evpop-date input{position:absolute;inset:0;opacity:0;pointer-events:none}
-    .evpop-opt{border:0;background:none;padding:0;cursor:pointer;font-family:var(--disp);font-size:13px;
-      line-height:20px;color:#A3A3A3}
-    .evpop-opt.on{color:#1F1F1F;font-weight:500}
+    .evpop-opt{border:0;background:none;width:100%;text-align:left;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .evpop-switch{margin-left:auto;flex:none;width:34px;height:20px;border-radius:999px;background:#D6D6D6;
+      position:relative;transition:background .15s ease}
+    .evpop-switch::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;
+      background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s ease}
+    .evpop-opt.on .evpop-switch{background:#071216}
+    .evpop-opt.on .evpop-switch::after{transform:translateX(14px)}
     .evpop.allday .evpop-times{display:none}
-    .evpop-desc{border:0;outline:none;background:none;width:100%;resize:none;min-height:44px;padding:6px 0;
-      font-family:var(--disp);font-size:13px;line-height:20px;color:#1F1F1F}
-    .evpop-desc::placeholder{color:#A3A3A3}
-    .evpop-foot{padding:4px 16px 14px 20px;display:flex;align-items:center;
-      justify-content:space-between;gap:8px}
+    .evpop-av{width:20px;height:20px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
+      font-family:var(--disp);font-weight:500;font-size:9px;line-height:1;letter-spacing:.02em;color:#0842A0}
+    .evpop-av.has{background:#D3E3FD}
+    .evpop-av.has svg{display:none}
+    .evpop-desc{display:block;border:0;outline:none;background:none;width:100%;resize:none;min-height:76px;padding:12px;
+      border-radius:12px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .evpop-desc:focus{background:#EDEDED}
+    .evpop-desc::placeholder{color:#8B8B8B;font-weight:400}
+    .evpop-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0 0 12px}
     .evpop-msg{font-size:12px;color:#c5221f;line-height:1.4}
     .evpop-msg.ok{color:#188038}
     .evpop-msg a{color:#0842a0}
-    .evpop-create{margin-left:auto;height:32px;padding:0 18px;border:1px solid rgba(0,0,0,.1);border-radius:1000px;
-      background:#000;color:#fff;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:12px;letter-spacing:-.02em}
+    .evpop-create{margin-left:auto;height:40px;padding:0 22px;border:0;border-radius:1000px;flex:none;
+      background:#000;color:#fff;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;letter-spacing:-.01em}
     .evpop-create:hover{background:#222}
     .evpop-create:disabled{opacity:.5;cursor:default}
 
@@ -695,44 +708,48 @@
     <!-- Popover: criar evento (abre ao clicar num espaço vazio da agenda) -->
     <div class="evpop" id="evPop" hidden>
       <div class="evpop-head">
-        <span class="evpop-title">Evento</span>
+        <div class="evpop-headtxt">
+          <span class="evpop-kicker" id="evKicker">Novo evento</span>
+          <input class="evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off">
+        </div>
         <div class="evpop-hbtns">
-        <button class="evpop-close" id="evDelete" type="button" aria-label="Excluir evento" title="Excluir evento" hidden>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 4h11M6.2 4V2.6h3.6V4M4 4l.7 9.2a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L12 4M6.6 6.6v4.6M9.4 6.6v4.6" stroke="#8B8B8B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="evpop-close" id="evClose" type="button" aria-label="Fechar">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5l11 11M12.5 1.5l-11 11" stroke="#8B8B8B" stroke-width="1.5" stroke-linecap="round"/></svg>
-        </button>
+          <button class="evpop-close" id="evDelete" type="button" aria-label="Excluir evento" title="Excluir evento" hidden>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 4h11M6.2 4V2.6h3.6V4M4 4l.7 9.2a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L12 4M6.6 6.6v4.6M9.4 6.6v4.6" stroke="#8B8B8B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <button class="evpop-close" id="evClose" type="button" aria-label="Fechar" title="Fechar">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5l11 11M12.5 1.5l-11 11" stroke="#8B8B8B" stroke-width="1.5" stroke-linecap="round"/></svg>
+          </button>
         </div>
       </div>
-      <input class="evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off">
-      <div class="evpop-sec">
+      <div class="evpop-card">
+        <label class="evpop-row click" id="evDateLbl">
+          <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><rect x="2.2" y="3" width="11.6" height="10.8" rx="2.2" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.2 6.4h11.6M5.4 1.8v2.4M10.6 1.8v2.4" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="evpop-date"><span id="evDateTxt"></span><input id="evDate" type="date" aria-label="Data"></span>
+        </label>
         <div class="evpop-row evpop-times">
-          <span class="evpop-ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.3" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 4.6V8l2.2 1.4" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.2" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 4.8V8l2.1 1.3" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <select class="evpop-input evpop-time" id="evStart" aria-label="Início"></select>
           <span class="evpop-arrow">→</span>
           <select class="evpop-input evpop-time" id="evEnd" aria-label="Fim"></select>
           <span class="evpop-dur" id="evDur"></span>
         </div>
-        <div class="evpop-row evpop-sub">
-          <label class="evpop-date" id="evDateLbl"><span id="evDateTxt"></span><input id="evDate" type="date" aria-label="Data"></label>
-        </div>
-        <div class="evpop-row evpop-sub">
-          <button class="evpop-opt" id="evAllDay" type="button" aria-pressed="false">Dia todo</button>
-        </div>
+        <button class="evpop-row click evpop-opt" id="evAllDay" type="button" aria-pressed="false">
+          <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.6" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 1.6v1.3M8 13.1v1.3M1.6 8h1.3M13.1 8h1.3M3.5 3.5l.9.9M11.6 11.6l.9.9M3.5 12.5l.9-.9M11.6 4.4l.9-.9" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span>Dia todo</span><span class="evpop-switch" aria-hidden="true"></span>
+        </button>
       </div>
-      <div class="evpop-sec">
+      <div class="evpop-card">
         <div class="evpop-row">
-          <span class="evpop-ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.4" r="2.6" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13.6c0-2.4 2.2-4 5-4s5 1.6 5 4" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="evpop-ico"><span class="evpop-av" id="evAv"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.4" r="2.6" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13.6c0-2.4 2.2-4 5-4s5 1.6 5 4" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="evAvTxt"></span></span></span>
           <input class="evpop-input" id="evPatient" type="text" placeholder="Paciente" autocomplete="off">
         </div>
         <div class="evpop-row">
-          <span class="evpop-ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 14.2s4.6-4.1 4.6-7.6A4.6 4.6 0 0 0 3.4 6.6c0 3.5 4.6 7.6 4.6 7.6z" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="6.6" r="1.7" stroke="#A3A3A3" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 14.2s4.6-4.1 4.6-7.6A4.6 4.6 0 0 0 3.4 6.6c0 3.5 4.6 7.6 4.6 7.6z" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="6.6" r="1.7" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <input class="evpop-input" id="evLocation" type="text" placeholder="Local" autocomplete="off">
         </div>
       </div>
-      <div class="evpop-sec">
-        <textarea class="evpop-desc" id="evDesc" rows="2" placeholder="Descrição"></textarea>
+      <div class="evpop-card">
+        <textarea class="evpop-desc" id="evDesc" rows="3" placeholder="Adicionar descrição"></textarea>
       </div>
       <div class="evpop-foot">
         <div class="evpop-msg" id="evMsg" hidden></div>
@@ -971,7 +988,7 @@
           elPatient = document.getElementById('evPatient'), elCreate = document.getElementById('evCreate'),
           elLoc = document.getElementById('evLocation'), elDur = document.getElementById('evDur'),
           elDateTxt = document.getElementById('evDateTxt'), elAllDay = document.getElementById('evAllDay');
-      var allDay = false;
+      var allDay = false, POP_W = 360;                   // largura da janela (= .evpop)
       // horários a cada 15 min (formato 24h)
       [elStart, elEnd].forEach(function (sel) {
         for (var q = 0; q < 96; q++) {
@@ -1019,6 +1036,15 @@
       });
       elDate.addEventListener('change', dateLabel);
       elAllDay.addEventListener('click', function () { setAllDay(!allDay); });
+      // avatar do paciente: iniciais em azul (como nos cards da agenda) assim que o nome é digitado
+      var elAv = document.getElementById('evAv'), elAvTxt = document.getElementById('evAvTxt');
+      var elKicker = document.getElementById('evKicker');
+      function avatar() {
+        var w = elPatient.value.trim().split(/\s+/).filter(Boolean);
+        var ini = w.length ? (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase() : '';
+        elAvTxt.textContent = ini; elAv.classList.toggle('has', !!ini);
+      }
+      elPatient.addEventListener('input', avatar);
 
       function pad(n) { return String(n).padStart(2, '0'); }
       function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -1036,10 +1062,11 @@
         elStart.value = pad(h) + ':' + pad(m);
         var eh = h, em = m + 30; if (em >= 60) { eh = (h + 1) % 24; em -= 60; }
         elEnd.value = pad(eh) + ':' + pad(em);
-        remember(); durLabel(); dateLabel();
+        remember(); durLabel(); dateLabel(); avatar();
+        elKicker.textContent = 'Novo evento';
         pop.hidden = false;
         // posiciona perto do clique, sem sair da tela
-        var w = 300, ph = pop.offsetHeight || 320;
+        var w = POP_W, ph = pop.offsetHeight || 420;
         var x = Math.min(clientX + 8, window.innerWidth - w - 12);
         var y = Math.min(clientY, window.innerHeight - ph - 12);
         pop.style.left = Math.max(12, x) + 'px';
@@ -1097,7 +1124,7 @@
         pop.hidden = true; mode = 'create'; editEv = null;
       }
       function place(clientX, clientY) {
-        var w = 300, ph = pop.offsetHeight || 420;
+        var w = POP_W, ph = pop.offsetHeight || 460;
         var x = Math.min(clientX + 8, window.innerWidth - w - 12);
         var y = Math.min(clientY, window.innerHeight - ph - 12);
         pop.style.left = Math.max(12, x) + 'px';
@@ -1121,7 +1148,8 @@
         elDate.value = fmtDate(s0);
         if (!isAll) { ensureOption(elStart, pad(s0.getHours()) + ':' + pad(s0.getMinutes()));
                       ensureOption(elEnd, pad(e0.getHours()) + ':' + pad(e0.getMinutes())); }
-        delete elDur.dataset.min; remember(); durLabel(); dateLabel();
+        delete elDur.dataset.min; remember(); durLabel(); dateLabel(); avatar();
+        elKicker.textContent = 'Evento';
         original = JSON.stringify(buildPayload());
         elDel.hidden = !(ev.id && window.__calConnected);
         elCreate.disabled = false; elCreate.textContent = 'Prontuário';
@@ -1170,7 +1198,7 @@
         if (m === 0) h += 1;
         if (h > 23) { h = 23; m = 30; }
         var day = window.__calSelected ? window.__calSelected() : n;
-        openAt(r.right - 308, r.bottom + 8, h, m, day);
+        openAt(r.right - POP_W - 8, r.bottom + 8, h, m, day);
       });
       // usado pela visão Semana: abre o popover no dia/horário clicado
       window.__openEventAt = function (x, y, day, h, m) {
