@@ -43,7 +43,7 @@
     /* ===== CENTER: DAY AGENDA ===== */
     .center{flex:2 1 0;min-width:0;height:100%;position:relative}
     /* cabeçalho da agenda (Figma 1014:8325 "Date Navigation"): 52px, padding 8 24 */
-    .ag-head{position:absolute;top:0;left:0;right:0;height:52px;padding:8px 24px;z-index:3;
+    .ag-head{position:absolute;top:0;left:0;right:0;height:70px;padding:34px 24px 0;z-index:3;
       display:flex;align-items:center;justify-content:space-between}
     .cal-head{display:flex;align-items:center;cursor:pointer}
     .cal-head .date{min-width:92px;font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
@@ -61,7 +61,7 @@
     .pill-btn:hover{background:#f7f7f7}
     .pill-btn.dark{background:#000;color:#fff;padding:0 20px}
     /* menu Dia / Semana (abre abaixo do botão, alinhado à direita dele) */
-    .view-pop{position:absolute;top:48px;z-index:30;min-width:140px;background:#fff;border:1px solid var(--sb-border);
+    .view-pop{position:absolute;top:78px;z-index:30;min-width:140px;background:#fff;border:1px solid var(--sb-border);
       border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;display:flex;flex-direction:column;gap:2px}
     .view-pop[hidden]{display:none}
     .view-pop button{border:0;background:none;text-align:left;padding:8px 12px;border-radius:10px;cursor:pointer;
@@ -71,21 +71,21 @@
     .pill-btn.dark:hover{background:#222}
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
-       calha das horas = 24 + horário + 24, colunas >= 158px, 142px por hora, cabeçalho dos dias 48px */
+       calha das horas 84px, colunas >= 158px, 142px por hora, cabeçalho dos dias 51px */
     .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:none}
     .wk::-webkit-scrollbar{display:none}
     .stage.week .wk{display:block}
     .stage.week .cal{display:none}
-    .wk-grid{position:relative;display:grid;grid-template-columns:88px repeat(7,minmax(158px,1fr))}
-    .wk-h{position:sticky;top:0;z-index:4;height:48px;padding-top:12px;background:#fff;
+    .wk-grid{position:relative;display:grid;grid-template-columns:84px repeat(7,minmax(158px,1fr))}
+    .wk-h{position:sticky;top:0;z-index:4;height:51px;padding-top:16px;background:#fff;
       box-shadow:inset 0 -1px 0 rgba(26,26,26,.08);display:flex;justify-content:center;align-items:flex-start;gap:4px;
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F;white-space:nowrap}
     .wk-h.gmt{left:0;z-index:5;justify-content:flex-start;padding-left:24px}
     .wk-today{width:24px;height:24px;border-radius:50%;background:#D3E3FD;color:#0842A0;text-align:center;line-height:24px}
     /* calha fixa no scroll horizontal; a linha vertical da direita vai junto */
-    .wk-gut{position:sticky;left:0;z-index:3;background:#fff;box-shadow:inset -1px 0 0 rgba(26,26,26,.08)}
-    /* rótulo da hora: alinhado à esquerda (x 292), centralizado sobre a linha da sua hora; uma hora a cada 142px */
-    .wk-lbl{position:absolute;left:24px;white-space:nowrap;transform:translateY(-50%);
+    .wk-gut{position:sticky;left:0;z-index:3;background:#fff;box-shadow:1px 0 0 rgba(26,26,26,.08)}
+    /* rótulo da hora: x 292, logo acima da linha da sua hora (base do rótulo 6px abaixo da linha) — Figma 1019:12141 */
+    .wk-lbl{position:absolute;left:24px;white-space:nowrap;margin-top:-18px;
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F}
     .wk-col{position:relative;cursor:pointer;box-shadow:inset 1px 0 0 rgba(26,26,26,.08);
       background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 141px,rgba(26,26,26,.08) 141px,rgba(26,26,26,.08) 142px);
@@ -93,7 +93,7 @@
     .wk-col.first{box-shadow:none}
     .wk-col.first:last-child{box-shadow:inset -1px 0 0 rgba(26,26,26,.08)}
     .wk-col:last-child{box-shadow:inset 1px 0 0 rgba(26,26,26,.08),inset -1px 0 0 rgba(26,26,26,.08)}
-    .wk-ev{position:absolute;left:1px;right:0;background:#F3F3F3;border-radius:40px;padding:20px;
+    .wk-ev{position:absolute;left:2px;right:0;background:#F3F3F3;border-radius:40px;padding:20px;
       overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;gap:4px;z-index:1}
     .wk-ev.short{padding:6px 12px 6px 16px;justify-content:center}
     .wk-ev-t{font-family:var(--disp);font-weight:500;font-size:12px;line-height:120%;color:#071216;
@@ -110,7 +110,7 @@
     .ic-hist{transform:none}
     .ic-exp{transform:translateX(-1px)}
     /* calendário (popover) */
-    .cal-pop{position:absolute;top:44px;left:24px;z-index:30;width:280px;background:#fff;
+    .cal-pop{position:absolute;top:78px;left:24px;z-index:30;width:280px;background:#fff;
       border:1px solid var(--sb-border);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);
       padding:14px;font-family:var(--disp)}
     .cal-pop[hidden]{display:none}
@@ -132,7 +132,7 @@
     .cp-today{margin-top:10px;width:100%;border:0;background:#f3f3f3;border-radius:999px;
       padding:8px;font-size:13px;font-weight:600;color:#0842a0;cursor:pointer;font-family:var(--disp)}
     .cp-today:hover{background:#e9e9e9}
-    .cal{position:absolute;left:0;right:0;top:90px;bottom:0;overflow-y:auto;overflow-x:hidden;
+    .cal{position:absolute;left:0;right:0;top:104px;bottom:0;overflow-y:auto;overflow-x:hidden;
       padding:0 0 0 24px;scrollbar-width:thin}
     .cal-inner{position:relative;padding-bottom:40px}
 
@@ -1425,7 +1425,7 @@
       var wk = document.getElementById('wk');
       if (!stage || !sel || !grid) return;
       var WK_PX = 142, WK_FIRST = 0, WK_LAST = 24;         // semana: 142px por hora; rótulo centralizado na linha da hora (Figma 1018:11546)
-      var WK_HEAD = 48;                                    // altura do cabeçalho dos dias (= .wk-h)
+      var WK_HEAD = 51;                                    // altura do cabeçalho dos dias (= .wk-h)
       var DOWS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       var events = [], weekStart = null, timer = null;
 
@@ -1455,10 +1455,6 @@
           var l = el('div', 'wk-lbl', hr + 'h'); l.style.top = ((hr - WK_FIRST) * WK_PX) + 'px'; gut.appendChild(l);
         }
         grid.appendChild(gut);
-        // calha = 24px + horário mais largo + 24px (o espaço vale só p/ os horários em preto)
-        var lw = 0;
-        gut.querySelectorAll('.wk-lbl').forEach(function (l) { lw = Math.max(lw, l.offsetWidth); });
-        if (lw) grid.style.gridTemplateColumns = (48 + Math.ceil(lw)) + 'px repeat(7,minmax(158px,1fr))';
         // colunas + eventos
         var cols = days.map(function (d) {
           var c = el('div', 'wk-col' + (d === days[0] ? ' first' : '')); c.style.height = H + 'px'; grid.appendChild(c);
