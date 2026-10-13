@@ -19,7 +19,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools
+from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10
 
 app = FastAPI(title="OpenDoctor Assistant")
 WEB_DIR = os.path.join(config.ROOT, "web")
@@ -1014,6 +1014,16 @@ async def prontuario_access(request: Request):
     if not str(pid or "").isdigit() or not db.get_patient(u["id"], int(pid)):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     return {"access": db.list_access(u["id"], int(pid))}
+
+
+# --- CID-10 (tabela oficial do DATASUS): busca para o diagnóstico da evolução ---
+@app.get("/cid10")
+def cid10_search(request: Request, q: str = "", limit: int = 20):
+    """Busca por código ou descrição. O termo é clínico (não identifica paciente)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    return {"items": cid10.search(q, max(1, min(limit, 50)))}
 
 
 # --- pacientes: o campo "Paciente" da agenda escolhe um existente ou cria um novo ---

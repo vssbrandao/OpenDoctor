@@ -183,6 +183,16 @@
     .pr-imc{height:40px;display:flex;align-items:center;padding:0 10px;border-radius:10px;background:#F3F3F3;
       font-family:var(--disp);font-weight:500;font-size:14px;color:#071216}
     .pr-cid{display:flex;flex-direction:column;gap:8px}
+    .pr-cidbox{position:relative}
+    .pr-cidlist{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;background:#fff;border:1px solid var(--sb-border);
+      border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:4px;max-height:300px;overflow-y:auto;scrollbar-width:thin}
+    .pr-cidlist[hidden]{display:none}
+    .pr-cidopt{display:flex;gap:12px;width:100%;border:0;background:none;text-align:left;padding:8px 10px;border-radius:10px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .pr-cidopt:hover,.pr-cidopt.on{background:var(--active)}
+    .pr-cidopt b{flex:none;width:52px;font-weight:700}
+    .pr-cidopt span{min-width:0}
+    .pr-cidmsg{padding:8px 10px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
     .pr-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .pr-foot[hidden]{display:none}
     .pr-status{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B;margin-right:auto}
@@ -787,7 +797,11 @@
                 <div class="pr-soapf"><span>A — Avaliação</span>
                   <textarea data-f="a" placeholder="Hipóteses diagnósticas, raciocínio clínico…"></textarea>
                   <div class="pr-cid"><div class="pr-chips" id="prCidChips"></div>
-                    <input class="pr-in" id="prCidIn" placeholder="CID-10: código e descrição (ex.: I10 Hipertensão essencial) e Enter" autocomplete="off"></div>
+                    <div class="pr-cidbox">
+                      <input class="pr-in" id="prCidIn" placeholder="CID-10: busque por código ou nome (ex.: I10, asma, DM2)" autocomplete="off"
+                             role="combobox" aria-autocomplete="list" aria-controls="prCidList" aria-expanded="false" spellcheck="false">
+                      <div class="pr-cidlist" id="prCidList" role="listbox" hidden></div>
+                    </div></div>
                 </div>
                 <label class="pr-soapf"><span>P — Plano</span><textarea data-f="p" placeholder="Conduta, prescrições, exames solicitados, retorno…"></textarea></label>
               </div>
@@ -2476,14 +2490,52 @@
       soapEls.forEach(function (e) { e.addEventListener('input', changed); e.addEventListener('blur', save); });
       vitEls.forEach(function (e) { e.addEventListener('input', function () { checkVital(e); updImc(); changed(); }); });
       note.addEventListener('blur', save);
-      $('prCidIn').addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter' || e.isComposing) return;
-        e.preventDefault();
-        var v = this.value.trim(); if (!v || locked()) return;
-        var m = v.match(/^([A-Za-z]\d{2}(?:\.\d{1,2})?)\s*[-–—:]?\s*(.*)$/);  // "I10 Hipertensão" → código + descrição
-        var c = m ? { code: m[1].toUpperCase(), desc: m[2].trim() } : { code: '', desc: v };
+      // CID-10: sugestões da tabela oficial (DATASUS) enquanto digita; Enter sem sugestão aceita texto livre
+      var cidIn = $('prCidIn'), cidList = $('prCidList'), cidItems = [], cidAct = -1, cidSeq = 0, cidTimer = null;
+      function addCid(c) {
+        if (!c || (!c.code && !c.desc) || locked()) return;
         if (!cids.some(function (x) { return x.code === c.code && x.desc === c.desc; })) cids.push(c);
-        this.value = ''; renderCids(); changed();
+        cidIn.value = ''; closeCid(); renderCids(); changed();
+      }
+      function closeCid() { cidList.hidden = true; cidList.innerHTML = ''; cidItems = []; cidAct = -1; cidIn.setAttribute('aria-expanded', 'false'); }
+      function markCid(i) {
+        if (!cidItems.length) return;
+        cidAct = (i + cidItems.length) % cidItems.length;
+        cidItems.forEach(function (b, j) { b.el.classList.toggle('on', j === cidAct); b.el.setAttribute('aria-selected', j === cidAct ? 'true' : 'false'); });
+        cidItems[cidAct].el.scrollIntoView({ block: 'nearest' });
+      }
+      function searchCid() {
+        var q = cidIn.value.trim(), my = ++cidSeq;
+        if (q.length < 2 && !/^[A-Za-z]\d/.test(q)) { closeCid(); return; }
+        api('GET', '/cid10?limit=8&q=' + encodeURIComponent(q)).then(function (res) {
+          if (my !== cidSeq || document.activeElement !== cidIn) return;
+          cidList.innerHTML = ''; cidItems = []; cidAct = -1;
+          var items = (res.j && res.j.items) || [];
+          items.forEach(function (it) {
+            var b = el('button', 'pr-cidopt'); b.type = 'button'; b.setAttribute('role', 'option');
+            b.appendChild(el('b', null, it.code)); b.appendChild(el('span', null, it.desc));
+            b.addEventListener('mousedown', function (e) { e.preventDefault(); });   // não tira o foco do campo
+            b.addEventListener('click', function () { addCid(it); cidIn.focus(); });
+            cidList.appendChild(b); cidItems.push({ el: b, it: it });
+          });
+          if (!items.length) cidList.appendChild(el('div', 'pr-cidmsg', res.ok ? 'Nenhum código encontrado. Enter adiciona o texto como está.' : 'Busca indisponível. Enter adiciona o texto como está.'));
+          cidList.hidden = false; cidIn.setAttribute('aria-expanded', 'true');
+          if (items.length) markCid(0);
+        }).catch(function () {});
+      }
+      cidIn.addEventListener('input', function () { clearTimeout(cidTimer); cidTimer = setTimeout(searchCid, 150); });
+      cidIn.addEventListener('blur', function () { setTimeout(closeCid, 120); });
+      cidIn.addEventListener('keydown', function (e) {
+        if (e.isComposing) return;
+        if (e.key === 'ArrowDown' && cidItems.length) { e.preventDefault(); markCid(cidAct + 1); return; }
+        if (e.key === 'ArrowUp' && cidItems.length) { e.preventDefault(); markCid(cidAct - 1); return; }
+        if (e.key === 'Escape' && !cidList.hidden) { e.preventDefault(); e.stopPropagation(); closeCid(); return; }
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        if (!cidList.hidden && cidAct >= 0) { addCid(cidItems[cidAct].it); return; }
+        var v = this.value.trim(); if (!v) return;          // sem sugestão: aceita "I10 Hipertensão" ou texto livre
+        var m = v.match(/^([A-Za-z]\d{2}(?:\.\d{1,2})?)\s*[-–—:]?\s*(.*)$/);
+        addCid(m ? { code: m[1].toUpperCase(), desc: m[2].trim() } : { code: '', desc: v });
       });
 
       // ===== rascunho local: guarda o texto não salvo neste navegador (queda de internet, aba fechada) =====

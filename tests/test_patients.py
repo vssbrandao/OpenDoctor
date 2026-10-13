@@ -62,3 +62,23 @@ def test_nome_do_paciente_em_evento_antigo():
     assert _event_patient_name({"summary": "Ana", "description": "obs\nPaciente: Ana Souza"}) == "Ana Souza"
     # "Ana" não pode casar com "Ana Paula"
     assert patient_key(_event_patient_name({"summary": "Retorno — Ana Paula"})) != patient_key("Ana")
+
+
+def test_cid10_busca():
+    from app import cid10
+    assert cid10.search("I10")[0] == {"code": "I10", "desc": "Hipertensão essencial (primária)"}
+    assert cid10.search("e11.9")[0]["code"] == "E11.9"
+    assert cid10.search("e119")[0]["code"] == "E11.9"                 # sem o ponto também
+    r = cid10.search("hipertensao essencial")                          # sem acento
+    assert r and r[0]["code"] == "I10"
+    r = cid10.search("asma")                                           # começo de palavra: não "plasmática"
+    assert r and all(any(w.startswith("asm") for w in cid10._norm(x["desc"]).split()) for x in r)
+    assert not any(x["code"] in ("E42", "R70", "R77") for x in r)
+    t2, t1 = cid10.search("diabetes tipo 2"), cid10.search("diabetes tipo 1")
+    assert t2[0]["code"] == "E11" and not any(x["code"].startswith("E10") for x in t2)   # não mistura os tipos
+    assert t1[0]["code"] == "E10" and not any(x["code"].startswith("E11") for x in t1)
+    assert cid10.search("HAS")[0]["code"] == "I10"
+    assert cid10.search("covid")[0]["code"] == "U07.1"
+    assert cid10.search("") == [] and cid10.search("xyzxyz") == []
+    assert len(cid10.search("a", limit=5)) == 5
+    assert cid10.get("r51") == "Cefaléia"
