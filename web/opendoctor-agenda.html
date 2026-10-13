@@ -43,8 +43,9 @@
     /* ===== CENTER: DAY AGENDA ===== */
     .center{flex:2 1 0;min-width:0;height:100%;position:relative}
     /* cabeçalho da agenda (Figma 1014:8325 "Date Navigation"): 52px, padding 8 24 */
-    .ag-head{position:absolute;top:0;left:0;right:0;height:70px;padding:34px 24px 0;z-index:3;
-      display:flex;align-items:center;justify-content:space-between}
+    /* título da data: 42px do topo e 42px até o calendário (Dia) — título 42→64, calendário em 106 */
+    .ag-head{position:absolute;top:0;left:0;right:0;height:64px;padding:42px 24px 0;z-index:3;
+      display:flex;align-items:flex-start;justify-content:space-between}
     .cal-head{display:flex;align-items:center;cursor:pointer}
     .cal-head .date{min-width:92px;font-family:var(--disp);font-weight:700;font-size:16px;line-height:22px;color:#071216}
     /* botões de ícone dos cabeçalhos: 36x36, raio 8, ícone #8B8B8B; grupos com gap 4 */
@@ -426,7 +427,7 @@
     .cp-today{margin-top:10px;width:100%;border:0;background:#f3f3f3;border-radius:999px;
       padding:8px;font-size:13px;font-weight:600;color:#0842a0;cursor:pointer;font-family:var(--disp)}
     .cp-today:hover{background:#e9e9e9}
-    .cal{position:absolute;left:0;right:0;top:104px;bottom:0;overflow-y:auto;overflow-x:hidden;
+    .cal{position:absolute;left:0;right:0;top:106px;bottom:0;overflow-y:auto;overflow-x:hidden;
       padding:0 0 0 24px;scrollbar-width:thin}
     .cal-inner{position:relative;padding-bottom:40px}
 
