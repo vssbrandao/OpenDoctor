@@ -77,199 +77,252 @@
     .srch-msg a{color:#0842a0}
 
     /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) =====
-       coluna de 700px; texto Helvetica Now 14px; blocos cinza (#F6F6F6) como na janela de evento */
-    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:32px 24px 64px;
-      background:#fff;z-index:5;scrollbar-width:thin}
+       ocupa a coluna inteira (até 960px); faixa de indicadores, abas com sublinhado, cartões grandes
+       cinza-claro (raio 28, respiro 32) e tabela limpa; texto 16px, títulos 22px, nome 28px */
+    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:36px 32px 96px;
+      background:#fff;z-index:5;scrollbar-width:thin;container-type:inline-size;container-name:pr}
     .stage.prontuario .pr-view{display:flex}
     .stage.prontuario .ag-head,.stage.prontuario .cal,.stage.prontuario .wk{display:none}
-    .pr{width:700px;max-width:100%;height:max-content;display:flex;flex-direction:column;gap:24px}
-    #prMain{display:flex;flex-direction:column;gap:28px}
+    .pr{width:100%;max-width:960px;height:max-content;display:flex;flex-direction:column;gap:28px}
+    #prMain{display:flex;flex-direction:column;gap:32px}
     #prMain[hidden]{display:none}
     .pr-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
     .pr-tools{display:flex;gap:4px}
     .pr-back{border:0;background:none;padding:0;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-back:hover{color:#071216}
-    .pr-ghost{height:32px;padding:0 14px;border:0;border-radius:1000px;background:none;cursor:pointer;white-space:nowrap;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-ghost:hover{background:rgba(0,0,0,.05);color:#071216}
+      font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#5F6368}
+    .pr-back:hover{color:#1F1F1F}
+    .pr-ghost{height:40px;padding:0 16px;border:0;border-radius:1000px;background:none;cursor:pointer;white-space:nowrap;
+      font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#444746}
+    .pr-ghost:hover{background:rgba(0,0,0,.05);color:#1F1F1F}
     .pr-ghost:disabled{opacity:.4;cursor:default;background:none}
     .pr-ghost[hidden]{display:none}
-    .pr-head{display:flex;align-items:center;gap:16px}
-    .pr-avatar{width:60px;height:48px;flex:none;border-radius:999px;background:#D3E3FD;color:#0842A0;
-      display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:500;font-size:14px}
-    .pr-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-    .pr-name{font-family:var(--disp);font-weight:700;font-size:20px;line-height:26px;color:#071216;
-      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .pr-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-link{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:#0842A0}
-    .pr-link:hover{text-decoration:underline}
-    .pr-link.warn{color:#B3261E}
-    #prEditBtn::before{content:'· ';color:#666C6F}          /* separador some junto com o link na impressão */
-    .pr-visit{display:flex;align-items:center;gap:12px;flex:none}
-    .pr-visit[hidden]{display:none}
-    .pr-timer{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#FF5500;font-variant-numeric:tabular-nums}
-    .pr-allergy{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:16px;background:#FCEEEE;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#B3261E}
-    .pr-allergy[hidden]{display:none}
-    .pr-allergy img{flex:none;display:block}
-    .pr-label{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    .pr-section{display:flex;flex-direction:column;gap:12px}
-    .pr-section[hidden]{display:none}
-    .pr-sechead{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .pr-card{background:#F6F6F6;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:4px}
-    .pr-card-title{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .pr-card-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-card-sub[hidden]{display:none}
-    /* cadastro */
-    .pr-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .pr-form[hidden]{display:none}
-    .pr-field{display:flex;flex-direction:column;gap:4px;min-width:0}
-    .pr-field.wide{grid-column:1 / -1}
-    .pr-field span{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-in{height:40px;border:1px solid rgba(0,0,0,.08);border-radius:10px;background:#fff;padding:0 12px;outline:none;width:100%;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .pr-in:focus{border-color:rgba(0,0,0,.25)}
-    .pr-in.bad{border-color:#E3A3A0;background:#FFF7F7}
-    .pr-in::placeholder{color:#B5B5B5;font-weight:400}
-    .pr-formfoot{grid-column:1 / -1;display:flex;align-items:center;justify-content:flex-end;gap:8px}
-    .pr-err{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#c5221f;margin-right:auto}
-    .pr-err[hidden]{display:none}
-    /* resumo clínico: alergias, problemas ativos, medicações em uso */
-    .pr-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-    .pr-sumcol{background:#F6F6F6;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
-    .pr-sumhead{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-chips{display:flex;flex-wrap:wrap;gap:6px}
-    .pr-chips:empty::before{content:attr(data-empty);font-family:var(--disp);font-weight:500;font-size:14px;color:#B5B5B5}
-    .pr-chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:4px 6px 4px 10px;border-radius:14px;background:#fff;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
-    .pr-chip.red{background:#FCEEEE;color:#B3261E;box-shadow:none}
-    .pr-chip span{white-space:normal;overflow-wrap:anywhere}          /* texto longo quebra linha, não corta */
-    .pr-chip button{width:18px;height:18px;flex:none;border:0;background:none;border-radius:50%;cursor:pointer;padding:0;
-      display:flex;align-items:center;justify-content:center;opacity:.55}
-    .pr-chip button:hover{opacity:1;background:rgba(0,0,0,.06)}
-    .pr-chipin{border:0;outline:none;background:none;padding:0;width:100%;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .pr-chipin::placeholder{color:#8B8B8B;font-weight:400}
-    /* evolução */
-    .pr-seg{display:inline-flex;background:#F3F3F3;border-radius:999px;padding:3px}
-    .pr-seg[hidden]{display:none}
-    .pr-seg button{border:0;background:none;border-radius:999px;padding:4px 14px;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-seg button.on{background:#fff;color:#071216;box-shadow:0 1px 2px rgba(0,0,0,.12)}
-    .pr-rec{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-radius:16px;
-      border:1px dashed rgba(0,0,0,.14)}
-    .pr-rec[hidden]{display:none}
-    .pr-rec-ico{width:36px;height:36px;flex:none;border-radius:50%;background:#F3F3F3;display:flex;align-items:center;justify-content:center}
-    .pr-rec-txt{flex:1;min-width:0;display:flex;flex-direction:column}
-    .pr-rec-t{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .pr-rec-s{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
-    .pr-note,.pr-soapf textarea{width:100%;min-height:220px;resize:vertical;border:1px solid rgba(26,26,26,.08);border-radius:20px;
-      padding:16px 20px;outline:none;background:#fff;
-      font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#0D0D0D}
-    .pr-note::placeholder,.pr-soapf textarea::placeholder{color:#A3A3A3}
-    .pr-note:focus,.pr-soapf textarea:focus{border-color:rgba(26,26,26,.22)}
-    .pr-soap{display:flex;flex-direction:column;gap:16px}
-    .pr-soap[hidden],#prFree[hidden]{display:none}
-    .pr-soapf{display:flex;flex-direction:column;gap:6px}
-    .pr-soapf > span{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-soapf textarea{min-height:88px}
-    .pr-vitals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-    .pr-vital{display:flex;flex-direction:column;gap:4px;min-width:0}
-    .pr-vital span{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;white-space:nowrap}
-    .pr-vital .pr-in{padding:0 10px}
-    .pr-pa{display:flex;align-items:center;gap:4px}
-    .pr-pa .pr-in{min-width:0}
-    .pr-imc{height:40px;display:flex;align-items:center;padding:0 10px;border-radius:10px;background:#F3F3F3;
-      font-family:var(--disp);font-weight:500;font-size:14px;color:#071216}
-    .pr-cid{display:flex;flex-direction:column;gap:8px}
-    .pr-cidbox{position:relative}
-    .pr-cidlist{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;background:#fff;border:1px solid var(--sb-border);
-      border-radius:14px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:4px;max-height:300px;overflow-y:auto;scrollbar-width:thin}
-    .pr-cidlist[hidden]{display:none}
-    .pr-cidopt{display:flex;gap:12px;width:100%;border:0;background:none;text-align:left;padding:8px 10px;border-radius:10px;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .pr-cidopt:hover,.pr-cidopt.on{background:var(--active)}
-    .pr-cidopt b{flex:none;width:52px;font-weight:700}
-    .pr-cidopt span{min-width:0}
-    .pr-cidmsg{padding:8px 10px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
-    .pr-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .pr-foot[hidden]{display:none}
-    .pr-status{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B;margin-right:auto}
-    .pr-status.err{color:#c5221f}
-    .pr-count{font-family:var(--disp);font-weight:500;font-size:14px;color:#8B8B8B}
-    .pr-count.err{color:#c5221f}
-    .pr-count[hidden]{display:none}
-    .pr-save{height:36px;padding:0 20px;border:1px solid rgba(0,0,0,.1);border-radius:1000px;background:#000;color:#fff;
-      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;white-space:nowrap}
+    .pr-save{height:44px;padding:0 24px;border:0;border-radius:1000px;background:#000;color:#fff;
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:15px;white-space:nowrap}
     .pr-save:hover{background:#222}
-    .pr-save.live{background:#fff;color:#000}
+    .pr-save.live{background:#fff;color:#000;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)}
     .pr-save.live:hover{background:#f7f7f7}
     .pr-save:disabled{opacity:.5;cursor:default}
     .pr-save[hidden]{display:none}
+    /* cabeçalho do paciente */
+    .pr-head{display:flex;align-items:center;gap:20px}
+    .pr-avatar{width:72px;height:56px;flex:none;border-radius:999px;background:#D3E3FD;color:#0842A0;
+      display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:500;font-size:18px}
+    .pr-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+    .pr-name{font-family:var(--disp);font-weight:700;font-size:28px;line-height:34px;color:#1F1F1F;letter-spacing:-.01em;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pr-sub{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#5F6368}
+    .pr-link{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:#0842A0}
+    .pr-link:hover{text-decoration:underline}
+    .pr-link.warn{color:#B3261E}
+    .pr-ghost.warn{color:#B3261E}
+    .pr-visit{display:flex;align-items:center;gap:14px;flex:none}
+    .pr-visit[hidden]{display:none}
+    .pr-timer{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#FF5500;font-variant-numeric:tabular-nums}
+    .pr-allergy{display:flex;align-items:center;gap:12px;padding:16px 20px;border-radius:20px;background:#FCEEEE;
+      font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#B3261E}
+    .pr-allergy[hidden]{display:none}
+    .pr-allergy img{flex:none;display:block}
+    /* faixa de indicadores (como "Último relatório | Período fiscal | …") */
+    .pr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+    .pr-kpi{display:flex;flex-direction:column;gap:6px;padding:4px 24px;border-left:1px solid #E3E3E3;min-width:0}
+    .pr-kpi:first-child{border-left:0;padding-left:0}
+    .pr-kpi-l{font-family:var(--disp);font-weight:400;font-size:15px;line-height:20px;color:#5F6368}
+    .pr-kpi-v{font-family:var(--disp);font-weight:500;font-size:24px;line-height:30px;color:#1F1F1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pr-kpi-s{font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#5F6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pr-kpi-s.ok{color:#137333}
+    .pr-kpi-s.warn{color:#A35200}
+    .pr-kpi-s.link{color:#0842A0;cursor:pointer}
+    /* abas com sublinhado */
+    .pr-tabs{display:flex;gap:32px;border-bottom:1px solid #E3E3E3;overflow-x:auto;scrollbar-width:none;margin-bottom:-4px}
+    .pr-tabs::-webkit-scrollbar{display:none}
+    .pr-tabs button{position:relative;flex:none;border:0;background:none;padding:10px 2px 14px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#5F6368;white-space:nowrap}
+    .pr-tabs button:hover{color:#1F1F1F}
+    .pr-tabs button.on{color:#1F1F1F}
+    .pr-tabs button.on::after{content:'';position:absolute;left:-6px;right:-6px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#0842A0}
+    .pr-panel{display:flex;flex-direction:column;gap:20px}
+    .pr-panel[hidden]{display:none}
+    /* cartões grandes */
+    .pr-bigcard{background:#F5F6F8;border-radius:28px;padding:32px;display:flex;flex-direction:column;gap:24px}
+    .pr-cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .pr-h2{font-family:var(--disp);font-weight:500;font-size:22px;line-height:28px;color:#1F1F1F}
+    .pr-cardsub{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#5F6368;margin-top:4px}
+    .pr-cardsub[hidden]{display:none}
+    .pr-label{font-family:var(--disp);font-weight:500;font-size:18px;line-height:24px;color:#1F1F1F}
+    .pr-empty{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#5F6368}
+    .pr-empty a{color:#0842a0}
+    .pr-msg{font-family:var(--disp);font-size:16px;line-height:26px;color:#1F1F1F}
+    .pr-msg a{color:#0842a0}
+    /* cadastro */
+    .pr-form{background:#F5F6F8;border-radius:28px;padding:28px 32px;display:grid;grid-template-columns:1fr 1fr;gap:16px 20px}
+    .pr-form[hidden]{display:none}
+    .pr-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+    .pr-field.wide{grid-column:1 / -1}
+    .pr-field span{font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#5F6368}
+    .pr-in{height:44px;border:1px solid rgba(0,0,0,.1);border-radius:12px;background:#fff;padding:0 14px;outline:none;width:100%;
+      font-family:var(--disp);font-weight:500;font-size:16px;line-height:22px;color:#1F1F1F}
+    .pr-in:focus{border-color:rgba(0,0,0,.3)}
+    .pr-in.bad{border-color:#E3A3A0;background:#FFF7F7}
+    .pr-in::placeholder{color:#9AA0A6;font-weight:400}
+    .pr-formfoot{grid-column:1 / -1;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+    .pr-err{font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#c5221f;margin-right:auto}
+    .pr-err[hidden]{display:none}
+    /* resumo clínico */
+    .pr-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .pr-sumcol{background:#F5F6F8;border-radius:28px;padding:28px;display:flex;flex-direction:column;gap:16px;min-width:0}
+    .pr-sumhead{font-family:var(--disp);font-weight:500;font-size:18px;line-height:24px;color:#1F1F1F}
+    .pr-chips{display:flex;flex-wrap:wrap;gap:8px}
+    .pr-chips:empty::before{content:attr(data-empty);font-family:var(--disp);font-weight:500;font-size:15px;color:#9AA0A6}
+    .pr-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:6px 8px 6px 14px;border-radius:16px;background:#fff;
+      font-family:var(--disp);font-weight:500;font-size:15px;line-height:22px;color:#1F1F1F;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+    .pr-chip.red{background:#FCEEEE;color:#B3261E;box-shadow:none}
+    .pr-chip span{white-space:normal;overflow-wrap:anywhere}          /* texto longo quebra linha, não corta */
+    .pr-chip button{width:20px;height:20px;flex:none;border:0;background:none;border-radius:50%;cursor:pointer;padding:0;
+      display:flex;align-items:center;justify-content:center;opacity:.55}
+    .pr-chip button:hover{opacity:1;background:rgba(0,0,0,.06)}
+    .pr-chipin{border:0;border-top:1px solid rgba(0,0,0,.08);outline:none;background:none;padding:14px 0 0;width:100%;
+      font-family:var(--disp);font-weight:500;font-size:15px;line-height:22px;color:#1F1F1F}
+    .pr-chipin::placeholder{color:#9AA0A6;font-weight:400}
+    /* evolução */
+    .pr-seg{display:inline-flex;background:#E8EAED;border-radius:999px;padding:4px}
+    .pr-seg[hidden]{display:none}
+    .pr-seg button{border:0;background:none;border-radius:999px;padding:6px 16px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#5F6368}
+    .pr-seg button.on{background:#fff;color:#1F1F1F;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+    /* espaço reservado da gravação (visual do player de áudio, desativado) */
+    .pr-rec{display:flex;align-items:center;gap:20px;padding:20px 20px 20px 28px;border-radius:24px;background:#E9EAEE}
+    .pr-rec[hidden]{display:none}
+    .pr-rec-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+    .pr-rec-track{display:flex;align-items:center;gap:0}
+    .pr-rec-dot{width:14px;height:14px;flex:none;border-radius:50%;background:#1F1F1F}
+    .pr-rec-line{flex:1;height:4px;border-radius:2px;background:#D2D4D9}
+    .pr-rec-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .pr-rec-chip{padding:2px 12px;border-radius:999px;background:#DADCE0;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:22px;color:#1F1F1F}
+    .pr-rec-s{font-family:var(--disp);font-weight:500;font-size:15px;line-height:22px;color:#5F6368}
+    .pr-roundbtn{width:56px;height:56px;flex:none;border:0;border-radius:50%;background:#fff;cursor:pointer;
+      display:flex;align-items:center;justify-content:center}
+    .pr-roundbtn:disabled{cursor:default;opacity:.55}
+    .pr-note,.pr-soapf textarea{width:100%;min-height:240px;resize:vertical;border:1px solid transparent;border-radius:20px;
+      padding:20px 24px;outline:none;background:#fff;
+      font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#1F1F1F}
+    .pr-note::placeholder,.pr-soapf textarea::placeholder{color:#9AA0A6}
+    .pr-note:focus,.pr-soapf textarea:focus{border-color:rgba(8,66,160,.35)}
+    .pr-soap{display:flex;flex-direction:column;gap:24px}
+    .pr-soap[hidden],#prFree[hidden]{display:none}
+    .pr-soapf{display:flex;flex-direction:column;gap:10px}
+    .pr-soapf > span{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#1F1F1F}
+    .pr-soapf textarea{min-height:96px}
+    .pr-vitals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+    .pr-vital{display:flex;flex-direction:column;gap:6px;min-width:0}
+    .pr-vital span{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#5F6368;white-space:nowrap}
+    .pr-vital .pr-in{padding:0 12px}
+    .pr-pa{display:flex;align-items:center;gap:4px;color:#5F6368}
+    .pr-pa .pr-in{min-width:0}
+    .pr-imc{height:44px;display:flex;align-items:center;padding:0 12px;border-radius:12px;background:#E8EAED;
+      font-family:var(--disp);font-weight:500;font-size:16px;color:#1F1F1F}
+    .pr-cid{display:flex;flex-direction:column;gap:10px}
+    .pr-cidbox{position:relative}
+    .pr-cidlist{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:20;background:#fff;border:1px solid var(--sb-border);
+      border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;max-height:320px;overflow-y:auto;scrollbar-width:thin}
+    .pr-cidlist[hidden]{display:none}
+    .pr-cidopt{display:flex;gap:14px;width:100%;border:0;background:none;text-align:left;padding:10px 12px;border-radius:10px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:15px;line-height:22px;color:#1F1F1F}
+    .pr-cidopt:hover,.pr-cidopt.on{background:var(--active)}
+    .pr-cidopt b{flex:none;width:56px;font-weight:700}
+    .pr-cidopt span{min-width:0}
+    .pr-cidmsg{padding:10px 12px;font-family:var(--disp);font-weight:500;font-size:15px;line-height:22px;color:#5F6368}
+    .pr-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pr-foot[hidden]{display:none}
+    .pr-status{font-family:var(--disp);font-weight:500;font-size:15px;line-height:22px;color:#5F6368;margin-right:auto}
+    .pr-status.err{color:#c5221f}
+    .pr-count{font-family:var(--disp);font-weight:500;font-size:15px;color:#5F6368}
+    .pr-count.err{color:#c5221f}
+    .pr-count[hidden]{display:none}
     /* evolução finalizada (somente leitura) e adendos */
-    .pr-locked{display:flex;flex-direction:column;gap:12px}
+    .pr-locked{display:flex;flex-direction:column;gap:16px}
     .pr-locked[hidden]{display:none}
-    .pr-signed{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0F7B3F}
-    .pr-body{font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#0D0D0D;white-space:pre-wrap;word-wrap:break-word}
-    .pr-add{border-left:2px solid #E3E3E3;padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:2px}
-    .pr-add-h{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
-    .pr-add-b{font-family:var(--disp);font-weight:400;font-size:14px;line-height:22px;color:#0D0D0D;white-space:pre-wrap;word-wrap:break-word}
-    .pr-addbox{display:flex;flex-direction:column;gap:8px}
+    .pr-signed{align-self:flex-start;padding:4px 14px;border-radius:999px;background:#E6F4EA;
+      font-family:var(--disp);font-weight:500;font-size:15px;line-height:22px;color:#137333}
+    .pr-body{font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#1F1F1F;white-space:pre-wrap;word-wrap:break-word}
+    .pr-locked .pr-body{background:#fff;border-radius:20px;padding:20px 24px}
+    .pr-add{border-left:3px solid #DADCE0;padding:2px 0 2px 16px;display:flex;flex-direction:column;gap:4px;margin-top:8px}
+    .pr-add-h{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#5F6368}
+    .pr-add-b{font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#1F1F1F;white-space:pre-wrap;word-wrap:break-word}
+    .pr-addbox{display:flex;flex-direction:column;gap:10px}
     .pr-addbox[hidden]{display:none}
-    .pr-addbox textarea{width:100%;min-height:72px;resize:vertical;border:1px solid rgba(26,26,26,.12);border-radius:14px;padding:10px 14px;outline:none;
-      font-family:var(--disp);font-weight:400;font-size:14px;line-height:22px;color:#0D0D0D}
+    .pr-addbox textarea{width:100%;min-height:88px;resize:vertical;border:1px solid rgba(0,0,0,.12);border-radius:16px;padding:14px 18px;outline:none;background:#fff;
+      font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#1F1F1F}
     .pr-addbox .pr-foot{justify-content:flex-end}
-    /* consultas do paciente */
-    .pr-visits{display:flex;flex-direction:column;gap:2px}
-    .pr-vgroup{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B;padding:8px 0 4px}
-    .pr-vrow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;cursor:pointer;border:0;background:none;
-      text-align:left;width:100%}
-    .pr-vrow:hover{background:#F6F6F6}
-    .pr-vrow.cur{background:#EEF3FD}
-    .pr-vdate{width:190px;flex:none;white-space:nowrap;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .pr-vtitle{flex:1;min-width:0;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pr-badge{flex:none;padding:2px 10px;border-radius:999px;background:#F3F3F3;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;white-space:nowrap}
-    .pr-badge.ok{background:#E7F5EC;color:#0F7B3F}
-    .pr-badge.draft{background:#FFF3E0;color:#A35200}
+    /* consultas: tabela (como a de analistas) */
+    .pr-table{display:flex;flex-direction:column}
+    .pr-trow{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(0,1.4fr) minmax(0,1fr) 140px;align-items:center;gap:16px;
+      padding:20px 8px;border:0;border-bottom:1px solid #E3E3E3;background:none;text-align:left;width:100%;
+      font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#1F1F1F}
+    .pr-trow.th{font-weight:500;padding:12px 8px 14px}
+    button.pr-trow{cursor:pointer;border-radius:0}
+    button.pr-trow:hover{background:#F5F6F8}
+    button.pr-trow.cur{background:#EEF3FD}
+    .pr-tdate{font-weight:500;white-space:nowrap}
+    .pr-tdate small{display:block;font-size:15px;font-weight:400;color:#5F6368}
+    .pr-tcell{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .pr-tmuted{color:#5F6368}
+    .pr-tgroup{padding:28px 8px 4px;font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#5F6368}
+    .pr-badge{justify-self:start;padding:4px 14px;border-radius:999px;background:#F1F3F4;
+      font-family:var(--disp);font-weight:500;font-size:15px;line-height:22px;color:#444746;white-space:nowrap}
+    .pr-badge.ok{background:#E6F4EA;color:#137333}
+    .pr-badge.draft{background:#FEF3E0;color:#A35200}
     .pr-badge.cur{background:#D3E3FD;color:#0842A0}
     /* histórico de evoluções */
+    .pr-histbar{display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .pr-histq{width:280px;height:44px;font-size:15px}
     .pr-hist{display:flex;flex-direction:column}
-    .pr-item{padding:16px 0;border-top:1px solid rgba(26,26,26,.08);display:flex;flex-direction:column;gap:8px}
-    .pr-item:first-child{border-top:0;padding-top:4px}
+    .pr-item{padding:24px 0;border-top:1px solid #E3E3E3;display:flex;flex-direction:column;gap:10px}
+    .pr-item:first-child{border-top:0;padding-top:8px}
     .pr-item[hidden]{display:none}
-    .pr-item-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .pr-item-when{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;margin-right:auto}
-    .pr-item-body{font-family:var(--disp);font-size:14px;line-height:22px;color:#0D0D0D;white-space:pre-wrap;word-wrap:break-word}
-    .pr-item-body.clamp{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
-    .pr-item-acts{display:flex;gap:4px;flex-wrap:wrap;margin-left:-14px}   /* texto do botão alinhado com o da nota */
-    .pr-histq{width:220px}
-    .pr-empty{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
-    .pr-empty a{color:#0842a0}
-    .pr-msg{font-family:var(--disp);font-size:16px;line-height:26px;color:#0D0D0D}
-    .pr-msg a{color:#0842a0}
-    .pr-acc{display:flex;gap:12px;padding:6px 0;border-top:1px solid rgba(26,26,26,.06);
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-acc:first-child{border-top:0}
-    .pr-acc b{font-weight:500;color:#071216;width:150px;flex:none}
-    @media (max-width:1100px){.pr-sum{grid-template-columns:1fr}.pr-vitals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    .pr-item-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .pr-item-when{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#1F1F1F;margin-right:auto}
+    .pr-item-when small{font-size:inherit;font-weight:400;color:#5F6368}
+    .pr-item-body{font-family:var(--disp);font-size:16px;line-height:26px;color:#1F1F1F;white-space:pre-wrap;word-wrap:break-word}
+    .pr-item-body.clamp{display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
+    .pr-item-acts{display:flex;gap:4px;flex-wrap:wrap;margin-left:-16px}   /* texto do botão alinhado com o da nota */
+    /* acessos */
+    .pr-acc{display:grid;grid-template-columns:200px 1fr;gap:16px;padding:16px 8px;border-bottom:1px solid #E3E3E3;
+      font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#1F1F1F}
+    .pr-acc.th{font-weight:500;padding:12px 8px 14px}
+    .pr-acc b{font-weight:500}
     .pr-printcur{display:none}
-    /* exportar/imprimir: só o prontuário, tudo expandido */
+    /* coluna estreita (assistente aberto em telas menores) */
+    @container pr (max-width:760px){
+      .pr-sum{grid-template-columns:1fr}
+      .pr-vitals{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .pr-trow{grid-template-columns:minmax(130px,1fr) minmax(0,1fr) 130px}
+      .pr-trow .pr-tloc{display:none}
+      .pr-bigcard{padding:24px}
+    }
+    @container pr (max-width:720px){                     /* indicadores em 2 + 2 para nada ficar cortado */
+      .pr-kpis{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:24px}
+      .pr-kpi:nth-child(3){border-left:0;padding-left:0}
+    }
+    @container pr (max-width:560px){
+      .pr-head{flex-wrap:wrap}
+      .pr-form{grid-template-columns:1fr}
+    }
+    /* exportar/imprimir: só o prontuário, todas as abas, tudo expandido */
     @media print{
       @page{margin:16mm}
       body{background:#fff}
-      .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.pr-foot,.pr-chipin,
-      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),#prAccess,.pr-link,#prForm{display:none!important}
+      .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.pr-foot,.pr-chipin,.pr-tabs,
+      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=acessos],.pr-link,#prForm{display:none!important}
       .stage,.center{display:block!important;position:static!important;height:auto!important;overflow:visible!important}
       .pr-view{display:block!important;position:static!important;overflow:visible!important;padding:0!important}
-      .pr{width:auto!important}
+      .pr{max-width:none!important}
+      .pr-panel{display:flex!important;margin-top:12px}
       .pr-item-body.clamp{display:block!important;-webkit-line-clamp:unset!important}
       #prFree,#prSoap{display:none!important}
       .pr-printcur{display:block!important}
-      .pr-sumcol,.pr-card,.pr-allergy{break-inside:avoid}
-      .pr-item{break-inside:avoid}
+      .pr-bigcard,.pr-sumcol{background:none!important;padding:0!important;border-radius:0!important}
+      .pr-sumcol,.pr-allergy,.pr-item,.pr-trow{break-inside:avoid}
     }
     /* ===== PACIENTES (cadastro; clicar abre o prontuário do paciente) ===== */
     .pt-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:42px 24px 48px;
@@ -709,147 +762,151 @@
           <div class="pr-top">
             <button class="pr-back" type="button" id="prBack">‹ Agenda</button>
             <div class="pr-tools">
-              <button class="pr-ghost" type="button" id="prAccessBtn" hidden>Acessos</button>
+              <button class="pr-ghost" type="button" id="prEditBtn" hidden>Editar cadastro</button>
               <button class="pr-ghost" type="button" id="prExport" hidden>Exportar PDF</button>
             </div>
           </div>
           <div class="pr-msg" id="prMsg" hidden></div>
 
           <div id="prMain" hidden>
-            <!-- cabeçalho: identificação (separa homônimos) -->
-            <div class="pr-section">
-              <div class="pr-head">
-                <div class="pr-avatar" id="prAvatar"></div>
-                <div class="pr-id">
-                  <div class="pr-name" id="prName"></div>
-                  <div class="pr-sub"><span id="prSub"></span> <button class="pr-link" type="button" id="prEditBtn">Editar cadastro</button></div>
-                </div>
-                <div class="pr-visit" id="prVisitBox">
-                  <span class="pr-timer" id="prTimer" hidden></span>
-                  <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
-                </div>
+            <!-- identificação (separa homônimos) -->
+            <div class="pr-head">
+              <div class="pr-avatar" id="prAvatar"></div>
+              <div class="pr-id">
+                <div class="pr-name" id="prName"></div>
+                <div class="pr-sub" id="prSub"></div>
               </div>
-              <div class="pr-allergy" id="prAllergyBar" hidden><img src="assets/icons/sf-warning.svg?v=2" width="15.35" height="13.92" alt=""><span id="prAllergyTxt"></span></div>
-              <div class="pr-card pr-form" id="prForm" hidden>
-                <label class="pr-field wide"><span>Nome completo</span><input class="pr-in" id="pfName" autocomplete="off" spellcheck="false"></label>
-                <label class="pr-field"><span>Data de nascimento</span><input class="pr-in" id="pfBirth" type="date"></label>
-                <label class="pr-field"><span>Sexo</span>
-                  <select class="pr-in" id="pfSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option></select></label>
-                <label class="pr-field"><span>CPF (opcional)</span><input class="pr-in" id="pfCpf" inputmode="numeric" placeholder="000.000.000-00" autocomplete="off"></label>
-                <label class="pr-field"><span>Telefone (opcional)</span><input class="pr-in" id="pfPhone" inputmode="tel" placeholder="(00) 00000-0000" autocomplete="off"></label>
-                <div class="pr-formfoot">
-                  <span class="pr-err" id="pfErr" hidden></span>
-                  <button class="pr-ghost" type="button" id="pfCancel">Cancelar</button>
-                  <button class="pr-save" type="button" id="pfSave">Salvar</button>
-                </div>
+              <div class="pr-visit" id="prVisitBox">
+                <span class="pr-timer" id="prTimer" hidden></span>
+                <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+              </div>
+            </div>
+            <div class="pr-allergy" id="prAllergyBar" hidden><img src="assets/icons/sf-warning.svg?v=2" width="15.35" height="13.92" alt=""><span id="prAllergyTxt"></span></div>
+            <div class="pr-form" id="prForm" hidden>
+              <label class="pr-field wide"><span>Nome completo</span><input class="pr-in" id="pfName" autocomplete="off" spellcheck="false"></label>
+              <label class="pr-field"><span>Data de nascimento</span><input class="pr-in" id="pfBirth" type="date"></label>
+              <label class="pr-field"><span>Sexo</span>
+                <select class="pr-in" id="pfSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option></select></label>
+              <label class="pr-field"><span>CPF (opcional)</span><input class="pr-in" id="pfCpf" inputmode="numeric" placeholder="000.000.000-00" autocomplete="off"></label>
+              <label class="pr-field"><span>Telefone (opcional)</span><input class="pr-in" id="pfPhone" inputmode="tel" placeholder="(00) 00000-0000" autocomplete="off"></label>
+              <div class="pr-formfoot">
+                <span class="pr-err" id="pfErr" hidden></span>
+                <button class="pr-ghost" type="button" id="pfCancel">Cancelar</button>
+                <button class="pr-save" type="button" id="pfSave">Salvar</button>
               </div>
             </div>
 
-            <!-- resumo clínico do paciente (vale para todas as consultas) -->
-            <div class="pr-section">
-              <div class="pr-label">Resumo clínico</div>
+            <!-- faixa de indicadores -->
+            <div class="pr-kpis">
+              <div class="pr-kpi"><div class="pr-kpi-l">Idade</div><div class="pr-kpi-v" id="kAge">—</div><div class="pr-kpi-s" id="kAgeS"></div></div>
+              <div class="pr-kpi"><div class="pr-kpi-l">Última consulta</div><div class="pr-kpi-v" id="kLast">—</div><div class="pr-kpi-s" id="kLastS"></div></div>
+              <div class="pr-kpi"><div class="pr-kpi-l">Próxima consulta</div><div class="pr-kpi-v" id="kNext">—</div><div class="pr-kpi-s" id="kNextS"></div></div>
+              <div class="pr-kpi"><div class="pr-kpi-l">Evoluções</div><div class="pr-kpi-v" id="kNotes">—</div><div class="pr-kpi-s" id="kNotesS"></div></div>
+            </div>
+
+            <!-- abas -->
+            <div class="pr-tabs" id="prTabs" role="tablist">
+              <button type="button" role="tab" data-tab="atual" class="on">Consulta atual</button>
+              <button type="button" role="tab" data-tab="resumo">Resumo clínico</button>
+              <button type="button" role="tab" data-tab="consultas">Consultas</button>
+              <button type="button" role="tab" data-tab="historico">Histórico</button>
+              <button type="button" role="tab" data-tab="acessos">Acessos</button>
+            </div>
+
+            <!-- Consulta atual: evolução (texto livre ou SOAP) -->
+            <section class="pr-panel" data-panel="atual">
+              <div class="pr-bigcard" id="prEvoBox">
+                <div class="pr-cardhead">
+                  <div>
+                    <div class="pr-h2" id="prEvoLabel">Evolução</div>
+                    <div class="pr-cardsub" id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
+                  </div>
+                  <div class="pr-seg" id="prSeg" role="tablist"><button type="button" data-m="free" class="on">Texto livre</button><button type="button" data-m="soap">SOAP</button></div>
+                </div>
+                <!-- espaço reservado: gravação e transcrição da consulta (próxima etapa) -->
+                <div class="pr-rec" id="prRec">
+                  <div class="pr-rec-main">
+                    <div class="pr-rec-track"><span class="pr-rec-dot"></span><span class="pr-rec-line"></span></div>
+                    <div class="pr-rec-meta"><span class="pr-rec-chip">Em breve</span><span class="pr-rec-s">Grave a consulta e receba a evolução pronta para revisar</span></div>
+                  </div>
+                  <button class="pr-roundbtn" type="button" id="prRecBtn" disabled title="Gravação da consulta — em breve" aria-label="Gravar consulta (em breve)"><img src="assets/icons/sf-mic.svg?v=2" width="14" height="20.93" alt=""></button>
+                </div>
+                <div class="pr-body pr-printcur" id="prPrintCur"></div>
+                <div id="prFree"><textarea class="pr-note" id="prNote" placeholder="Anamnese, exame físico, hipóteses, conduta…"></textarea></div>
+                <div class="pr-soap" id="prSoap" hidden>
+                  <label class="pr-soapf"><span>S — Subjetivo</span><textarea data-f="s" placeholder="Queixa, história, sintomas relatados…"></textarea></label>
+                  <div class="pr-soapf"><span>O — Objetivo</span>
+                    <div class="pr-vitals">
+                      <label class="pr-vital"><span>PA (mmHg)</span><span class="pr-pa"><input class="pr-in" data-v="pa_s" inputmode="numeric" placeholder="120" autocomplete="off">/<input class="pr-in" data-v="pa_d" inputmode="numeric" placeholder="80" autocomplete="off"></span></label>
+                      <label class="pr-vital"><span>FC (bpm)</span><input class="pr-in" data-v="fc" inputmode="decimal" placeholder="72" autocomplete="off"></label>
+                      <label class="pr-vital"><span>FR (irpm)</span><input class="pr-in" data-v="fr" inputmode="decimal" placeholder="16" autocomplete="off"></label>
+                      <label class="pr-vital"><span>Temp. (°C)</span><input class="pr-in" data-v="temp" inputmode="decimal" placeholder="36,5" autocomplete="off"></label>
+                      <label class="pr-vital"><span>SpO₂ (%)</span><input class="pr-in" data-v="spo2" inputmode="decimal" placeholder="98" autocomplete="off"></label>
+                      <label class="pr-vital"><span>Peso (kg)</span><input class="pr-in" data-v="peso" inputmode="decimal" placeholder="70" autocomplete="off"></label>
+                      <label class="pr-vital"><span>Altura (cm)</span><input class="pr-in" data-v="altura" inputmode="decimal" placeholder="170" autocomplete="off"></label>
+                      <div class="pr-vital"><span>IMC</span><div class="pr-imc" id="prImc">—</div></div>
+                      <label class="pr-vital"><span>Glicemia (mg/dL)</span><input class="pr-in" data-v="glicemia" inputmode="decimal" placeholder="90" autocomplete="off"></label>
+                    </div>
+                    <textarea data-f="o" placeholder="Exame físico, resultados de exames…"></textarea>
+                  </div>
+                  <div class="pr-soapf"><span>A — Avaliação</span>
+                    <textarea data-f="a" placeholder="Hipóteses diagnósticas, raciocínio clínico…"></textarea>
+                    <div class="pr-cid"><div class="pr-chips" id="prCidChips"></div>
+                      <div class="pr-cidbox">
+                        <input class="pr-in" id="prCidIn" placeholder="CID-10: busque por código ou nome (ex.: I10, asma, DM2)" autocomplete="off"
+                               role="combobox" aria-autocomplete="list" aria-controls="prCidList" aria-expanded="false" spellcheck="false">
+                        <div class="pr-cidlist" id="prCidList" role="listbox" hidden></div>
+                      </div></div>
+                  </div>
+                  <label class="pr-soapf"><span>P — Plano</span><textarea data-f="p" placeholder="Conduta, prescrições, exames solicitados, retorno…"></textarea></label>
+                </div>
+                <div class="pr-locked" id="prLocked" hidden>
+                  <div class="pr-signed" id="prSigned"></div>
+                  <div class="pr-body" id="prLockedBody"></div>
+                  <div id="prLockedAdds"></div>
+                </div>
+                <div class="pr-foot" id="prEditFoot">
+                  <span class="pr-status" id="prStatus"></span>
+                  <span class="pr-count" id="prCount" hidden></span>
+                  <button class="pr-ghost" id="prCopyLast" type="button" hidden>Copiar da última</button>
+                  <button class="pr-ghost" id="prSave" type="button">Salvar</button>
+                  <button class="pr-save" id="prFinalize" type="button">Finalizar evolução</button>
+                </div>
+                <div class="pr-foot" id="prLockedFoot" hidden>
+                  <span class="pr-status"></span>
+                  <button class="pr-ghost" id="prAddBtn" type="button">Adicionar adendo</button>
+                </div>
+                <div class="pr-addbox" id="prAddBox" hidden></div>
+              </div>
+            </section>
+
+            <!-- Resumo clínico (vale para todas as consultas) -->
+            <section class="pr-panel" data-panel="resumo" hidden>
               <div class="pr-sum">
                 <div class="pr-sumcol" data-k="allergies"><div class="pr-sumhead">Alergias</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar alergia" autocomplete="off"></div>
                 <div class="pr-sumcol" data-k="problems"><div class="pr-sumhead">Problemas ativos</div><div class="pr-chips" data-empty="Nenhum registrado"></div><input class="pr-chipin" placeholder="Adicionar problema" autocomplete="off"></div>
                 <div class="pr-sumcol" data-k="medications"><div class="pr-sumhead">Medicações em uso</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar medicação" autocomplete="off"></div>
               </div>
-            </div>
+            </section>
 
-            <!-- consulta aberta -->
-            <div class="pr-section" id="prConsultaBox">
-              <div class="pr-label">Consulta</div>
-              <div class="pr-card">
-                <div class="pr-card-title" id="prEvTitle"></div>
-                <div class="pr-card-sub" id="prEvWhen"></div>
-                <div class="pr-card-sub" id="prEvLoc"></div>
-              </div>
-            </div>
+            <!-- Consultas do paciente na agenda -->
+            <section class="pr-panel" data-panel="consultas" hidden>
+              <div class="pr-table" id="prVisits"></div>
+            </section>
 
-            <!-- evolução da consulta (texto livre ou SOAP) -->
-            <div class="pr-section" id="prEvoBox">
-              <div class="pr-sechead">
-                <div class="pr-label" id="prEvoLabel">Evolução</div>
-                <div class="pr-seg" id="prSeg" role="tablist"><button type="button" data-m="free" class="on">Texto livre</button><button type="button" data-m="soap">SOAP</button></div>
-              </div>
-              <!-- espaço reservado: gravação e transcrição da consulta (próxima etapa) -->
-              <div class="pr-rec" id="prRec">
-                <span class="pr-rec-ico"><img src="assets/icons/sf-mic.svg?v=2" width="10.48" height="15.67" alt=""></span>
-                <span class="pr-rec-txt"><span class="pr-rec-t">Gravação da consulta</span><span class="pr-rec-s">Em breve: grave a consulta e receba a evolução pronta para revisar.</span></span>
-                <button class="pr-ghost" type="button" id="prRecBtn" disabled title="Em breve">Gravar</button>
-              </div>
-              <div id="prFree"><textarea class="pr-note" id="prNote" placeholder="Anamnese, exame físico, hipóteses, conduta…"></textarea></div>
-              <div class="pr-soap" id="prSoap" hidden>
-                <label class="pr-soapf"><span>S — Subjetivo</span><textarea data-f="s" placeholder="Queixa, história, sintomas relatados…"></textarea></label>
-                <div class="pr-soapf"><span>O — Objetivo</span>
-                  <div class="pr-vitals">
-                    <label class="pr-vital"><span>PA (mmHg)</span><span class="pr-pa"><input class="pr-in" data-v="pa_s" inputmode="numeric" placeholder="120" autocomplete="off">/<input class="pr-in" data-v="pa_d" inputmode="numeric" placeholder="80" autocomplete="off"></span></label>
-                    <label class="pr-vital"><span>FC (bpm)</span><input class="pr-in" data-v="fc" inputmode="decimal" placeholder="72" autocomplete="off"></label>
-                    <label class="pr-vital"><span>FR (irpm)</span><input class="pr-in" data-v="fr" inputmode="decimal" placeholder="16" autocomplete="off"></label>
-                    <label class="pr-vital"><span>Temp. (°C)</span><input class="pr-in" data-v="temp" inputmode="decimal" placeholder="36,5" autocomplete="off"></label>
-                    <label class="pr-vital"><span>SpO₂ (%)</span><input class="pr-in" data-v="spo2" inputmode="decimal" placeholder="98" autocomplete="off"></label>
-                    <label class="pr-vital"><span>Peso (kg)</span><input class="pr-in" data-v="peso" inputmode="decimal" placeholder="70" autocomplete="off"></label>
-                    <label class="pr-vital"><span>Altura (cm)</span><input class="pr-in" data-v="altura" inputmode="decimal" placeholder="170" autocomplete="off"></label>
-                    <div class="pr-vital"><span>IMC</span><div class="pr-imc" id="prImc">—</div></div>
-                    <label class="pr-vital"><span>Glicemia (mg/dL)</span><input class="pr-in" data-v="glicemia" inputmode="decimal" placeholder="90" autocomplete="off"></label>
-                  </div>
-                  <textarea data-f="o" placeholder="Exame físico, resultados de exames…"></textarea>
-                </div>
-                <div class="pr-soapf"><span>A — Avaliação</span>
-                  <textarea data-f="a" placeholder="Hipóteses diagnósticas, raciocínio clínico…"></textarea>
-                  <div class="pr-cid"><div class="pr-chips" id="prCidChips"></div>
-                    <div class="pr-cidbox">
-                      <input class="pr-in" id="prCidIn" placeholder="CID-10: busque por código ou nome (ex.: I10, asma, DM2)" autocomplete="off"
-                             role="combobox" aria-autocomplete="list" aria-controls="prCidList" aria-expanded="false" spellcheck="false">
-                      <div class="pr-cidlist" id="prCidList" role="listbox" hidden></div>
-                    </div></div>
-                </div>
-                <label class="pr-soapf"><span>P — Plano</span><textarea data-f="p" placeholder="Conduta, prescrições, exames solicitados, retorno…"></textarea></label>
-              </div>
-              <div class="pr-body pr-printcur" id="prPrintCur"></div>
-              <div class="pr-locked" id="prLocked" hidden>
-                <div class="pr-signed" id="prSigned"></div>
-                <div class="pr-body" id="prLockedBody"></div>
-                <div id="prLockedAdds"></div>
-              </div>
-              <div class="pr-foot" id="prEditFoot">
-                <span class="pr-status" id="prStatus"></span>
-                <span class="pr-count" id="prCount" hidden></span>
-                <button class="pr-ghost" id="prCopyLast" type="button" hidden>Copiar da última</button>
-                <button class="pr-ghost" id="prSave" type="button">Salvar</button>
-                <button class="pr-save" id="prFinalize" type="button">Finalizar evolução</button>
-              </div>
-              <div class="pr-foot" id="prLockedFoot" hidden>
-                <span class="pr-status"></span>
-                <button class="pr-ghost" id="prAddBtn" type="button">Adicionar adendo</button>
-              </div>
-              <div class="pr-addbox" id="prAddBox" hidden>
-                <textarea id="prAddTxt" placeholder="Adendo: correção ou complemento (fica registrado com data e hora)"></textarea>
-                <div class="pr-foot"><span class="pr-err" id="prAddErr" hidden></span>
-                  <button class="pr-ghost" type="button" id="prAddCancel">Cancelar</button>
-                  <button class="pr-save" type="button" id="prAddSave">Salvar adendo</button></div>
-              </div>
-            </div>
-
-            <!-- consultas do paciente na agenda -->
-            <div class="pr-section">
-              <div class="pr-label">Consultas</div>
-              <div class="pr-visits" id="prVisits"></div>
-            </div>
-
-            <!-- histórico de evoluções -->
-            <div class="pr-section">
-              <div class="pr-sechead">
-                <div class="pr-label">Histórico de evoluções</div>
+            <!-- Histórico de evoluções -->
+            <section class="pr-panel" data-panel="historico" hidden>
+              <div class="pr-histbar">
+                <div class="pr-label">Evoluções anteriores</div>
                 <input class="srch-in pr-histq" id="prHistQ" type="search" placeholder="Buscar no histórico" autocomplete="off" spellcheck="false">
               </div>
               <div class="pr-hist" id="prHist"></div>
-            </div>
+            </section>
 
-            <!-- registro de acessos (LGPD) -->
-            <div class="pr-section" id="prAccess" hidden>
-              <div class="pr-label">Registro de acessos</div>
-              <div id="prAccessList"></div>
-            </div>
+            <!-- Registro de acessos (LGPD) -->
+            <section class="pr-panel" data-panel="acessos" id="prAccess" hidden>
+              <div class="pr-table" id="prAccessList"></div>
+            </section>
           </div>
         </div>
       </div>
@@ -2586,7 +2643,7 @@
               cur.id = res.j.id; cur.content = x.content; cur.data = x.data; cur.updated_at = new Date().toISOString();
               setStatus(snap() !== saved ? 'Alterações não salvas' : (recovered ? 'Texto recuperado deste navegador e salvo às ' : 'Salvo às ') + hm(new Date()));
               recovered = false;
-              draftWrite(snap()); $('prCopyLast').hidden = !lastOther();
+              draftWrite(snap()); $('prCopyLast').hidden = !lastOther(); renderKpis();
             } else { try { localStorage.removeItem(dkey(c)); } catch (_) {} }
           } else if (res.status === 409) {
             if (c === ctx) { setStatus('Esta evolução já foi finalizada (talvez em outra aba). Recarregando…', true); load(); }
@@ -2650,7 +2707,7 @@
             if (!(res.ok && res.j.ok)) { setStatus('Não foi possível finalizar.', true); return; }
             cur.signed_at = res.j.signed_at; cur.addenda = cur.addenda || [];
             try { localStorage.removeItem(dkey()); } catch (_) {}
-            renderEvo(); renderHist(); loadVisits(my);
+            renderEvo(); renderHist(); renderKpis(); loadVisits(my);
             setStatus('');
           }).catch(function () { btn.disabled = false; setStatus('Falha de conexão ao finalizar.', true); });
         });
@@ -2695,14 +2752,14 @@
         var name = patient ? patient.name : (ctx && ctx.patient) || '';
         $('prName').textContent = name; $('prAvatar').textContent = initials(name);
         var p = patient || {}, bits = [];
-        if (p.birth_date) { var b = parseStart(p.birth_date); bits.push(age(p.birth_date) + ' (' + pad(b.getDate()) + '/' + pad(b.getMonth() + 1) + '/' + b.getFullYear() + ')'); }
+        if (p.birth_date) bits.push(age(p.birth_date));     // data completa fica no indicador "Idade"
         if (p.sex) bits.push(SEX[p.sex]);
         if (p.cpf) bits.push('CPF ' + fmtCpf(p.cpf));
         if (p.phone) bits.push(p.phone);
         // cada informação não quebra no meio (ex.: telefone)
         $('prSub').textContent = bits.length ? bits.map(function (b) { return b.replace(/ /g, '\u00a0'); }).join(' · ') : 'Prontuário';
         var miss = patient && !p.birth_date;               // sem nascimento não dá para diferenciar homônimos
-        $('prEditBtn').textContent = miss ? 'Completar cadastro (data de nascimento)' : 'Editar cadastro';
+        $('prEditBtn').textContent = miss ? 'Completar cadastro' : 'Editar cadastro';
         $('prEditBtn').classList.toggle('warn', !!miss);
         $('prEditBtn').hidden = !patient;
       }
@@ -2723,7 +2780,7 @@
           btn.disabled = false;
           if (res.ok && res.j.ok) {
             patient = res.j.patient; ctx.patient = patient.name; persistCtx();
-            $('prForm').hidden = true; renderHeader();
+            $('prForm').hidden = true; renderHeader(); renderKpis();
           } else { $('pfErr').textContent = (res.j && res.j.error ? res.j.error.charAt(0).toUpperCase() + res.j.error.slice(1) : 'Não foi possível salvar') + '.'; $('pfErr').hidden = false; }
         }).catch(function () { btn.disabled = false; $('pfErr').textContent = 'Falha de conexão.'; $('pfErr').hidden = false; });
       });
@@ -2763,14 +2820,13 @@
       });
 
       // ===== consulta aberta e evolução =====
+      // título do cartão = a consulta ("Retorno"), linha abaixo = quando e onde
       function renderConsulta() {
         var has = !!(ctx && (ctx.event_id || ctx.start));
-        $('prConsultaBox').hidden = !has;
-        $('prEvoLabel').textContent = has ? 'Evolução da consulta' : 'Evolução';
-        if (!has) return;
-        $('prEvTitle').textContent = ctx.title || 'Consulta';
-        $('prEvWhen').textContent = fmtWhen(ctx.start, ctx.end, ctx.all_day);
-        $('prEvLoc').textContent = ctx.location || ''; $('prEvLoc').hidden = !ctx.location;
+        $('prEvoLabel').textContent = has ? (ctx.title || 'Consulta') : 'Evolução avulsa';
+        $('prEvTitle').textContent = '';
+        $('prEvWhen').textContent = has ? fmtWhen(ctx.start, ctx.end, ctx.all_day) : 'Registro fora de uma consulta agendada';
+        $('prEvLoc').textContent = has && ctx.location ? ' · ' + ctx.location : '';
       }
       function renderEvo() {
         var lk = locked();
@@ -2793,6 +2849,41 @@
         fillEditor({ content: last.content, data: d }); changed();
       });
 
+      // ===== faixa de indicadores (idade, última/próxima consulta, evoluções) =====
+      var visits = null;                                   // consultas do paciente na agenda (null = carregando)
+      function dayMon(d) { return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
+      function kpi(id, v, sub, cls) { $(id).textContent = v; var s2 = $(id + 'S'); s2.textContent = sub || ''; s2.className = 'pr-kpi-s' + (cls ? ' ' + cls : ''); }
+      function renderKpis() {
+        var p = patient || {};
+        if (p.birth_date) { var b = parseStart(p.birth_date); kpi('kAge', age(p.birth_date), pad(b.getDate()) + '/' + pad(b.getMonth() + 1) + '/' + b.getFullYear()); }
+        else kpi('kAge', '—', patient ? 'Completar cadastro' : '', patient ? 'link' : '');
+        var now = Date.now(), vs = visits || [];
+        var past = vs.filter(function (v) { return parseStart(v.start) < now; }), fut = vs.filter(function (v) { return parseStart(v.start) >= now; });
+        var last = past[past.length - 1], next = fut[0];
+        function when(v) { var d = parseStart(v.start); return DOWS[d.getDay()] + (v.allDay ? '' : ' · ' + hm(d)) + ' · ' + eventTitle(v.title); }
+        if (last) kpi('kLast', dayMon(parseStart(last.start)), when(last));
+        else {
+          var ln = notes.filter(function (n) { return (n.content || '').trim() && n !== cur; })[0];
+          var ld = ln && (ln.event_start ? parseStart(ln.event_start) : new Date(ln.updated_at));
+          kpi('kLast', ld ? dayMon(ld) : '—', ld ? 'Última evolução' : (visits === null ? 'Carregando…' : 'Nenhuma ainda'));
+        }
+        if (next) kpi('kNext', dayMon(parseStart(next.start)), when(next));
+        else kpi('kNext', '—', visits === null ? 'Carregando…' : 'Nenhuma agendada');
+        var all = notes.filter(function (n) { return (n.content || '').trim() || n.signed_at; });
+        var fin = all.filter(function (n) { return n.signed_at; }).length, dr = all.length - fin;
+        kpi('kNotes', String(all.length), all.length ? fin + (fin === 1 ? ' finalizada' : ' finalizadas') + (dr ? ' · ' + dr + (dr === 1 ? ' rascunho' : ' rascunhos') : '') : 'Nenhuma ainda', dr ? 'warn' : '');
+      }
+      $('kAgeS').addEventListener('click', function () { if (this.classList.contains('link')) $('prEditBtn').click(); });
+
+      // ===== abas =====
+      var tabs = [].slice.call(document.querySelectorAll('#prTabs button'));
+      function setTab(t) {
+        tabs.forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+        [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { p.hidden = p.getAttribute('data-panel') !== t; });
+        if (t === 'acessos') loadAccess();
+      }
+      tabs.forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
+
       // ===== consultas do paciente na agenda =====
       function eventTitle(t) { return (t || '').split(' — ')[0] || 'Consulta'; }
       function loadVisits(my) {
@@ -2802,17 +2893,24 @@
         api('POST', '/prontuario/visits', { patient_id: ctx.patient_id }).then(function (res) {
           if (ctx !== my) return;
           box.innerHTML = '';
+          visits = res.ok && res.j.connected ? (res.j.visits || []) : [];
+          renderKpis();
           if (!res.ok) { box.innerHTML = '<div class="pr-empty">Não foi possível carregar as consultas.</div>'; return; }
           if (!res.j.connected) { box.innerHTML = '<div class="pr-empty"><a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para ver as consultas deste paciente.</div>'; return; }
-          var now = Date.now(), vs = res.j.visits || [];
+          var now = Date.now(), vs = visits;
           if (!vs.length) { box.innerHTML = '<div class="pr-empty">Nenhuma consulta deste paciente na agenda.</div>'; return; }
           var next = vs.filter(function (v) { return parseStart(v.start) >= now; });
           var past = vs.filter(function (v) { return parseStart(v.start) < now; }).reverse();
+          var th = el('div', 'pr-trow th');
+          ['Data', 'Consulta', 'Local', 'Evolução'].forEach(function (t, i) { th.appendChild(el('span', i === 2 ? 'pr-tloc' : null, t)); });
+          box.appendChild(th);
           function row(v, future) {
-            var b = el('button', 'pr-vrow' + (ctx.event_id === v.id ? ' cur' : '')); b.type = 'button';
-            var d = parseStart(v.start);
-            b.appendChild(el('span', 'pr-vdate', fmtShort(d) + (v.allDay ? '' : ' · ' + hm(d))));
-            b.appendChild(el('span', 'pr-vtitle', eventTitle(v.title)));
+            var b = el('button', 'pr-trow' + (ctx.event_id === v.id ? ' cur' : '')); b.type = 'button';
+            var d = parseStart(v.start), dc = el('span', 'pr-tdate', dayMon(d));
+            dc.appendChild(el('small', null, DOWS[d.getDay()] + (v.allDay ? ' · dia todo' : ' · ' + hm(d))));
+            b.appendChild(dc);
+            b.appendChild(el('span', 'pr-tcell', eventTitle(v.title)));
+            b.appendChild(el('span', 'pr-tcell pr-tmuted pr-tloc', v.location || '—'));
             var n = v.note, badge;
             if (ctx.event_id === v.id) badge = el('span', 'pr-badge cur', 'Aberta');
             else if (n && n.signed_at) badge = el('span', 'pr-badge ok', 'Finalizada');
@@ -2820,22 +2918,23 @@
             else badge = el('span', 'pr-badge', future ? 'Agendada' : 'Sem evolução');
             b.appendChild(badge);
             b.addEventListener('click', function () {
+              setTab('atual');
               if (ctx.event_id === v.id) { $('prEvoBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
               switchTo({ event_id: v.id, title: eventTitle(v.title), start: v.start, end: v.end, all_day: v.allDay, location: v.location });
             });
             return b;
           }
-          if (next.length) { box.appendChild(el('div', 'pr-vgroup', 'Próximas')); next.forEach(function (v) { box.appendChild(row(v, true)); }); }
+          if (next.length) { box.appendChild(el('div', 'pr-tgroup', 'Próximas')); next.forEach(function (v) { box.appendChild(row(v, true)); }); }
           if (past.length) {
-            box.appendChild(el('div', 'pr-vgroup', 'Anteriores'));
-            past.forEach(function (v, i) { var r = row(v, false); if (i >= 8) { r.hidden = true; r.classList.add('more'); } box.appendChild(r); });
-            if (past.length > 8) {
-              var m = el('button', 'pr-ghost', 'Mostrar todas (' + past.length + ')'); m.type = 'button';
-              m.addEventListener('click', function () { [].forEach.call(box.querySelectorAll('.pr-vrow.more'), function (r) { r.hidden = false; }); m.remove(); });
+            box.appendChild(el('div', 'pr-tgroup', 'Anteriores'));
+            past.forEach(function (v, i) { var r = row(v, false); if (i >= 10) { r.hidden = true; r.classList.add('more'); } box.appendChild(r); });
+            if (past.length > 10) {
+              var m = el('button', 'pr-ghost', 'Mostrar todas (' + past.length + ')'); m.type = 'button'; m.style.alignSelf = 'flex-start'; m.style.marginTop = '12px';
+              m.addEventListener('click', function () { [].forEach.call(box.querySelectorAll('.pr-trow.more'), function (r) { r.hidden = false; }); m.remove(); });
               box.appendChild(m);
             }
           }
-        }).catch(function () { if (ctx === my) box.innerHTML = '<div class="pr-empty">Não foi possível carregar as consultas.</div>'; });
+        }).catch(function () { if (ctx === my) { visits = []; renderKpis(); box.innerHTML = '<div class="pr-empty">Não foi possível carregar as consultas.</div>'; } });
       }
 
       // ===== histórico de evoluções (busca, finalizadas com adendos, rascunhos abrem para editar) =====
@@ -2847,7 +2946,9 @@
           var it = el('div', 'pr-item'); it._q = norm([n.content, n.event_title].concat((n.addenda || []).map(function (a) { return a.content; })).join(' '));
           var head = el('div', 'pr-item-head');
           var d = n.event_start ? parseStart(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null);
-          head.appendChild(el('span', 'pr-item-when', (d ? fmtDay(d) : '') + (n.event_title ? ' · ' + eventTitle(n.event_title) : '')));
+          var wh = el('span', 'pr-item-when', d ? fmtDay(d) : '');
+          if (n.event_title) wh.appendChild(el('small', null, ' · ' + eventTitle(n.event_title)));
+          head.appendChild(wh);
           head.appendChild(el('span', 'pr-badge ' + (n.signed_at ? 'ok' : 'draft'), n.signed_at ? 'Finalizada' : 'Rascunho'));
           var body = el('div', 'pr-item-body clamp', n.content || '');
           body.title = 'Clique para expandir'; body.style.cursor = 'pointer';
@@ -2923,18 +3024,19 @@
         window.print();
         document.title = t;
       });
-      $('prAccessBtn').addEventListener('click', function () {
-        var box = $('prAccess');
-        if (!box.hidden) { box.hidden = true; return; }
-        box.hidden = false; var list = $('prAccessList'); list.innerHTML = '<div class="pr-empty">Carregando…</div>';
+      function loadAccess() {
+        var list = $('prAccessList'), my = ctx;
+        if (!patient) { list.innerHTML = '<div class="pr-empty">Carregando…</div>'; return; }
+        list.innerHTML = '<div class="pr-empty">Carregando…</div>';
         api('POST', '/prontuario/access', { patient_id: patient.id }).then(function (res) {
+          if (ctx !== my) return;
           list.innerHTML = '';
           var rows = (res.j && res.j.access) || [];
           if (!rows.length) { list.innerHTML = '<div class="pr-empty">Nenhum acesso registrado.</div>'; return; }
+          var th = el('div', 'pr-acc th'); th.appendChild(el('span', null, 'Data e hora')); th.appendChild(el('span', null, 'Ação')); list.appendChild(th);
           rows.forEach(function (a) { var r = el('div', 'pr-acc'); r.appendChild(el('b', null, fmtDT(a.at))); r.appendChild(el('span', null, ACTION[a.action] || a.action)); list.appendChild(r); });
-          box.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-      });
+        }).catch(function () { if (ctx === my) list.innerHTML = '<div class="pr-empty">Não foi possível carregar os acessos.</div>'; });
+      }
 
       // ===== carregar / abrir / trocar de consulta / fechar =====
       function load() {
@@ -2960,8 +3062,9 @@
             persistCtx();
             fillEditor(cur); saved = snap();
             ready = true; setEditable(true); setStatus('');
-            $('prAccessBtn').hidden = $('prExport').hidden = false;
-            renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); updCount(compose().content.length);
+            $('prExport').hidden = false;
+            renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); renderKpis(); updCount(compose().content.length);
+            if (!$('prAccess').hidden) loadAccess();
             // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva
             var d = draftRead();
             if (d && !locked() && d.s !== saved && (d.base === saved || (!cur && !d.base))) {
@@ -2982,14 +3085,14 @@
         patient = null; notes = []; cur = null; saved = ''; ready = false;
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
-        $('prForm').hidden = true; $('prAccess').hidden = true; $('prAllergyBar').hidden = true;
-        $('prAccessBtn').hidden = $('prExport').hidden = true;
+        $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prExport').hidden = true;
+        visits = null; setTab('atual');
         if (!ctx || (!ctx.patient && !ctx.patient_id)) {
           msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return;
         }
         main.hidden = false; msg.hidden = true;
         $('prBack').textContent = ctx.from === 'pacientes' ? '‹ Pacientes' : '‹ Agenda';
-        fillEditor(null); cur = null; renderHeader(); renderConsulta(); renderEvo(); renderVisit(); updCount(0);
+        fillEditor(null); cur = null; renderHeader(); renderConsulta(); renderEvo(); renderVisit(); renderKpis(); updCount(0);
         $('prHist').innerHTML = ''; $('prVisits').innerHTML = ''; $('prHistQ').value = '';
         cols.forEach(function (col) { col.querySelector('.pr-chips').innerHTML = ''; });
         load();
