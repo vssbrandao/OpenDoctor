@@ -15,8 +15,8 @@
     :root{
       --disp:"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif;
       --ink:#071216; --ink2:#1f1f1f; --muted:#666c6f; --sb-border:rgba(0,0,0,.08);
-      --active:#f7f8f8; --pill:#f3f3f3; --line:rgba(0,0,0,.08);
-      --ev-bg:#f3f3f3; --ev-bg-hover:#e9e9e9; --avatar-bg:#d3e3fd; --avatar-ink:#0842a0; --now:#FF5500;
+      --active:#f7f8f8; --pill:#F7F8F8; --line:rgba(0,0,0,.08);   /* --pill: caixa de texto do assistente e balão enviado */
+      --ev-bg:#F7F8F8; --ev-bg-hover:#e9e9e9; --avatar-bg:#d3e3fd; --avatar-ink:#0842a0; --now:#FF5500;
       --send-bg:#d3e3fd; --send-ink:#0842a0;
     }
     *{box-sizing:border-box;margin:0;padding:0}
@@ -383,7 +383,7 @@
     .wk-col.first{box-shadow:none}
     .wk-col.first:last-child{box-shadow:inset -1px 0 0 rgba(26,26,26,.08)}
     .wk-col:last-child{box-shadow:inset 1px 0 0 rgba(26,26,26,.08),inset -1px 0 0 rgba(26,26,26,.08)}
-    .wk-ev{position:absolute;left:2px;right:1px;background:#F3F3F3;border-radius:40px;padding:20px;
+    .wk-ev{position:absolute;left:2px;right:1px;background:var(--ev-bg);border-radius:40px;padding:20px;
       overflow:hidden;display:flex;flex-direction:column;justify-content:flex-start;gap:4px;z-index:1}
     .wk-ev.short{padding:6px 12px 6px 16px;justify-content:center}
     /* 1px de folga das linhas da grade dos dois lados (linha esquerda é da própria coluna; na última, a direita também) */
@@ -603,7 +603,7 @@
     .followups{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
     .fup-chip{border:1px solid var(--sb-border);background:#fff;border-radius:999px;padding:8px 14px;
       font-family:var(--disp);font-size:16px;line-height:1.3;color:#071216;cursor:pointer;text-align:left}
-    .fup-chip:hover{background:var(--ev-bg)}
+    .fup-chip:hover{background:#f3f3f3}
 
     .ai-ungrounded{margin-top:10px;font-family:var(--disp);font-size:16px;line-height:1.45;color:var(--muted)}
 
