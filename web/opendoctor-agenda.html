@@ -430,11 +430,12 @@
     .cp-today{margin-top:10px;width:100%;border:0;background:#f3f3f3;border-radius:999px;
       padding:8px;font-size:13px;font-weight:600;color:#0842a0;cursor:pointer;font-family:var(--disp)}
     .cp-today:hover{background:#e9e9e9}
-    .cal{position:absolute;left:0;right:0;top:106px;bottom:0;overflow-y:auto;overflow-x:hidden;
+    .cal{position:absolute;left:0;right:0;top:107px;bottom:0;overflow-y:auto;overflow-x:hidden;   /* logo abaixo da linha fixa (106) */
       padding:0 0 0 24px;scrollbar-width:thin}
     .cal-inner{position:relative;padding-bottom:40px}
 
     .hr-row{position:relative;height:158px;box-shadow:inset 0 1px 0 var(--line)}
+    .hr-row.h0{box-shadow:none}            /* a linha do 0h é a fixa abaixo da data (.ag-head::after): não rola junto */
     .hr-label{position:absolute;left:0;top:0;font-family:var(--disp);font-weight:400;font-size:12px;
       line-height:24px;color:var(--ink2)}
 
@@ -948,7 +949,7 @@
       </div>
       <div class="cal">
         <div class="cal-inner">
-          <div class="hr-row"><span class="hr-label">0h</span></div>
+          <div class="hr-row h0"><span class="hr-label">0h</span></div>
           <div class="hr-row"><span class="hr-label">1h</span></div>
           <div class="hr-row"><span class="hr-label">2h</span></div>
           <div class="hr-row"><span class="hr-label">3h</span></div>
