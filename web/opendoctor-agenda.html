@@ -331,14 +331,17 @@
     }
     /* ===== PACIENTES (estilo "Configurações": título grande, seções com rótulo, cartões brancos com
        borda fina e linhas com divisória; ações à direita) — medidas em px reais (referência 2x) ===== */
-    .pt-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;
+    .pt-view{display:none;position:absolute;inset:0;overflow-y:auto;flex-direction:column;align-items:center;
       background:#fff;z-index:4;scrollbar-width:thin;container-type:inline-size;container-name:pt}
     .stage.pacientes .pt-view{display:flex}
     .stage.pacientes .ag-head,.stage.pacientes .cal,.stage.pacientes .wk{display:none}
-    .pt{width:100%;max-width:840px;padding:56px 40px 96px;height:max-content;   /* 760px de conteúdo */display:flex;flex-direction:column;font-family:var(--disp);color:#0D0D0D}
-    .pt-title{margin:0;font-family:var(--disp);font-weight:500;font-size:28px;line-height:34px;letter-spacing:-.01em;color:#0D0D0D}
-    .pt-count{margin-top:4px;font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#6E6E6E}
-    .pt-tools{display:flex;align-items:center;gap:8px;margin-top:28px}
+    .pt{width:100%;max-width:840px;padding:20px 40px 96px;height:max-content;   /* 760px de conteúdo */display:flex;flex-direction:column;font-family:var(--disp);color:#0D0D0D}
+    /* barra do título igual à do Assistente AI (.rp-head/.rp-title): 24px da esquerda, 14px bold, 52px de altura */
+    .pt-head{position:sticky;top:0;z-index:2;align-self:stretch;flex:none;display:flex;align-items:center;gap:8px;
+      min-height:52px;padding:8px 8px 8px 24px;background:#fff}
+    .pt-title{margin:0;font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    .pt-count{font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#879196}
+    .pt-tools{display:flex;align-items:center;gap:8px}
     .pt-searchbox{flex:1;min-width:0;height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid #E5E5E5;border-radius:10px;background:#fff}
     .pt-searchbox:focus-within{border-color:#B5B5B5}
     .pt-searchbox img{flex:none;display:block;opacity:.8}
@@ -397,7 +400,7 @@
       .pt-rowfoot .pt-ghost,.pt-rowfoot .pt-btn{flex:1}
     }
     @container pt (max-width:420px){                     /* coluna estreita (agenda + assistente lado a lado) */
-      .pt{padding:32px 16px 64px}
+      .pt{padding:16px 16px 64px}
       .pt-tools{flex-wrap:wrap}
       .pt-searchbox{flex-basis:100%}
       .pt-tools .pt-btn{flex:1}
@@ -960,9 +963,11 @@
         </div>
       </div>
       <div class="pt-view" id="ptView">
-        <div class="pt">
+        <div class="pt-head">
           <h1 class="pt-title">Pacientes</h1>
-          <div class="pt-count" id="ptCount"></div>
+          <span class="pt-count" id="ptCount"></span>
+        </div>
+        <div class="pt">
           <div class="pt-tools">
             <label class="pt-searchbox"><img src="assets/icons/agenda-search.svg?v=3" width="32" height="32" alt="" style="margin:-8px -6px -8px -10px">
               <input class="pt-search" id="ptSearch" type="search" placeholder="Buscar paciente" autocomplete="off" spellcheck="false"></label>
