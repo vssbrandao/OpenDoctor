@@ -71,6 +71,9 @@ async def _no_cache_html(request: Request, call_next):
         resp.headers["Cache-Control"] = "no-cache, must-revalidate"
     elif path.startswith(_NO_STORE):
         resp.headers["Cache-Control"] = "no-store"
+    elif path.startswith("/assets/icons/"):
+        # ícones mudam com o design: o navegador sempre confere (304 se igual), nunca usa cópia velha
+        resp.headers["Cache-Control"] = "no-cache"
     return resp
 
 
