@@ -409,6 +409,7 @@
     .wk::-webkit-scrollbar{display:none}
     .stage.week .wk{display:block}
     .stage.week .cal{display:none}
+    .stage.prontuario .wk,.stage.pacientes .wk{display:none}   /* depois de .stage.week .wk: senão a semana vaza por cima */
     .wk-grid{position:relative;display:grid;grid-template-columns:84px repeat(7,minmax(158px,1fr))}
     .wk-h{position:sticky;top:0;z-index:4;height:51px;padding-top:15px;background:#fff;
       box-shadow:inset 0 -1px 0 rgba(26,26,26,.08);display:flex;justify-content:center;align-items:flex-start;gap:4px;
