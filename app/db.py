@@ -232,13 +232,27 @@ def patient_key(name):
     return " ".join(n.casefold().split())
 
 
+class NoteLocked(Exception):
+    """Evolução finalizada: não pode mais ser alterada (só adendos)."""
+
+
+_PCOLS = "id, name, patient_key, birth_date, sex, cpf, phone, allergies, problems, medications"
+
+
+def _patient(r):
+    return {"id": r[0], "name": r[1], "key": r[2],
+            "birth_date": r[3].isoformat() if r[3] else None, "sex": r[4], "cpf": r[5], "phone": r[6],
+            "allergies": r[7] or "", "problems": r[8] or "", "medications": r[9] or ""}
+
+
 def list_patients(user_id, limit=1000):
-    """Pacientes do médico (os usados mais recentemente primeiro), com o resumo do prontuário:
-    nº de anotações e data da última."""
+    """Pacientes do médico (os usados mais recentemente primeiro), com nascimento/sexo (para
+    diferenciar homônimos) e o resumo do prontuário: nº de anotações e data da última."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """select p.id, p.name, count(n.id) filter (where n.content <> ''),
+                """select p.id, p.name, p.birth_date, p.sex,
+                          count(n.id) filter (where n.content <> ''),
                           max(coalesce(n.event_start, n.created_at)) filter (where n.content <> '')
                    from patients p
                    left join clinical_notes n on n.user_id = p.user_id and n.patient_id = p.id
@@ -246,29 +260,71 @@ def list_patients(user_id, limit=1000):
                    group by p.id
                    order by p.updated_at desc limit %s""",
                 (user_id, limit))
-            return [{"id": r[0], "name": r[1], "notes": r[2],
-                     "last": r[3].isoformat() if r[3] else None} for r in cur.fetchall()]
+            return [{"id": r[0], "name": r[1], "birth_date": r[2].isoformat() if r[2] else None, "sex": r[3],
+                     "notes": r[4], "last": r[5].isoformat() if r[5] else None} for r in cur.fetchall()]
 
 
-def rename_patient(user_id, patient_id, name):
-    """Renomeia o paciente (e o nome nas anotações dele). False se já existe outro com esse nome,
-    None se o paciente não existe (ou é de outro médico)."""
-    key = patient_key(name)
+def find_patients(user_id, name):
+    """Pacientes com o mesmo nome normalizado (homônimos)."""
     with connection() as conn:
-        try:
-            with conn.cursor() as cur:
-                cur.execute("""update patients set name = %s, patient_key = %s, updated_at = now()
-                               where user_id = %s and id = %s""", (name, key, user_id, patient_id))
-                if not cur.rowcount:
-                    conn.rollback()
-                    return None
-                cur.execute("""update clinical_notes set patient_name = %s, patient_key = %s
-                               where user_id = %s and patient_id = %s""", (name, key, user_id, patient_id))
-            conn.commit()
-        except psycopg.errors.UniqueViolation:        # outro paciente já tem esse nome
-            conn.rollback()
-            return False
-    return True
+        rows = conn.execute(f"select {_PCOLS} from patients where user_id = %s and patient_key = %s order by id",
+                            (user_id, patient_key(name))).fetchall()
+    return [_patient(r) for r in rows]
+
+
+def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None):
+    with connection() as conn:
+        r = conn.execute(
+            f"""insert into patients (user_id, patient_key, name, birth_date, sex, cpf, phone)
+                values (%s,%s,%s,%s,%s,%s,%s) returning {_PCOLS}""",
+            (user_id, patient_key(name), name, birth_date, sex, cpf, phone)).fetchone()
+        conn.commit()
+    return _patient(r)
+
+
+def ensure_patient(user_id, name):
+    """Paciente pelo nome (eventos antigos, só com o nome): o já cadastrado mais recente com esse
+    nome, ou um novo. Retorna ({...}, created)."""
+    with connection() as conn:
+        r = conn.execute(f"""select {_PCOLS} from patients where user_id = %s and patient_key = %s
+                             order by updated_at desc limit 1""", (user_id, patient_key(name))).fetchone()
+    if r:
+        return _patient(r), False
+    return create_patient(user_id, name), True
+
+
+def get_patient(user_id, patient_id):
+    """Paciente do médico pelo id (cadastro completo) ou None (inclusive se for de outro médico)."""
+    with connection() as conn:
+        r = conn.execute(f"select {_PCOLS} from patients where user_id = %s and id = %s",
+                         (user_id, patient_id)).fetchone()
+    return _patient(r) if r else None
+
+
+_PATIENT_FIELDS = ("name", "birth_date", "sex", "cpf", "phone", "allergies", "problems", "medications")
+
+
+def update_patient(user_id, patient_id, fields):
+    """Atualiza campos do cadastro/resumo clínico. Mudou o nome → atualiza também as anotações.
+    Retorna o paciente atualizado ou None se não existir."""
+    sets, vals = [], []
+    for k in _PATIENT_FIELDS:
+        if k in fields:
+            sets.append(f"{k} = %s"); vals.append(fields[k])
+    if "name" in fields:
+        sets.append("patient_key = %s"); vals.append(patient_key(fields["name"]))
+    if not sets:
+        return get_patient(user_id, patient_id)
+    with connection() as conn:
+        r = conn.execute(f"update patients set {', '.join(sets)}, updated_at = now() "
+                         f"where user_id = %s and id = %s returning {_PCOLS}",
+                         (*vals, user_id, patient_id)).fetchone()
+        if r and "name" in fields:
+            conn.execute("""update clinical_notes set patient_name = %s, patient_key = %s
+                            where user_id = %s and patient_id = %s""",
+                         (fields["name"], patient_key(fields["name"]), user_id, patient_id))
+        conn.commit()
+    return _patient(r) if r else None
 
 
 def touch_patient(user_id, patient_id):
@@ -288,7 +344,7 @@ def delete_patient(user_id, patient_id):
             r = cur.fetchone()
             if not r:
                 return "not_found"
-            cur.execute("""select 1 from clinical_notes where user_id = %s and content <> ''
+            cur.execute("""select 1 from clinical_notes where user_id = %s and (content <> '' or signed_at is not null)
                            and (patient_id = %s or (patient_id is null and patient_key = %s)) limit 1""",
                         (user_id, patient_id, r[0]))
             if cur.fetchone():
@@ -299,80 +355,162 @@ def delete_patient(user_id, patient_id):
     return "ok"
 
 
-def ensure_patient(user_id, name):
-    """Cadastra o paciente (ou devolve o existente com o mesmo nome normalizado).
-    Retorna ({id, name}, created)."""
-    with connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """insert into patients (user_id, patient_key, name) values (%s,%s,%s)
-                   on conflict (user_id, patient_key) do update set updated_at = now()
-                   returning id, name, (xmax = 0)""",
-                (user_id, patient_key(name), name))
-            r = cur.fetchone()
-        conn.commit()
-    return {"id": r[0], "name": r[1]}, bool(r[2])
+_NOTE_COLS = """n.id, n.event_id, n.event_title, n.event_start, n.content, n.updated_at, n.data, n.signed_at,
+                coalesce((select json_agg(json_build_object('id', a.id, 'content', a.content, 'created_at', a.created_at)
+                                          order by a.created_at)
+                          from note_addenda a where a.note_id = n.id), '[]'::json)"""
 
 
-def get_patient(user_id, patient_id):
-    """Paciente do médico pelo id ({id, name}) ou None (inclusive se for de outro médico)."""
-    with connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("select id, name, patient_key from patients where user_id = %s and id = %s",
-                        (user_id, patient_id))
-            r = cur.fetchone()
-    return {"id": r[0], "name": r[1], "key": r[2]} if r else None
+def _note(r):
+    return {"id": r[0], "event_id": r[1], "event_title": r[2],
+            "event_start": r[3].isoformat() if r[3] else None, "content": r[4],
+            "updated_at": r[5].isoformat() if r[5] else None, "data": r[6],
+            "signed_at": r[7].isoformat() if r[7] else None, "addenda": r[8] or []}
 
 
 def list_notes(user_id, patient_id, pkey):
-    """Prontuário do paciente: anotações ligadas a ele (e antigas, só com o nome, sem vínculo)."""
+    """Prontuário do paciente: evoluções ligadas a ele (e antigas, só com o nome, sem vínculo),
+    com dados estruturados, finalização e adendos."""
     with connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """select id, event_id, event_title, event_start, content, updated_at
-                   from clinical_notes
-                   where user_id = %s and (patient_id = %s or (patient_id is null and patient_key = %s))
-                   order by coalesce(event_start, created_at) desc limit 200""",
-                (user_id, patient_id, pkey))
-            rows = cur.fetchall()
-    return [{"id": r[0], "event_id": r[1], "event_title": r[2],
-             "event_start": r[3].isoformat() if r[3] else None, "content": r[4],
-             "updated_at": r[5].isoformat() if r[5] else None} for r in rows]
+        rows = conn.execute(
+            f"""select {_NOTE_COLS} from clinical_notes n
+                where n.user_id = %s and (n.patient_id = %s or (n.patient_id is null and n.patient_key = %s))
+                order by coalesce(n.event_start, n.created_at) desc limit 300""",
+            (user_id, patient_id, pkey)).fetchall()
+    return [_note(r) for r in rows]
 
 
 def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content,
-                note_id=None):
-    """Uma anotação por consulta (event_id); sem consulta, cria uma nova (ou atualiza a nota avulsa
-    note_id que está sendo escrita). Fica ligada ao paciente."""
+                note_id=None, data=None):
+    """Uma evolução por consulta (event_id); sem consulta, cria uma nova (ou atualiza a avulsa
+    note_id que está sendo escrita). Evolução finalizada não muda: levanta NoteLocked."""
+    from psycopg.types.json import Jsonb
+    jd = Jsonb(data) if data is not None else None
     with connection() as conn:
         with conn.cursor() as cur:
             if not event_id and note_id:
-                cur.execute(
-                    """update clinical_notes set content = %s, updated_at = now()
-                       where user_id = %s and id = %s and patient_id = %s and event_id is null
-                       returning id""",
-                    (content, user_id, note_id, patient_id))
+                cur.execute("select signed_at from clinical_notes where user_id = %s and id = %s and patient_id = %s",
+                            (user_id, note_id, patient_id))
                 r = cur.fetchone()
+                if r and r[0]:
+                    raise NoteLocked()
                 if r:
+                    cur.execute("""update clinical_notes set content = %s, data = %s, updated_at = now()
+                                   where user_id = %s and id = %s returning id""", (content, jd, user_id, note_id))
+                    nid = cur.fetchone()[0]
                     conn.commit()
-                    return r[0]
+                    return nid
             if event_id:
+                cur.execute("select signed_at from clinical_notes where user_id = %s and event_id = %s",
+                            (user_id, event_id))
+                r = cur.fetchone()
+                if r and r[0]:
+                    raise NoteLocked()
                 cur.execute(
                     """insert into clinical_notes
-                         (user_id, patient_id, patient_key, patient_name, event_id, event_title, event_start, content)
-                       values (%s,%s,%s,%s,%s,%s,%s,%s)
+                         (user_id, patient_id, patient_key, patient_name, event_id, event_title, event_start, content, data)
+                       values (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                        on conflict (user_id, event_id) where event_id is not null do update set
-                         content = excluded.content, patient_id = excluded.patient_id,
+                         content = excluded.content, data = excluded.data, patient_id = excluded.patient_id,
                          patient_key = excluded.patient_key, patient_name = excluded.patient_name,
                          event_title = excluded.event_title, event_start = excluded.event_start,
                          updated_at = now()
+                       where clinical_notes.signed_at is null
                        returning id""",
-                    (user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content))
+                    (user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content, jd))
             else:
                 cur.execute(
-                    """insert into clinical_notes (user_id, patient_id, patient_key, patient_name, content)
-                       values (%s,%s,%s,%s,%s) returning id""",
-                    (user_id, patient_id, pkey, patient_name, content))
-            nid = cur.fetchone()[0]
+                    """insert into clinical_notes (user_id, patient_id, patient_key, patient_name, content, data)
+                       values (%s,%s,%s,%s,%s,%s) returning id""",
+                    (user_id, patient_id, pkey, patient_name, content, jd))
+            r = cur.fetchone()
+            if not r:                                   # finalizada entre a checagem e o update
+                conn.rollback()
+                raise NoteLocked()
+            nid = r[0]
         conn.commit()
     return nid
+
+
+def get_note(user_id, note_id):
+    with connection() as conn:
+        r = conn.execute(f"select {_NOTE_COLS}, n.patient_id from clinical_notes n where n.user_id = %s and n.id = %s",
+                         (user_id, note_id)).fetchone()
+    if not r:
+        return None
+    n = _note(r); n["patient_id"] = r[9]
+    return n
+
+
+def update_note(user_id, note_id, content, data=None):
+    """Edita uma evolução ainda não finalizada (pelo id). False se finalizada, None se não existe."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        r = conn.execute("select signed_at from clinical_notes where user_id = %s and id = %s",
+                         (user_id, note_id)).fetchone()
+        if not r:
+            return None
+        if r[0]:
+            return False
+        conn.execute("""update clinical_notes set content = %s, data = %s, updated_at = now()
+                        where user_id = %s and id = %s and signed_at is null""",
+                     (content, Jsonb(data) if data is not None else None, user_id, note_id))
+        conn.commit()
+    return True
+
+
+def finalize_note(user_id, note_id):
+    """Finaliza (assina) a evolução: a partir daí só adendos. Devolve signed_at (ISO) ou None."""
+    with connection() as conn:
+        r = conn.execute("""update clinical_notes set signed_at = coalesce(signed_at, now())
+                            where user_id = %s and id = %s and (content <> '' or signed_at is not null)
+                            returning signed_at""", (user_id, note_id)).fetchone()
+        conn.commit()
+    return r[0].isoformat() if r else None
+
+
+def add_addendum(user_id, note_id, content):
+    """Adendo a uma evolução finalizada. Devolve o adendo ou None (nota inexistente/não finalizada)."""
+    with connection() as conn:
+        ok = conn.execute("select 1 from clinical_notes where user_id = %s and id = %s and signed_at is not null",
+                          (user_id, note_id)).fetchone()
+        if not ok:
+            return None
+        r = conn.execute("""insert into note_addenda (note_id, user_id, content) values (%s,%s,%s)
+                            returning id, content, created_at""", (note_id, user_id, content)).fetchone()
+        conn.commit()
+    return {"id": r[0], "content": r[1], "created_at": r[2].isoformat()}
+
+
+def notes_by_event(user_id, event_ids):
+    """Situação da evolução de cada consulta: {event_id: {note_id, signed_at, has_content}}."""
+    if not event_ids:
+        return {}
+    with connection() as conn:
+        rows = conn.execute("""select event_id, id, signed_at, content <> '' from clinical_notes
+                               where user_id = %s and event_id = any(%s)""", (user_id, list(event_ids))).fetchall()
+    return {r[0]: {"note_id": r[1], "signed_at": r[2].isoformat() if r[2] else None, "has_content": r[3]}
+            for r in rows}
+
+
+def log_access(user_id, action, patient_id=None, note_id=None, dedupe_minutes=0):
+    """Registro de acesso ao prontuário. dedupe_minutes evita uma linha por salvamento automático."""
+    with connection() as conn:
+        if dedupe_minutes:
+            r = conn.execute("""select 1 from access_log where user_id = %s and action = %s
+                                and patient_id is not distinct from %s and note_id is not distinct from %s
+                                and created_at > now() - make_interval(mins => %s) limit 1""",
+                             (user_id, action, patient_id, note_id, dedupe_minutes)).fetchone()
+            if r:
+                return
+        conn.execute("insert into access_log (user_id, patient_id, note_id, action) values (%s,%s,%s,%s)",
+                     (user_id, patient_id, note_id, action))
+        conn.commit()
+
+
+def list_access(user_id, patient_id, limit=100):
+    with connection() as conn:
+        rows = conn.execute("""select action, note_id, created_at from access_log
+                               where user_id = %s and patient_id = %s order by created_at desc limit %s""",
+                            (user_id, patient_id, limit)).fetchall()
+    return [{"action": r[0], "note_id": r[1], "at": r[2].isoformat()} for r in rows]

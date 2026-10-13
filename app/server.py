@@ -734,7 +734,10 @@ def delete_calendar_event(event_id: str, request: Request):
 
 
 # --- prontuário: anotações por paciente (POST p/ não levar o nome do paciente na URL) ---
-MAX_NOTE_CHARS = 20000
+MAX_NOTE_CHARS = 50000          # evolução maior é recusada (413) — nunca cortada em silêncio
+MAX_DATA_CHARS = 60000
+_SEX = {"F", "M", "O"}
+_VITALS = ("pa_s", "pa_d", "fc", "fr", "temp", "spo2", "peso", "altura", "glicemia")
 
 
 def _iso_or_none(v):
@@ -749,109 +752,308 @@ def _iso_or_none(v):
         return None
 
 
+def _date_or_none(v):
+    """Data AAAA-MM-DD válida (não futura, após 1900) ou None."""
+    import datetime as _dt
+    if not isinstance(v, str) or not v:
+        return None
+    try:
+        d = _dt.date.fromisoformat(v[:10])
+    except ValueError:
+        return None
+    return v[:10] if _dt.date(1900, 1, 1) <= d <= _dt.date.today() else None
+
+
+def _cpf_ok(v):
+    """CPF com dígitos verificadores válidos (só números)."""
+    d = "".join(c for c in str(v or "") if c.isdigit())
+    if len(d) != 11 or d == d[0] * 11:
+        return False
+    for n in (9, 10):
+        s = sum(int(d[i]) * (n + 1 - i) for i in range(n))
+        if (s * 10 % 11) % 10 != int(d[n]):
+            return False
+    return True
+
+
+def _clean_text(v, limit):
+    return str(v or "").replace("\r\n", "\n")[:limit]
+
+
+def _note_data(v):
+    """Evolução estruturada (SOAP + sinais vitais + CID-10): só campos conhecidos e tamanhos limitados."""
+    if not isinstance(v, dict):
+        return None
+    out = {"mode": "soap" if v.get("mode") == "soap" else "free"}
+    for k in ("s", "o", "a", "p"):
+        if isinstance(v.get(k), str):
+            out[k] = v[k][:MAX_NOTE_CHARS]
+    vit = v.get("vitals") if isinstance(v.get("vitals"), dict) else {}
+    out["vitals"] = {k: str(vit[k])[:12] for k in _VITALS if vit.get(k) not in (None, "")}
+    cid = v.get("cid") if isinstance(v.get("cid"), list) else []
+    out["cid"] = [{"code": str(c.get("code") or "")[:10], "desc": str(c.get("desc") or "")[:200]}
+                  for c in cid[:20] if isinstance(c, dict) and (c.get("code") or c.get("desc"))]
+    return out if len(json.dumps(out)) <= MAX_DATA_CHARS else None
+
+
+def _patient_fields(payload, partial=True):
+    """Campos do cadastro vindos da tela, validados. Devolve (campos, erro)."""
+    f = {}
+    if "name" in payload or not partial:
+        name = " ".join(str(payload.get("name") or "").split())[:200]
+        if not db.patient_key(name):
+            return None, "nome obrigatório"
+        f["name"] = name
+    if "birth_date" in payload:
+        bd = payload.get("birth_date")
+        if bd and not _date_or_none(bd):
+            return None, "data de nascimento inválida"
+        f["birth_date"] = _date_or_none(bd)
+    if "sex" in payload:
+        sx = payload.get("sex") or None
+        if sx and sx not in _SEX:
+            return None, "sexo inválido"
+        f["sex"] = sx
+    if "cpf" in payload:
+        cpf = "".join(c for c in str(payload.get("cpf") or "") if c.isdigit())
+        if cpf and not _cpf_ok(cpf):
+            return None, "CPF inválido"
+        f["cpf"] = cpf or None
+    if "phone" in payload:
+        f["phone"] = " ".join(str(payload.get("phone") or "").split())[:40] or None
+    for k in ("allergies", "problems", "medications"):
+        if k in payload:
+            f[k] = _clean_text(payload.get(k), 5000)
+    return f, None
+
+
+async def _json(request):
+    try:
+        v = await request.json()
+        return v if isinstance(v, dict) else {}
+    except Exception:
+        return {}
+
+
 def _note_patient(u, payload):
     """Paciente do prontuário: pelo id do cadastro; eventos antigos (só com o nome) são
-    cadastrados na hora. Devolve {id, name, key} ou None."""
+    ligados ao cadastrado com esse nome (ou cadastrados na hora). Devolve o paciente ou None."""
     pid = payload.get("patient_id")
     if str(pid or "").isdigit():
         return db.get_patient(u["id"], int(pid))
     name = " ".join((payload.get("patient") or "").split())[:200]
     if not db.patient_key(name):
         return None
-    p, _ = db.ensure_patient(u["id"], name)
-    return db.get_patient(u["id"], p["id"])
+    p, created = db.ensure_patient(u["id"], name)
+    if created:
+        db.log_access(u["id"], "patient_create", p["id"])
+    return p
+
+
+def _auth_or_401(request):
+    u = auth.current_user(request)
+    return u, (None if u else JSONResponse({"error": "não autenticado"}, status_code=401))
 
 
 @app.post("/prontuario/list")
 async def prontuario_list(request: Request):
-    u = auth.current_user(request)
-    if not u:
-        return JSONResponse({"error": "não autenticado"}, status_code=401)
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
-    p = _note_patient(u, payload)
+    """Prontuário do paciente: cadastro completo + evoluções (com finalização e adendos)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    p = _note_patient(u, await _json(request))
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
-    return {"patient": {"id": p["id"], "name": p["name"]},
-            "notes": db.list_notes(u["id"], p["id"], p["key"])}
+    db.log_access(u["id"], "view", p["id"], dedupe_minutes=10)
+    pub = {k: v for k, v in p.items() if k != "key"}
+    return {"patient": pub, "notes": db.list_notes(u["id"], p["id"], p["key"])}
 
 
 @app.post("/prontuario/notes")
 async def prontuario_save(request: Request):
-    u = auth.current_user(request)
-    if not u:
-        return JSONResponse({"error": "não autenticado"}, status_code=401)
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
+    """Salva a evolução da consulta (ou avulsa). Finalizada → 409; grande demais → 413."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    payload = await _json(request)
     p = _note_patient(u, payload)
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
-    db.touch_patient(u["id"], p["id"])
-    content = (payload.get("content") or "")[:MAX_NOTE_CHARS]
-    start = _iso_or_none(payload.get("event_start"))
+    content = str(payload.get("content") or "")
+    if len(content) > MAX_NOTE_CHARS:
+        return JSONResponse({"error": f"evolução maior que {MAX_NOTE_CHARS} caracteres"}, status_code=413)
+    data = _note_data(payload.get("data")) if payload.get("data") is not None else None
+    if payload.get("data") is not None and data is None:
+        return JSONResponse({"error": "evolução estruturada grande demais"}, status_code=413)
     note_id = payload.get("note_id")
-    nid = db.upsert_note(u["id"], p["id"], p["key"], p["name"],
-                         (payload.get("event_id") or None), (payload.get("event_title") or "")[:300] or None,
-                         start, content, note_id=int(note_id) if str(note_id or "").isdigit() else None)
+    try:
+        nid = db.upsert_note(u["id"], p["id"], p["key"], p["name"],
+                             (payload.get("event_id") or None), (payload.get("event_title") or "")[:300] or None,
+                             _iso_or_none(payload.get("event_start")), content,
+                             note_id=int(note_id) if str(note_id or "").isdigit() else None, data=data)
+    except db.NoteLocked:
+        return JSONResponse({"error": "evolução finalizada: use um adendo"}, status_code=409)
+    db.touch_patient(u["id"], p["id"])
+    db.log_access(u["id"], "note_edit", p["id"], nid, dedupe_minutes=10)
     return {"ok": True, "id": nid}
+
+
+@app.patch("/prontuario/notes/{note_id}")
+async def prontuario_note_update(note_id: int, request: Request):
+    """Edita uma evolução anterior ainda não finalizada."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    payload = await _json(request)
+    content = str(payload.get("content") or "")
+    if len(content) > MAX_NOTE_CHARS:
+        return JSONResponse({"error": f"evolução maior que {MAX_NOTE_CHARS} caracteres"}, status_code=413)
+    data = _note_data(payload.get("data")) if payload.get("data") is not None else None
+    n = db.get_note(u["id"], note_id)
+    if not n:
+        return JSONResponse({"error": "evolução não encontrada"}, status_code=404)
+    if db.update_note(u["id"], note_id, content, data) is False:
+        return JSONResponse({"error": "evolução finalizada: use um adendo"}, status_code=409)
+    db.log_access(u["id"], "note_edit", n["patient_id"], note_id, dedupe_minutes=10)
+    return {"ok": True, "id": note_id}
+
+
+@app.post("/prontuario/notes/{note_id}/finalize")
+def prontuario_note_finalize(note_id: int, request: Request):
+    """Finaliza a evolução (registro imutável; correções só por adendo)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    n = db.get_note(u["id"], note_id)
+    if not n:
+        return JSONResponse({"error": "evolução não encontrada"}, status_code=404)
+    signed = db.finalize_note(u["id"], note_id)
+    if not signed:
+        return JSONResponse({"error": "evolução vazia não pode ser finalizada"}, status_code=400)
+    db.log_access(u["id"], "note_finalize", n["patient_id"], note_id)
+    return {"ok": True, "signed_at": signed}
+
+
+@app.post("/prontuario/notes/{note_id}/addenda")
+async def prontuario_note_addendum(note_id: int, request: Request):
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    content = str((await _json(request)).get("content") or "").strip()
+    if not content:
+        return JSONResponse({"error": "adendo vazio"}, status_code=400)
+    if len(content) > MAX_NOTE_CHARS:
+        return JSONResponse({"error": "adendo grande demais"}, status_code=413)
+    n = db.get_note(u["id"], note_id)
+    a = db.add_addendum(u["id"], note_id, content) if n else None
+    if not a:
+        return JSONResponse({"error": "só evoluções finalizadas recebem adendo"}, status_code=400)
+    db.log_access(u["id"], "addendum", n["patient_id"], note_id)
+    return {"ok": True, "addendum": a}
+
+
+@app.post("/prontuario/visits")
+async def prontuario_visits(request: Request):
+    """Consultas do paciente no calendário (anteriores e próximas) com a situação da evolução."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    payload = await _json(request)
+    pid = payload.get("patient_id")
+    p = db.get_patient(u["id"], int(pid)) if str(pid or "").isdigit() else None
+    if not p:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    connected = db.connected_providers(u["id"])
+    if not connected:
+        return {"connected": False, "visits": []}
+    prov = "google" if "google" in connected else next(iter(connected))
+    visits = integrations.patient_events(u["id"], prov, p["id"], p["name"])
+    notes = db.notes_by_event(u["id"], [v["id"] for v in visits])
+    for v in visits:
+        v["note"] = notes.get(v["id"])
+    return {"connected": True, "visits": visits}
+
+
+@app.post("/prontuario/audit")
+async def prontuario_audit(request: Request):
+    """Ações feitas só na tela que precisam constar no registro (ex.: exportar/imprimir)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    payload = await _json(request)
+    action = payload.get("action")
+    pid = payload.get("patient_id")
+    if action not in ("export",) or not str(pid or "").isdigit() or not db.get_patient(u["id"], int(pid)):
+        return JSONResponse({"error": "inválido"}, status_code=400)
+    db.log_access(u["id"], action, int(pid))
+    return {"ok": True}
+
+
+@app.post("/prontuario/access")
+async def prontuario_access(request: Request):
+    """Registro de acessos do paciente (quem viu/alterou e quando)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    pid = (await _json(request)).get("patient_id")
+    if not str(pid or "").isdigit() or not db.get_patient(u["id"], int(pid)):
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    return {"access": db.list_access(u["id"], int(pid))}
 
 
 # --- pacientes: o campo "Paciente" da agenda escolhe um existente ou cria um novo ---
 @app.get("/patients")
 def patients_list(request: Request):
     """Lista completa do médico (a busca filtra no navegador; nome nunca vai em URL)."""
-    u = auth.current_user(request)
-    if not u:
-        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    u, err = _auth_or_401(request)
+    if err:
+        return err
     return {"patients": db.list_patients(u["id"])}
 
 
 @app.post("/patients")
 async def patients_create(request: Request):
-    u = auth.current_user(request)
-    if not u:
-        return JSONResponse({"error": "não autenticado"}, status_code=401)
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
-    name = " ".join((payload.get("name") or "").split())[:200]
-    if not db.patient_key(name):
-        return JSONResponse({"error": "nome obrigatório"}, status_code=400)
-    p, created = db.ensure_patient(u["id"], name)
-    return {"ok": True, "patient": p, "created": created}
+    """Cria o paciente. Já existe alguém com o mesmo nome → 409 com os homônimos, a menos que
+    a tela confirme (force=true) que é outra pessoa."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    payload = await _json(request)
+    f, msg = _patient_fields(payload, partial=False)
+    if msg:
+        return JSONResponse({"error": msg}, status_code=400)
+    same = db.find_patients(u["id"], f["name"])
+    if same and not payload.get("force"):
+        return JSONResponse({"error": "já existe paciente com esse nome", "duplicates":
+                             [{"id": x["id"], "name": x["name"], "birth_date": x["birth_date"]} for x in same]},
+                            status_code=409)
+    p = db.create_patient(u["id"], f["name"], f.get("birth_date"), f.get("sex"), f.get("cpf"), f.get("phone"))
+    db.log_access(u["id"], "patient_create", p["id"])
+    return {"ok": True, "patient": {k: v for k, v in p.items() if k != "key"}, "created": True}
 
 
 @app.patch("/patients/{patient_id}")
-async def patients_rename(patient_id: int, request: Request):
-    u = auth.current_user(request)
-    if not u:
-        return JSONResponse({"error": "não autenticado"}, status_code=401)
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
-    name = " ".join((payload.get("name") or "").split())[:200]
-    if not db.patient_key(name):
-        return JSONResponse({"error": "nome obrigatório"}, status_code=400)
-    ok = db.rename_patient(u["id"], patient_id, name)
-    if ok is None:
+async def patients_update(patient_id: int, request: Request):
+    """Atualiza cadastro e/ou resumo clínico (alergias, problemas, medicações)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    f, msg = _patient_fields(await _json(request))
+    if msg:
+        return JSONResponse({"error": msg}, status_code=400)
+    p = db.update_patient(u["id"], patient_id, f)
+    if not p:
         return JSONResponse({"error": "paciente não encontrado"}, status_code=404)
-    if not ok:
-        return JSONResponse({"error": "já existe um paciente com esse nome"}, status_code=409)
-    return {"ok": True, "patient": {"id": patient_id, "name": name}}
+    db.log_access(u["id"], "patient_update", patient_id)
+    return {"ok": True, "patient": {k: v for k, v in p.items() if k != "key"}}
 
 
 @app.delete("/patients/{patient_id}")
 def patients_delete(patient_id: int, request: Request):
     """Só exclui cadastro sem prontuário (anotações clínicas são guardadas)."""
-    u = auth.current_user(request)
-    if not u:
-        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    u, err = _auth_or_401(request)
+    if err:
+        return err
     r = db.delete_patient(u["id"], patient_id)
     if r == "not_found":
         return JSONResponse({"error": "paciente não encontrado"}, status_code=404)

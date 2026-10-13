@@ -209,6 +209,43 @@ def delete_event(user_id, provider, event_id):
     return True
 
 
+def patient_events(user_id, provider, patient_id, name=None, time_min=None, time_max=None):
+    """Consultas de um paciente no calendário: as ligadas ao cadastro (od_patient_id) e, para eventos
+    antigos sem vínculo, as que têm o nome dele no título. Ordenadas por início."""
+    if provider != "google":
+        return []
+    at = _access_token(user_id, provider)
+    if not at:
+        return []
+    hdr = {"Authorization": "Bearer " + at}
+    base = {"singleEvents": "true", "orderBy": "startTime", "maxResults": 250,
+            "timeMin": time_min or (_utcnow() - datetime.timedelta(days=3 * 365)).isoformat(),
+            "timeMax": time_max or (_utcnow() + datetime.timedelta(days=365)).isoformat()}
+    out = {}
+    queries = [dict(base, privateExtendedProperty=f"od_patient_id={patient_id}")]
+    if name:
+        queries.append(dict(base, q=name))
+    for params in queries:
+        try:
+            r = httpx.get(_event_url("google"), headers=hdr, timeout=25, params=params)
+            items = r.json().get("items", []) if r.status_code == 200 else []
+        except Exception:
+            items = []
+        for e in items:
+            pid = _patient_id(e)
+            if pid and pid != patient_id:                 # mesmo nome, outro paciente (homônimo)
+                continue
+            if not pid and name and name.casefold() not in (e.get("summary") or "").casefold():
+                continue
+            st, en = e.get("start") or {}, e.get("end") or {}
+            out[e.get("id")] = {"id": e.get("id"), "title": e.get("summary") or "(sem título)",
+                                "start": st.get("dateTime") or st.get("date"),
+                                "end": en.get("dateTime") or en.get("date"),
+                                "allDay": "date" in st and "dateTime" not in st,
+                                "location": e.get("location") or "", "linked": bool(pid)}
+    return sorted(out.values(), key=lambda v: v["start"] or "")
+
+
 def status(user_id):
     """Estado das integrações do usuário (ou tudo desconectado se None)."""
     connected = db.connected_providers(user_id) if user_id else {}
