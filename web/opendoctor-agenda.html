@@ -306,6 +306,7 @@
       .pr-trow{grid-template-columns:minmax(110px,1fr) minmax(0,1fr) 116px}
       .pr-trow .pr-tloc{display:none}
       .pr-bigcard{padding:18px 20px 20px}
+      .pr-tabs{gap:24px}                                   /* 6 abas cabem sem rolar */
     }
     @container pr (max-width:520px){
       .pr-head{flex-wrap:wrap}
@@ -318,7 +319,7 @@
       @page{margin:16mm}
       body{background:#fff}
       .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.pr-foot,.pr-chipin,.pr-tabs,
-      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=acessos],.pr-link,#prForm{display:none!important}
+      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=acessos],.pr-panel[data-panel=prescricoes],.pr-link,#prForm{display:none!important}
       .stage,.center{display:block!important;position:static!important;height:auto!important;overflow:visible!important}
       .pr-view{display:block!important;position:static!important;overflow:visible!important;padding:0!important}
       .pr{max-width:none!important}
@@ -859,6 +860,7 @@
             <div class="pr-tabs" id="prTabs" role="tablist">
               <button type="button" role="tab" data-tab="atual" class="on">Consulta atual</button>
               <button type="button" role="tab" data-tab="resumo">Resumo clínico</button>
+              <button type="button" role="tab" data-tab="prescricoes">Prescrições</button>
               <button type="button" role="tab" data-tab="consultas">Consultas</button>
               <button type="button" role="tab" data-tab="historico">Histórico</button>
               <button type="button" role="tab" data-tab="acessos">Acessos</button>
@@ -937,6 +939,20 @@
                 <div class="pr-sumcol" data-k="allergies"><div class="pr-sumhead">Alergias</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar alergia" autocomplete="off"></div>
                 <div class="pr-sumcol" data-k="problems"><div class="pr-sumhead">Problemas ativos</div><div class="pr-chips" data-empty="Nenhum registrado"></div><input class="pr-chipin" placeholder="Adicionar problema" autocomplete="off"></div>
                 <div class="pr-sumcol" data-k="medications"><div class="pr-sumhead">Medicações em uso</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar medicação" autocomplete="off"></div>
+              </div>
+            </section>
+
+            <!-- Prescrições: espaço reservado para o módulo próprio de prescrição (próxima etapa) -->
+            <section class="pr-panel" data-panel="prescricoes" hidden>
+              <div class="pr-bigcard">
+                <div class="pr-cardhead">
+                  <div>
+                    <div class="pr-h2">Prescrições</div>
+                    <div class="pr-cardsub">Receitas emitidas para este paciente</div>
+                  </div>
+                  <button class="pr-save" type="button" disabled title="Prescrição — em breve">Nova prescrição</button>
+                </div>
+                <div class="pr-empty">Nenhuma prescrição emitida. <span class="pr-rec-chip">Em breve</span></div>
               </div>
             </section>
 
