@@ -2323,7 +2323,9 @@
             var d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()), d1 = new Date(d0); d1.setDate(d0.getDate() + 1);
             var a = Math.max(s.getTime(), d0.getTime()), b = Math.min(e.getTime(), d1.getTime());
             if (b <= a) return;
-            var top = (a - d0.getTime()) / 36e5 * WK_PX, hgt = Math.max((b - a) / 36e5 * WK_PX - 1, 24);
+            // 1px de folga das linhas da grade em cima e embaixo (como nas laterais): a linha da hora fica no
+            // pixel 142*h da coluna → evento começa 2px abaixo dela e termina 2px antes da linha seguinte
+            var top = (a - d0.getTime()) / 36e5 * WK_PX + 2, hgt = Math.max((b - a) / 36e5 * WK_PX - 3, 24);
             var box = el('div', 'wk-ev' + (hgt < 60 ? ' short' : '')); box.style.top = top + 'px'; box.style.height = hgt + 'px';
             box.setAttribute('data-evkey', evKey(ev)); window.__evData[evKey(ev)] = ev;
             if (evKey(ev) === window.__selEv) box.classList.add('sel');
