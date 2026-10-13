@@ -755,11 +755,11 @@
       <div class="ag-head">
         <div class="cal-head" id="calHead"><span class="date">Seg, 30 Junho</span></div>
         <div class="ag-actions hd-actions">
-          <button class="hd-btn" id="agCreate" type="button" title="Criar evento" aria-label="Criar evento"><img src="assets/icons/agenda-add.svg?v=2" width="36" height="36" alt=""></button>
-          <button class="hd-btn" id="calBtn" type="button" title="Escolher data" aria-label="Escolher data" aria-haspopup="true"><img src="assets/icons/agenda-calendar.svg?v=2" width="36" height="36" alt=""></button>
-          <button class="hd-btn" id="viewSel" type="button" title="Mudar para Semana" aria-label="Mudar para Semana"><img id="viewIcon" src="assets/icons/agenda-day.svg?v=2" width="36" height="36" alt=""></button>
-          <button class="hd-btn" id="agSearch" type="button" title="Buscar consultas" aria-label="Buscar consultas" aria-haspopup="true"><img src="assets/icons/agenda-search.svg?v=2" width="36" height="36" alt=""></button>
-          <button class="hd-btn" id="agExpand" type="button" title="Expandir agenda" aria-label="Expandir agenda"><img src="assets/icons/chat-expand.svg?v=2" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="agCreate" type="button" title="Criar evento" aria-label="Criar evento"><img src="assets/icons/agenda-add.svg?v=3" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="calBtn" type="button" title="Escolher data" aria-label="Escolher data" aria-haspopup="true"><img src="assets/icons/agenda-calendar.svg?v=3" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="viewSel" type="button" title="Mudar para Semana" aria-label="Mudar para Semana"><img id="viewIcon" src="assets/icons/agenda-day.svg?v=3" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="agSearch" type="button" title="Buscar consultas" aria-label="Buscar consultas" aria-haspopup="true"><img src="assets/icons/agenda-search.svg?v=3" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="agExpand" type="button" title="Expandir agenda" aria-label="Expandir agenda"><img src="assets/icons/chat-expand.svg?v=3" width="36" height="36" alt=""></button>
         </div>
       </div>
       <div class="srch-pop" id="srchPop" hidden>
@@ -1074,9 +1074,9 @@
       <div class="rp-head">
         <span class="rp-title">Assistente AI</span>
         <div class="hd-actions">
-          <button class="hd-btn" id="raNew" type="button" aria-label="Nova conversa" title="Nova conversa"><img src="assets/icons/chat-new.svg?v=2" width="15" height="15" alt=""></button>
-          <button class="hd-btn" id="raHist" type="button" aria-label="Histórico" title="Histórico"><img class="ic-hist" src="assets/icons/chat-history.svg?v=2" width="19" height="16" alt=""></button>
-          <button class="hd-btn" id="raExpand" type="button" aria-label="Expandir" title="Expandir"><img id="raExpandImg" src="assets/icons/chat-expand.svg?v=2" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="raNew" type="button" aria-label="Nova conversa" title="Nova conversa"><img src="assets/icons/chat-new.svg?v=3" width="15" height="15" alt=""></button>
+          <button class="hd-btn" id="raHist" type="button" aria-label="Histórico" title="Histórico"><img class="ic-hist" src="assets/icons/chat-history.svg?v=3" width="19" height="16" alt=""></button>
+          <button class="hd-btn" id="raExpand" type="button" aria-label="Expandir" title="Expandir"><img id="raExpandImg" src="assets/icons/chat-expand.svg?v=3" width="36" height="36" alt=""></button>
         </div>
       </div>
 
@@ -2266,7 +2266,7 @@
       var grid = document.getElementById('wkGrid');
       var wk = document.getElementById('wk');
       if (!stage || !sel || !grid) return;
-      var ICON_V = 2;                                     // versão dos ícones (= ?v= no HTML): muda quando um ícone muda
+      var ICON_V = 3;                                     // versão dos ícones (= ?v= no HTML): muda quando um ícone muda
       var WK_PX = 142, WK_FIRST = 0, WK_LAST = 24;         // semana: 142px por hora; rótulo centralizado na linha da hora (Figma 1018:11546)
       var WK_HEAD = 51;                                    // altura do cabeçalho dos dias (= .wk-h)
       var DOWS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
