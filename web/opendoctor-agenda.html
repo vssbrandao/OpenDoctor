@@ -266,12 +266,11 @@
       font-family:var(--disp);color:#071216;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
     .evpop::-webkit-scrollbar{display:none}
     .evpop[hidden]{display:none}
-    .evpop-head{display:flex;align-items:flex-start;gap:8px;padding:6px 0 6px 12px}
-    .evpop-headtxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-    .evpop-kicker{font-weight:500;font-size:12px;line-height:16px;color:#8B8B8B}
-    .evpop-name{border:0;outline:none;background:none;width:100%;padding:0;
-      font-family:var(--disp);font-weight:500;font-size:20px;line-height:28px;color:#071216}
-    .evpop-name::placeholder{color:#B5B5B5}
+    /* todo o texto em Helvetica Now Display 14px; ícones SF Symbols (Medium, 15pt) em #8B8B8B */
+    .evpop-head{display:flex;align-items:center;gap:8px;padding:2px 0 2px 16px;min-height:40px}
+    .evpop-name{flex:1;min-width:0;border:0;outline:none;background:none;padding:0;
+      font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    .evpop-name::placeholder{color:#8B8B8B;font-weight:500}
     .evpop-hbtns{display:flex;align-items:center;gap:2px;flex:none}
     .evpop-close{width:32px;height:32px;border:0;background:none;cursor:pointer;border-radius:10px;
       display:flex;align-items:center;justify-content:center}
@@ -289,8 +288,9 @@
     .evpop-time{width:auto;flex:none;-webkit-appearance:none;appearance:none;cursor:pointer;background:#fff;
       border:1px solid rgba(0,0,0,.08);border-radius:10px;padding:5px 10px}
     .evpop-time:hover,.evpop-time:focus{border-color:rgba(0,0,0,.22)}
-    .evpop-arrow{color:#8B8B8B;font-size:14px;flex:none}
-    .evpop-dur{margin-left:auto;color:#8B8B8B;font-weight:500;font-size:13px;line-height:18px;white-space:nowrap}
+    .evpop-arrow{flex:none;display:flex;align-items:center}
+    .evpop-ico img,.evpop-arrow img,.evpop-close img,.evpop-clear img{display:block}
+    .evpop-dur{margin-left:auto;color:#8B8B8B;font-weight:500;font-size:14px;line-height:20px;white-space:nowrap}
     .evpop-date{position:relative;font-weight:500;font-size:14px;line-height:20px;color:#071216;flex:1}
     .evpop-date input{position:absolute;inset:0;opacity:0;pointer-events:none}
     .evpop-opt{border:0;background:none;width:100%;text-align:left;
@@ -305,7 +305,7 @@
     .evpop-av{width:20px;height:20px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
       font-family:var(--disp);font-weight:500;font-size:9px;line-height:1;letter-spacing:.02em;color:#0842A0}
     .evpop-av.has{background:#D3E3FD}
-    .evpop-av.has svg{display:none}
+    .evpop-av.has img{display:none}
     /* lista de pacientes (escolher um existente ou criar um novo) */
     .evpop-pl{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px;max-height:220px;overflow-y:auto;scrollbar-width:thin}
     .evpop-pl[hidden]{display:none}
@@ -315,18 +315,18 @@
     .evpop-po span:last-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .evpop-po:hover,.evpop-po.on{background:#EDEDED}
     .evpop-po.new{color:#0842A0}
-    .evpop-po.new .evpop-av{background:#fff;font-size:16px;font-weight:400}
+    .evpop-po.new .evpop-av{background:#fff}
     .evpop-clear{width:24px;height:24px;flex:none;border:0;background:none;border-radius:6px;cursor:pointer;
       display:flex;align-items:center;justify-content:center}
     .evpop-clear:hover{background:rgba(0,0,0,.06)}
     .evpop-clear[hidden]{display:none}
-    .evpop-pmsg{padding:6px 12px;font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#8B8B8B}
-    .evpop-desc{display:block;border:0;outline:none;background:none;width:100%;resize:none;min-height:76px;padding:12px;
-      border-radius:12px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .evpop-desc:focus{background:#EDEDED}
+    .evpop-pmsg{padding:6px 12px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
+    .evpop-descrow{align-items:flex-start;padding-top:12px;padding-bottom:12px;cursor:text}
+    .evpop-desc{display:block;flex:1;border:0;outline:none;background:none;width:100%;resize:none;min-height:60px;padding:0;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .evpop-desc::placeholder{color:#8B8B8B;font-weight:400}
     .evpop-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0 0 12px}
-    .evpop-msg{font-size:12px;color:#c5221f;line-height:1.4}
+    .evpop-msg{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#c5221f}
     .evpop-msg.ok{color:#188038}
     .evpop-msg a{color:#0842a0}
     .evpop-create{margin-left:auto;height:40px;padding:0 22px;border:0;border-radius:1000px;flex:none;
@@ -774,53 +774,47 @@
     <!-- Popover: criar evento (abre ao clicar num espaço vazio da agenda) -->
     <div class="evpop" id="evPop" hidden>
       <div class="evpop-head">
-        <div class="evpop-headtxt">
-          <span class="evpop-kicker" id="evKicker">Novo evento</span>
-          <input class="evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off">
-        </div>
+        <input class="evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off">
         <div class="evpop-hbtns">
-          <button class="evpop-close" id="evDelete" type="button" aria-label="Excluir evento" title="Excluir evento" hidden>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 4h11M6.2 4V2.6h3.6V4M4 4l.7 9.2a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L12 4M6.6 6.6v4.6M9.4 6.6v4.6" stroke="#8B8B8B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </button>
-          <button class="evpop-close" id="evClose" type="button" aria-label="Fechar" title="Fechar">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5l11 11M12.5 1.5l-11 11" stroke="#8B8B8B" stroke-width="1.5" stroke-linecap="round"/></svg>
-          </button>
+          <button class="evpop-close" id="evDelete" type="button" aria-label="Excluir evento" title="Excluir evento" hidden><img src="assets/icons/sf-trash.svg?v=2" width="14.18" height="16.31" alt=""></button>
+          <button class="evpop-close" id="evClose" type="button" aria-label="Fechar" title="Fechar"><img src="assets/icons/sf-xmark.svg?v=2" width="11.61" height="11.61" alt=""></button>
         </div>
       </div>
       <div class="evpop-card">
         <label class="evpop-row click" id="evDateLbl">
-          <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><rect x="2.2" y="3" width="11.6" height="10.8" rx="2.2" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.2 6.4h11.6M5.4 1.8v2.4M10.6 1.8v2.4" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="evpop-ico"><img src="assets/icons/sf-calendar.svg?v=2" width="14.6" height="13.48" alt=""></span>
           <span class="evpop-date"><span id="evDateTxt"></span><input id="evDate" type="date" aria-label="Data"></span>
         </label>
         <div class="evpop-row evpop-times">
-          <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.2" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 4.8V8l2.1 1.3" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="evpop-ico"><img src="assets/icons/sf-clock.svg?v=2" width="14.94" height="14.94" alt=""></span>
           <select class="evpop-input evpop-time" id="evStart" aria-label="Início"></select>
-          <span class="evpop-arrow">→</span>
+          <span class="evpop-arrow"><img src="assets/icons/sf-arrow-right.svg?v=2" width="12" height="9.79" alt=""></span>
           <select class="evpop-input evpop-time" id="evEnd" aria-label="Fim"></select>
           <span class="evpop-dur" id="evDur"></span>
         </div>
         <button class="evpop-row click evpop-opt" id="evAllDay" type="button" aria-pressed="false">
-          <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2.6" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 1.6v1.3M8 13.1v1.3M1.6 8h1.3M13.1 8h1.3M3.5 3.5l.9.9M11.6 11.6l.9.9M3.5 12.5l.9-.9M11.6 4.4l.9-.9" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="evpop-ico"><img src="assets/icons/sf-sun.svg?v=2" width="15.84" height="15.89" alt=""></span>
           <span>Dia todo</span><span class="evpop-switch" aria-hidden="true"></span>
         </button>
       </div>
       <div class="evpop-card">
         <div class="evpop-row">
-          <span class="evpop-ico"><span class="evpop-av" id="evAv"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.4" r="2.6" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13.6c0-2.4 2.2-4 5-4s5 1.6 5 4" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="evAvTxt"></span></span></span>
+          <span class="evpop-ico"><span class="evpop-av" id="evAv"><img src="assets/icons/sf-person.svg?v=2" width="12.8" height="13.56" alt=""><span id="evAvTxt"></span></span></span>
           <input class="evpop-input" id="evPatient" type="text" placeholder="Paciente" autocomplete="off"
                  role="combobox" aria-autocomplete="list" aria-controls="evPList" aria-expanded="false">
-          <button class="evpop-clear" id="evPClear" type="button" aria-label="Remover paciente" title="Remover paciente" hidden>
-            <svg width="10" height="10" viewBox="0 0 14 14" fill="none"><path d="M1.5 1.5l11 11M12.5 1.5l-11 11" stroke="#8B8B8B" stroke-width="1.8" stroke-linecap="round"/></svg>
-          </button>
+          <button class="evpop-clear" id="evPClear" type="button" aria-label="Remover paciente" title="Remover paciente" hidden><img src="assets/icons/sf-xmark.svg?v=2" width="9" height="9" alt=""></button>
         </div>
         <div class="evpop-pl" id="evPList" role="listbox" hidden></div>
         <div class="evpop-row">
-          <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 14.2s4.6-4.1 4.6-7.6A4.6 4.6 0 0 0 3.4 6.6c0 3.5 4.6 7.6 4.6 7.6z" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="6.6" r="1.7" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="evpop-ico"><img src="assets/icons/sf-mappin.svg?v=2" width="13.91" height="16.08" alt=""></span>
           <input class="evpop-input" id="evLocation" type="text" placeholder="Local" autocomplete="off">
         </div>
       </div>
       <div class="evpop-card">
-        <textarea class="evpop-desc" id="evDesc" rows="3" placeholder="Adicionar descrição"></textarea>
+        <label class="evpop-row evpop-descrow">
+          <span class="evpop-ico"><img src="assets/icons/sf-text-alignleft.svg?v=2" width="14.76" height="12.68" alt=""></span>
+          <textarea class="evpop-desc" id="evDesc" rows="3" placeholder="Adicionar descrição"></textarea>
+        </label>
       </div>
       <div class="evpop-foot">
         <div class="evpop-msg" id="evMsg" hidden></div>
@@ -1112,7 +1106,7 @@
       // ===== paciente: escolher um do cadastro ou criar um novo (ligado ao prontuário dele) =====
       // A lista vem inteira de GET /patients e é filtrada aqui (o nome nunca vai em URL).
       var elAv = document.getElementById('evAv'), elAvTxt = document.getElementById('evAvTxt');
-      var elKicker = document.getElementById('evKicker'), elPList = document.getElementById('evPList');
+      var elPList = document.getElementById('evPList');
       var selPatient = null;                                 // {id, name}; id null = evento antigo só com o nome
       var patients = null, patientsAt = 0, plItems = [], plActive = -1;
       function pnorm(v) { return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' '); }
@@ -1152,7 +1146,9 @@
       function option(cls, avHtml, label, onPick) {
         var b = document.createElement('button'); b.type = 'button'; b.className = 'evpop-po' + (cls ? ' ' + cls : '');
         b.setAttribute('role', 'option');
-        var av = document.createElement('span'); av.className = 'evpop-av has'; av.textContent = avHtml;
+        var av = document.createElement('span'); av.className = 'evpop-av has';
+        if (avHtml === '+') av.innerHTML = '<img src="assets/icons/sf-plus.svg?v=2" width="10" height="10" alt="">';
+        else av.textContent = avHtml;
         var t = document.createElement('span'); t.textContent = label;
         b.appendChild(av); b.appendChild(t);
         b.addEventListener('mousedown', function (e) { e.preventDefault(); });   // não tira o foco do campo
@@ -1237,7 +1233,6 @@
         selPatient = null; hideList(); loadPatients(true);   // sempre fresca (pode ter mudado na tela Pacientes)
         seq++;
         remember(); durLabel(); dateLabel(); avatar();
-        elKicker.textContent = 'Novo evento';
         pop.hidden = false;
         // posiciona perto do clique, sem sair da tela
         var w = POP_W, ph = pop.offsetHeight || 420;
@@ -1339,7 +1334,6 @@
           avatar();
         });
         delete elDur.dataset.min; remember(); durLabel(); dateLabel(); avatar();
-        elKicker.textContent = 'Evento';
         original = JSON.stringify(buildPayload());
         elDel.hidden = !(ev.id && window.__calConnected);
         elCreate.disabled = false; elCreate.textContent = 'Prontuário';
