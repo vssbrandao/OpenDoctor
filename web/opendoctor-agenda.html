@@ -76,50 +76,190 @@
     .srch-msg{padding:8px 12px;font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#8B8B8B}
     .srch-msg a{color:#0842a0}
 
-    /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) ===== */
-    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:42px 24px 48px;
+    /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) =====
+       coluna de 700px; texto Helvetica Now 14px; blocos cinza (#F6F6F6) como na janela de evento */
+    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:32px 24px 64px;
       background:#fff;z-index:5;scrollbar-width:thin}
     .stage.prontuario .pr-view{display:flex}
     .stage.prontuario .ag-head,.stage.prontuario .cal,.stage.prontuario .wk{display:none}
-    .pr{width:700px;max-width:100%;height:max-content;display:flex;flex-direction:column;gap:32px}
-    .pr-back{align-self:flex-start;border:0;background:none;padding:0;cursor:pointer;
+    .pr{width:700px;max-width:100%;height:max-content;display:flex;flex-direction:column;gap:24px}
+    #prMain{display:flex;flex-direction:column;gap:28px}
+    #prMain[hidden]{display:none}
+    .pr-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .pr-tools{display:flex;gap:4px}
+    .pr-back{border:0;background:none;padding:0;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
     .pr-back:hover{color:#071216}
+    .pr-ghost{height:32px;padding:0 14px;border:0;border-radius:1000px;background:none;cursor:pointer;white-space:nowrap;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-ghost:hover{background:rgba(0,0,0,.05);color:#071216}
+    .pr-ghost:disabled{opacity:.4;cursor:default;background:none}
+    .pr-ghost[hidden]{display:none}
     .pr-head{display:flex;align-items:center;gap:16px}
     .pr-avatar{width:60px;height:48px;flex:none;border-radius:999px;background:#D3E3FD;color:#0842A0;
       display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:500;font-size:14px}
-    .pr-name{font-family:var(--disp);font-weight:700;font-size:20px;line-height:26px;color:#071216}
+    .pr-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+    .pr-name{font-family:var(--disp);font-weight:700;font-size:20px;line-height:26px;color:#071216;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .pr-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-label{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216;margin-bottom:12px}
-    .pr-card{background:#F3F3F3;border-radius:24px;padding:24px;display:flex;flex-direction:column;gap:4px}
+    .pr-link{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:#0842A0}
+    .pr-link:hover{text-decoration:underline}
+    .pr-link.warn{color:#B3261E}
+    #prEditBtn::before{content:'· ';color:#666C6F}          /* separador some junto com o link na impressão */
+    .pr-visit{display:flex;align-items:center;gap:12px;flex:none}
+    .pr-visit[hidden]{display:none}
+    .pr-timer{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#FF5500;font-variant-numeric:tabular-nums}
+    .pr-allergy{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:16px;background:#FCEEEE;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#B3261E}
+    .pr-allergy[hidden]{display:none}
+    .pr-allergy img{flex:none;display:block}
+    .pr-label{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    .pr-section{display:flex;flex-direction:column;gap:12px}
+    .pr-section[hidden]{display:none}
+    .pr-sechead{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .pr-card{background:#F6F6F6;border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:4px}
     .pr-card-title{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .pr-card-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .pr-note{width:100%;min-height:220px;resize:vertical;border:1px solid rgba(26,26,26,.08);border-radius:24px;
-      padding:20px 24px;outline:none;background:#fff;
+    .pr-card-sub[hidden]{display:none}
+    /* cadastro */
+    .pr-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .pr-form[hidden]{display:none}
+    .pr-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .pr-field.wide{grid-column:1 / -1}
+    .pr-field span{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-in{height:40px;border:1px solid rgba(0,0,0,.08);border-radius:10px;background:#fff;padding:0 12px;outline:none;width:100%;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .pr-in:focus{border-color:rgba(0,0,0,.25)}
+    .pr-in::placeholder{color:#B5B5B5;font-weight:400}
+    .pr-formfoot{grid-column:1 / -1;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+    .pr-err{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#c5221f;margin-right:auto}
+    .pr-err[hidden]{display:none}
+    /* resumo clínico: alergias, problemas ativos, medicações em uso */
+    .pr-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .pr-sumcol{background:#F6F6F6;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+    .pr-sumhead{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-chips{display:flex;flex-wrap:wrap;gap:6px}
+    .pr-chips:empty::before{content:attr(data-empty);font-family:var(--disp);font-weight:500;font-size:14px;color:#B5B5B5}
+    .pr-chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:4px 6px 4px 10px;border-radius:14px;background:#fff;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+    .pr-chip.red{background:#FCEEEE;color:#B3261E;box-shadow:none}
+    .pr-chip span{white-space:normal;overflow-wrap:anywhere}          /* texto longo quebra linha, não corta */
+    .pr-chip button{width:18px;height:18px;flex:none;border:0;background:none;border-radius:50%;cursor:pointer;padding:0;
+      display:flex;align-items:center;justify-content:center;opacity:.55}
+    .pr-chip button:hover{opacity:1;background:rgba(0,0,0,.06)}
+    .pr-chipin{border:0;outline:none;background:none;padding:0;width:100%;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .pr-chipin::placeholder{color:#8B8B8B;font-weight:400}
+    /* evolução */
+    .pr-seg{display:inline-flex;background:#F3F3F3;border-radius:999px;padding:3px}
+    .pr-seg[hidden]{display:none}
+    .pr-seg button{border:0;background:none;border-radius:999px;padding:4px 14px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-seg button.on{background:#fff;color:#071216;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+    .pr-rec{display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-radius:16px;
+      border:1px dashed rgba(0,0,0,.14)}
+    .pr-rec[hidden]{display:none}
+    .pr-rec-ico{width:36px;height:36px;flex:none;border-radius:50%;background:#F3F3F3;display:flex;align-items:center;justify-content:center}
+    .pr-rec-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+    .pr-rec-t{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .pr-rec-s{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
+    .pr-note,.pr-soapf textarea{width:100%;min-height:220px;resize:vertical;border:1px solid rgba(26,26,26,.08);border-radius:20px;
+      padding:16px 20px;outline:none;background:#fff;
       font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#0D0D0D}
-    .pr-note::placeholder{color:#A3A3A3}
-    .pr-note:focus{border-color:rgba(26,26,26,.2)}
-    .pr-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
-    .pr-status{font-family:var(--disp);font-size:13px;line-height:18px;color:#8B8B8B}
+    .pr-note::placeholder,.pr-soapf textarea::placeholder{color:#A3A3A3}
+    .pr-note:focus,.pr-soapf textarea:focus{border-color:rgba(26,26,26,.22)}
+    .pr-soap{display:flex;flex-direction:column;gap:16px}
+    .pr-soap[hidden],#prFree[hidden]{display:none}
+    .pr-soapf{display:flex;flex-direction:column;gap:6px}
+    .pr-soapf > span{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-soapf textarea{min-height:88px}
+    .pr-vitals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+    .pr-vital{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .pr-vital span{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;white-space:nowrap}
+    .pr-vital .pr-in{padding:0 10px}
+    .pr-pa{display:flex;align-items:center;gap:4px}
+    .pr-pa .pr-in{min-width:0}
+    .pr-imc{height:40px;display:flex;align-items:center;padding:0 10px;border-radius:10px;background:#F3F3F3;
+      font-family:var(--disp);font-weight:500;font-size:14px;color:#071216}
+    .pr-cid{display:flex;flex-direction:column;gap:8px}
+    .pr-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pr-foot[hidden]{display:none}
+    .pr-status{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B;margin-right:auto}
     .pr-status.err{color:#c5221f}
+    .pr-count{font-family:var(--disp);font-weight:500;font-size:14px;color:#8B8B8B}
+    .pr-count.err{color:#c5221f}
+    .pr-count[hidden]{display:none}
     .pr-save{height:36px;padding:0 20px;border:1px solid rgba(0,0,0,.1);border-radius:1000px;background:#000;color:#fff;
-      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:12px;letter-spacing:-.02em}
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;white-space:nowrap}
     .pr-save:hover{background:#222}
-    .pr-head{justify-content:flex-start}
-    .pr-visit{margin-left:auto;display:flex;align-items:center;gap:12px}
-    .pr-timer{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#FF5500;font-variant-numeric:tabular-nums}
     .pr-save.live{background:#fff;color:#000}
     .pr-save.live:hover{background:#f7f7f7}
     .pr-save:disabled{opacity:.5;cursor:default}
+    .pr-save[hidden]{display:none}
+    /* evolução finalizada (somente leitura) e adendos */
+    .pr-locked{display:flex;flex-direction:column;gap:12px}
+    .pr-locked[hidden]{display:none}
+    .pr-signed{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0F7B3F}
+    .pr-body{font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#0D0D0D;white-space:pre-wrap;word-wrap:break-word}
+    .pr-add{border-left:2px solid #E3E3E3;padding:2px 0 2px 12px;display:flex;flex-direction:column;gap:2px}
+    .pr-add-h{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
+    .pr-add-b{font-family:var(--disp);font-weight:400;font-size:14px;line-height:22px;color:#0D0D0D;white-space:pre-wrap;word-wrap:break-word}
+    .pr-addbox{display:flex;flex-direction:column;gap:8px}
+    .pr-addbox[hidden]{display:none}
+    .pr-addbox textarea{width:100%;min-height:72px;resize:vertical;border:1px solid rgba(26,26,26,.12);border-radius:14px;padding:10px 14px;outline:none;
+      font-family:var(--disp);font-weight:400;font-size:14px;line-height:22px;color:#0D0D0D}
+    .pr-addbox .pr-foot{justify-content:flex-end}
+    /* consultas do paciente */
+    .pr-visits{display:flex;flex-direction:column;gap:2px}
+    .pr-vgroup{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B;padding:8px 0 4px}
+    .pr-vrow{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;cursor:pointer;border:0;background:none;
+      text-align:left;width:100%}
+    .pr-vrow:hover{background:#F6F6F6}
+    .pr-vrow.cur{background:#EEF3FD}
+    .pr-vdate{width:190px;flex:none;white-space:nowrap;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .pr-vtitle{flex:1;min-width:0;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pr-badge{flex:none;padding:2px 10px;border-radius:999px;background:#F3F3F3;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;white-space:nowrap}
+    .pr-badge.ok{background:#E7F5EC;color:#0F7B3F}
+    .pr-badge.draft{background:#FFF3E0;color:#A35200}
+    .pr-badge.cur{background:#D3E3FD;color:#0842A0}
+    /* histórico de evoluções */
     .pr-hist{display:flex;flex-direction:column}
-    .pr-item{padding:16px 0;border-top:1px solid rgba(26,26,26,.08)}
-    .pr-item:first-child{border-top:0;padding-top:0}
-    .pr-item-head{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#666C6F;margin-bottom:6px}
+    .pr-item{padding:16px 0;border-top:1px solid rgba(26,26,26,.08);display:flex;flex-direction:column;gap:8px}
+    .pr-item:first-child{border-top:0;padding-top:4px}
+    .pr-item[hidden]{display:none}
+    .pr-item-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pr-item-when{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F;margin-right:auto}
     .pr-item-body{font-family:var(--disp);font-size:14px;line-height:22px;color:#0D0D0D;white-space:pre-wrap;word-wrap:break-word}
-    .pr-empty{font-family:var(--disp);font-size:14px;line-height:20px;color:#8B8B8B}
+    .pr-item-body.clamp{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+    .pr-item-acts{display:flex;gap:4px;flex-wrap:wrap;margin-left:-14px}   /* texto do botão alinhado com o da nota */
+    .pr-histq{width:220px}
+    .pr-empty{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#8B8B8B}
+    .pr-empty a{color:#0842a0}
     .pr-msg{font-family:var(--disp);font-size:16px;line-height:26px;color:#0D0D0D}
     .pr-msg a{color:#0842a0}
-
+    .pr-acc{display:flex;gap:12px;padding:6px 0;border-top:1px solid rgba(26,26,26,.06);
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .pr-acc:first-child{border-top:0}
+    .pr-acc b{font-weight:500;color:#071216;width:150px;flex:none}
+    @media (max-width:1100px){.pr-sum{grid-template-columns:1fr}.pr-vitals{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    .pr-printcur{display:none}
+    /* exportar/imprimir: só o prontuário, tudo expandido */
+    @media print{
+      @page{margin:16mm}
+      body{background:#fff}
+      .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.pr-foot,.pr-chipin,
+      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),#prAccess,.pr-link,#prForm{display:none!important}
+      .stage,.center{display:block!important;position:static!important;height:auto!important;overflow:visible!important}
+      .pr-view{display:block!important;position:static!important;overflow:visible!important;padding:0!important}
+      .pr{width:auto!important}
+      .pr-item-body.clamp{display:block!important;-webkit-line-clamp:unset!important}
+      #prFree,#prSoap{display:none!important}
+      .pr-printcur{display:block!important}
+      .pr-sumcol,.pr-card,.pr-allergy{break-inside:avoid}
+      .pr-item{break-inside:avoid}
+    }
     /* ===== PACIENTES (cadastro; clicar abre o prontuário do paciente) ===== */
     .pt-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:42px 24px 48px;
       background:#fff;z-index:4;scrollbar-width:thin}
@@ -134,6 +274,8 @@
     .pt-new input{flex:1;border:0;outline:none;background:none;font-family:var(--disp);font-weight:500;font-size:14px;
       line-height:20px;color:#071216}
     .pt-new input::placeholder{color:#8B8B8B;font-weight:400}
+    .pt-new .pt-newbirth,.pt-new .pt-newsex{flex:none;width:auto;height:36px;border:1px solid rgba(0,0,0,.08);border-radius:10px;background:#fff;
+      padding:0 10px;font-family:var(--disp);font-weight:500;font-size:14px;color:#071216;outline:none}
     .pt-ghost{height:36px;padding:0 16px;border:0;border-radius:1000px;background:none;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:12px;color:#666C6F}
     .pt-ghost:hover{background:rgba(0,0,0,.05)}
@@ -553,20 +695,57 @@
       </div>
       <div class="pr-view" id="prView">
         <div class="pr">
-          <button class="pr-back" type="button" id="prBack">‹ Agenda</button>
-        <div class="pr-msg" id="prMsg" hidden></div>
-  
+          <div class="pr-top">
+            <button class="pr-back" type="button" id="prBack">‹ Agenda</button>
+            <div class="pr-tools">
+              <button class="pr-ghost" type="button" id="prAccessBtn" hidden>Acessos</button>
+              <button class="pr-ghost" type="button" id="prExport" hidden>Exportar PDF</button>
+            </div>
+          </div>
+          <div class="pr-msg" id="prMsg" hidden></div>
+
           <div id="prMain" hidden>
-            <div class="pr-head" style="margin-bottom:32px">
-              <div class="pr-avatar" id="prAvatar"></div>
-              <div><div class="pr-name" id="prName"></div><div class="pr-sub">Prontuário</div></div>
-              <div class="pr-visit">
-                <span class="pr-timer" id="prTimer" hidden></span>
-                <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+            <!-- cabeçalho: identificação (separa homônimos) -->
+            <div class="pr-section">
+              <div class="pr-head">
+                <div class="pr-avatar" id="prAvatar"></div>
+                <div class="pr-id">
+                  <div class="pr-name" id="prName"></div>
+                  <div class="pr-sub"><span id="prSub"></span> <button class="pr-link" type="button" id="prEditBtn">Editar cadastro</button></div>
+                </div>
+                <div class="pr-visit" id="prVisitBox">
+                  <span class="pr-timer" id="prTimer" hidden></span>
+                  <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+                </div>
+              </div>
+              <div class="pr-allergy" id="prAllergyBar" hidden><img src="assets/icons/sf-warning.svg?v=2" width="15.35" height="13.92" alt=""><span id="prAllergyTxt"></span></div>
+              <div class="pr-card pr-form" id="prForm" hidden>
+                <label class="pr-field wide"><span>Nome completo</span><input class="pr-in" id="pfName" autocomplete="off" spellcheck="false"></label>
+                <label class="pr-field"><span>Data de nascimento</span><input class="pr-in" id="pfBirth" type="date"></label>
+                <label class="pr-field"><span>Sexo</span>
+                  <select class="pr-in" id="pfSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option></select></label>
+                <label class="pr-field"><span>CPF (opcional)</span><input class="pr-in" id="pfCpf" inputmode="numeric" placeholder="000.000.000-00" autocomplete="off"></label>
+                <label class="pr-field"><span>Telefone (opcional)</span><input class="pr-in" id="pfPhone" inputmode="tel" placeholder="(00) 00000-0000" autocomplete="off"></label>
+                <div class="pr-formfoot">
+                  <span class="pr-err" id="pfErr" hidden></span>
+                  <button class="pr-ghost" type="button" id="pfCancel">Cancelar</button>
+                  <button class="pr-save" type="button" id="pfSave">Salvar</button>
+                </div>
               </div>
             </div>
-  
-            <div style="margin-bottom:32px" id="prConsultaBox">
+
+            <!-- resumo clínico do paciente (vale para todas as consultas) -->
+            <div class="pr-section">
+              <div class="pr-label">Resumo clínico</div>
+              <div class="pr-sum">
+                <div class="pr-sumcol" data-k="allergies"><div class="pr-sumhead">Alergias</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar alergia" autocomplete="off"></div>
+                <div class="pr-sumcol" data-k="problems"><div class="pr-sumhead">Problemas ativos</div><div class="pr-chips" data-empty="Nenhum registrado"></div><input class="pr-chipin" placeholder="Adicionar problema" autocomplete="off"></div>
+                <div class="pr-sumcol" data-k="medications"><div class="pr-sumhead">Medicações em uso</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar medicação" autocomplete="off"></div>
+              </div>
+            </div>
+
+            <!-- consulta aberta -->
+            <div class="pr-section" id="prConsultaBox">
               <div class="pr-label">Consulta</div>
               <div class="pr-card">
                 <div class="pr-card-title" id="prEvTitle"></div>
@@ -574,19 +753,87 @@
                 <div class="pr-card-sub" id="prEvLoc"></div>
               </div>
             </div>
-  
-            <div style="margin-bottom:32px">
-              <div class="pr-label">Evolução</div>
-              <textarea class="pr-note" id="prNote" placeholder="Anamnese, exame físico, hipóteses, conduta…"></textarea>
-              <div class="pr-foot">
+
+            <!-- evolução da consulta (texto livre ou SOAP) -->
+            <div class="pr-section" id="prEvoBox">
+              <div class="pr-sechead">
+                <div class="pr-label" id="prEvoLabel">Evolução</div>
+                <div class="pr-seg" id="prSeg" role="tablist"><button type="button" data-m="free" class="on">Texto livre</button><button type="button" data-m="soap">SOAP</button></div>
+              </div>
+              <!-- espaço reservado: gravação e transcrição da consulta (próxima etapa) -->
+              <div class="pr-rec" id="prRec">
+                <span class="pr-rec-ico"><img src="assets/icons/sf-mic.svg?v=2" width="10.48" height="15.67" alt=""></span>
+                <span class="pr-rec-txt"><span class="pr-rec-t">Gravação da consulta</span><span class="pr-rec-s">Em breve: grave a consulta e receba a evolução pronta para revisar.</span></span>
+                <button class="pr-ghost" type="button" id="prRecBtn" disabled title="Em breve">Gravar</button>
+              </div>
+              <div id="prFree"><textarea class="pr-note" id="prNote" placeholder="Anamnese, exame físico, hipóteses, conduta…"></textarea></div>
+              <div class="pr-soap" id="prSoap" hidden>
+                <label class="pr-soapf"><span>S — Subjetivo</span><textarea data-f="s" placeholder="Queixa, história, sintomas relatados…"></textarea></label>
+                <div class="pr-soapf"><span>O — Objetivo</span>
+                  <div class="pr-vitals">
+                    <label class="pr-vital"><span>PA (mmHg)</span><span class="pr-pa"><input class="pr-in" data-v="pa_s" inputmode="numeric" placeholder="120" autocomplete="off">/<input class="pr-in" data-v="pa_d" inputmode="numeric" placeholder="80" autocomplete="off"></span></label>
+                    <label class="pr-vital"><span>FC (bpm)</span><input class="pr-in" data-v="fc" inputmode="decimal" placeholder="72" autocomplete="off"></label>
+                    <label class="pr-vital"><span>FR (irpm)</span><input class="pr-in" data-v="fr" inputmode="decimal" placeholder="16" autocomplete="off"></label>
+                    <label class="pr-vital"><span>Temp. (°C)</span><input class="pr-in" data-v="temp" inputmode="decimal" placeholder="36,5" autocomplete="off"></label>
+                    <label class="pr-vital"><span>SpO₂ (%)</span><input class="pr-in" data-v="spo2" inputmode="decimal" placeholder="98" autocomplete="off"></label>
+                    <label class="pr-vital"><span>Peso (kg)</span><input class="pr-in" data-v="peso" inputmode="decimal" placeholder="70" autocomplete="off"></label>
+                    <label class="pr-vital"><span>Altura (cm)</span><input class="pr-in" data-v="altura" inputmode="decimal" placeholder="170" autocomplete="off"></label>
+                    <div class="pr-vital"><span>IMC</span><div class="pr-imc" id="prImc">—</div></div>
+                    <label class="pr-vital"><span>Glicemia (mg/dL)</span><input class="pr-in" data-v="glicemia" inputmode="decimal" placeholder="90" autocomplete="off"></label>
+                  </div>
+                  <textarea data-f="o" placeholder="Exame físico, resultados de exames…"></textarea>
+                </div>
+                <div class="pr-soapf"><span>A — Avaliação</span>
+                  <textarea data-f="a" placeholder="Hipóteses diagnósticas, raciocínio clínico…"></textarea>
+                  <div class="pr-cid"><div class="pr-chips" id="prCidChips"></div>
+                    <input class="pr-in" id="prCidIn" placeholder="CID-10: código e descrição (ex.: I10 Hipertensão essencial) e Enter" autocomplete="off"></div>
+                </div>
+                <label class="pr-soapf"><span>P — Plano</span><textarea data-f="p" placeholder="Conduta, prescrições, exames solicitados, retorno…"></textarea></label>
+              </div>
+              <div class="pr-body pr-printcur" id="prPrintCur"></div>
+              <div class="pr-locked" id="prLocked" hidden>
+                <div class="pr-signed" id="prSigned"></div>
+                <div class="pr-body" id="prLockedBody"></div>
+                <div id="prLockedAdds"></div>
+              </div>
+              <div class="pr-foot" id="prEditFoot">
                 <span class="pr-status" id="prStatus"></span>
-                <button class="pr-save" id="prSave" type="button">Salvar</button>
+                <span class="pr-count" id="prCount" hidden></span>
+                <button class="pr-ghost" id="prCopyLast" type="button" hidden>Copiar da última</button>
+                <button class="pr-ghost" id="prSave" type="button">Salvar</button>
+                <button class="pr-save" id="prFinalize" type="button">Finalizar evolução</button>
+              </div>
+              <div class="pr-foot" id="prLockedFoot" hidden>
+                <span class="pr-status"></span>
+                <button class="pr-ghost" id="prAddBtn" type="button">Adicionar adendo</button>
+              </div>
+              <div class="pr-addbox" id="prAddBox" hidden>
+                <textarea id="prAddTxt" placeholder="Adendo: correção ou complemento (fica registrado com data e hora)"></textarea>
+                <div class="pr-foot"><span class="pr-err" id="prAddErr" hidden></span>
+                  <button class="pr-ghost" type="button" id="prAddCancel">Cancelar</button>
+                  <button class="pr-save" type="button" id="prAddSave">Salvar adendo</button></div>
               </div>
             </div>
-  
-            <div>
-              <div class="pr-label">Histórico</div>
+
+            <!-- consultas do paciente na agenda -->
+            <div class="pr-section">
+              <div class="pr-label">Consultas</div>
+              <div class="pr-visits" id="prVisits"></div>
+            </div>
+
+            <!-- histórico de evoluções -->
+            <div class="pr-section">
+              <div class="pr-sechead">
+                <div class="pr-label">Histórico de evoluções</div>
+                <input class="srch-in pr-histq" id="prHistQ" type="search" placeholder="Buscar no histórico" autocomplete="off" spellcheck="false">
+              </div>
               <div class="pr-hist" id="prHist"></div>
+            </div>
+
+            <!-- registro de acessos (LGPD) -->
+            <div class="pr-section" id="prAccess" hidden>
+              <div class="pr-label">Registro de acessos</div>
+              <div id="prAccessList"></div>
             </div>
           </div>
         </div>
@@ -599,6 +846,8 @@
           </div>
           <div class="pt-new" id="ptNewRow" hidden>
             <input id="ptNewName" type="text" placeholder="Nome completo do paciente" autocomplete="off" spellcheck="false">
+            <input id="ptNewBirth" class="pt-newbirth" type="date" title="Data de nascimento" aria-label="Data de nascimento">
+            <select id="ptNewSex" class="pt-newsex" aria-label="Sexo"><option value="">Sexo</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option></select>
             <button class="pt-ghost" id="ptNewCancel" type="button">Cancelar</button>
             <button class="pr-save" id="ptNewSave" type="button">Criar</button>
           </div>
@@ -925,6 +1174,13 @@
     window.__selEv = null;
     window.__evData = {};                                  // chave → evento (p/ preencher a janela)
     function evKey(ev) { return ev.id || ((ev.title || '') + '|' + ev.start); }
+    // idade a partir de AAAA-MM-DD ("54 anos", "8 meses") — diferencia homônimos nas listas
+    function ptAge(bd) {
+      if (!bd) return '';
+      var q = bd.split('-'), b = new Date(+q[0], +q[1] - 1, +q[2]), n = new Date();
+      var m = (n.getFullYear() - b.getFullYear()) * 12 + n.getMonth() - b.getMonth() - (n.getDate() < b.getDate() ? 1 : 0);
+      return m >= 24 ? Math.floor(m / 12) + ' anos' : m <= 0 ? 'recém-nascido' : m === 1 ? '1 mês' : m + ' meses';
+    }
     function applySel() {
       document.querySelectorAll('[data-evkey]').forEach(function (n) {
         n.classList.toggle('sel', n.getAttribute('data-evkey') === window.__selEv);
@@ -1135,10 +1391,11 @@
           .then(function (j) { patients = j.patients || []; patientsAt = Date.now(); return patients; })
           .catch(function () { return patients || []; });
       }
-      function byKey(name) {
+      function sameName(name) {                            // homônimos: todos com esse nome
         var k = pnorm(name);
-        return k && patients ? patients.filter(function (p) { return pnorm(p.name) === k; })[0] : null;
+        return k && patients ? patients.filter(function (p) { return pnorm(p.name) === k; }) : [];
       }
+      function byKey(name) { var l = sameName(name); return l.length === 1 ? l[0] : null; }   // só se não houver dúvida
       function setPatient(p) {
         selPatient = p; elPatient.value = p ? p.name : ''; avatar(); hideList();
       }
@@ -1164,8 +1421,13 @@
           if (!q && hits.length) {
             var h = document.createElement('div'); h.className = 'evpop-pmsg'; h.textContent = 'Pacientes recentes'; elPList.appendChild(h);
           }
-          hits.forEach(function (p) { option('', initialsOf(p.name), p.name, function () { setPatient(p); }); });
-          if (q && !byKey(raw)) option('new', '+', 'Criar paciente "' + raw + '"', function () { createPatient(raw); });
+          hits.forEach(function (p) {
+            option('', initialsOf(p.name), p.name + (p.birth_date ? ' · ' + ptAge(p.birth_date) : ''), function () { setPatient(p); });
+          });
+          if (q) {
+            var dup = sameName(raw).length;                   // mesmo nome já cadastrado → é outra pessoa?
+            option('new', '+', (dup ? 'Criar outro paciente "' : 'Criar paciente "') + raw + '"', function () { createPatient(raw, !!dup); });
+          }
           if (!q && !hits.length) {
             var m = document.createElement('div'); m.className = 'evpop-pmsg'; m.textContent = 'Digite o nome para buscar ou criar um paciente.'; elPList.appendChild(m);
           }
@@ -1181,14 +1443,16 @@
         plItems.forEach(function (b, j) { b.classList.toggle('on', j === plActive); b.setAttribute('aria-selected', j === plActive ? 'true' : 'false'); });
         plItems[plActive].scrollIntoView({ block: 'nearest' });
       }
-      function createPatient(name) {
+      function createPatient(name, force) {
         name = name.split(/\s+/).filter(Boolean).join(' ');
-        fetch('/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
+        fetch('/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, force: !!force }) })
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
           .then(function (res) {
             if (res.ok && res.j.ok) {
               patients = [res.j.patient].concat((patients || []).filter(function (p) { return p.id !== res.j.patient.id; }));
               setPatient(res.j.patient);
+            } else if (res.status === 409 && !force) {      // já existe (lista desatualizada): confirma que é outra pessoa
+              if (confirm('Já existe um paciente chamado "' + name + '". É outra pessoa? Criar um novo cadastro mesmo assim?')) createPatient(name, true);
             } else {
               elMsg.className = 'evpop-msg'; elMsg.hidden = false;
               if (res.status === 401) elMsg.innerHTML = 'Entre com Google em <a href="/opendoctor-integracao.html">Integrações</a> para cadastrar pacientes.';
@@ -2050,15 +2314,25 @@
     })();
   </script>
   <script>
-    // ===== prontuário dentro da agenda (o assistente e a conversa continuam) =====
+    // ===== prontuário: cadastro, resumo clínico, evolução (texto livre ou SOAP), finalização e adendos,
+    //       consultas do paciente na agenda e histórico. O assistente continua à direita. =====
     (function () {
       var stage = document.querySelector('.stage');
       var $ = function (id) { return document.getElementById(id); };
       var msg = $('prMsg'), main = $('prMain');
       if (!stage || !main) return;
-      var ctx = null, saved = '', timer = null, saving = false;
+      var MAX = 50000;                                     // = MAX_NOTE_CHARS do servidor
+      var ctx = null;          // {patient_id, patient, from, event_id, title, start, end, all_day, location, note_id}
+      var patient = null, notes = [], cur = null;          // cadastro, evoluções e a evolução aberta (do servidor)
+      var mode = 'free', cids = [], ready = false, recovered = false;
+      var saved = '', timer = null, saving = false, queued = [], retry = 0, retryTimer = null;
       var DOWS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
       var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      var SEX = { F: 'Feminino', M: 'Masculino', O: 'Outro' };
+      var ACTION = { view: 'Abriu o prontuário', note_edit: 'Editou evolução', note_finalize: 'Finalizou evolução',
+                     addendum: 'Adicionou adendo', patient_create: 'Cadastrou o paciente', patient_update: 'Alterou cadastro ou resumo clínico',
+                     export: 'Exportou / imprimiu' };
+
       function pad(n) { return String(n).padStart(2, '0'); }
       function parseStart(v) {
         if (!v) return null;
@@ -2066,130 +2340,463 @@
         return new Date(v);
       }
       function fmtDay(d) { return DOWS[d.getDay()] + ', ' + d.getDate() + ' de ' + MON[d.getMonth()] + ' de ' + d.getFullYear(); }
+      function fmtShort(d) { return DOWS[d.getDay()] + ', ' + d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
+      function hm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+      function fmtDT(v) { var d = new Date(v); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() + ' às ' + hm(d); }
       function fmtWhen(s, e, allDay) {
         var a = parseStart(s); if (!a) return '';
         if (allDay) return fmtDay(a) + ' · dia todo';
         var b = parseStart(e);
-        return fmtDay(a) + ' · ' + pad(a.getHours()) + ':' + pad(a.getMinutes()) + (b ? '–' + pad(b.getHours()) + ':' + pad(b.getMinutes()) : '');
+        return fmtDay(a) + ' · ' + hm(a) + (b ? '–' + hm(b) : '');
       }
       function initials(n) {
-        var p = (n || '').split(/\s+/).filter(Boolean);
-        return ((p[0] ? p[0][0] : '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '•';
+        var p = (n || '').split(/\s+/).filter(Boolean), f = function (w) { return w ? Array.from(w)[0] : ''; };
+        return (f(p[0]) + (p.length > 1 ? f(p[p.length - 1]) : '')).toUpperCase() || '•';
       }
-
-      function fill() {
-      main.hidden = false; msg.hidden = true;
-      $('prBack').textContent = ctx.from === 'pacientes' ? '‹ Pacientes' : '‹ Agenda';
-      $('prConsultaBox').hidden = false;
-      $('prName').textContent = ctx.patient;
-      $('prAvatar').textContent = initials(ctx.patient);
-      if (ctx.event_id || ctx.start) {
-        $('prEvTitle').textContent = ctx.title || 'Consulta';
-        $('prEvWhen').textContent = fmtWhen(ctx.start, ctx.end, ctx.all_day);
-        $('prEvLoc').textContent = ctx.location || '';
-        $('prEvLoc').hidden = !ctx.location;
-      } else { $('prConsultaBox').hidden = true; }
+      function norm(v) { return (v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+      function lines(t) { return (t || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean); }
+      function age(bd) {
+        var b = parseStart(bd); if (!b) return '';
+        var n = new Date(), m = (n.getFullYear() - b.getFullYear()) * 12 + n.getMonth() - b.getMonth() - (n.getDate() < b.getDate() ? 1 : 0);
+        if (m >= 24) return Math.floor(m / 12) + ' anos';
+        return m <= 0 ? 'recém-nascido' : m === 1 ? '1 mês' : m + ' meses';
       }
+      function fmtCpf(c) { return c && c.length === 11 ? c.slice(0, 3) + '.' + c.slice(3, 6) + '.' + c.slice(6, 9) + '-' + c.slice(9) : (c || ''); }
+      function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+      function api(method, url, body) {
+        return fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); });
+      }
+      function persistCtx() { try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx)); } catch (_) {} }
+      function isOpen() { return stage.classList.contains('prontuario'); }
+      function locked() { return !!(cur && cur.signed_at); }
 
-      var note = $('prNote'), status = $('prStatus'), btn = $('prSave');
+      // ===== editor: texto livre ou SOAP (+ sinais vitais e CID-10) =====
+      var note = $('prNote'), status = $('prStatus');
+      var soapEls = [].slice.call(document.querySelectorAll('#prSoap textarea[data-f]'));
+      var vitEls = [].slice.call(document.querySelectorAll('#prSoap [data-v]'));
+      function num(v) { var x = parseFloat(String(v || '').replace(',', '.')); return isNaN(x) ? null : x; }
+      function vitals() { var v = {}; vitEls.forEach(function (e) { if (e.value.trim()) v[e.getAttribute('data-v')] = e.value.trim(); }); return v; }
+      function imcOf(v) { var p = num(v.peso), h = num(v.altura); if (!p || !h) return null; h = h > 3 ? h / 100 : h; return p / (h * h); }
+      function vitalsLine(v) {
+        var out = [], imc = imcOf(v);
+        if (v.pa_s || v.pa_d) out.push('PA ' + (v.pa_s || '?') + 'x' + (v.pa_d || '?') + ' mmHg');
+        if (v.fc) out.push('FC ' + v.fc + ' bpm'); if (v.fr) out.push('FR ' + v.fr + ' irpm');
+        if (v.temp) out.push('Temp. ' + v.temp + ' °C'); if (v.spo2) out.push('SpO₂ ' + v.spo2 + '%');
+        if (v.peso) out.push('Peso ' + v.peso + ' kg'); if (v.altura) out.push('Altura ' + v.altura + ' cm');
+        if (imc) out.push('IMC ' + imc.toFixed(1).replace('.', ','));
+        if (v.glicemia) out.push('Glicemia ' + v.glicemia + ' mg/dL');
+        return out.length ? 'Sinais vitais: ' + out.join(' · ') : '';
+      }
+      function soapText() { return soapEls.some(function (e) { return e.value.trim(); }) || Object.keys(vitals()).length || cids.length; }
+      function compose() {
+        if (mode === 'free') return { content: note.value, data: { mode: 'free' } };
+        var f = {}; soapEls.forEach(function (e) { f[e.getAttribute('data-f')] = e.value; });
+        var v = vitals(), parts = [];
+        if (f.s.trim()) parts.push('S: ' + f.s.trim());
+        var o = [vitalsLine(v), f.o.trim()].filter(Boolean).join('\n'); if (o) parts.push('O: ' + o);
+        var a = [f.a.trim(), cids.length ? 'CID-10: ' + cids.map(function (c) { return (c.code + ' ' + c.desc).trim(); }).join('; ') : '']
+                  .filter(Boolean).join('\n'); if (a) parts.push('A: ' + a);
+        if (f.p.trim()) parts.push('P: ' + f.p.trim());
+        return { content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v, cid: cids.slice() } };
+      }
+      function snap(x) { return JSON.stringify(x || compose()); }
+      function updImc() { var i = imcOf(vitals()); $('prImc').textContent = i ? i.toFixed(1).replace('.', ',') : '—'; }
+      function renderCids() {
+        var box = $('prCidChips'); box.innerHTML = '';
+        cids.forEach(function (c, i) {
+          var ch = el('span', 'pr-chip'); ch.appendChild(el('span', null, (c.code + ' ' + c.desc).trim()));
+          var x = el('button'); x.type = 'button'; x.title = 'Remover'; x.innerHTML = '<img src="assets/icons/sf-xmark.svg?v=2" width="8" height="8" alt="">';
+          x.addEventListener('click', function () { cids.splice(i, 1); renderCids(); changed(); });
+          ch.appendChild(x); box.appendChild(ch);
+        });
+      }
+      function fillEditor(n) {                             // n: {content, data} ou null
+        var d = n && n.data || null, soap = !!(d && d.mode === 'soap');
+        setMode(soap ? 'soap' : 'free', true);
+        note.value = soap ? '' : (n && n.content || '');
+        soapEls.forEach(function (e) { e.value = soap ? (d[e.getAttribute('data-f')] || '') : ''; });
+        vitEls.forEach(function (e) { e.value = soap && d.vitals ? (d.vitals[e.getAttribute('data-v')] || '') : ''; });
+        cids = soap && d.cid ? d.cid.slice() : []; renderCids(); updImc();
+      }
+      function setMode(m, silent) {
+        if (!silent && m !== mode) {
+          // texto livre → SOAP: o texto vai para "S" (nada se perde); SOAP → texto livre: vira o texto composto
+          if (m === 'soap' && note.value.trim() && !soapText()) { soapEls[0].value = note.value; note.value = ''; }
+          else if (m === 'free') { note.value = compose().content; soapEls.forEach(function (e) { e.value = ''; }); vitEls.forEach(function (e) { e.value = ''; }); cids = []; renderCids(); updImc(); }
+        }
+        mode = m;
+        $('prFree').hidden = locked() || m !== 'free'; $('prSoap').hidden = locked() || m !== 'soap';
+        [].forEach.call($('prSeg').querySelectorAll('button'), function (b) { b.classList.toggle('on', b.getAttribute('data-m') === m); });
+        if (!silent) changed();
+      }
+      [].forEach.call($('prSeg').querySelectorAll('button'), function (b) {
+        b.addEventListener('click', function () { if (ready && !locked()) setMode(b.getAttribute('data-m')); });
+      });
+      function setEditable(on) {
+        [note].concat(soapEls, vitEls, [$('prCidIn')]).forEach(function (e) { e.readOnly = !on; });
+      }
       function setStatus(t, err) { status.textContent = t; status.className = 'pr-status' + (err ? ' err' : ''); }
+      function updCount(len) {
+        var c = $('prCount'); c.hidden = len < MAX * 0.8;
+        c.textContent = len.toLocaleString('pt-BR') + ' / ' + MAX.toLocaleString('pt-BR');
+        c.className = 'pr-count' + (len > MAX ? ' err' : '');
+      }
+      function changed() {
+        if (!ready || locked()) return;
+        var x = compose(), s = snap(x);
+        updCount(x.content.length);
+        setStatus(s === saved ? '' : 'Alterações não salvas');
+        draftWrite(s);
+        clearTimeout(timer); timer = setTimeout(save, 1500);  // salva sozinho ao parar de digitar
+      }
+      note.addEventListener('input', changed);
+      soapEls.forEach(function (e) { e.addEventListener('input', changed); e.addEventListener('blur', save); });
+      vitEls.forEach(function (e) { e.addEventListener('input', function () { updImc(); changed(); }); });
+      note.addEventListener('blur', save);
+      $('prCidIn').addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' || e.isComposing) return;
+        e.preventDefault();
+        var v = this.value.trim(); if (!v || locked()) return;
+        var m = v.match(/^([A-Za-z]\d{2}(?:\.\d{1,2})?)\s*[-–—:]?\s*(.*)$/);  // "I10 Hipertensão" → código + descrição
+        var c = m ? { code: m[1].toUpperCase(), desc: m[2].trim() } : { code: '', desc: v };
+        if (!cids.some(function (x) { return x.code === c.code && x.desc === c.desc; })) cids.push(c);
+        this.value = ''; renderCids(); changed();
+      });
 
-      // salva a evolução do paciente aberto. Se já há um envio em andamento, o texto mais recente
-      // entra na fila (inclusive ao sair do prontuário no meio do envio) — nada se perde
-      var queued = [];                                     // [{c, content}] — no máximo um por paciente/consulta
-      function save() { send(ctx, note.value); }
-      function send(c, content) {
+      // ===== rascunho local: guarda o texto não salvo neste navegador (queda de internet, aba fechada) =====
+      function dkey(c) { c = c || ctx; return 'od_draft_' + c.patient_id + '_' + (c.event_id ? 'e' + c.event_id : c.note_id ? 'n' + c.note_id : 'new'); }
+      function draftWrite(s) {
+        if (!ctx || !ctx.patient_id) return;
+        try { if (s === saved) localStorage.removeItem(dkey()); else localStorage.setItem(dkey(), JSON.stringify({ s: s, at: Date.now() })); } catch (_) {}
+      }
+      function draftRead() { try { return JSON.parse(localStorage.getItem(dkey()) || 'null'); } catch (_) { return null; } }
+
+      // ===== salvar (fila por paciente/consulta; novas tentativas se a conexão cair) =====
+      function save() {
+        if (!ready || !ctx || locked()) return;
+        var x = compose(); send(ctx, x, snap(x));
+      }
+      function send(c, x, s) {
         clearTimeout(timer);
-        if (!c || !c.patient) return;
-        if (saving) {
-          queued = queued.filter(function (q) { return q.c !== c; }).concat([{ c: c, content: content }]);
+        if (!c || !c.patient_id) return;
+        if (saving) { queued = queued.filter(function (q) { return q.c !== c; }).concat([{ c: c, x: x, s: s }]); return; }
+        if (c === ctx && s === saved) return;
+        if (x.content.length > MAX) {
+          if (c === ctx) setStatus('A evolução passou de ' + MAX.toLocaleString('pt-BR') + ' caracteres: reduza o texto para salvar.', true);
           return;
         }
-        if (c === ctx && content === saved) return;
-        saving = true; btn.disabled = true; if (c === ctx) setStatus('Salvando…');
-        fetch('/prontuario/notes', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patient_id: c.patient_id, patient: c.patient, event_id: c.event_id, event_title: c.title,
-                                 note_id: c.note_id || null,
-                                 event_start: c.start && c.start.length > 10 ? c.start : null, content: content })
-        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
-          .then(function (res) {
-            saving = false; btn.disabled = false;
-            if (res.ok && res.j.ok && !c.event_id) {       // nota avulsa: próximos salvamentos atualizam a mesma
-              c.note_id = res.j.id;
-              if (ctx === c) { try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx)); } catch (_) {} }
-            }
-            if (ctx === c) {                                 // (se trocou de paciente, não mexe na tela atual)
-              if (res.ok && res.j.ok) {
-                saved = content; var n = new Date();
-                setStatus('Salvo às ' + pad(n.getHours()) + ':' + pad(n.getMinutes()));
-              } else if (res.status === 401) {
-                setStatus('Entre com Google (tela de Integrações) para salvar o prontuário.', true);
-              } else setStatus('Não foi possível salvar.', true);
-            }
-            flush();
-          }).catch(function () {
-            saving = false; btn.disabled = false;
-            if (ctx === c) setStatus('Falha de conexão. Tente de novo.', true);
-            flush();
-          });
+        saving = true; if (c === ctx) setStatus('Salvando…');
+        var k0 = dkey(c);
+        api('POST', '/prontuario/notes', {
+          patient_id: c.patient_id, patient: c.patient, event_id: c.event_id || null, event_title: c.title || null,
+          note_id: c.note_id || null, event_start: c.start && c.start.length > 10 ? c.start : null,
+          content: x.content, data: x.data
+        }).then(function (res) {
+          saving = false;
+          if (res.ok && res.j.ok) {
+            retry = 0; c.note_id = res.j.id;
+            try { if (k0 !== dkey(c)) localStorage.removeItem(k0); } catch (_) {}
+            if (c === ctx) {
+              saved = s; persistCtx();
+              if (!cur) { cur = { id: res.j.id, event_id: c.event_id || null, event_title: c.title || null, event_start: c.start || null, addenda: [] }; notes.unshift(cur); }
+              cur.id = res.j.id; cur.content = x.content; cur.data = x.data; cur.updated_at = new Date().toISOString();
+              setStatus(snap() !== saved ? 'Alterações não salvas' : (recovered ? 'Texto recuperado deste navegador e salvo às ' : 'Salvo às ') + hm(new Date()));
+              recovered = false;
+              draftWrite(snap()); $('prCopyLast').hidden = !lastOther();
+            } else { try { localStorage.removeItem(dkey(c)); } catch (_) {} }
+          } else if (res.status === 409) {
+            if (c === ctx) { setStatus('Esta evolução já foi finalizada (talvez em outra aba). Recarregando…', true); load(); }
+          } else if (res.status === 413) {
+            if (c === ctx) setStatus('Texto grande demais para salvar: reduza a evolução.', true);
+          } else if (res.status === 401) {
+            if (c === ctx) setStatus('Entre com Google (tela de Integrações) para salvar o prontuário.', true);
+          } else {
+            if (c === ctx) setStatus('Não foi possível salvar. Tentando de novo…', true);
+            retryLater(c);
+          }
+          flush();
+        }).catch(function () {
+          saving = false;
+          if (c === ctx) setStatus('Sem conexão. O texto ficou guardado neste navegador e será salvo quando a conexão voltar.', true);
+          retryLater(c); flush();
+        });
+      }
+      function retryLater(c) {
+        if (c !== ctx) return;
+        clearTimeout(retryTimer);
+        retryTimer = setTimeout(save, [5, 15, 30, 60][Math.min(retry++, 3)] * 1000);
       }
       function flush() {
-        if (queued.length) { var q = queued.shift(); send(q.c, q.content); return; }
-        if (ctx && note.value !== saved && stage.classList.contains('prontuario')) { clearTimeout(timer); timer = setTimeout(save, 600); }
+        if (queued.length) { var q = queued.shift(); send(q.c, q.x, q.s); return; }
+        if (ctx && ready && isOpen() && !locked() && snap() !== saved) { clearTimeout(timer); timer = setTimeout(save, 600); }
       }
-      note.addEventListener('input', function () {
-        setStatus(note.value === saved ? '' : 'Alterações não salvas');
-        clearTimeout(timer); timer = setTimeout(save, 1500);  // salva sozinho ao parar de digitar
-      });
-      note.addEventListener('blur', save);
-      btn.addEventListener('click', save);
+      // espera o texto atual estar salvo (para finalizar)
+      function whenSaved(cb) {
+        var t0 = Date.now();
+        save();
+        (function wait() {
+          if (!saving && !queued.length && snap() === saved && cur && cur.id) return cb(true);
+          if (Date.now() - t0 > 15000) return cb(false);
+          setTimeout(wait, 150);
+        })();
+      }
+      window.addEventListener('online', function () { if (isOpen()) save(); });
+      $('prSave').addEventListener('click', save);
       window.addEventListener('beforeunload', function (e) {
-        if (stage.classList.contains('prontuario') && note.value !== saved) { e.preventDefault(); e.returnValue = ''; }
+        if (isOpen() && ready && !locked() && snap() !== saved) { e.preventDefault(); e.returnValue = ''; }
       });
 
-      function loadHist() {
+      // ===== finalizar e adendos =====
+      $('prFinalize').addEventListener('click', function () {
+        var x = compose();
+        if (!x.content.trim()) { setStatus('Escreva a evolução antes de finalizar.', true); return; }
+        if (x.content.length > MAX) { setStatus('Reduza o texto antes de finalizar.', true); return; }
+        if (!confirm('Finalizar a evolução?\n\nDepois de finalizada ela não pode mais ser alterada. Correções e complementos entram como adendos, com data e hora.')) return;
+        var btn = this; btn.disabled = true; setStatus('Finalizando…');
         var my = ctx;
-        fetch('/prontuario/list', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patient_id: ctx.patient_id, patient: ctx.patient })
-        }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
-          .then(function (res) {
-            if (ctx !== my) return;                          // já abriu outro prontuário
-            var box = $('prHist'); box.innerHTML = '';
-            // prontuário ligado ao cadastro: evento antigo (só nome) ganha o id; nome sempre o atual do cadastro
-            if (res.j && res.j.patient && res.j.patient.id) {
-              ctx.patient_id = res.j.patient.id; ctx.patient = res.j.patient.name;
-              $('prName').textContent = ctx.patient; $('prAvatar').textContent = initials(ctx.patient);
-              try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx)); } catch (_) {}
-            }
-            if (res.status === 401) {
-              box.innerHTML = '<div class="pr-empty">Entre com Google na tela de <a href="opendoctor-integracao.html">Integrações</a> para ver e salvar o prontuário.</div>';
-              return;
-            }
-            var notes = (res.j && res.j.notes) || [];
-            notes.forEach(function (n) {
-              // a desta consulta (ou a nota avulsa em edição, após recarregar a página) vai no campo de evolução
-              if ((ctx.event_id && n.event_id === ctx.event_id) || (ctx.note_id && n.id === ctx.note_id)) {
-                if (!note.value) { note.value = n.content || ''; saved = note.value; }
-                return;
-              }
-              if (!(n.content || '').trim()) return;
-              var it = document.createElement('div'); it.className = 'pr-item';
-              var h = document.createElement('div'); h.className = 'pr-item-head';
-              var d = n.event_start ? new Date(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null);
-              h.textContent = (d ? fmtDay(d) : '') + (n.event_title ? ' · ' + n.event_title : '');
-              var b = document.createElement('div'); b.className = 'pr-item-body'; b.textContent = n.content;
-              it.appendChild(h); it.appendChild(b); box.appendChild(it);
-            });
-            if (!box.children.length) box.innerHTML = '<div class="pr-empty">Nenhuma anotação anterior deste paciente.</div>';
-          }).catch(function () { if (ctx === my) $('prHist').innerHTML = '<div class="pr-empty">Não foi possível carregar o histórico.</div>'; });
+        whenSaved(function (ok) {
+          if (ctx !== my) return;
+          if (!ok) { btn.disabled = false; setStatus('Não foi possível salvar antes de finalizar. Tente de novo.', true); return; }
+          api('POST', '/prontuario/notes/' + cur.id + '/finalize').then(function (res) {
+            btn.disabled = false;
+            if (ctx !== my) return;
+            if (!(res.ok && res.j.ok)) { setStatus('Não foi possível finalizar.', true); return; }
+            cur.signed_at = res.j.signed_at; cur.addenda = cur.addenda || [];
+            try { localStorage.removeItem(dkey()); } catch (_) {}
+            renderEvo(); renderHist(); loadVisits(my);
+            setStatus('');
+          }).catch(function () { btn.disabled = false; setStatus('Falha de conexão ao finalizar.', true); });
+        });
+      });
+      function renderAdds(box, adds) {
+        box.innerHTML = '';
+        (adds || []).forEach(function (a) {
+          var d = el('div', 'pr-add');
+          d.appendChild(el('div', 'pr-add-h', 'Adendo · ' + fmtDT(a.created_at)));
+          d.appendChild(el('div', 'pr-add-b', a.content));
+          box.appendChild(d);
+        });
       }
+      // caixa de adendo (para a evolução aberta ou qualquer finalizada do histórico)
+      function addendum(n, host, onDone) {
+        var wrap = el('div', 'pr-addbox'), ta = el('textarea'), foot = el('div', 'pr-foot'), err = el('span', 'pr-err');
+        ta.placeholder = 'Adendo: correção ou complemento (fica registrado com data e hora)';
+        err.hidden = true;
+        var cancel = el('button', 'pr-ghost', 'Cancelar'), ok = el('button', 'pr-save', 'Salvar adendo');
+        cancel.type = ok.type = 'button';
+        foot.appendChild(err); foot.appendChild(cancel); foot.appendChild(ok);
+        wrap.appendChild(ta); wrap.appendChild(foot); host.appendChild(wrap); ta.focus();
+        cancel.addEventListener('click', function () { wrap.remove(); onDone(false); });
+        ok.addEventListener('click', function () {
+          var v = ta.value.trim(); if (!v) { ta.focus(); return; }
+          ok.disabled = true;
+          api('POST', '/prontuario/notes/' + n.id + '/addenda', { content: v }).then(function (res) {
+            ok.disabled = false;
+            if (res.ok && res.j.ok) { (n.addenda = n.addenda || []).push(res.j.addendum); wrap.remove(); onDone(true); }
+            else { err.textContent = 'Não foi possível salvar o adendo.'; err.hidden = false; }
+          }).catch(function () { ok.disabled = false; err.textContent = 'Falha de conexão.'; err.hidden = false; });
+        });
+      }
+      $('prAddBtn').addEventListener('click', function () {
+        if (!cur || $('prAddBox').children.length) return;
+        $('prAddBox').hidden = false; $('prAddBtn').hidden = true;
+        addendum(cur, $('prAddBox'), function () { $('prAddBox').hidden = true; $('prAddBtn').hidden = false; renderEvo(); renderHist(); });
+      });
+
+      // ===== cabeçalho e cadastro =====
+      function renderHeader() {
+        var name = patient ? patient.name : (ctx && ctx.patient) || '';
+        $('prName').textContent = name; $('prAvatar').textContent = initials(name);
+        var p = patient || {}, bits = [];
+        if (p.birth_date) { var b = parseStart(p.birth_date); bits.push(age(p.birth_date) + ' (' + pad(b.getDate()) + '/' + pad(b.getMonth() + 1) + '/' + b.getFullYear() + ')'); }
+        if (p.sex) bits.push(SEX[p.sex]);
+        if (p.cpf) bits.push('CPF ' + fmtCpf(p.cpf));
+        if (p.phone) bits.push(p.phone);
+        // cada informação não quebra no meio (ex.: telefone)
+        $('prSub').textContent = bits.length ? bits.map(function (b) { return b.replace(/ /g, '\u00a0'); }).join(' · ') : 'Prontuário';
+        var miss = patient && !p.birth_date;               // sem nascimento não dá para diferenciar homônimos
+        $('prEditBtn').textContent = miss ? 'Completar cadastro (data de nascimento)' : 'Editar cadastro';
+        $('prEditBtn').classList.toggle('warn', !!miss);
+        $('prEditBtn').hidden = !patient;
+      }
+      $('prEditBtn').addEventListener('click', function () {
+        if (!patient) return;
+        var f = $('prForm'); if (!f.hidden) { f.hidden = true; return; }
+        $('pfName').value = patient.name; $('pfBirth').value = patient.birth_date || ''; $('pfSex').value = patient.sex || '';
+        $('pfCpf').value = fmtCpf(patient.cpf || ''); $('pfPhone').value = patient.phone || '';
+        $('pfBirth').max = new Date().toISOString().slice(0, 10);
+        $('pfErr').hidden = true; f.hidden = false; $('pfBirth').focus();
+      });
+      $('pfCancel').addEventListener('click', function () { $('prForm').hidden = true; });
+      $('pfSave').addEventListener('click', function () {
+        var btn = this, body = { name: $('pfName').value, birth_date: $('pfBirth').value || null, sex: $('pfSex').value || null,
+                                  cpf: $('pfCpf').value, phone: $('pfPhone').value };
+        btn.disabled = true;
+        api('PATCH', '/patients/' + patient.id, body).then(function (res) {
+          btn.disabled = false;
+          if (res.ok && res.j.ok) {
+            patient = res.j.patient; ctx.patient = patient.name; persistCtx();
+            $('prForm').hidden = true; renderHeader();
+          } else { $('pfErr').textContent = (res.j && res.j.error ? res.j.error.charAt(0).toUpperCase() + res.j.error.slice(1) : 'Não foi possível salvar') + '.'; $('pfErr').hidden = false; }
+        }).catch(function () { btn.disabled = false; $('pfErr').textContent = 'Falha de conexão.'; $('pfErr').hidden = false; });
+      });
+
+      // ===== resumo clínico (alergias, problemas ativos, medicações em uso) =====
+      var cols = [].slice.call(document.querySelectorAll('.pr-sumcol'));
+      function renderSummary() {
+        cols.forEach(function (col) {
+          var k = col.getAttribute('data-k'), box = col.querySelector('.pr-chips'); box.innerHTML = '';
+          lines(patient && patient[k]).forEach(function (item, i, all) {
+            var ch = el('span', 'pr-chip' + (k === 'allergies' ? ' red' : '')); ch.appendChild(el('span', null, item)); ch.title = item;
+            var x = el('button'); x.type = 'button'; x.title = 'Remover'; x.innerHTML = '<img src="assets/icons/sf-xmark.svg?v=2" width="8" height="8" alt="">';
+            x.addEventListener('click', function () { var l = all.slice(); l.splice(i, 1); saveSummary(k, l); });
+            ch.appendChild(x); box.appendChild(ch);
+          });
+        });
+        var al = lines(patient && patient.allergies);
+        $('prAllergyBar').hidden = !al.length;
+        $('prAllergyTxt').textContent = 'Alergias: ' + al.join(', ');
+      }
+      function saveSummary(k, list) {
+        if (!patient) return;
+        var prev = patient[k], body = {}; patient[k] = body[k] = list.join('\n'); renderSummary();
+        api('PATCH', '/patients/' + patient.id, body).then(function (res) {
+          if (!(res.ok && res.j.ok)) { patient[k] = prev; renderSummary(); setStatus('Não foi possível salvar o resumo clínico.', true); }
+        }).catch(function () { patient[k] = prev; renderSummary(); setStatus('Falha de conexão ao salvar o resumo clínico.', true); });
+      }
+      cols.forEach(function (col) {
+        var k = col.getAttribute('data-k'), inp = col.querySelector('.pr-chipin');
+        function add() {
+          var v = inp.value.trim(); if (!v || !patient) return;
+          var l = lines(patient[k]); if (!l.some(function (x) { return norm(x) === norm(v); })) l.push(v);
+          inp.value = ''; saveSummary(k, l);
+        }
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); add(); } });
+        inp.addEventListener('blur', add);
+      });
+
+      // ===== consulta aberta e evolução =====
+      function renderConsulta() {
+        var has = !!(ctx && (ctx.event_id || ctx.start));
+        $('prConsultaBox').hidden = !has;
+        $('prEvoLabel').textContent = has ? 'Evolução da consulta' : 'Evolução';
+        if (!has) return;
+        $('prEvTitle').textContent = ctx.title || 'Consulta';
+        $('prEvWhen').textContent = fmtWhen(ctx.start, ctx.end, ctx.all_day);
+        $('prEvLoc').textContent = ctx.location || ''; $('prEvLoc').hidden = !ctx.location;
+      }
+      function renderEvo() {
+        var lk = locked();
+        $('prSeg').hidden = lk; $('prRec').hidden = lk; $('prEditFoot').hidden = lk;
+        $('prFree').hidden = lk || mode !== 'free'; $('prSoap').hidden = lk || mode !== 'soap';
+        $('prLocked').hidden = !lk; $('prLockedFoot').hidden = !lk; $('prVisitBox').hidden = lk;
+        $('prAddBox').hidden = true; $('prAddBox').innerHTML = ''; $('prAddBtn').hidden = false;
+        if (lk) {
+          $('prSigned').textContent = 'Finalizada em ' + fmtDT(cur.signed_at);
+          $('prLockedBody').textContent = cur.content || '';
+          renderAdds($('prLockedAdds'), cur.addenda);
+        }
+        $('prCopyLast').hidden = lk || !lastOther();
+      }
+      function lastOther() { return notes.filter(function (n) { return n !== cur && (n.content || '').trim(); })[0] || null; }
+      $('prCopyLast').addEventListener('click', function () {
+        var last = lastOther(); if (!last || locked()) return;
+        if (compose().content.trim() && !confirm('Substituir o texto atual pelo da última evolução?')) return;
+        var d = last.data && last.data.mode === 'soap' ? Object.assign({}, last.data, { vitals: {} }) : null;  // sinais vitais são de hoje
+        fillEditor({ content: last.content, data: d }); changed();
+      });
+
+      // ===== consultas do paciente na agenda =====
+      function eventTitle(t) { return (t || '').split(' — ')[0] || 'Consulta'; }
+      function loadVisits(my) {
+        var box = $('prVisits');
+        if (!ctx || !ctx.patient_id) return;
+        box.innerHTML = '<div class="pr-empty">Carregando consultas…</div>';
+        api('POST', '/prontuario/visits', { patient_id: ctx.patient_id }).then(function (res) {
+          if (ctx !== my) return;
+          box.innerHTML = '';
+          if (!res.ok) { box.innerHTML = '<div class="pr-empty">Não foi possível carregar as consultas.</div>'; return; }
+          if (!res.j.connected) { box.innerHTML = '<div class="pr-empty"><a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para ver as consultas deste paciente.</div>'; return; }
+          var now = Date.now(), vs = res.j.visits || [];
+          if (!vs.length) { box.innerHTML = '<div class="pr-empty">Nenhuma consulta deste paciente na agenda.</div>'; return; }
+          var next = vs.filter(function (v) { return parseStart(v.start) >= now; });
+          var past = vs.filter(function (v) { return parseStart(v.start) < now; }).reverse();
+          function row(v, future) {
+            var b = el('button', 'pr-vrow' + (ctx.event_id === v.id ? ' cur' : '')); b.type = 'button';
+            var d = parseStart(v.start);
+            b.appendChild(el('span', 'pr-vdate', fmtShort(d) + (v.allDay ? '' : ' · ' + hm(d))));
+            b.appendChild(el('span', 'pr-vtitle', eventTitle(v.title)));
+            var n = v.note, badge;
+            if (ctx.event_id === v.id) badge = el('span', 'pr-badge cur', 'Aberta');
+            else if (n && n.signed_at) badge = el('span', 'pr-badge ok', 'Finalizada');
+            else if (n && n.has_content) badge = el('span', 'pr-badge draft', 'Rascunho');
+            else badge = el('span', 'pr-badge', future ? 'Agendada' : 'Sem evolução');
+            b.appendChild(badge);
+            b.addEventListener('click', function () {
+              if (ctx.event_id === v.id) { $('prEvoBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+              switchTo({ event_id: v.id, title: eventTitle(v.title), start: v.start, end: v.end, all_day: v.allDay, location: v.location });
+            });
+            return b;
+          }
+          if (next.length) { box.appendChild(el('div', 'pr-vgroup', 'Próximas')); next.forEach(function (v) { box.appendChild(row(v, true)); }); }
+          if (past.length) {
+            box.appendChild(el('div', 'pr-vgroup', 'Anteriores'));
+            past.forEach(function (v, i) { var r = row(v, false); if (i >= 8) { r.hidden = true; r.classList.add('more'); } box.appendChild(r); });
+            if (past.length > 8) {
+              var m = el('button', 'pr-ghost', 'Mostrar todas (' + past.length + ')'); m.type = 'button';
+              m.addEventListener('click', function () { [].forEach.call(box.querySelectorAll('.pr-vrow.more'), function (r) { r.hidden = false; }); m.remove(); });
+              box.appendChild(m);
+            }
+          }
+        }).catch(function () { if (ctx === my) box.innerHTML = '<div class="pr-empty">Não foi possível carregar as consultas.</div>'; });
+      }
+
+      // ===== histórico de evoluções (busca, finalizadas com adendos, rascunhos abrem para editar) =====
+      function renderHist() {
+        var box = $('prHist'); box.innerHTML = '';
+        var list = notes.filter(function (n) { return n !== cur && ((n.content || '').trim() || n.signed_at); });
+        if (!list.length) { box.innerHTML = '<div class="pr-empty">Nenhuma evolução anterior deste paciente.</div>'; return; }
+        list.forEach(function (n) {
+          var it = el('div', 'pr-item'); it._q = norm([n.content, n.event_title].concat((n.addenda || []).map(function (a) { return a.content; })).join(' '));
+          var head = el('div', 'pr-item-head');
+          var d = n.event_start ? parseStart(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null);
+          head.appendChild(el('span', 'pr-item-when', (d ? fmtDay(d) : '') + (n.event_title ? ' · ' + eventTitle(n.event_title) : '')));
+          head.appendChild(el('span', 'pr-badge ' + (n.signed_at ? 'ok' : 'draft'), n.signed_at ? 'Finalizada' : 'Rascunho'));
+          var body = el('div', 'pr-item-body clamp', n.content || '');
+          body.title = 'Clique para expandir'; body.style.cursor = 'pointer';
+          body.addEventListener('click', function () { body.classList.toggle('clamp'); });
+          var adds = el('div'); renderAdds(adds, n.addenda);
+          var acts = el('div', 'pr-item-acts');
+          if (n.signed_at) {
+            var ab = el('button', 'pr-ghost', 'Adicionar adendo'); ab.type = 'button';
+            ab.addEventListener('click', function () { ab.hidden = true; addendum(n, it, function () { ab.hidden = false; renderAdds(adds, n.addenda); }); });
+            acts.appendChild(ab);
+          } else {
+            var ob = el('button', 'pr-ghost', 'Abrir para editar'); ob.type = 'button';
+            ob.addEventListener('click', function () {
+              switchTo(n.event_id ? { event_id: n.event_id, title: eventTitle(n.event_title), start: n.event_start } : { note_id: n.id });
+            });
+            acts.appendChild(ob);
+          }
+          it.appendChild(head); it.appendChild(body); it.appendChild(adds); it.appendChild(acts);
+          box.appendChild(it);
+        });
+        filterHist();
+      }
+      function filterHist() {
+        var q = norm($('prHistQ').value.trim()), any = false;
+        [].forEach.call($('prHist').querySelectorAll('.pr-item'), function (it) { it.hidden = !!q && it._q.indexOf(q) < 0; any = any || !it.hidden; });
+        var e = $('prHist').querySelector('.pr-nohit');
+        if (q && !any && !e) { e = el('div', 'pr-empty pr-nohit', 'Nada encontrado no histórico.'); $('prHist').appendChild(e); }
+        if ((!q || any) && e) e.remove();
+      }
+      $('prHistQ').addEventListener('input', filterHist);
+
       // ===== iniciar / encerrar consulta =====
       var visitBtn = $('prVisit'), timerEl = $('prTimer'), tick = null;
       function vkey() { return 'od_visit_' + (ctx && (ctx.event_id || ctx.patient_id || ctx.patient) || ''); }
       function visitStart() { try { return +sessionStorage.getItem(vkey()) || 0; } catch (_) { return 0; } }
-      function hm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
       function renderVisit() {
         clearInterval(tick);
         var t0 = visitStart();
@@ -2205,32 +2812,101 @@
         upd(); tick = setInterval(upd, 1000);
       }
       visitBtn.addEventListener('click', function () {
+        if (!ready || locked()) return;
         var t0 = visitStart();
         if (!t0) {
           try { sessionStorage.setItem(vkey(), String(Date.now())); } catch (_) {}
-          renderVisit(); note.focus(); return;
+          renderVisit(); (mode === 'soap' ? soapEls[0] : note).focus(); return;
         }
         var a = new Date(t0), b = new Date(), min = Math.max(1, Math.round((b - a) / 60000));
         var line = 'Consulta: ' + hm(a) + '–' + hm(b) + ' (' + min + ' min)';
-        note.value = note.value.replace(/\s+$/, '') + (note.value.trim() ? '\n' : '') + line;
+        var t = mode === 'soap' ? soapEls[3] : note;          // no SOAP vai para o Plano
+        t.value = t.value.replace(/\s+$/, '') + (t.value.trim() ? '\n' : '') + line;
         try { sessionStorage.removeItem(vkey()); } catch (_) {}
-        renderVisit(); save();
+        renderVisit(); changed(); save();
       });
 
+      // ===== exportar (imprimir/PDF) e registro de acessos =====
+      $('prExport').addEventListener('click', function () {
+        if (!patient) return;
+        save();
+        $('prPrintCur').textContent = locked() ? '' : compose().content;
+        $('prEvoBox').classList.toggle('has-text', locked() || !!compose().content.trim());
+        api('POST', '/prontuario/audit', { action: 'export', patient_id: patient.id }).catch(function () {});
+        var t = document.title; document.title = 'Prontuário — ' + patient.name;
+        window.print();
+        document.title = t;
+      });
+      $('prAccessBtn').addEventListener('click', function () {
+        var box = $('prAccess');
+        if (!box.hidden) { box.hidden = true; return; }
+        box.hidden = false; var list = $('prAccessList'); list.innerHTML = '<div class="pr-empty">Carregando…</div>';
+        api('POST', '/prontuario/access', { patient_id: patient.id }).then(function (res) {
+          list.innerHTML = '';
+          var rows = (res.j && res.j.access) || [];
+          if (!rows.length) { list.innerHTML = '<div class="pr-empty">Nenhum acesso registrado.</div>'; return; }
+          rows.forEach(function (a) { var r = el('div', 'pr-acc'); r.appendChild(el('b', null, fmtDT(a.at))); r.appendChild(el('span', null, ACTION[a.action] || a.action)); list.appendChild(r); });
+          box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+
+      // ===== carregar / abrir / trocar de consulta / fechar =====
+      function load() {
+        var my = ctx; ready = false; setEditable(false); setStatus('Carregando…');
+        api('POST', '/prontuario/list', { patient_id: ctx.patient_id || null, patient: ctx.patient })
+          .then(function (res) {
+            if (ctx !== my) return;
+            if (res.status === 401) {
+              setStatus(''); main.hidden = true; msg.hidden = false;
+              msg.innerHTML = 'Entre com Google na tela de <a href="opendoctor-integracao.html">Integrações</a> para ver e salvar o prontuário.';
+              return;
+            }
+            if (!res.ok) { setStatus('Não foi possível carregar o prontuário.', true); return; }
+            patient = res.j.patient; ctx.patient_id = patient.id; ctx.patient = patient.name;
+            notes = res.j.notes || [];
+            cur = notes.filter(function (n) { return (ctx.event_id && n.event_id === ctx.event_id) || (!ctx.event_id && ctx.note_id && n.id === ctx.note_id); })[0] || null;
+            if (cur) ctx.note_id = cur.id;
+            persistCtx();
+            fillEditor(cur); saved = snap();
+            ready = true; setEditable(true); setStatus('');
+            $('prAccessBtn').hidden = $('prExport').hidden = false;
+            renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); updCount(compose().content.length);
+            // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva
+            var d = draftRead();
+            if (d && !locked() && d.s !== saved && (!cur || d.at > Date.parse(cur.updated_at || 0))) {
+              try { fillEditor(JSON.parse(d.s)); } catch (_) {}
+              recovered = true; setStatus('Texto não salvo recuperado deste navegador. Salvando…'); save();
+            } else if (d && d.s === saved) { try { localStorage.removeItem(dkey()); } catch (_) {} }
+            loadVisits(my);
+          }).catch(function () { if (ctx === my) setStatus('Sem conexão: não foi possível carregar o prontuário.', true); });
+      }
       function open(c) {
-        ctx = c || null;
-        try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx)); } catch (_) {}
-        note.value = ''; saved = ''; setStatus('');
-        $('prHist').innerHTML = '';
+        if (ctx && c !== ctx && ready) save();             // salva o que estava aberto
+        clearTimeout(timer); clearTimeout(retryTimer); retry = 0;
+        ctx = c || null; persistCtx();
+        patient = null; notes = []; cur = null; saved = ''; ready = false;
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
-        if (!ctx || !ctx.patient) { msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return; }
-        fill(); loadHist(); renderVisit();
+        $('prForm').hidden = true; $('prAccess').hidden = true; $('prAllergyBar').hidden = true;
+        $('prAccessBtn').hidden = $('prExport').hidden = true;
+        if (!ctx || (!ctx.patient && !ctx.patient_id)) {
+          msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return;
+        }
+        main.hidden = false; msg.hidden = true;
+        $('prBack').textContent = ctx.from === 'pacientes' ? '‹ Pacientes' : '‹ Agenda';
+        fillEditor(null); cur = null; renderHeader(); renderConsulta(); renderEvo(); renderVisit(); updCount(0);
+        $('prHist').innerHTML = ''; $('prVisits').innerHTML = ''; $('prHistQ').value = '';
+        cols.forEach(function (col) { col.querySelector('.pr-chips').innerHTML = ''; });
+        load();
         if (location.hash !== '#prontuario') { history.pushState({ pr: 1 }, '', '#prontuario'); direct = false; }
+      }
+      function switchTo(part) {                            // outra consulta/evolução do mesmo paciente
+        open(Object.assign({ patient_id: ctx.patient_id, patient: ctx.patient, from: ctx.from }, part));
+        setTimeout(function () { $('prEvoBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50);
       }
       var direct = false;                                  // abriu direto pelo link/recarga: não há tela anterior no histórico
       function closePr(fromPop) {
-        if (!stage.classList.contains('prontuario')) return;
+        if (!isOpen()) return;
         save();
         stage.classList.remove('prontuario');
         if (fromPop || location.hash !== '#prontuario') return;
@@ -2275,10 +2951,10 @@
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); });
       }
       function sub(p) {
-        if (!p.notes) return 'Sem anotações no prontuário';
         var d = p.last ? new Date(p.last) : null;
-        return p.notes + (p.notes === 1 ? ' anotação' : ' anotações') +
-               (d ? ' · última em ' + d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear() : '');
+        var notes = !p.notes ? 'Sem anotações no prontuário' : p.notes + (p.notes === 1 ? ' anotação' : ' anotações') +
+                    (d ? ' · última em ' + d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear() : '');
+        return (p.birth_date ? ptAge(p.birth_date) + ' · ' : 'Sem data de nascimento · ') + notes;
       }
       function iconBtn(title, svg, onClick) {
         var b = document.createElement('button'); b.type = 'button'; b.className = 'evpop-close';
@@ -2362,23 +3038,29 @@
       }
       // novo paciente
       var newRow = $('ptNewRow'), newName = $('ptNewName');
-      function toggleNew(on) { newRow.hidden = !on; showErr(''); if (on) { newName.value = search.value.trim(); newName.focus(); } }
+      function toggleNew(on) {
+        newRow.hidden = !on; showErr('');
+        if (on) { newName.value = search.value.trim(); $('ptNewBirth').value = ''; $('ptNewSex').value = ''; $('ptNewBirth').max = new Date().toISOString().slice(0, 10); newName.focus(); }
+      }
       $('ptNew').addEventListener('click', function () { toggleNew(newRow.hidden); });
       $('ptNewCancel').addEventListener('click', function () { toggleNew(false); });
-      function createNew() {
+      function createNew(force) {
         var v = newName.value.split(/\s+/).filter(Boolean).join(' ');
         if (!v) { newName.focus(); return; }
-        api('POST', '/patients', { name: v }).then(function (res) {
+        var body = { name: v, birth_date: $('ptNewBirth').value || null, sex: $('ptNewSex').value || null, force: !!force };
+        api('POST', '/patients', body).then(function (res) {
           if (res.ok && res.j.ok) {
             toggleNew(false); search.value = '';
-            if (!res.j.created) showErr('Já existia um paciente com esse nome.');
             load();
-          } else showErr(res.status === 401 ? 'Entre com Google em Integrações para cadastrar pacientes.' : 'Não foi possível criar o paciente.');
+          } else if (res.status === 409 && res.j.duplicates) {   // homônimo: mostra quem já existe e confirma
+            var who = res.j.duplicates.map(function (d) { return d.name + (d.birth_date ? ' (' + ptAge(d.birth_date) + ', nasc. ' + d.birth_date.split('-').reverse().join('/') + ')' : ' (sem data de nascimento)'); }).join('\n');
+            if (confirm('Já existe paciente com esse nome:\n' + who + '\n\nÉ outra pessoa? Criar um novo cadastro?')) createNew(true);
+          } else showErr(res.status === 401 ? 'Entre com Google em Integrações para cadastrar pacientes.' : (res.j && res.j.error ? res.j.error.charAt(0).toUpperCase() + res.j.error.slice(1) + '.' : 'Não foi possível criar o paciente.'));
         });
       }
-      $('ptNewSave').addEventListener('click', createNew);
+      $('ptNewSave').addEventListener('click', function () { createNew(false); });
       newName.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); createNew(); }
+        if (e.key === 'Enter') { e.preventDefault(); createNew(false); }
         else if (e.key === 'Escape') { e.stopPropagation(); toggleNew(false); }
       });
       search.addEventListener('input', render);
