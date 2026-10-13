@@ -229,40 +229,79 @@ def patient_key(name):
     return " ".join(n.lower().split())
 
 
-def list_notes(user_id, pkey):
+def list_patients(user_id, limit=1000):
+    """Pacientes do médico, os usados mais recentemente primeiro."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """select id, name from patients where user_id = %s
+                   order by updated_at desc limit %s""",
+                (user_id, limit))
+            return [{"id": r[0], "name": r[1]} for r in cur.fetchall()]
+
+
+def ensure_patient(user_id, name):
+    """Cadastra o paciente (ou devolve o existente com o mesmo nome normalizado).
+    Retorna ({id, name}, created)."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """insert into patients (user_id, patient_key, name) values (%s,%s,%s)
+                   on conflict (user_id, patient_key) do update set updated_at = now()
+                   returning id, name, (xmax = 0)""",
+                (user_id, patient_key(name), name))
+            r = cur.fetchone()
+        conn.commit()
+    return {"id": r[0], "name": r[1]}, bool(r[2])
+
+
+def get_patient(user_id, patient_id):
+    """Paciente do médico pelo id ({id, name}) ou None (inclusive se for de outro médico)."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("select id, name, patient_key from patients where user_id = %s and id = %s",
+                        (user_id, patient_id))
+            r = cur.fetchone()
+    return {"id": r[0], "name": r[1], "key": r[2]} if r else None
+
+
+def list_notes(user_id, patient_id, pkey):
+    """Prontuário do paciente: anotações ligadas a ele (e antigas, só com o nome, sem vínculo)."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """select id, event_id, event_title, event_start, content, updated_at
-                   from clinical_notes where user_id = %s and patient_key = %s
+                   from clinical_notes
+                   where user_id = %s and (patient_id = %s or (patient_id is null and patient_key = %s))
                    order by coalesce(event_start, created_at) desc limit 200""",
-                (user_id, pkey))
+                (user_id, patient_id, pkey))
             rows = cur.fetchall()
     return [{"id": r[0], "event_id": r[1], "event_title": r[2],
              "event_start": r[3].isoformat() if r[3] else None, "content": r[4],
              "updated_at": r[5].isoformat() if r[5] else None} for r in rows]
 
 
-def upsert_note(user_id, pkey, patient_name, event_id, event_title, event_start, content):
-    """Uma anotação por consulta (event_id); sem consulta, cria uma nova."""
+def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content):
+    """Uma anotação por consulta (event_id); sem consulta, cria uma nova. Fica ligada ao paciente."""
     with connection() as conn:
         with conn.cursor() as cur:
             if event_id:
                 cur.execute(
                     """insert into clinical_notes
-                         (user_id, patient_key, patient_name, event_id, event_title, event_start, content)
-                       values (%s,%s,%s,%s,%s,%s,%s)
+                         (user_id, patient_id, patient_key, patient_name, event_id, event_title, event_start, content)
+                       values (%s,%s,%s,%s,%s,%s,%s,%s)
                        on conflict (user_id, event_id) where event_id is not null do update set
-                         content = excluded.content, patient_key = excluded.patient_key,
-                         patient_name = excluded.patient_name, event_title = excluded.event_title,
-                         event_start = excluded.event_start, updated_at = now()
+                         content = excluded.content, patient_id = excluded.patient_id,
+                         patient_key = excluded.patient_key, patient_name = excluded.patient_name,
+                         event_title = excluded.event_title, event_start = excluded.event_start,
+                         updated_at = now()
                        returning id""",
-                    (user_id, pkey, patient_name, event_id, event_title, event_start, content))
+                    (user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content))
             else:
                 cur.execute(
-                    """insert into clinical_notes (user_id, patient_key, patient_name, content)
-                       values (%s,%s,%s,%s) returning id""",
-                    (user_id, pkey, patient_name, content))
+                    """insert into clinical_notes (user_id, patient_id, patient_key, patient_name, content)
+                       values (%s,%s,%s,%s,%s) returning id""",
+                    (user_id, patient_id, pkey, patient_name, content))
             nid = cur.fetchone()[0]
         conn.commit()
     return nid

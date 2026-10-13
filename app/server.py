@@ -641,7 +641,8 @@ async def create_calendar_event(request: Request):
                                        (payload.get("title") or "").strip(),
                                        start, end, payload.get("description"),
                                        location=(payload.get("location") or "").strip() or None,
-                                       all_day=bool(payload.get("all_day")))
+                                       all_day=bool(payload.get("all_day")),
+                                       patient_id=_own_patient_id(u, payload))
         return {"ok": True, "event": ev}
     except Exception as e:
         msg = str(e)
@@ -649,6 +650,15 @@ async def create_calendar_event(request: Request):
         needs_reconnect = msg.startswith("403") or "insufficient" in msg.lower()
         return JSONResponse({"error": msg[:200], "needs_reconnect": needs_reconnect},
                             status_code=403 if needs_reconnect else 400)
+
+
+def _own_patient_id(u, payload):
+    """patient_id do payload, só se o paciente for deste médico (senão None)."""
+    pid = payload.get("patient_id")
+    if not str(pid or "").isdigit():
+        return None
+    p = db.get_patient(u["id"], int(pid))
+    return p["id"] if p else None
 
 
 def _cal_error(e):
@@ -688,7 +698,8 @@ async def update_calendar_event(event_id: str, request: Request):
                                        (payload.get("title") or "").strip(), start, end,
                                        payload.get("description"),
                                        location=(payload.get("location") or "").strip() or None,
-                                       all_day=bool(payload.get("all_day")))
+                                       all_day=bool(payload.get("all_day")),
+                                       patient_id=_own_patient_id(u, payload))
         return {"ok": True, "event": ev}
     except Exception as e:
         return _cal_error(e)
@@ -712,6 +723,19 @@ def delete_calendar_event(event_id: str, request: Request):
 MAX_NOTE_CHARS = 20000
 
 
+def _note_patient(u, payload):
+    """Paciente do prontuário: pelo id do cadastro; eventos antigos (só com o nome) são
+    cadastrados na hora. Devolve {id, name, key} ou None."""
+    pid = payload.get("patient_id")
+    if str(pid or "").isdigit():
+        return db.get_patient(u["id"], int(pid))
+    name = " ".join((payload.get("patient") or "").split())[:200]
+    if not db.patient_key(name):
+        return None
+    p, _ = db.ensure_patient(u["id"], name)
+    return db.get_patient(u["id"], p["id"])
+
+
 @app.post("/prontuario/list")
 async def prontuario_list(request: Request):
     u = auth.current_user(request)
@@ -721,10 +745,11 @@ async def prontuario_list(request: Request):
         payload = await request.json()
     except Exception:
         payload = {}
-    name = (payload.get("patient") or "").strip()
-    if not name:
+    p = _note_patient(u, payload)
+    if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
-    return {"patient": name, "notes": db.list_notes(u["id"], db.patient_key(name))}
+    return {"patient": {"id": p["id"], "name": p["name"]},
+            "notes": db.list_notes(u["id"], p["id"], p["key"])}
 
 
 @app.post("/prontuario/notes")
@@ -736,15 +761,41 @@ async def prontuario_save(request: Request):
         payload = await request.json()
     except Exception:
         payload = {}
-    name = (payload.get("patient") or "").strip()
-    if not name:
+    p = _note_patient(u, payload)
+    if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     content = (payload.get("content") or "")[:MAX_NOTE_CHARS]
     start = payload.get("event_start") or None
-    nid = db.upsert_note(u["id"], db.patient_key(name), name[:200],
+    nid = db.upsert_note(u["id"], p["id"], p["key"], p["name"],
                          (payload.get("event_id") or None), (payload.get("event_title") or "")[:300] or None,
                          start, content)
     return {"ok": True, "id": nid}
+
+
+# --- pacientes: o campo "Paciente" da agenda escolhe um existente ou cria um novo ---
+@app.get("/patients")
+def patients_list(request: Request):
+    """Lista completa do médico (a busca filtra no navegador; nome nunca vai em URL)."""
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    return {"patients": db.list_patients(u["id"])}
+
+
+@app.post("/patients")
+async def patients_create(request: Request):
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    name = " ".join((payload.get("name") or "").split())[:200]
+    if not db.patient_key(name):
+        return JSONResponse({"error": "nome obrigatório"}, status_code=400)
+    p, created = db.ensure_patient(u["id"], name)
+    return {"ok": True, "patient": p, "created": created}
 
 
 # serve o front-end (web/) na mesma origem — registrado por último para não

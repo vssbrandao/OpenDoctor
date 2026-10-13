@@ -119,15 +119,17 @@ def _access_token(user_id, provider):
     return access
 
 
-def _event_body(provider, title, start, end, description=None, location=None, all_day=False):
-    """Corpo do evento no formato de cada provedor (usado em criar e editar)."""
+def _event_body(provider, title, start, end, description=None, location=None, all_day=False, patient_id=None):
+    """Corpo do evento no formato de cada provedor (usado em criar e editar).
+    No Google, o paciente cadastrado vai em extendedProperties.private (invisível no app do Google)."""
     if provider == "google":
         key = "date" if all_day else "dateTime"
         other = "dateTime" if all_day else "date"
         # ao trocar entre dia inteiro e horário, zera o outro campo (o Google exige um só)
         body = {"summary": title or "(sem título)",
                 "start": {key: start, other: None}, "end": {key: end, other: None},
-                "description": description or "", "location": location or ""}
+                "description": description or "", "location": location or "",
+                "extendedProperties": {"private": {"od_patient_id": str(patient_id) if patient_id else None}}}
         return body
     if all_day:
         start, end = start + "T00:00:00", end + "T00:00:00"
@@ -142,10 +144,16 @@ def _event_body(provider, title, start, end, description=None, location=None, al
 def _event_out(provider, e):
     if provider == "google":
         st, en = e.get("start") or {}, e.get("end") or {}
-        return {"id": e.get("id"), "title": e.get("summary"),
+        return {"id": e.get("id"), "title": e.get("summary"), "patient_id": _patient_id(e),
                 "start": st.get("dateTime") or st.get("date"), "end": en.get("dateTime") or en.get("date")}
     return {"id": e.get("id"), "title": e.get("subject"),
             "start": (e.get("start") or {}).get("dateTime"), "end": (e.get("end") or {}).get("dateTime")}
+
+
+def _patient_id(e):
+    """Id do paciente cadastrado guardado no evento do Google (ou None)."""
+    v = ((e.get("extendedProperties") or {}).get("private") or {}).get("od_patient_id")
+    return int(v) if v and str(v).isdigit() else None
 
 
 def _headers(user_id, provider):
@@ -161,27 +169,32 @@ def _event_url(provider, event_id=None):
     return base + ("/" + quote(event_id, safe="") if event_id else "")
 
 
-def create_event(user_id, provider, title, start, end, description=None, location=None, all_day=False):
+def create_event(user_id, provider, title, start, end, description=None, location=None, all_day=False,
+                 patient_id=None):
     """Cria um evento no calendário primário do usuário. start/end em ISO 8601
     (com offset, ex.: 2026-10-09T13:30:00-03:00) ou, se all_day, datas AAAA-MM-DD
     (fim exclusivo). Pode lançar exceção (ex.: 403 se o token for somente-leitura
     → precisa reconectar com escopo de escrita)."""
-    body = _event_body(provider, title, start, end, description, location, all_day)
+    body = _event_body(provider, title, start, end, description, location, all_day, patient_id)
     if provider == "google":                              # na criação não manda campos vazios
         body["start"] = {k: v for k, v in body["start"].items() if v}
         body["end"] = {k: v for k, v in body["end"].items() if v}
         for k in ("description", "location"):
             if not body[k]:
                 body.pop(k)
+        if not patient_id:
+            body.pop("extendedProperties")
     r = httpx.post(_event_url(provider), headers=_headers(user_id, provider), json=body, timeout=25)
     if r.status_code not in (200, 201):
         raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
     return _event_out(provider, r.json())
 
 
-def update_event(user_id, provider, event_id, title, start, end, description=None, location=None, all_day=False):
-    """Atualiza um evento existente (PATCH). Mesmos formatos de create_event."""
-    body = _event_body(provider, title, start, end, description, location, all_day)
+def update_event(user_id, provider, event_id, title, start, end, description=None, location=None, all_day=False,
+                 patient_id=None):
+    """Atualiza um evento existente (PATCH). Mesmos formatos de create_event.
+    patient_id=None remove o vínculo com o paciente."""
+    body = _event_body(provider, title, start, end, description, location, all_day, patient_id)
     r = httpx.patch(_event_url(provider, event_id), headers=_headers(user_id, provider), json=body, timeout=25)
     if r.status_code not in (200, 201):
         raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
@@ -233,6 +246,7 @@ def events(user_id, provider, limit=50, time_min=None, time_max=None):
                 st = e.get("start", {}); en = e.get("end", {})
                 all_day = "date" in st and "dateTime" not in st
                 out.append({"id": e.get("id"), "title": e.get("summary", "(sem título)"),
+                            "patient_id": _patient_id(e),
                             "description": e.get("description") or "", "location": e.get("location") or "",
                             "start": st.get("dateTime") or st.get("date"),
                             "end": en.get("dateTime") or en.get("date"),

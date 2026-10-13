@@ -273,6 +273,17 @@
       font-family:var(--disp);font-weight:500;font-size:9px;line-height:1;letter-spacing:.02em;color:#0842A0}
     .evpop-av.has{background:#D3E3FD}
     .evpop-av.has svg{display:none}
+    /* lista de pacientes (escolher um existente ou criar um novo) */
+    .evpop-pl{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px;max-height:220px;overflow-y:auto;scrollbar-width:thin}
+    .evpop-pl[hidden]{display:none}
+    .evpop-po{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 12px;border:0;background:none;
+      border-radius:12px;cursor:pointer;text-align:left;width:100%;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .evpop-po span:last-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .evpop-po:hover,.evpop-po.on{background:#EDEDED}
+    .evpop-po.new{color:#0842A0}
+    .evpop-po.new .evpop-av{background:#fff;font-size:16px;font-weight:400}
+    .evpop-pmsg{padding:6px 12px;font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#8B8B8B}
     .evpop-desc{display:block;border:0;outline:none;background:none;width:100%;resize:none;min-height:76px;padding:12px;
       border-radius:12px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .evpop-desc:focus{background:#EDEDED}
@@ -741,8 +752,10 @@
       <div class="evpop-card">
         <div class="evpop-row">
           <span class="evpop-ico"><span class="evpop-av" id="evAv"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.4" r="2.6" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13.6c0-2.4 2.2-4 5-4s5 1.6 5 4" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="evAvTxt"></span></span></span>
-          <input class="evpop-input" id="evPatient" type="text" placeholder="Paciente" autocomplete="off">
+          <input class="evpop-input" id="evPatient" type="text" placeholder="Paciente" autocomplete="off"
+                 role="combobox" aria-autocomplete="list" aria-controls="evPList" aria-expanded="false">
         </div>
+        <div class="evpop-pl" id="evPList" role="listbox" hidden></div>
         <div class="evpop-row">
           <span class="evpop-ico"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 14.2s4.6-4.1 4.6-7.6A4.6 4.6 0 0 0 3.4 6.6c0 3.5 4.6 7.6 4.6 7.6z" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8" cy="6.6" r="1.7" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <input class="evpop-input" id="evLocation" type="text" placeholder="Local" autocomplete="off">
@@ -1036,15 +1049,103 @@
       });
       elDate.addEventListener('change', dateLabel);
       elAllDay.addEventListener('click', function () { setAllDay(!allDay); });
-      // avatar do paciente: iniciais em azul (como nos cards da agenda) assim que o nome é digitado
+      // ===== paciente: escolher um do cadastro ou criar um novo (ligado ao prontuário dele) =====
+      // A lista vem inteira de GET /patients e é filtrada aqui (o nome nunca vai em URL).
       var elAv = document.getElementById('evAv'), elAvTxt = document.getElementById('evAvTxt');
-      var elKicker = document.getElementById('evKicker');
+      var elKicker = document.getElementById('evKicker'), elPList = document.getElementById('evPList');
+      var selPatient = null;                                 // {id, name}; id null = evento antigo só com o nome
+      var patients = null, patientsAt = 0, plItems = [], plActive = -1;
+      function pnorm(v) { return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' '); }
+      function initialsOf(name) {
+        var w = (name || '').trim().split(/\s+/).filter(Boolean);
+        return w.length ? (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase() : '';
+      }
+      // avatar azul com iniciais só quando o paciente está escolhido (igual aos cards da agenda)
       function avatar() {
-        var w = elPatient.value.trim().split(/\s+/).filter(Boolean);
-        var ini = w.length ? (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase() : '';
+        var ini = selPatient ? initialsOf(selPatient.name) : '';
         elAvTxt.textContent = ini; elAv.classList.toggle('has', !!ini);
       }
-      elPatient.addEventListener('input', avatar);
+      function loadPatients(force) {
+        if (!force && patients && Date.now() - patientsAt < 60e3) return Promise.resolve(patients);
+        return fetch('/patients').then(function (r) { return r.ok ? r.json() : { patients: [] }; })
+          .then(function (j) { patients = j.patients || []; patientsAt = Date.now(); return patients; })
+          .catch(function () { return patients || []; });
+      }
+      function byKey(name) {
+        var k = pnorm(name);
+        return k && patients ? patients.filter(function (p) { return pnorm(p.name) === k; })[0] : null;
+      }
+      function setPatient(p) {
+        selPatient = p; elPatient.value = p ? p.name : ''; avatar(); hideList();
+      }
+      function hideList() { elPList.hidden = true; elPList.innerHTML = ''; plItems = []; plActive = -1; elPatient.setAttribute('aria-expanded', 'false'); }
+      function option(cls, avHtml, label, onPick) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'evpop-po' + (cls ? ' ' + cls : '');
+        b.setAttribute('role', 'option');
+        var av = document.createElement('span'); av.className = 'evpop-av has'; av.textContent = avHtml;
+        var t = document.createElement('span'); t.textContent = label;
+        b.appendChild(av); b.appendChild(t);
+        b.addEventListener('mousedown', function (e) { e.preventDefault(); });   // não tira o foco do campo
+        b.addEventListener('click', onPick);
+        elPList.appendChild(b); plItems.push(b);
+      }
+      function showList() {
+        var raw = elPatient.value.trim(), q = pnorm(raw);
+        loadPatients().then(function (list) {
+          if (pop.hidden || document.activeElement !== elPatient || raw !== elPatient.value.trim()) return;
+          elPList.innerHTML = ''; plItems = []; plActive = -1;
+          var hits = list.filter(function (p) { return !q || pnorm(p.name).indexOf(q) >= 0; }).slice(0, q ? 6 : 5);
+          if (!q && hits.length) {
+            var h = document.createElement('div'); h.className = 'evpop-pmsg'; h.textContent = 'Pacientes recentes'; elPList.appendChild(h);
+          }
+          hits.forEach(function (p) { option('', initialsOf(p.name), p.name, function () { setPatient(p); }); });
+          if (q && !byKey(raw)) option('new', '+', 'Criar paciente "' + raw + '"', function () { createPatient(raw); });
+          if (!q && !hits.length) {
+            var m = document.createElement('div'); m.className = 'evpop-pmsg'; m.textContent = 'Digite o nome para buscar ou criar um paciente.'; elPList.appendChild(m);
+          }
+          elPList.hidden = !elPList.children.length;
+          elPatient.setAttribute('aria-expanded', elPList.hidden ? 'false' : 'true');
+          if (q && plItems.length) markP(0);
+        });
+      }
+      function markP(i) {
+        if (!plItems.length) return;
+        plActive = (i + plItems.length) % plItems.length;
+        plItems.forEach(function (b, j) { b.classList.toggle('on', j === plActive); });
+        plItems[plActive].scrollIntoView({ block: 'nearest' });
+      }
+      function createPatient(name) {
+        name = name.split(/\s+/).filter(Boolean).join(' ');
+        fetch('/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+          .then(function (res) {
+            if (res.ok && res.j.ok) {
+              patients = [res.j.patient].concat((patients || []).filter(function (p) { return p.id !== res.j.patient.id; }));
+              setPatient(res.j.patient);
+            } else {
+              elMsg.className = 'evpop-msg'; elMsg.hidden = false;
+              if (res.status === 401) elMsg.innerHTML = 'Entre com Google em <a href="/opendoctor-integracao.html">Integrações</a> para cadastrar pacientes.';
+              else elMsg.textContent = 'Não foi possível criar o paciente.';
+            }
+          }).catch(function () { elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false; });
+      }
+      elPatient.addEventListener('focus', showList);
+      elPatient.addEventListener('input', function () {
+        if (selPatient && elPatient.value.trim() !== selPatient.name) { selPatient = null; avatar(); }
+        elMsg.hidden = true; showList();
+      });
+      elPatient.addEventListener('blur', function () {
+        var raw = elPatient.value.trim();
+        if (raw && !selPatient) { var m = byKey(raw); if (m) setPatient(m); }   // digitou o nome exato de um cadastrado
+        hideList();
+      });
+      elPatient.addEventListener('keydown', function (e) {
+        if (elPList.hidden) return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); markP(plActive + 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); markP(plActive - 1); }
+        else if (e.key === 'Enter') { e.preventDefault(); if (plItems[plActive >= 0 ? plActive : 0]) plItems[plActive >= 0 ? plActive : 0].click(); }
+        else if (e.key === 'Escape') { e.stopPropagation(); hideList(); }
+      });
 
       function pad(n) { return String(n).padStart(2, '0'); }
       function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -1062,6 +1163,7 @@
         elStart.value = pad(h) + ':' + pad(m);
         var eh = h, em = m + 30; if (em >= 60) { eh = (h + 1) % 24; em -= 60; }
         elEnd.value = pad(eh) + ':' + pad(em);
+        selPatient = null; hideList(); loadPatients();
         remember(); durLabel(); dateLabel(); avatar();
         elKicker.textContent = 'Novo evento';
         pop.hidden = false;
@@ -1085,7 +1187,9 @@
       }
       // monta o evento a partir dos campos (mesmo formato do criar)
       function buildPayload() {
-        var title = elTitle.value.trim(), patient = elPatient.value.trim();
+        var title = elTitle.value.trim();
+        if (elPatient.value.trim() && !selPatient) return { error: 'Escolha um paciente da lista ou crie um novo.' };
+        var patient = selPatient ? selPatient.name : '';
         if (!elDate.value || (!allDay && (!elStart.value || !elEnd.value))) return { error: 'Preencha data, início e fim.' };
         var startISO, endISO;
         if (allDay) {
@@ -1099,14 +1203,15 @@
         var desc = elDesc.value.trim();
         if (patient) desc = (desc ? desc + '\n' : '') + 'Paciente: ' + patient;
         return { title: summary, start: startISO, end: endISO, description: desc,
-                 location: elLoc.value.trim(), all_day: allDay, _patient: patient, _title: title };
+                 location: elLoc.value.trim(), all_day: allDay, patient_id: selPatient && selPatient.id || null,
+                 _patient: patient, _title: title };
       }
       function canSave() { return mode === 'edit' && editEv && editEv.id && window.__calConnected; }
       function saveEdit(cb) {
         var p = buildPayload();
         if (!canSave() || p.error || JSON.stringify(p) === original) { if (cb) cb(true); return; }
         var body = { title: p.title, start: p.start, end: p.end, description: p.description,
-                     location: p.location, all_day: p.all_day };
+                     location: p.location, all_day: p.all_day, patient_id: p.patient_id };
         fetch('/calendar/events/' + encodeURIComponent(editEv.id), {
           method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
         }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
@@ -1148,6 +1253,16 @@
         elDate.value = fmtDate(s0);
         if (!isAll) { ensureOption(elStart, pad(s0.getHours()) + ':' + pad(s0.getMinutes()));
                       ensureOption(elEnd, pad(e0.getHours()) + ':' + pad(e0.getMinutes())); }
+        // paciente do evento: pelo id do cadastro; eventos antigos só têm o nome
+        hideList();
+        selPatient = patient ? { id: ev.patient_id || null, name: patient } : null;
+        loadPatients().then(function () {
+          if (!selPatient || editEv !== ev) return;
+          var reg = selPatient.id ? patients.filter(function (p) { return p.id === selPatient.id; })[0] : byKey(selPatient.name);
+          if (reg && !selPatient.id) { selPatient = reg; elPatient.value = reg.name; }   // evento antigo: liga ao cadastro (salva ao fechar)
+          else if (reg) { selPatient = reg; elPatient.value = reg.name; original = JSON.stringify(buildPayload()); }
+          avatar();
+        });
         delete elDur.dataset.min; remember(); durLabel(); dateLabel(); avatar();
         elKicker.textContent = 'Evento';
         original = JSON.stringify(buildPayload());
@@ -1178,7 +1293,13 @@
       // "Prontuário": salva alterações e abre a tela do paciente (nome via sessionStorage, nunca na URL)
       function openProntuario() {
         var p = buildPayload();
-        var ctx = { event_id: editEv && editEv.id || null, title: p._title || '', patient: p._patient || p._title || '',
+        if (p.error || !selPatient) {                       // o prontuário é do paciente: precisa estar escolhido
+          elMsg.className = 'evpop-msg'; elMsg.hidden = false;
+          elMsg.textContent = p.error || 'Escolha ou crie o paciente para abrir o prontuário.';
+          elPatient.focus(); return;
+        }
+        var ctx = { event_id: editEv && editEv.id || null, title: p._title || '', patient: selPatient.name,
+                    patient_id: selPatient.id || null,
                     start: p.start || null, end: p.end || null, all_day: !!p.all_day, location: p.location || '' };
         var go = function () {
           pop.hidden = true; mode = 'create'; editEv = null; elCreate.disabled = false;
@@ -1251,31 +1372,13 @@
 
       elCreate.addEventListener('click', function () {
         if (mode === 'edit') { openProntuario(); return; }
-        var title = elTitle.value.trim();
-        var patient = elPatient.value.trim();
-        if (!elDate.value || (!allDay && (!elStart.value || !elEnd.value))) {
-          elMsg.textContent = 'Preencha data, início e fim.'; elMsg.hidden = false; return;
-        }
-        var startISO, endISO;
-        if (allDay) {                                        // dia inteiro: datas sem hora (fim exclusivo)
-          var p = elDate.value.split('-'), nx = new Date(+p[0], +p[1] - 1, +p[2] + 1);
-          startISO = elDate.value; endISO = fmtDate(nx);
-        } else {
-          startISO = isoFrom(elDate.value, elStart.value);
-          endISO = isoFrom(elDate.value, elEnd.value);
-          if (new Date(endISO) <= new Date(startISO)) {
-            elMsg.textContent = 'O fim deve ser depois do início.'; elMsg.hidden = false; return;
-          }
-        }
-        // compõe o título do evento com o paciente e guarda o paciente na descrição
-        var summary = patient ? (title ? title + ' — ' + patient : patient) : title;
-        var desc = elDesc.value.trim();
-        if (patient) desc = (desc ? desc + '\n' : '') + 'Paciente: ' + patient;
+        var p = buildPayload();
+        if (p.error) { elMsg.className = 'evpop-msg'; elMsg.textContent = p.error; elMsg.hidden = false; return; }
         elCreate.disabled = true; elCreate.textContent = 'Criando…'; elMsg.hidden = true;
         fetch('/calendar/events', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title: summary, start: startISO, end: endISO, description: desc,
-                                 location: elLoc.value.trim(), all_day: allDay })
+          body: JSON.stringify({ title: p.title, start: p.start, end: p.end, description: p.description,
+                                 location: p.location, all_day: p.all_day, patient_id: p.patient_id })
         }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
           .then(function (res) {
             if (res.ok && res.j.ok) {
@@ -1914,7 +2017,7 @@
         var content = note.value;
         fetch('/prontuario/notes', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patient: ctx.patient, event_id: ctx.event_id, event_title: ctx.title,
+          body: JSON.stringify({ patient_id: ctx.patient_id, patient: ctx.patient, event_id: ctx.event_id, event_title: ctx.title,
                                  event_start: ctx.start && ctx.start.length > 10 ? ctx.start : null, content: content })
         }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
           .then(function (res) {
@@ -1941,10 +2044,12 @@
       function loadHist() {
         fetch('/prontuario/list', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patient: ctx.patient })
+          body: JSON.stringify({ patient_id: ctx.patient_id, patient: ctx.patient })
         }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
           .then(function (res) {
             var box = $('prHist'); box.innerHTML = '';
+            // prontuário ligado ao cadastro: evento antigo (só nome) ganha o id do paciente aqui
+            if (res.j && res.j.patient && res.j.patient.id) { ctx.patient_id = res.j.patient.id; ctx.patient = res.j.patient.name; }
             if (res.status === 401) {
               box.innerHTML = '<div class="pr-empty">Entre com Google na tela de <a href="opendoctor-integracao.html">Integrações</a> para ver e salvar o prontuário.</div>';
               return;
@@ -1968,7 +2073,7 @@
       }
       // ===== iniciar / encerrar consulta =====
       var visitBtn = $('prVisit'), timerEl = $('prTimer'), tick = null;
-      function vkey() { return 'od_visit_' + (ctx && (ctx.event_id || ctx.patient) || ''); }
+      function vkey() { return 'od_visit_' + (ctx && (ctx.event_id || ctx.patient_id || ctx.patient) || ''); }
       function visitStart() { try { return +sessionStorage.getItem(vkey()) || 0; } catch (_) { return 0; } }
       function hm(d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
       function renderVisit() {
