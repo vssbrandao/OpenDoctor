@@ -340,7 +340,6 @@
     .pt-head{position:sticky;top:0;z-index:2;align-self:stretch;flex:none;display:flex;align-items:center;gap:8px;
       min-height:52px;padding:8px 8px 8px 24px;background:#fff}
     .pt-title{margin:0;font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    .pt-count{font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#879196}
     .pt-tools{display:flex;align-items:center;gap:8px}
     .pt-searchbox{flex:1;min-width:0;height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid #E5E5E5;border-radius:10px;background:#fff}
     .pt-searchbox:focus-within{border-color:#B5B5B5}
@@ -965,7 +964,6 @@
       <div class="pt-view" id="ptView">
         <div class="pt-head">
           <h1 class="pt-title">Pacientes</h1>
-          <span class="pt-count" id="ptCount"></span>
         </div>
         <div class="pt">
           <div class="pt-tools">
@@ -3239,7 +3237,6 @@
         var q = norm(search.value.trim());
         var rows = all.filter(function (p) { return !q || norm(p.name).indexOf(q) >= 0; })
                       .sort(function (a, b) { return a.name.localeCompare(b.name, 'pt-BR'); });
-        $('ptCount').textContent = loaded && !denied ? (all.length + (all.length === 1 ? ' paciente' : ' pacientes')) : '';
         list.innerHTML = '';
         if (loaded && !rows.length) {
           list.appendChild(el('div', 'pt-empty', all.length ? 'Nenhum paciente encontrado.' : 'Nenhum paciente ainda. Crie um aqui ou ao marcar uma consulta na agenda.'));
