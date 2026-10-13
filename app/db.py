@@ -223,10 +223,13 @@ def connected_providers(user_id):
 
 # --- prontuário (anotações clínicas por paciente) ---
 def patient_key(name):
-    """Chave estável do paciente a partir do nome: minúsculas, sem acento, espaços únicos."""
+    """Chave estável do paciente a partir do nome: minúsculas, sem acento, espaços únicos.
+    Tira só os acentos (marcas combinantes): letras de outros alfabetos e ł/ø/ß continuam,
+    então "李雷" ou "Łukasz" têm chave própria (antes viravam "" e "ukasz")."""
     import unicodedata
-    n = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode()
-    return " ".join(n.lower().split())
+    n = unicodedata.normalize("NFKD", name or "")
+    n = "".join(c for c in n if not unicodedata.combining(c))
+    return " ".join(n.casefold().split())
 
 
 def list_patients(user_id, limit=1000):
@@ -248,22 +251,32 @@ def list_patients(user_id, limit=1000):
 
 
 def rename_patient(user_id, patient_id, name):
-    """Renomeia o paciente (e o nome nas anotações dele). False se já existe outro com esse nome."""
+    """Renomeia o paciente (e o nome nas anotações dele). False se já existe outro com esse nome,
+    None se o paciente não existe (ou é de outro médico)."""
     key = patient_key(name)
     with connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("select 1 from patients where user_id = %s and patient_key = %s and id <> %s",
-                        (user_id, key, patient_id))
-            if cur.fetchone():
-                return False
-            cur.execute("""update patients set name = %s, patient_key = %s, updated_at = now()
-                           where user_id = %s and id = %s""", (name, key, user_id, patient_id))
-            if not cur.rowcount:
-                return None
-            cur.execute("""update clinical_notes set patient_name = %s, patient_key = %s
-                           where user_id = %s and patient_id = %s""", (name, key, user_id, patient_id))
-        conn.commit()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("""update patients set name = %s, patient_key = %s, updated_at = now()
+                               where user_id = %s and id = %s""", (name, key, user_id, patient_id))
+                if not cur.rowcount:
+                    conn.rollback()
+                    return None
+                cur.execute("""update clinical_notes set patient_name = %s, patient_key = %s
+                               where user_id = %s and patient_id = %s""", (name, key, user_id, patient_id))
+            conn.commit()
+        except psycopg.errors.UniqueViolation:        # outro paciente já tem esse nome
+            conn.rollback()
+            return False
     return True
+
+
+def touch_patient(user_id, patient_id):
+    """Marca o paciente como usado agora ("Pacientes recentes" na agenda)."""
+    with connection() as conn:
+        conn.execute("update patients set updated_at = now() where user_id = %s and id = %s",
+                     (user_id, patient_id))
+        conn.commit()
 
 
 def delete_patient(user_id, patient_id):

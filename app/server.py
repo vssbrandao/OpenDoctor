@@ -57,13 +57,20 @@ def _sse(event, data):
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+# respostas com dados de pacientes/agenda: nunca guardar em cache (LGPD, dado de saúde)
+_NO_STORE = ("/patients", "/prontuario/", "/calendar/")
+
+
 @app.middleware("http")
 async def _no_cache_html(request: Request, call_next):
-    """Impede o navegador de servir HTML velho do cache após um deploy."""
+    """Impede o navegador de servir HTML velho do cache após um deploy, e de guardar
+    respostas com dados de pacientes."""
     resp = await call_next(request)
     path = request.url.path
     if path.endswith(".html") or path == "/":
         resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+    elif path.startswith(_NO_STORE):
+        resp.headers["Cache-Control"] = "no-store"
     return resp
 
 
@@ -653,12 +660,16 @@ async def create_calendar_event(request: Request):
 
 
 def _own_patient_id(u, payload):
-    """patient_id do payload, só se o paciente for deste médico (senão None)."""
+    """patient_id do payload, só se o paciente for deste médico (senão None).
+    Marca o paciente como usado agora (lista de recentes)."""
     pid = payload.get("patient_id")
     if not str(pid or "").isdigit():
         return None
     p = db.get_patient(u["id"], int(pid))
-    return p["id"] if p else None
+    if not p:
+        return None
+    db.touch_patient(u["id"], p["id"])
+    return p["id"]
 
 
 def _cal_error(e):
@@ -723,6 +734,18 @@ def delete_calendar_event(event_id: str, request: Request):
 MAX_NOTE_CHARS = 20000
 
 
+def _iso_or_none(v):
+    """Data/hora ISO 8601 válida ou None (evita erro 500 do Postgres com texto qualquer)."""
+    import datetime as _dt
+    if not isinstance(v, str) or not v:
+        return None
+    try:
+        _dt.datetime.fromisoformat(v.replace("Z", "+00:00"))
+        return v
+    except ValueError:
+        return None
+
+
 def _note_patient(u, payload):
     """Paciente do prontuário: pelo id do cadastro; eventos antigos (só com o nome) são
     cadastrados na hora. Devolve {id, name, key} ou None."""
@@ -764,8 +787,9 @@ async def prontuario_save(request: Request):
     p = _note_patient(u, payload)
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    db.touch_patient(u["id"], p["id"])
     content = (payload.get("content") or "")[:MAX_NOTE_CHARS]
-    start = payload.get("event_start") or None
+    start = _iso_or_none(payload.get("event_start"))
     note_id = payload.get("note_id")
     nid = db.upsert_note(u["id"], p["id"], p["key"], p["name"],
                          (payload.get("event_id") or None), (payload.get("event_title") or "")[:300] or None,
