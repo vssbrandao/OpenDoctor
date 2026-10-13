@@ -461,7 +461,9 @@
     .cal-inner.other-day .hr-row .ev{display:none}
     /* evento selecionado (clique): fundo azul claro, iniciais em círculo branco — Figma 1019:12340 */
     .ev.sel,.ev.sel:hover,.ev-real.sel,.ev-real.sel:hover,.wk-ev.sel,.wk-ev.sel:hover{background:#D3E3FD}
-    .ev.sel .avatar,.ev-real.sel .avatar{background:#FEFEFE}
+    .ev.sel .avatar,.ev-real.sel .avatar,.wk-ev.sel .avatar{background:#FEFEFE}
+    /* semana: mesmo círculo azul com as iniciais do paciente, no canto inferior direito (como no Dia) */
+    .wk-ev-foot{margin-top:auto;display:flex;justify-content:flex-end}
     .ev-real{position:absolute;left:86px;right:24px;background:var(--ev-bg);border-radius:40px;
       padding:20px 24px;overflow:hidden;z-index:2;display:flex;flex-direction:column;
       justify-content:space-between}
@@ -2333,6 +2335,11 @@
             box.title = full + ' · ' + fmtT(s) + '–' + fmtT(e);
             box.appendChild(el('div', 'wk-ev-t', parts[0]));
             if (hgt >= 66) box.appendChild(el('div', 'wk-ev-s', parts.length > 1 ? parts.slice(1).join(' — ') : fmtT(s) + '–' + fmtT(e)));
+            if (hgt >= 110) {                                   // avatar com as iniciais do paciente (igual ao Dia)
+              var who = (parts.length > 1 ? parts.slice(1).join(' ') : full).split(/\s+/).filter(function (w) { return /[\p{L}\p{N}]/u.test(w); });
+              var ini = ((who[0] ? Array.from(who[0])[0] : '') + (who.length > 1 ? Array.from(who[who.length - 1])[0] : '')).toUpperCase() || '•';
+              var foot = el('div', 'wk-ev-foot'); foot.appendChild(el('span', 'avatar', ini)); box.appendChild(foot);
+            }
             cols[i].appendChild(box);
           });
         });
