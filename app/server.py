@@ -766,9 +766,10 @@ async def prontuario_save(request: Request):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     content = (payload.get("content") or "")[:MAX_NOTE_CHARS]
     start = payload.get("event_start") or None
+    note_id = payload.get("note_id")
     nid = db.upsert_note(u["id"], p["id"], p["key"], p["name"],
                          (payload.get("event_id") or None), (payload.get("event_title") or "")[:300] or None,
-                         start, content)
+                         start, content, note_id=int(note_id) if str(note_id or "").isdigit() else None)
     return {"ok": True, "id": nid}
 
 
@@ -796,6 +797,40 @@ async def patients_create(request: Request):
         return JSONResponse({"error": "nome obrigatório"}, status_code=400)
     p, created = db.ensure_patient(u["id"], name)
     return {"ok": True, "patient": p, "created": created}
+
+
+@app.patch("/patients/{patient_id}")
+async def patients_rename(patient_id: int, request: Request):
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+    name = " ".join((payload.get("name") or "").split())[:200]
+    if not db.patient_key(name):
+        return JSONResponse({"error": "nome obrigatório"}, status_code=400)
+    ok = db.rename_patient(u["id"], patient_id, name)
+    if ok is None:
+        return JSONResponse({"error": "paciente não encontrado"}, status_code=404)
+    if not ok:
+        return JSONResponse({"error": "já existe um paciente com esse nome"}, status_code=409)
+    return {"ok": True, "patient": {"id": patient_id, "name": name}}
+
+
+@app.delete("/patients/{patient_id}")
+def patients_delete(patient_id: int, request: Request):
+    """Só exclui cadastro sem prontuário (anotações clínicas são guardadas)."""
+    u = auth.current_user(request)
+    if not u:
+        return JSONResponse({"error": "não autenticado"}, status_code=401)
+    r = db.delete_patient(u["id"], patient_id)
+    if r == "not_found":
+        return JSONResponse({"error": "paciente não encontrado"}, status_code=404)
+    if r == "has_notes":
+        return JSONResponse({"error": "paciente com prontuário não pode ser excluído"}, status_code=409)
+    return {"ok": True}
 
 
 # serve o front-end (web/) na mesma origem — registrado por último para não

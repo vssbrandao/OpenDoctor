@@ -230,14 +230,60 @@ def patient_key(name):
 
 
 def list_patients(user_id, limit=1000):
-    """Pacientes do médico, os usados mais recentemente primeiro."""
+    """Pacientes do médico (os usados mais recentemente primeiro), com o resumo do prontuário:
+    nº de anotações e data da última."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """select id, name from patients where user_id = %s
-                   order by updated_at desc limit %s""",
+                """select p.id, p.name, count(n.id) filter (where n.content <> ''),
+                          max(coalesce(n.event_start, n.created_at)) filter (where n.content <> '')
+                   from patients p
+                   left join clinical_notes n on n.user_id = p.user_id and n.patient_id = p.id
+                   where p.user_id = %s
+                   group by p.id
+                   order by p.updated_at desc limit %s""",
                 (user_id, limit))
-            return [{"id": r[0], "name": r[1]} for r in cur.fetchall()]
+            return [{"id": r[0], "name": r[1], "notes": r[2],
+                     "last": r[3].isoformat() if r[3] else None} for r in cur.fetchall()]
+
+
+def rename_patient(user_id, patient_id, name):
+    """Renomeia o paciente (e o nome nas anotações dele). False se já existe outro com esse nome."""
+    key = patient_key(name)
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("select 1 from patients where user_id = %s and patient_key = %s and id <> %s",
+                        (user_id, key, patient_id))
+            if cur.fetchone():
+                return False
+            cur.execute("""update patients set name = %s, patient_key = %s, updated_at = now()
+                           where user_id = %s and id = %s""", (name, key, user_id, patient_id))
+            if not cur.rowcount:
+                return None
+            cur.execute("""update clinical_notes set patient_name = %s, patient_key = %s
+                           where user_id = %s and patient_id = %s""", (name, key, user_id, patient_id))
+        conn.commit()
+    return True
+
+
+def delete_patient(user_id, patient_id):
+    """Exclui o cadastro só se não houver prontuário (anotações são registro de saúde e ficam).
+    Retorna 'ok', 'has_notes' ou 'not_found'."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("select patient_key from patients where user_id = %s and id = %s", (user_id, patient_id))
+            r = cur.fetchone()
+            if not r:
+                return "not_found"
+            cur.execute("""select 1 from clinical_notes where user_id = %s and content <> ''
+                           and (patient_id = %s or (patient_id is null and patient_key = %s)) limit 1""",
+                        (user_id, patient_id, r[0]))
+            if cur.fetchone():
+                return "has_notes"
+            cur.execute("delete from clinical_notes where user_id = %s and patient_id = %s", (user_id, patient_id))
+            cur.execute("delete from patients where user_id = %s and id = %s", (user_id, patient_id))
+        conn.commit()
+    return "ok"
 
 
 def ensure_patient(user_id, name):
@@ -281,10 +327,22 @@ def list_notes(user_id, patient_id, pkey):
              "updated_at": r[5].isoformat() if r[5] else None} for r in rows]
 
 
-def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content):
-    """Uma anotação por consulta (event_id); sem consulta, cria uma nova. Fica ligada ao paciente."""
+def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content,
+                note_id=None):
+    """Uma anotação por consulta (event_id); sem consulta, cria uma nova (ou atualiza a nota avulsa
+    note_id que está sendo escrita). Fica ligada ao paciente."""
     with connection() as conn:
         with conn.cursor() as cur:
+            if not event_id and note_id:
+                cur.execute(
+                    """update clinical_notes set content = %s, updated_at = now()
+                       where user_id = %s and id = %s and patient_id = %s and event_id is null
+                       returning id""",
+                    (content, user_id, note_id, patient_id))
+                r = cur.fetchone()
+                if r:
+                    conn.commit()
+                    return r[0]
             if event_id:
                 cur.execute(
                     """insert into clinical_notes

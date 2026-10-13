@@ -120,6 +120,38 @@
     .pr-msg{font-family:var(--disp);font-size:16px;line-height:26px;color:#0D0D0D}
     .pr-msg a{color:#0842a0}
 
+    /* ===== PACIENTES (cadastro; clicar abre o prontuário do paciente) ===== */
+    .pt-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:42px 24px 48px;
+      background:#fff;z-index:4;scrollbar-width:thin}
+    .stage.pacientes .pt-view{display:flex}
+    .stage.pacientes .ag-head,.stage.pacientes .cal,.stage.pacientes .wk{display:none}
+    .pt{width:700px;max-width:100%;height:max-content;display:flex;flex-direction:column;gap:24px}
+    .pt-head{display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .pt-tools{display:flex;gap:8px}
+    .pt-search{flex:1}
+    .pt-new{display:flex;align-items:center;gap:8px;background:#F6F6F6;border-radius:16px;padding:8px 8px 8px 16px}
+    .pt-new[hidden]{display:none}
+    .pt-new input{flex:1;border:0;outline:none;background:none;font-family:var(--disp);font-weight:500;font-size:14px;
+      line-height:20px;color:#071216}
+    .pt-new input::placeholder{color:#8B8B8B;font-weight:400}
+    .pt-ghost{height:36px;padding:0 16px;border:0;border-radius:1000px;background:none;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:12px;color:#666C6F}
+    .pt-ghost:hover{background:rgba(0,0,0,.05)}
+    .pt-list{display:flex;flex-direction:column;gap:2px}
+    .pt-row{display:flex;align-items:center;gap:16px;padding:12px 12px 12px 16px;border-radius:16px;cursor:pointer;
+      transition:background .12s ease}
+    .pt-row:hover{background:#F6F6F6}
+    .pt-row .pr-avatar{width:48px;height:40px;font-size:13px}
+    .pt-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+    .pt-name{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pt-sub{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#8B8B8B}
+    .pt-rename{border:0;outline:none;background:#fff;border-radius:8px;padding:2px 8px;margin-left:-8px;
+      box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .pt-acts{display:flex;gap:2px;opacity:0;transition:opacity .12s ease}
+    .pt-row:hover .pt-acts,.pt-row:focus-within .pt-acts{opacity:1}
+    .pt-err{font-family:var(--disp);font-size:12px;line-height:16px;color:#c5221f}
+
     /* ===== visão SEMANA (Figma 1014:9927) =====
        calha das horas 84px, colunas >= 158px, 142px por hora, cabeçalho dos dias 51px */
     .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:none}
@@ -485,9 +517,9 @@
       </div>
       <div class="nav-main">
         <div class="nav-sec">
-          <div class="item active" title="Consultas"><span class="ico"><svg width="15" height="14" viewBox="0 0 15 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z" fill="#071216"/></svg></span><span>Consultas</span></div>
+          <div class="item active" id="navConsultas" title="Consultas"><span class="ico"><svg width="15" height="14" viewBox="0 0 15 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z" fill="#071216"/></svg></span><span>Consultas</span></div>
           <div class="item" title="Search"><span class="ico"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.00100402 6.12952C0.00100402 2.74849 2.7495 0 6.13052 0C9.51155 0 12.26 2.74849 12.26 6.12952C12.26 7.44729 11.8308 8.66717 11.1155 9.65361L14.5567 13.1024C14.76 13.3133 14.8655 13.5919 14.8655 13.8931C14.8655 14.5181 14.4061 15 13.7661 15C13.4724 15 13.1787 14.9021 12.9679 14.6837L9.50402 11.2199C8.54016 11.875 7.38805 12.259 6.13052 12.259C2.7495 12.259 0.00100402 9.51054 0.00100402 6.12952ZM1.56727 6.12952C1.56727 8.65211 3.60793 10.6928 6.13052 10.6928C8.65311 10.6928 10.6938 8.65211 10.6938 6.12952C10.6938 3.60693 8.65311 1.56627 6.13052 1.56627C3.60793 1.56627 1.56727 3.60693 1.56727 6.12952Z" fill="#071216"/></svg></span><span>Search</span></div>
-          <div class="item" title="Pacientes"><span class="ico"><svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z" fill="#071216"/></svg></span><span>Pacientes</span></div>
+          <div class="item" id="navPacientes" title="Pacientes"><span class="ico"><svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z" fill="#071216"/></svg></span><span>Pacientes</span></div>
           <div class="item" title="Prescrições"><span class="ico"><svg width="17" height="14" viewBox="0 0 17 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.43415 13.8229C0.8315 13.8229 0.000494646 12.9993 0.000494646 11.4115V2.36688C0.000494646 0.808747 0.816661 0 2.20414 0H4.30392C5.07556 0 5.46139 0.140974 5.98077 0.571316L6.41111 0.912622C6.81919 1.24651 7.13082 1.37264 7.66504 1.37264H14.5654C16.168 1.37264 16.999 2.19623 16.999 3.78404V11.4115C16.999 12.9993 16.1754 13.8229 14.7583 13.8229H2.43415ZM2.52319 12.3686H14.4837C15.1663 12.3686 15.5448 12.0125 15.5448 11.2928V3.91018C15.5448 3.18305 15.1663 2.8269 14.4837 2.8269H7.27921C6.50757 2.8269 6.1069 2.68593 5.59494 2.26301L5.1646 1.91428C4.7491 1.57297 4.44489 1.45426 3.91809 1.45426H2.49351C1.82574 1.45426 1.45475 1.81041 1.45475 2.49302V11.2928C1.45475 12.0125 1.83316 12.3686 2.52319 12.3686ZM2.35996 5.15669V4.62989C2.35996 4.16245 2.59739 3.93986 3.07225 3.93986H13.9273C14.4021 3.93986 14.6321 4.16245 14.6321 4.62989V5.15669H2.35996Z" fill="#071216"/></svg></span><span>Prescrições</span></div>
         </div>
         <div class="nav-sec">
@@ -552,6 +584,24 @@
               <div class="pr-hist" id="prHist"></div>
             </div>
           </div>
+        </div>
+      </div>
+      <div class="pt-view" id="ptView">
+        <div class="pt">
+          <div class="pt-head">
+            <div><div class="pr-name">Pacientes</div><div class="pr-sub" id="ptCount"></div></div>
+            <button class="pr-save" id="ptNew" type="button">Novo paciente</button>
+          </div>
+          <div class="pt-new" id="ptNewRow" hidden>
+            <input id="ptNewName" type="text" placeholder="Nome completo do paciente" autocomplete="off" spellcheck="false">
+            <button class="pt-ghost" id="ptNewCancel" type="button">Cancelar</button>
+            <button class="pr-save" id="ptNewSave" type="button">Criar</button>
+          </div>
+          <div class="pt-err" id="ptErr" hidden></div>
+          <div class="pt-tools">
+            <input class="srch-in pt-search" id="ptSearch" type="search" placeholder="Buscar paciente" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="pt-list" id="ptList"></div>
         </div>
       </div>
       <div class="wk" id="wk"><div class="wk-grid" id="wkGrid"></div></div>
@@ -1997,6 +2047,8 @@
 
       function fill() {
       main.hidden = false; msg.hidden = true;
+      $('prBack').textContent = ctx.from === 'pacientes' ? '‹ Pacientes' : '‹ Agenda';
+      $('prConsultaBox').hidden = false;
       $('prName').textContent = ctx.patient;
       $('prAvatar').textContent = initials(ctx.patient);
       if (ctx.event_id || ctx.start) {
@@ -2018,6 +2070,7 @@
         fetch('/prontuario/notes', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ patient_id: ctx.patient_id, patient: ctx.patient, event_id: ctx.event_id, event_title: ctx.title,
+                                 note_id: ctx.note_id || null,
                                  event_start: ctx.start && ctx.start.length > 10 ? ctx.start : null, content: content })
         }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
           .then(function (res) {
@@ -2025,7 +2078,7 @@
             if (res.ok && res.j.ok) {
               saved = content; var n = new Date();
               setStatus('Salvo às ' + pad(n.getHours()) + ':' + pad(n.getMinutes()));
-              if (!ctx.event_id) loadHist();                  // nota avulsa entra no histórico
+              if (!ctx.event_id) ctx.note_id = res.j.id;     // nota avulsa: próximos salvamentos atualizam a mesma
             } else if (res.status === 401) {
               setStatus('Entre com Google (tela de Integrações) para salvar o prontuário.', true);
             } else setStatus('Não foi possível salvar.', true);
@@ -2060,7 +2113,7 @@
                 if (!note.value) { note.value = n.content || ''; saved = note.value; }
                 return;
               }
-              if (!(n.content || '').trim()) return;
+              if (!(n.content || '').trim() || (ctx.note_id && n.id === ctx.note_id)) return;   // a que está sendo escrita fica no campo
               var it = document.createElement('div'); it.className = 'pr-item';
               var h = document.createElement('div'); h.className = 'pr-item-head';
               var d = n.event_start ? new Date(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null);
@@ -2110,7 +2163,7 @@
         $('prHist').innerHTML = '';
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
-        if (!ctx || !ctx.patient) { msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda.'; msg.hidden = false; main.hidden = true; return; }
+        if (!ctx || !ctx.patient) { msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return; }
         fill(); loadHist(); renderVisit();
         if (location.hash !== '#prontuario') history.pushState({ pr: 1 }, '', '#prontuario');
       }
@@ -2126,11 +2179,168 @@
         else closePr(true);
       });
       window.__openProntuario = open;
+      window.__closeProntuario = function () { closePr(true); };
       // recarregou a página no prontuário (ou veio do link antigo): reabre com o contexto salvo
       if (location.hash === '#prontuario') {
         var c0 = null; try { c0 = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {}
         open(c0);
       }
+    })();
+  </script>
+  <script>
+    // ===== Pacientes: cadastro do médico; cada paciente abre o prontuário dele =====
+    (function () {
+      var stage = document.querySelector('.stage');
+      var $ = function (id) { return document.getElementById(id); };
+      var list = $('ptList'), search = $('ptSearch'), err = $('ptErr');
+      var navC = $('navConsultas'), navP = $('navPacientes');
+      if (!stage || !list) return;
+      var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+      var all = [], loaded = false;
+      function norm(v) { return (v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+      function initials(n) {
+        var p = (n || '').split(/\s+/).filter(Boolean);
+        return ((p[0] ? p[0][0] : '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '•';
+      }
+      function showErr(t) { err.textContent = t || ''; err.hidden = !t; }
+      function api(method, url, body) {
+        return fetch(url, { method: method, headers: { 'Content-Type': 'application/json' },
+                            body: body ? JSON.stringify(body) : undefined })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); });
+      }
+      function sub(p) {
+        if (!p.notes) return 'Sem anotações no prontuário';
+        var d = p.last ? new Date(p.last) : null;
+        return p.notes + (p.notes === 1 ? ' anotação' : ' anotações') +
+               (d ? ' · última em ' + d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear() : '');
+      }
+      function iconBtn(title, svg, onClick) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'evpop-close';
+        b.title = title; b.setAttribute('aria-label', title); b.innerHTML = svg;
+        b.addEventListener('click', function (e) { e.stopPropagation(); onClick(); });
+        return b;
+      }
+      var PEN = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10.6 2.6l2.8 2.8M2.5 13.5l.6-3.1 7.5-7.5a1.4 1.4 0 0 1 2 0l.8.8a1.4 1.4 0 0 1 0 2l-7.5 7.5-3.4.3z" stroke="#8B8B8B" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      var BIN = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 4h11M6.2 4V2.6h3.6V4M4 4l.7 9.2a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L12 4M6.6 6.6v4.6M9.4 6.6v4.6" stroke="#8B8B8B" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+      function render() {
+        var q = norm(search.value.trim());
+        var rows = all.filter(function (p) { return !q || norm(p.name).indexOf(q) >= 0; })
+                      .sort(function (a, b) { return a.name.localeCompare(b.name, 'pt-BR'); });
+        $('ptCount').textContent = loaded ? (all.length + (all.length === 1 ? ' paciente' : ' pacientes')) : '';
+        list.innerHTML = '';
+        if (loaded && !rows.length) {
+          var e = document.createElement('div'); e.className = 'pr-empty';
+          e.textContent = all.length ? 'Nenhum paciente encontrado.' : 'Nenhum paciente ainda. Crie um aqui ou ao marcar uma consulta na agenda.';
+          list.appendChild(e); return;
+        }
+        rows.forEach(function (p) {
+          var r = document.createElement('div'); r.className = 'pt-row'; r.tabIndex = 0;
+          var av = document.createElement('div'); av.className = 'pr-avatar'; av.textContent = initials(p.name);
+          var info = document.createElement('div'); info.className = 'pt-info';
+          var nm = document.createElement('div'); nm.className = 'pt-name'; nm.textContent = p.name;
+          var sb = document.createElement('div'); sb.className = 'pt-sub'; sb.textContent = sub(p);
+          info.appendChild(nm); info.appendChild(sb);
+          var acts = document.createElement('div'); acts.className = 'pt-acts';
+          acts.appendChild(iconBtn('Renomear', PEN, function () { rename(p, info, nm); }));
+          if (!p.notes) acts.appendChild(iconBtn('Excluir', BIN, function () { del(p); }));
+          r.appendChild(av); r.appendChild(info); r.appendChild(acts);
+          var go = function () { openPr(p); };
+          r.addEventListener('click', function (e) { if (!e.target.closest('.pt-rename')) go(); });
+          r.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target === r) go(); });
+          list.appendChild(r);
+        });
+      }
+      function load() {
+        return api('GET', '/patients').then(function (res) {
+          loaded = true;
+          if (res.status === 401) {
+            all = []; render();
+            list.innerHTML = '<div class="pr-empty">Entre com Google na tela de <a href="opendoctor-integracao.html">Integrações</a> para ver seus pacientes.</div>';
+            return;
+          }
+          all = (res.j && res.j.patients) || []; render();
+        }).catch(function () { loaded = true; list.innerHTML = '<div class="pr-empty">Não foi possível carregar os pacientes.</div>'; });
+      }
+      function openPr(p) {
+        if (window.__openProntuario) window.__openProntuario({ patient_id: p.id, patient: p.name, from: 'pacientes' });
+      }
+      function rename(p, info, nm) {
+        var inp = document.createElement('input'); inp.className = 'pt-rename'; inp.value = p.name;
+        info.replaceChild(inp, nm); inp.focus(); inp.select();
+        var done = false;
+        function finish(saveIt) {
+          if (done) return; done = true;
+          var v = inp.value.split(/\s+/).filter(Boolean).join(' ');
+          if (!saveIt || !v || v === p.name) { render(); return; }
+          api('PATCH', '/patients/' + p.id, { name: v }).then(function (res) {
+            if (res.ok && res.j.ok) { p.name = res.j.patient.name; showErr(''); }
+            else showErr(res.status === 409 ? 'Já existe um paciente com esse nome.' : 'Não foi possível renomear.');
+            render();
+          });
+        }
+        inp.addEventListener('click', function (e) { e.stopPropagation(); });
+        inp.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+          else if (e.key === 'Escape') { e.stopPropagation(); finish(false); }
+        });
+        inp.addEventListener('blur', function () { finish(true); });
+      }
+      function del(p) {
+        if (!confirm('Excluir o cadastro de ' + p.name + '?')) return;
+        api('DELETE', '/patients/' + p.id).then(function (res) {
+          if (res.ok && res.j.ok) { all = all.filter(function (x) { return x.id !== p.id; }); showErr(''); render(); }
+          else showErr(res.status === 409 ? 'Este paciente tem prontuário e não pode ser excluído.' : 'Não foi possível excluir.');
+        });
+      }
+      // novo paciente
+      var newRow = $('ptNewRow'), newName = $('ptNewName');
+      function toggleNew(on) { newRow.hidden = !on; showErr(''); if (on) { newName.value = search.value.trim(); newName.focus(); } }
+      $('ptNew').addEventListener('click', function () { toggleNew(newRow.hidden); });
+      $('ptNewCancel').addEventListener('click', function () { toggleNew(false); });
+      function createNew() {
+        var v = newName.value.split(/\s+/).filter(Boolean).join(' ');
+        if (!v) { newName.focus(); return; }
+        api('POST', '/patients', { name: v }).then(function (res) {
+          if (res.ok && res.j.ok) {
+            toggleNew(false); search.value = '';
+            if (!res.j.created) showErr('Já existia um paciente com esse nome.');
+            load();
+          } else showErr(res.status === 401 ? 'Entre com Google em Integrações para cadastrar pacientes.' : 'Não foi possível criar o paciente.');
+        });
+      }
+      $('ptNewSave').addEventListener('click', createNew);
+      newName.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); createNew(); }
+        else if (e.key === 'Escape') { e.stopPropagation(); toggleNew(false); }
+      });
+      search.addEventListener('input', render);
+
+      // navegação: Pacientes ↔ Consultas (agenda), com o botão voltar do navegador
+      function setNav(which) {
+        if (navC) navC.classList.toggle('active', which === 'consultas');
+        if (navP) navP.classList.toggle('active', which === 'pacientes');
+      }
+      function show() {
+        stage.classList.add('pacientes'); setNav('pacientes'); load();
+        $('ptView').scrollTop = 0;
+      }
+      function hide() { stage.classList.remove('pacientes'); setNav('consultas'); }
+      if (navP) navP.addEventListener('click', function () {
+        if (window.__closeProntuario) window.__closeProntuario();
+        if (location.hash !== '#pacientes') history.pushState({ pt: 1 }, '', '#pacientes');
+        show();
+      });
+      if (navC) navC.addEventListener('click', function () {
+        if (window.__closeProntuario) window.__closeProntuario();
+        hide();
+        if (location.hash) history.pushState({}, '', location.pathname + location.search);
+      });
+      window.addEventListener('popstate', function () {
+        if (location.hash === '#pacientes') show();
+        else if (location.hash !== '#prontuario') hide();
+      });
+      if (location.hash === '#pacientes') show();
     })();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
