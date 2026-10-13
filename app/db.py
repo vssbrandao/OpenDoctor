@@ -478,7 +478,7 @@ def finalize_note(user_id, note_id):
     """Finaliza (assina) a evolução: a partir daí só adendos. Devolve signed_at (ISO) ou None."""
     with connection() as conn:
         r = conn.execute("""update clinical_notes set signed_at = coalesce(signed_at, now())
-                            where user_id = %s and id = %s and (content ~ '\S' or signed_at is not null)   -- algo visível (não só espaços/quebras)
+                            where user_id = %s and id = %s and (content ~ '\\S' or signed_at is not null)   -- algo visível (não só espaços/quebras)
                             returning signed_at""", (user_id, note_id)).fetchone()
         conn.commit()
     return r[0].isoformat() if r else None
