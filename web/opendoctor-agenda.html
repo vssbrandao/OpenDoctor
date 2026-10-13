@@ -43,11 +43,12 @@
     /* ===== CENTER: DAY AGENDA ===== */
     .center{flex:2 1 0;min-width:0;height:100%;position:relative}
     /* cabeçalho da agenda (Figma 1014:8325 "Date Navigation"): 52px, padding 8 24 */
-    /* título da data: 42px do topo e 42px até a linha fixa abaixo dele (Dia e Semana) —
+    /* título da data: 42px do topo e (no Dia) 42px até a linha fixa abaixo dele —
        título 42→64, linha em 106; o calendário rola por baixo da linha */
     .ag-head{position:absolute;top:0;left:0;right:0;height:64px;padding:42px 24px 0;z-index:3;
       display:flex;align-items:flex-start;justify-content:space-between}
     .ag-head::after{content:'';position:absolute;left:24px;right:0;top:106px;height:1px;background:var(--line);pointer-events:none}
+    .stage.week .ag-head::after{display:none}             /* na Semana não há essa linha (cabeçalho dos dias do Figma) */
     .cal-head{display:flex;align-items:center;cursor:pointer}
     .cal-head .date{min-width:92px;font-family:var(--disp);font-weight:700;font-size:16px;line-height:22px;color:#071216}
     /* botões de ícone dos cabeçalhos: 36x36, raio 8, ícone #8B8B8B; grupos com gap 4 */
@@ -365,7 +366,7 @@
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
        calha das horas 84px, colunas >= 158px, 142px por hora, cabeçalho dos dias 51px */
-    .wk{display:none;position:absolute;top:107px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:none}   /* logo abaixo da linha em 106 */
+    .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:none}   /* dias em 105, linha da grade em 141 (Figma) */
     .wk::-webkit-scrollbar{display:none}
     .stage.week .wk{display:block}
     .stage.week .cal{display:none}
