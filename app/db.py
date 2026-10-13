@@ -272,6 +272,17 @@ def find_patients(user_id, name):
     return [_patient(r) for r in rows]
 
 
+def find_by_cpf(user_id, cpf, exclude_id=None):
+    """Outro paciente do médico com o mesmo CPF (o CPF identifica a pessoa)."""
+    if not cpf:
+        return None
+    with connection() as conn:
+        r = conn.execute(f"""select {_PCOLS} from patients where user_id = %s and cpf = %s
+                             and (%s::bigint is null or id <> %s) limit 1""",
+                         (user_id, cpf, exclude_id, exclude_id)).fetchone()
+    return _patient(r) if r else None
+
+
 def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None):
     with connection() as conn:
         r = conn.execute(
@@ -282,14 +293,18 @@ def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=Non
     return _patient(r)
 
 
+class AmbiguousPatient(Exception):
+    """Há mais de um paciente com esse nome: não dá para adivinhar qual (homônimos)."""
+
+
 def ensure_patient(user_id, name):
-    """Paciente pelo nome (eventos antigos, só com o nome): o já cadastrado mais recente com esse
-    nome, ou um novo. Retorna ({...}, created)."""
-    with connection() as conn:
-        r = conn.execute(f"""select {_PCOLS} from patients where user_id = %s and patient_key = %s
-                             order by updated_at desc limit 1""", (user_id, patient_key(name))).fetchone()
-    if r:
-        return _patient(r), False
+    """Paciente pelo nome (eventos antigos, só com o nome): o único cadastrado com esse nome, ou um
+    novo. Com homônimos levanta AmbiguousPatient (nunca escolhe um ao acaso). Retorna ({...}, created)."""
+    same = find_patients(user_id, name)
+    if len(same) > 1:
+        raise AmbiguousPatient()
+    if same:
+        return same[0], False
     return create_patient(user_id, name), True
 
 
@@ -463,7 +478,7 @@ def finalize_note(user_id, note_id):
     """Finaliza (assina) a evolução: a partir daí só adendos. Devolve signed_at (ISO) ou None."""
     with connection() as conn:
         r = conn.execute("""update clinical_notes set signed_at = coalesce(signed_at, now())
-                            where user_id = %s and id = %s and (content <> '' or signed_at is not null)
+                            where user_id = %s and id = %s and (content ~ '\S' or signed_at is not null)   -- algo visível (não só espaços/quebras)
                             returning signed_at""", (user_id, note_id)).fetchone()
         conn.commit()
     return r[0].isoformat() if r else None

@@ -12,6 +12,7 @@ Fluxo:
   events(user_id, provider)          → próximos eventos do calendário
 """
 import os
+import re
 import datetime
 import urllib.parse
 
@@ -209,9 +210,19 @@ def delete_event(user_id, provider, event_id):
     return True
 
 
+def _event_patient_name(e):
+    """Nome do paciente num evento antigo: "Título — Nome" no título ou "Paciente: Nome" na descrição."""
+    m = re.search(r"^Paciente: (.+)$", e.get("description") or "", re.M)
+    if m:
+        return m.group(1).strip()
+    parts = (e.get("summary") or "").split(" — ")
+    return parts[-1].strip() if len(parts) > 1 else (e.get("summary") or "").strip()
+
+
 def patient_events(user_id, provider, patient_id, name=None, time_min=None, time_max=None):
     """Consultas de um paciente no calendário: as ligadas ao cadastro (od_patient_id) e, para eventos
-    antigos sem vínculo, as que têm o nome dele no título. Ordenadas por início."""
+    antigos sem vínculo, as com exatamente o nome dele (name=None quando há homônimos, para não
+    misturar consultas de pessoas diferentes). Ordenadas por início."""
     if provider != "google":
         return []
     at = _access_token(user_id, provider)
@@ -235,8 +246,8 @@ def patient_events(user_id, provider, patient_id, name=None, time_min=None, time
             pid = _patient_id(e)
             if pid and pid != patient_id:                 # mesmo nome, outro paciente (homônimo)
                 continue
-            if not pid and name and name.casefold() not in (e.get("summary") or "").casefold():
-                continue
+            if not pid and (not name or db.patient_key(_event_patient_name(e)) != db.patient_key(name)):
+                continue                                  # nome tem de ser o mesmo (não "Ana" em "Ana Paula")
             st, en = e.get("start") or {}, e.get("end") or {}
             out[e.get("id")] = {"id": e.get("id"), "title": e.get("summary") or "(sem título)",
                                 "start": st.get("dateTime") or st.get("date"),

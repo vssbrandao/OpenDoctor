@@ -130,6 +130,7 @@
     .pr-in{height:40px;border:1px solid rgba(0,0,0,.08);border-radius:10px;background:#fff;padding:0 12px;outline:none;width:100%;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .pr-in:focus{border-color:rgba(0,0,0,.25)}
+    .pr-in.bad{border-color:#E3A3A0;background:#FFF7F7}
     .pr-in::placeholder{color:#B5B5B5;font-weight:400}
     .pr-formfoot{grid-column:1 / -1;display:flex;align-items:center;justify-content:flex-end;gap:8px}
     .pr-err{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#c5221f;margin-right:auto}
@@ -1631,6 +1632,11 @@
           elMsg.textContent = p.error || 'Escolha ou crie o paciente para abrir o prontuário.';
           elPatient.focus(); return;
         }
+        if (!selPatient.id && sameName(selPatient.name).length > 1) {   // evento antigo + homônimos: escolher qual
+          elMsg.className = 'evpop-msg'; elMsg.hidden = false;
+          elMsg.textContent = 'Há mais de um paciente com esse nome. Escolha qual na lista do campo Paciente.';
+          elPatient.focus(); return;
+        }
         if (!selPatient.id && !(editEv && editEv.id)) {    // consulta de exemplo (sem calendário): não cria paciente
           elMsg.className = 'evpop-msg'; elMsg.hidden = false;
           elMsg.innerHTML = 'Esta é uma consulta de exemplo. <a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para usar o prontuário.';
@@ -2380,10 +2386,12 @@
       function imcOf(v) { var p = num(v.peso), h = num(v.altura); if (!p || !h) return null; h = h > 3 ? h / 100 : h; return p / (h * h); }
       function vitalsLine(v) {
         var out = [], imc = imcOf(v);
-        if (v.pa_s || v.pa_d) out.push('PA ' + (v.pa_s || '?') + 'x' + (v.pa_d || '?') + ' mmHg');
+        if (v.pa_s && v.pa_d) out.push('PA ' + v.pa_s + 'x' + v.pa_d + ' mmHg');
+        else if (v.pa_s || v.pa_d) out.push('PA ' + (v.pa_s ? 'sistólica ' + v.pa_s : 'diastólica ' + v.pa_d) + ' mmHg');
         if (v.fc) out.push('FC ' + v.fc + ' bpm'); if (v.fr) out.push('FR ' + v.fr + ' irpm');
         if (v.temp) out.push('Temp. ' + v.temp + ' °C'); if (v.spo2) out.push('SpO₂ ' + v.spo2 + '%');
-        if (v.peso) out.push('Peso ' + v.peso + ' kg'); if (v.altura) out.push('Altura ' + v.altura + ' cm');
+        if (v.peso) out.push('Peso ' + v.peso + ' kg');
+        if (v.altura) out.push('Altura ' + v.altura + (num(v.altura) <= 3 ? ' m' : ' cm'));   // aceita 1,65 (m) ou 165 (cm)
         if (imc) out.push('IMC ' + imc.toFixed(1).replace('.', ','));
         if (v.glicemia) out.push('Glicemia ' + v.glicemia + ' mg/dL');
         return out.length ? 'Sinais vitais: ' + out.join(' · ') : '';
@@ -2402,6 +2410,15 @@
       }
       function snap(x) { return JSON.stringify(x || compose()); }
       function updImc() { var i = imcOf(vitals()); $('prImc').textContent = i ? i.toFixed(1).replace('.', ',') : '—'; }
+      // faixa plausível de cada sinal vital: fora dela o campo fica vermelho (provável erro de digitação)
+      var RANGE = { pa_s: [50, 300], pa_d: [20, 200], fc: [20, 250], fr: [4, 80], temp: [30, 45], spo2: [40, 100],
+                    peso: [0.3, 400], altura: [0.3, 250], glicemia: [10, 1500] };
+      function checkVital(e) {
+        var k = e.getAttribute('data-v'), v = num(e.value), r = RANGE[k];
+        var bad = e.value.trim() !== '' && (v === null || (r && (v < r[0] || v > r[1])));
+        e.classList.toggle('bad', bad);
+        e.title = bad ? 'Valor fora do esperado — confira' : '';
+      }
       function renderCids() {
         var box = $('prCidChips'); box.innerHTML = '';
         cids.forEach(function (c, i) {
@@ -2416,7 +2433,7 @@
         setMode(soap ? 'soap' : 'free', true);
         note.value = soap ? '' : (n && n.content || '');
         soapEls.forEach(function (e) { e.value = soap ? (d[e.getAttribute('data-f')] || '') : ''; });
-        vitEls.forEach(function (e) { e.value = soap && d.vitals ? (d.vitals[e.getAttribute('data-v')] || '') : ''; });
+        vitEls.forEach(function (e) { e.value = soap && d.vitals ? (d.vitals[e.getAttribute('data-v')] || '') : ''; checkVital(e); });
         cids = soap && d.cid ? d.cid.slice() : []; renderCids(); updImc();
       }
       function setMode(m, silent) {
@@ -2431,7 +2448,12 @@
         if (!silent) changed();
       }
       [].forEach.call($('prSeg').querySelectorAll('button'), function (b) {
-        b.addEventListener('click', function () { if (ready && !locked()) setMode(b.getAttribute('data-m')); });
+        b.addEventListener('click', function () {
+          var m = b.getAttribute('data-m');
+          if (!ready || locked() || m === mode) return;
+          if (m === 'free' && soapText() && !confirm('Passar para texto livre?\n\nOs campos do SOAP, os sinais vitais e o CID-10 serão juntados num texto só.')) return;
+          setMode(m);
+        });
       });
       function setEditable(on) {
         [note].concat(soapEls, vitEls, [$('prCidIn')]).forEach(function (e) { e.readOnly = !on; });
@@ -2452,7 +2474,7 @@
       }
       note.addEventListener('input', changed);
       soapEls.forEach(function (e) { e.addEventListener('input', changed); e.addEventListener('blur', save); });
-      vitEls.forEach(function (e) { e.addEventListener('input', function () { updImc(); changed(); }); });
+      vitEls.forEach(function (e) { e.addEventListener('input', function () { checkVital(e); updImc(); changed(); }); });
       note.addEventListener('blur', save);
       $('prCidIn').addEventListener('keydown', function (e) {
         if (e.key !== 'Enter' || e.isComposing) return;
@@ -2466,10 +2488,19 @@
 
       // ===== rascunho local: guarda o texto não salvo neste navegador (queda de internet, aba fechada) =====
       function dkey(c) { c = c || ctx; return 'od_draft_' + c.patient_id + '_' + (c.event_id ? 'e' + c.event_id : c.note_id ? 'n' + c.note_id : 'new'); }
+      // base = versão salva sobre a qual o texto foi escrito (decide a restauração sem depender de relógio)
       function draftWrite(s) {
         if (!ctx || !ctx.patient_id) return;
-        try { if (s === saved) localStorage.removeItem(dkey()); else localStorage.setItem(dkey(), JSON.stringify({ s: s, at: Date.now() })); } catch (_) {}
+        try { if (s === saved) localStorage.removeItem(dkey()); else localStorage.setItem(dkey(), JSON.stringify({ s: s, base: saved, at: Date.now() })); } catch (_) {}
       }
+      // dados de saúde não ficam no navegador indefinidamente: rascunho com mais de 7 dias é apagado
+      try {
+        Object.keys(localStorage).forEach(function (k) {
+          if (k.indexOf('od_draft_') !== 0) return;
+          var d = null; try { d = JSON.parse(localStorage.getItem(k)); } catch (_) {}
+          if (!d || !(Date.now() - d.at < 7 * 864e5)) localStorage.removeItem(k);
+        });
+      } catch (_) {}
       function draftRead() { try { return JSON.parse(localStorage.getItem(dkey()) || 'null'); } catch (_) { return null; } }
 
       // ===== salvar (fila por paciente/consulta; novas tentativas se a conexão cair) =====
@@ -2542,6 +2573,9 @@
         })();
       }
       window.addEventListener('online', function () { if (isOpen()) save(); });
+      document.addEventListener('keydown', function (e) {        // Cmd/Ctrl+S salva a evolução
+        if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S') && isOpen()) { e.preventDefault(); save(); }
+      });
       $('prSave').addEventListener('click', save);
       window.addEventListener('beforeunload', function (e) {
         if (isOpen() && ready && !locked() && snap() !== saved) { e.preventDefault(); e.returnValue = ''; }
@@ -2861,6 +2895,11 @@
               msg.innerHTML = 'Entre com Google na tela de <a href="opendoctor-integracao.html">Integrações</a> para ver e salvar o prontuário.';
               return;
             }
+            if (res.status === 409 && res.j && res.j.ambiguous) {     // evento antigo + homônimos: não adivinha
+              setStatus(''); main.hidden = true; msg.hidden = false;
+              msg.textContent = 'Há mais de um paciente chamado "' + ctx.patient + '". Volte à agenda, abra a consulta e escolha o paciente certo no campo Paciente.';
+              return;
+            }
             if (!res.ok) { setStatus('Não foi possível carregar o prontuário.', true); return; }
             patient = res.j.patient; ctx.patient_id = patient.id; ctx.patient = patient.name;
             notes = res.j.notes || [];
@@ -2873,10 +2912,14 @@
             renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); updCount(compose().content.length);
             // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva
             var d = draftRead();
-            if (d && !locked() && d.s !== saved && (!cur || d.at > Date.parse(cur.updated_at || 0))) {
+            if (d && !locked() && d.s !== saved && (d.base === saved || (!cur && !d.base))) {
               try { fillEditor(JSON.parse(d.s)); } catch (_) {}
               recovered = true; setStatus('Texto não salvo recuperado deste navegador. Salvando…'); save();
-            } else if (d && d.s === saved) { try { localStorage.removeItem(dkey()); } catch (_) {} }
+            } else if (d) {
+              try { localStorage.removeItem(dkey()); } catch (_) {}
+              // a evolução mudou em outro lugar depois do rascunho (ou foi finalizada): vale a versão salva
+              if (d.s !== saved) setStatus('Havia texto não salvo neste navegador, mas a evolução foi alterada em outro lugar: mantida a versão salva.', true);
+            }
             loadVisits(my);
           }).catch(function () { if (ctx === my) setStatus('Sem conexão: não foi possível carregar o prontuário.', true); });
       }

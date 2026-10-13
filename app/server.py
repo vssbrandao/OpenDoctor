@@ -528,6 +528,8 @@ def google_login():
 def logout():
     resp = RedirectResponse("/opendoctor-agenda.html")
     auth.clear_session(resp)
+    # apaga o que o app guardou neste navegador (rascunhos do prontuário, conversas) — LGPD
+    resp.headers["Clear-Site-Data"] = '"storage"'
     return resp
 
 
@@ -844,10 +846,15 @@ def _note_patient(u, payload):
     name = " ".join((payload.get("patient") or "").split())[:200]
     if not db.patient_key(name):
         return None
-    p, created = db.ensure_patient(u["id"], name)
+    p, created = db.ensure_patient(u["id"], name)       # homônimos → db.AmbiguousPatient (quem chama trata)
     if created:
         db.log_access(u["id"], "patient_create", p["id"])
     return p
+
+
+def _ambiguous():
+    return JSONResponse({"error": "há mais de um paciente com esse nome: escolha qual na consulta",
+                         "ambiguous": True}, status_code=409)
 
 
 def _auth_or_401(request):
@@ -861,7 +868,10 @@ async def prontuario_list(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    p = _note_patient(u, await _json(request))
+    try:
+        p = _note_patient(u, await _json(request))
+    except db.AmbiguousPatient:
+        return _ambiguous()
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     db.log_access(u["id"], "view", p["id"], dedupe_minutes=10)
@@ -876,7 +886,10 @@ async def prontuario_save(request: Request):
     if err:
         return err
     payload = await _json(request)
-    p = _note_patient(u, payload)
+    try:
+        p = _note_patient(u, payload)
+    except db.AmbiguousPatient:
+        return _ambiguous()
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     content = str(payload.get("content") or "")
@@ -967,7 +980,9 @@ async def prontuario_visits(request: Request):
     if not connected:
         return {"connected": False, "visits": []}
     prov = "google" if "google" in connected else next(iter(connected))
-    visits = integrations.patient_events(u["id"], prov, p["id"], p["name"])
+    # eventos antigos (só com o nome) só entram se ninguém mais tem esse nome
+    legacy_name = p["name"] if len(db.find_patients(u["id"], p["name"])) == 1 else None
+    visits = integrations.patient_events(u["id"], prov, p["id"], legacy_name)
     notes = db.notes_by_event(u["id"], [v["id"] for v in visits])
     for v in visits:
         v["note"] = notes.get(v["id"])
@@ -1022,6 +1037,9 @@ async def patients_create(request: Request):
     f, msg = _patient_fields(payload, partial=False)
     if msg:
         return JSONResponse({"error": msg}, status_code=400)
+    other = db.find_by_cpf(u["id"], f.get("cpf"))
+    if other:
+        return JSONResponse({"error": f"CPF já cadastrado para {other['name']}"}, status_code=409)
     same = db.find_patients(u["id"], f["name"])
     if same and not payload.get("force"):
         return JSONResponse({"error": "já existe paciente com esse nome", "duplicates":
@@ -1041,6 +1059,9 @@ async def patients_update(patient_id: int, request: Request):
     f, msg = _patient_fields(await _json(request))
     if msg:
         return JSONResponse({"error": msg}, status_code=400)
+    other = db.find_by_cpf(u["id"], f.get("cpf"), exclude_id=patient_id)
+    if other:
+        return JSONResponse({"error": f"CPF já cadastrado para {other['name']}"}, status_code=409)
     p = db.update_patient(u["id"], patient_id, f)
     if not p:
         return JSONResponse({"error": "paciente não encontrado"}, status_code=404)
