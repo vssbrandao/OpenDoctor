@@ -90,8 +90,22 @@ _SECURITY_HEADERS = {
 }
 
 
-# páginas que abrem sem login; qualquer outra página .html do app exige sessão
-_PUBLIC_HTML = {"opendoctor-login.html", "privacy.html", "terms.html"}
+# ===== quem acessa o quê: FECHADO POR PADRÃO =====
+# Todo endereço exige login, menos os listados aqui. Rota ou página nova nasce privada; para abrir uma,
+# inclua aqui com o motivo — o teste tests/test_security.py exige que a lista bata com a dele, então
+# abrir algo é sempre uma decisão consciente (veja CLAUDE.md).
+PUBLIC_PATHS = {
+    "/": "redireciona para a agenda (logado) ou para o login",
+    "/health": "verificação de saúde do Render",
+    "/me": "diz se há sessão (a tela de login e o aviso de sessão expirada perguntam)",
+    "/opendoctor-login.html": "tela de entrar / criar conta",
+    "/privacy": "Política de Privacidade (exigida pelo Google)", "/privacy.html": "idem",
+    "/terms": "Termos de Serviço (exigidos pelo Google)", "/terms.html": "idem",
+}
+PUBLIC_PREFIXES = {
+    "/auth/": "entrar, criar conta, nova senha, sair e o retorno do Google/Microsoft",
+    "/assets/": "fontes, ícones e imagens da tela de login e do logo dos e-mails",
+}
 
 
 def _norm(path):
@@ -99,29 +113,33 @@ def _norm(path):
     return posixpath.normpath("/" + path.lstrip("/"))
 
 
-def _private_page(path):
-    """Página do app que exige login. O caminho é normalizado (//, /./, maiúsculas) para não haver
-    outro jeito de pedir o mesmo arquivo."""
+def is_public(path):
+    """O caminho é normalizado (//, /./, /../, maiúsculas): não há outro jeito de pedir o mesmo endereço."""
     p = _norm(path).lower()
-    return p.endswith(".html") and posixpath.basename(p) not in _PUBLIC_HTML
+    return p in PUBLIC_PATHS or p.startswith(tuple(PUBLIC_PREFIXES))
 
 
 @app.middleware("http")
 async def _no_cache_html(request: Request, call_next):
-    """Exige login nas páginas do app; impede o navegador de servir HTML velho do cache após um
-    deploy, e de guardar respostas com dados de pacientes. Também põe os cabeçalhos de segurança."""
+    """Exige login em tudo que não é público; impede o navegador de servir HTML velho do cache após
+    um deploy, e de guardar respostas com dados de pacientes. Também põe os cabeçalhos de segurança."""
     path = request.url.path
-    private = _private_page(path)
+    private = not is_public(path)
+    page = _norm(path).lower().endswith(".html")
     if private and not await run_in_threadpool(auth.current_user, request):
-        nxt = _norm(path)
-        resp = RedirectResponse("/opendoctor-login.html?next=" + urllib.parse.quote(nxt, safe=""), status_code=302)
+        navegando = request.method == "GET" and "text/html" in (request.headers.get("accept") or "")
+        if page or navegando:   # página ou link clicado: vai para o login e volta depois
+            resp = RedirectResponse("/opendoctor-login.html?next=" + urllib.parse.quote(_norm(path), safe=""),
+                                    status_code=302)
+        else:
+            resp = JSONResponse({"error": "não autenticado"}, status_code=401)
     elif path.lower().endswith(".md"):
         resp = JSONResponse({"error": "não encontrado"}, status_code=404)   # notas internas da pasta web
     else:
         resp = await call_next(request)
     for k, v in _SECURITY_HEADERS.items():
         resp.headers.setdefault(k, v)
-    if private:
+    if private and page:
         # páginas com dados: nada em cache (nem para o botão Voltar depois de sair)
         resp.headers["Cache-Control"] = "no-store"
     elif path.endswith(".html") or path == "/":

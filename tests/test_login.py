@@ -300,8 +300,10 @@ def test_codigo_nunca_no_log_do_render(monkeypatch):
 def test_integracao_sem_login_vai_para_tela_de_login(monkeypatch):
     from fastapi.testclient import TestClient
     monkeypatch.setattr(integrations, "configured", lambda p: True)
-    r = TestClient(server.app).get("/integrations/google/connect", follow_redirects=False)
-    assert r.headers["location"] == "/opendoctor-login.html?next=%2Fopendoctor-integracao.html"
+    c = TestClient(server.app)
+    r = c.get("/integrations/google/connect", follow_redirects=False, headers={"accept": "text/html"})
+    assert r.headers["location"] == "/opendoctor-login.html?next=%2Fintegrations%2Fgoogle%2Fconnect"   # link clicado
+    assert c.get("/integrations/google/connect").status_code == 401                                    # fetch
     assert auth.safe_next("/opendoctor-integracao.html") == "/opendoctor-integracao.html"
 
 
@@ -479,7 +481,7 @@ def test_cabecalhos_de_seguranca():
         assert h["x-frame-options"] == "DENY" and h["x-content-type-options"] == "nosniff"
         assert "frame-ancestors 'none'" in h["content-security-policy"] and "max-age=31536000" in h["strict-transport-security"]
         assert h["referrer-policy"] == "strict-origin-when-cross-origin" and "camera=()" in h["permissions-policy"]
-    assert c.get("/_diag/ip").status_code == 404                      # diagnóstico temporário removido
+    assert "/_diag/ip" not in {getattr(r, "path", "") for r in server.app.routes}   # diagnóstico temporário removido
 
 
 def test_sem_session_secret_o_render_nao_sobe():
@@ -506,7 +508,7 @@ def test_paginas_do_app_exigem_login(monkeypatch):
         "/opendoctor-login.html?next=%2Fopendoctor-agenda.html"
     for path in ("/opendoctor-login.html", "/privacy.html", "/terms.html", "/privacy", "/assets/email/logo.png"):
         assert c.get(path, follow_redirects=False).status_code == 200, path
-    assert c.get("/README.md").status_code == 404
+    assert c.get("/README.md").status_code == 401
     # o assistente de IA também só responde com login
     assert c.post("/ask", json={"query": "dose de amoxicilina"}).status_code == 401
     assert c.post("/followups", json={"answer": "x"}).status_code == 401
@@ -515,3 +517,4 @@ def test_paginas_do_app_exigem_login(monkeypatch):
     c.cookies.set(auth.COOKIE_NAME, auth.sign({"k": "sess", "uid": "u1", "sv": 0}))
     r = c.get("/opendoctor-agenda.html", follow_redirects=False)
     assert r.status_code == 200 and r.headers["cache-control"] == "no-store" and "<html" in r.text.lower()
+    assert c.get("/README.md").status_code == 404                     # notas internas: nem logado

@@ -114,7 +114,18 @@ def device_label(ua):
 
 
 def current_user(request):
-    """Devolve o dict do usuário logado (do cookie) ou None."""
+    """Devolve o dict do usuário logado (do cookie) ou None. Guardado no próprio pedido: a regra de
+    acesso do servidor e a rota consultam o banco uma vez só."""
+    state = getattr(request, "state", None)
+    if state is not None and hasattr(state, "od_user"):
+        return state.od_user
+    user = _session_user(request)
+    if state is not None:
+        state.od_user = user
+    return user
+
+
+def _session_user(request):
     from . import db
     tok = request.cookies.get(COOKIE_NAME)
     if not tok:
