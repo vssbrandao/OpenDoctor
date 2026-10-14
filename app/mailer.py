@@ -68,5 +68,10 @@ def send_code(to, code, purpose):
         "text": f"{title}\n\n{lead} {code}\n\nO código vale 10 minutos e só pode ser usado uma vez. {foot}",
     })
     if r.status_code >= 300:
-        # só o status: a resposta do provedor pode repetir o e-mail do médico (fica fora do log)
-        raise RuntimeError(f"resend {r.status_code}")
+        # status + tipo do erro do Resend (ex.: validation_error, invalid_from_address); a mensagem
+        # completa fica fora do log porque pode repetir o e-mail do médico
+        try:
+            kind = str(r.json().get("name") or "")[:60]
+        except Exception:
+            kind = ""
+        raise RuntimeError(f"resend {r.status_code} {kind}".strip())
