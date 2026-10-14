@@ -115,7 +115,13 @@
     .pr-msg{font-family:var(--disp);font-size:15px;line-height:24px;color:#1F1F1F}
     .pr-msg a{color:#0B57D0}
     /* cabeçalho do paciente = bloco "logo 32 + nome 20/26" do Finance; linha de dados 14/16 */
-    .pr-head{display:flex;align-items:flex-start;gap:8px}
+    .pr-head{display:grid;grid-template-columns:32px minmax(0,1fr) auto;column-gap:8px;align-items:center}
+    .pr-head .pr-id{display:contents}
+    .pr-head .pr-name{grid-column:2;grid-row:1}
+    .pr-head .pr-sub{grid-column:1 / -1;grid-row:2;margin-top:10px}
+    .pr-head .pr-tags{grid-column:1 / -1;grid-row:3}
+    .pr-head .pr-visit{grid-column:3;grid-row:1}
+    .pr-head .pr-avatar{grid-column:1;grid-row:1}
     .pr-avatar{width:32px;height:32px;flex:none;border-radius:50%;background:#D3E3FD;color:#0842A0;
       display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:500;font-size:13px}
     .pr-id{flex:1;min-width:0;display:flex;flex-direction:column;padding-top:3px}
@@ -325,7 +331,6 @@
     .ov-persp-go{flex:none;display:inline-flex;align-items:center;gap:4px;font-weight:500;font-size:14px}
     .ov-persp-go svg{width:20px;height:20px}
     /* cartões dos sinais vitais = cartões de índices (140×144, raio 12, espaço 12) */
-    .ov-persp + .ov-tiles{margin-top:-16px}
     .ov-tiles{display:grid;grid-auto-flow:column;grid-auto-columns:140px;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;
       scrollbar-width:none;padding:1px;margin:-1px}
     .ov-tiles::-webkit-scrollbar{display:none}
@@ -480,6 +485,108 @@
     .ov-post-src small{font-weight:400;font-size:12px;color:var(--g-ink2)}
     .ov-post-t{font-weight:500;font-size:14px;line-height:20px;color:var(--g-ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .ov-note{font-family:var(--disp);font-size:12px;line-height:16px;color:var(--g-ink2)}
+    /* ===== componentes das outras abas no mesmo sistema (espaços internos do Finance):
+       painéis #F7F8FA raio 12–16 · linhas 12px + divisória #F0F2F5 · etiquetas 24px raio 8 (12/16) ·
+       botões 36 (raio 18) · campos 40 (raio 8) · rótulos 12/16 #56595E · títulos 20/28 ===== */
+    .pr-panel{gap:24px}
+    .pr-tools .pr-ghost{height:32px;padding:0 12px;border-radius:16px}
+    .pr-top{min-height:32px}
+    .pr-tags{row-gap:8px}
+    /* evolução (aba Consulta): sem o cartão cinza em volta — seções abertas, como no Finance */
+    .pr-bigcard{background:none;border-radius:0;padding:0;gap:24px}
+    .pr-cardhead{align-items:flex-start;gap:16px}
+    .pr-h2{font-weight:500;font-size:20px;line-height:28px;color:#0A0A0A}
+    .pr-cardsub{margin-top:2px;font-size:14px;line-height:20px;color:#56595E}
+    .pr-seg{background:none;padding:0;gap:8px;border-radius:0}
+    .pr-seg button{height:36px;padding:0 12px;border-radius:18px;box-shadow:inset 0 0 0 1px #DADCE0;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#444746}
+    .pr-seg button:hover{background:#F0F2F5}
+    .pr-seg button.on{background:#E9EBF0;color:#0A0A0A;box-shadow:inset 0 0 0 1px #56595E}
+    .pr-rec{padding:12px 12px 12px 16px;border-radius:12px;background:#F7F8FA;gap:16px}
+    .pr-rec-main{gap:8px}
+    .pr-rec-chip{height:24px;display:inline-flex;align-items:center;padding:4px 10px;border-radius:8px;background:#E9EBF0;font-size:12px;line-height:16px;font-weight:500;color:#444746}
+    .pr-rec-s{font-size:12px;line-height:16px;color:#56595E}
+    .pr-roundbtn{width:40px;height:40px;background:#fff}
+    .pr-note,.pr-soapf textarea{border:1px solid #DADCE0;border-radius:12px;padding:12px 16px;font-size:14px;line-height:22px;color:#0A0A0A;background:#fff}
+    .pr-soapf textarea{min-height:96px}
+    .pr-soap{gap:24px}
+    .pr-soapf{gap:8px}
+    .pr-soapf > span{font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
+    .pr-vitals{gap:12px 16px}
+    .pr-vital{gap:6px}
+    .pr-vital span{font-size:12px;line-height:16px;color:#56595E}
+    .pr-in{height:40px;border-radius:8px;padding:0 12px;font-size:14px;color:#0A0A0A}
+    .pr-imc{height:40px;border-radius:8px;background:#F0F2F5;padding:0 12px;font-size:14px}
+    .pr-cid{gap:8px}
+    #prEvoBox .pr-chip,.pr-cid .pr-chip{height:24px;padding:4px 4px 4px 10px;border-radius:8px;background:#F0F2F5;box-shadow:none;font-size:12px;line-height:16px}
+    .pr-cidlist{border-radius:12px;padding:8px}
+    .pr-cidopt{padding:8px 12px;border-radius:8px;font-size:14px;line-height:20px}
+    .pr-foot{gap:8px;padding-top:16px;border-top:1px solid #F0F2F5}
+    .pr-addbox .pr-foot{border-top:0;padding-top:0}
+    .pr-status{font-size:12px;line-height:16px;color:#56595E}
+    .pr-count{font-size:12px}
+    .pr-locked{gap:16px}
+    .pr-signed{height:24px;display:inline-flex;align-items:center;padding:4px 10px;border-radius:8px;background:#E6F4EA;color:#046E00;font-size:12px;line-height:16px;font-weight:500}
+    .pr-body{font-size:14px;line-height:22px;color:#0A0A0A}
+    .pr-locked .pr-body{background:#F7F8FA;border-radius:12px;padding:16px 20px}
+    .pr-add{border-left:2px solid #DADCE0;padding:0 0 0 12px;gap:4px;margin-top:12px}
+    .pr-add-h{font-size:12px;line-height:16px;color:#56595E}
+    .pr-add-b{font-size:14px;line-height:22px;color:#0A0A0A}
+    .pr-addbox{gap:12px}
+    .pr-addbox textarea{border-radius:12px;padding:12px 16px;font-size:14px;line-height:22px}
+    /* cadastro */
+    .pr-form{background:#F7F8FA;border-radius:16px;padding:24px;gap:16px}
+    .pr-field{gap:6px}
+    .pr-field span{font-size:12px;line-height:16px;color:#56595E}
+    .pr-formfoot{padding-top:8px}
+    /* vazios e prescrições */
+    .pr-empty{font-size:14px;line-height:20px;color:#56595E;padding:0}
+    .pr-bigcard .pr-empty{background:#F7F8FA;border-radius:12px;padding:24px}
+    /* consultas (como "Próximos resultados": linha 12px, divisória; etiqueta de estado 24px) */
+    .pr-table{display:flex;flex-direction:column}
+    .pr-trow{gap:12px;padding:12px 8px;border-bottom:1px solid #F0F2F5;font-size:14px;line-height:20px;color:#0A0A0A}
+    .pr-trow.th{padding:0 8px 8px;border-bottom:1px solid #E1E3E1;font-weight:500;font-size:12px;line-height:16px;color:#56595E}
+    button.pr-trow:hover{background:#F7F8FA}
+    button.pr-trow.cur{background:#EEF3FD}
+    .pr-tdate{font-weight:500;font-size:14px;line-height:18px;color:#0A0A0A}
+    .pr-tdate small{margin-top:4px;font-size:12px;line-height:16px;color:#56595E}
+    .pr-tmuted{color:#36373A;font-size:12px;line-height:16px}
+    .pr-tgroup{padding:24px 0 8px;font-weight:500;font-size:16px;line-height:24px;color:#56595E}
+    .pr-tgroup:first-of-type{padding-top:0}
+    .pr-badge{height:24px;display:inline-flex;align-items:center;padding:4px 10px;border-radius:8px;background:#F0F2F5;color:#444746;
+      font-weight:500;font-size:12px;line-height:16px}
+    .pr-badge.ok{background:#E6F4EA;color:#046E00}
+    .pr-badge.draft{background:#FEF0E1;color:#B06000}
+    .pr-badge.cur{background:#E5EDFF;color:#0B57D0}
+    /* histórico (linhas de 16px, busca em pílula de 40px) */
+    .pr-histbar{gap:16px}
+    .pr-label{font-weight:500;font-size:20px;line-height:28px;color:#0A0A0A}
+    .pr-histq{width:280px;height:40px;border:0;border-radius:20px;background:#F0F2F5;padding:0 16px;font-size:14px}
+    .pr-item{padding:16px 0;border-top:0;border-bottom:1px solid #F0F2F5;gap:8px}
+    .pr-item:first-child{padding-top:16px;border-top:1px solid #F0F2F5}
+    .pr-item-head{gap:12px}
+    .pr-item-when{font-size:14px;line-height:20px;color:#0A0A0A}
+    .pr-item-when small{color:#56595E}
+    .pr-item-body{font-size:14px;line-height:22px;color:#36373A}
+    .pr-item-body.clamp{white-space:normal;-webkit-line-clamp:3}
+    .pr-item-acts{margin-left:-12px}
+    .pr-item-acts .pr-ghost{height:32px;padding:0 12px;border-radius:16px}
+    /* acessos (linhas de 40 + 1px, como a grade de indicadores) */
+    .pr-acc{grid-template-columns:200px minmax(0,1fr);gap:12px;align-items:center;min-height:41px;padding:0 8px;border-bottom:1px solid #F0F2F5;
+      font-size:12px;line-height:16px;color:#0A0A0A}
+    .pr-acc.th{min-height:0;padding:0 8px 8px;border-bottom:1px solid #E1E3E1;font-weight:500;color:#56595E}
+    .pr-acc b{font-weight:400;color:#36373A}
+    /* cartões dos sinais vitais: sempre inteiros (4 na coluna estreita, 5 na larga) + botões de rolar */
+    .ov-tiles-wrap{position:relative}
+    .ov-tiles-wrap[hidden]{display:none}
+    .ov-persp + .ov-tiles-wrap{margin-top:-16px}
+    .ov-tiles{grid-auto-columns:calc((100% - 36px) / 4)}
+    .ov-tnav{position:absolute;top:50%;width:40px;height:40px;margin-top:-20px;border:0;border-radius:20px;background:#fff;cursor:pointer;z-index:2;
+      display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15)}
+    .ov-tnav[hidden]{display:none}
+    .ov-tnav.prev{left:-16px}.ov-tnav.next{right:-16px}
+    .ov-tnav:hover{background:#F7F8FA}
+    .ov-tnav svg{width:24px;height:24px}
     .pr-item.flash{animation:prflash 1.6s ease-out}
     @keyframes prflash{0%,30%{background:#E8F0FE}100%{background:transparent}}
     /* coluna estreita (assistente aberto) */
@@ -492,14 +599,18 @@
       .pr-vitals{grid-template-columns:repeat(3,minmax(0,1fr))}
       .pr-trow{grid-template-columns:minmax(110px,1fr) minmax(0,1fr) 116px}
       .pr-trow .pr-tloc{display:none}
-      .pr-bigcard{padding:18px 20px 20px}
+      .pr-bigcard{padding:0}
       .pr-tabs button{padding:0 12px}                      /* 6 abas cabem sem rolar */
     }
-    @container pr (max-width:620px){
+    @container pr (min-width:740px){
+      .ov-tiles{grid-auto-columns:calc((100% - 48px) / 5)}
+    }
+    @container pr (max-width:560px){
       .ov-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}
+      .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px;margin-top:24px}
       .ov-feed{grid-template-columns:1fr}
       .ov .pr-sumcol{grid-template-columns:132px minmax(0,1fr)}
+      .ov-tiles{grid-auto-columns:calc((100% - 24px) / 3)}
     }
     @container pr (max-width:520px){
       .ov-stats,.ov-col:nth-child(3){grid-template-columns:1fr}
@@ -1077,7 +1188,11 @@
               </button>
 
               <!-- índices do Finance: um cartão por sinal vital (escolhe o que aparece no gráfico) -->
-              <div class="ov-tiles" id="ovTiles" role="tablist" aria-label="Sinal vital no gráfico"></div>
+              <div class="ov-tiles-wrap" id="ovTilesWrap">
+                <div class="ov-tiles" id="ovTiles" role="tablist" aria-label="Sinal vital no gráfico"></div>
+                <button class="ov-tnav prev" type="button" id="ovTPrev" aria-label="Sinais anteriores" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#1F1F1F"/></svg></button>
+                <button class="ov-tnav next" type="button" id="ovTNext" aria-label="Mais sinais" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="#1F1F1F"/></svg></button>
+              </div>
 
               <div class="ov-chart" id="ovChart">
                 <div class="ov-chart-head">
@@ -3300,7 +3415,7 @@
         ov.dirty = false;
         var S = ov.S = series(), avail = METRICS.filter(function (m) { return S[m.k].length; }), any = avail.length > 0;
         if (!MBY[ov.metric] || !S[ov.metric].length) ov.metric = any ? avail[0].k : null;
-        $('ovChart').hidden = !any; $('ovTiles').hidden = !any; if (!any) $('ovTiles').innerHTML = '';
+        $('ovChart').hidden = !any; $('ovTilesWrap').hidden = !any; if (!any) $('ovTiles').innerHTML = '';
         $('ovEmpty').hidden = any || !patient;
         $('ovEmptyGo').textContent = ctx && ctx.event_id ? 'Abrir a consulta' : 'Nova evolução';
         if (any) { renderTiles(S, avail); drawChart(); }
@@ -3356,7 +3471,7 @@
           b.title = m.label + (o ? ' — última medida ' + side(m, last) + ' da referência' : '');
           b.appendChild(el('span', 'ov-tile-n', m.k === 'pa' ? 'Pressão' : m.label));
           b.appendChild(el('span', 'ov-tile-v' + (o ? ' bad' : ''), fmtV(m, last) + ' ' + m.unit));
-          b.appendChild(el('span', 'ov-tile-s', a.length > 1 ? a.length + ' medidas · ' + spanTxt(first.t, last.t).replace('em ', '') : dayMon(last.t)));
+          b.appendChild(el('span', 'ov-tile-s', a.length > 1 ? a.length + ' medidas' : dayMon(last.t)));
           var t = a.length > 1 ? trend(m, first, last) : '';
           var d = el('span', 'ov-tile-d' + (t ? ' ' + t : ''));
           if (a.length > 1) { d.appendChild(arrow(dir(first, last))); d.appendChild(document.createTextNode(deltaTxt(m, first, last))); }
@@ -3365,8 +3480,20 @@
           b.addEventListener('click', function () { pickMetric(m.k); });
           box.appendChild(b);
         });
-        var on = box.querySelector('.ov-tile.on'); if (on) on.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        var on = box.querySelector('.ov-tile.on');
+        if (on && (on.offsetLeft < box.scrollLeft || on.offsetLeft + on.offsetWidth > box.scrollLeft + box.clientWidth)) box.scrollLeft = on.offsetLeft;
+        tilesNav();
       }
+      // botões de rolar os cartões (como o carrossel de índices do Finance)
+      function tilesNav() {
+        var b = $('ovTiles'), more = b.scrollWidth - b.clientWidth > 2;
+        $('ovTPrev').hidden = !more || b.scrollLeft < 4;
+        $('ovTNext').hidden = !more || b.scrollLeft + b.clientWidth >= b.scrollWidth - 4;
+      }
+      $('ovTiles').addEventListener('scroll', function () { tilesNav(); }, { passive: true });
+      $('ovTPrev').addEventListener('click', function () { var b = $('ovTiles'); b.scrollBy({ left: -(b.clientWidth + 12), behavior: 'smooth' }); });
+      $('ovTNext').addEventListener('click', function () { var b = $('ovTiles'); b.scrollBy({ left: b.clientWidth + 12, behavior: 'smooth' }); });
+      if (window.ResizeObserver) new ResizeObserver(function () { tilesNav(); }).observe($('ovTiles'));
       function pickMetric(k) {
         ov.metric = k; try { localStorage.setItem('od_pr_metric', k); } catch (_) {}
         [].forEach.call($('ovTiles').children, function (c) { var on = c._k === k; c.classList.toggle('on', on); c.setAttribute('aria-selected', on ? 'true' : 'false'); });
@@ -3700,23 +3827,22 @@
         row(c1, 'Altura', alt ? fmtN(alt, 2) + ' m' : '—', alt ? '' : 'muted');
         var pw = S.peso[S.peso.length - 1], im = S.imc[S.imc.length - 1];
         row(c1, 'Peso', pw ? fmtN(pw.v, 1) + ' kg' : '—', pw ? '' : 'muted', pw ? 'Em ' + dayMon(pw.t) : '');
-        row(c1, 'IMC', im ? fmtN(im.v, 1) + ' · ' + imcClass(im.v) : '—', im ? (off(MBY.imc, im) ? 'bad' : '') : 'muted', im ? 'Em ' + dayMon(im.t) : '');
+        row(c1, 'IMC', im ? fmtN(im.v, 1) + ' · ' + imcClass(im.v).replace(' grau', '').replace('peso adequado', 'adequado') : '—', im ? (off(MBY.imc, im) ? 'bad' : '') : 'muted', im ? 'Em ' + dayMon(im.t) : '');
 
         var c2 = col('Consultas');
         var vs = visits || [], past = vs.filter(function (v) { return parseStart(v.start) < now; }), fut = vs.filter(function (v) { return parseStart(v.start) >= now; });
         var wt = withText(), nd = wt.map(noteDate).filter(Boolean);
         var dates = (past.length ? past.map(function (v) { return parseStart(v.start); }) : nd).sort(function (a, b) { return a - b; });
         var lastD = dates[dates.length - 1];
-        row(c2, 'Primeira consulta', dates.length ? dayMon(dates[0]) : '—', dates.length ? '' : 'muted');
-        function dShort(d) { return Math.abs(d - now) < 300 * 864e5 ? d.getDate() + ' ' + MON[d.getMonth()] : dayMon(d); }   // perto de hoje: sem o ano
-        row(c2, 'Última consulta', lastD ? dShort(lastD) + ' · ' + agoTxt(lastD) : (visits === null ? 'Carregando…' : '—'), lastD ? '' : 'muted');
+        row(c2, 'Primeira consulta', dates.length ? MON[dates[0].getMonth()] + ' ' + dates[0].getFullYear() : '—', dates.length ? '' : 'muted', dates.length ? dayMon(dates[0]) : '');
+        row(c2, 'Última consulta', lastD ? agoTxt(lastD) : (visits === null ? 'Carregando…' : '—'), lastD ? '' : 'muted', lastD ? dayMon(lastD) : '');
         var nx = fut[0];
-        row(c2, 'Próxima consulta', nx ? dShort(parseStart(nx.start)) + ' · ' + untilTxt(parseStart(nx.start)) : (visits === null ? 'Carregando…' : 'Nenhuma agendada'), nx ? '' : 'muted');
+        row(c2, 'Próxima consulta', nx ? untilTxt(parseStart(nx.start)) : (visits === null ? 'Carregando…' : 'Nenhuma'), nx ? '' : 'muted', nx ? dayMon(parseStart(nx.start)) + (nx.allDay ? '' : ' · ' + hm(parseStart(nx.start))) : '');
         var yearAgo = now - 365 * 864e5, n12 = dates.filter(function (d) { return d >= yearAgo; }).length;
-        row(c2, 'Últimos 12 meses', n12 + (n12 === 1 ? ' consulta' : ' consultas'));
+        row(c2, 'Em 12 meses', n12 + (n12 === 1 ? ' consulta' : ' consultas'));
         if (dates.length > 1) {
           var gap = (dates[dates.length - 1] - dates[0]) / (dates.length - 1) / 864e5;
-          row(c2, 'Intervalo médio', gap < 45 ? Math.round(gap) + ' dias' : 'a cada ' + fmtN(gap / 30.44, gap / 30.44 < 10 ? 1 : 0) + ' meses');
+          row(c2, 'Intervalo médio', gap < 45 ? Math.round(gap) + ' dias' : fmtN(gap / 30.44, gap / 30.44 < 10 ? 1 : 0) + ' meses', '', 'Tempo médio entre as consultas');
         } else row(c2, 'Intervalo médio', '—', 'muted');
         row(c2, 'Consultas', dates.length + (dates.length === 1 ? ' consulta' : ' consultas'));
 
