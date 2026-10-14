@@ -10,6 +10,7 @@ import os
 import re
 import json
 import time
+import base64
 import hashlib
 import urllib.parse
 import posixpath
@@ -58,6 +59,22 @@ def _warm_pool():
         pass
 
 
+def _cleanup_loop():
+    """Limpeza diária dos registros vencidos (db.RETENTION). A primeira roda logo após subir."""
+    while True:
+        try:
+            print("[limpeza]", db.cleanup_old_records(), flush=True)
+        except Exception as e:
+            print("[limpeza] falhou:", str(e)[:200], flush=True)
+        time.sleep(24 * 60 * 60)
+
+
+@app.on_event("startup")
+def _start_cleanup():
+    if config.DATABASE_URL:
+        threading.Thread(target=_cleanup_loop, name="limpeza", daemon=True).start()
+
+
 def _sse(event, data):
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -66,10 +83,24 @@ def _sse(event, data):
 _NO_STORE = ("/patients", "/prontuario/", "/calendar/")
 
 
+def _inline_script_hashes():
+    """Hash de cada <script> escrito dentro das páginas: o navegador só roda esses blocos exatos, e um
+    script injetado (XSS) é recusado. Calculado ao subir, a partir dos próprios arquivos — editar um
+    script não exige mexer aqui. (Por isso nada de onclick= no HTML: use addEventListener.)"""
+    out = set()
+    if os.path.isdir(WEB_DIR):
+        for f in sorted(os.listdir(WEB_DIR)):
+            if f.endswith(".html"):
+                with open(os.path.join(WEB_DIR, f), encoding="utf-8") as fh:
+                    for body in re.findall(r"<script>(.*?)</script>", fh.read(), re.S):
+                        out.add("'sha256-" + base64.b64encode(hashlib.sha256(body.encode()).digest()).decode() + "'")
+    return sorted(out)
+
+
 # cabeçalhos de segurança em todas as respostas
 _CSP = "; ".join((
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",   # inline: onclick das páginas; jsdelivr: mermaid
+    " ".join(["script-src 'self' https://cdn.jsdelivr.net"] + _inline_script_hashes()),   # jsdelivr: mermaid
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",

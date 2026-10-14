@@ -20,18 +20,24 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
    corpo do POST ou no `sessionStorage`.
 4. **Segredos** só em variável de ambiente (Render / `.env`, que não é commitado). Nunca em código,
    comando, log ou mensagem. O usuário cola os segredos; não imprimir chaves.
-5. **Front-end:** script de fora do site só com versão exata + `integrity` (SRI) + domínio liberado na
-   CSP (`_CSP` em `app/server.py`). Nada de buscar dados em outro domínio (`connect-src 'self'`).
+5. **Front-end:** a CSP só roda os `<script>` escritos nas páginas (hash calculado ao subir o servidor)
+   — **nunca** `onclick=`/`on*=` no HTML nem `javascript:`; use `addEventListener` (ou `data-href` no
+   menu). Script de fora do site só com versão exata + `integrity` (SRI) + domínio liberado em `_CSP`.
+   Nada de buscar dados em outro domínio (`connect-src 'self'`).
 6. **Login:** POST de auth só aceita JSON (`_body`); destino pós-login passa por `auth.safe_next`;
    limite por IP usa `_client_ip` (só `CF-Connecting-IP` — o `X-Forwarded-For` é forjável).
 7. **Arquivos em `web/assets/`** são públicos: só imagem/fonte, nunca dado.
+8. **Retenção** (`db.RETENTION`, limpeza diária no servidor): códigos de e-mail 1 dia, registro de
+   acessos 1 ano. Prontuário, pacientes e `access_log` nunca entram na limpeza.
 
 ## Antes de dizer que terminou
 
-- `python -m pytest tests/ --ignore=tests/test_chat_quality.py -q` (o `test_chat_quality` gasta
-  créditos da OpenAI: só com autorização).
-- Testes que tocam o banco usam o banco de **produção**: e-mails `teste-…@example.invalid` e apagar
-  tudo no fim.
+- `python -m pytest tests/ -q`. O `tests/conftest.py` zera `DATABASE_URL`, `OPENAI_API_KEY` e
+  `RESEND_API_KEY` durante os testes: eles nunca tocam produção, nunca gastam crédito, nunca mandam e-mail.
+- **Banco de testes:** projeto Supabase separado (`TEST_DATABASE_URL` no `.env`), montado com
+  `python -m scripts.setup_test_db` (rode de novo a cada migração). Teste de banco usa a fixture `test_db`
+  (`tests/test_db_integration.py`). **Nunca** gravar em produção para testar; migração nova é aplicada
+  primeiro no banco de testes.
 - Mudou rota, página ou login: conferir em produção sem login (`curl` deve dar 401/302) e logado.
 - O CI (`.github/workflows/ci.yml`) roda os testes a cada push; `tests/test_security.py` percorre
   todas as rotas, páginas, migrações e arquivos sozinho. Se ele falhar, **não ajuste o teste para

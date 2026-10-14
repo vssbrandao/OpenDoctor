@@ -1,0 +1,18 @@
+# Avisa (abrindo um PR) quando uma biblioteca do projeto tem versão nova — inclusive correções de
+# falhas de segurança. Os alertas de vulnerabilidade em si ligam em Settings → Security do GitHub.
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    groups:
+      dependencias:            # um PR por semana com tudo junto, em vez de um por biblioteca
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

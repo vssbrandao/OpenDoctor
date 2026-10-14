@@ -1,6 +1,6 @@
 -- Registro de acessos à conta: cada entrada (e cada senha errada) com data, IP e aparelho.
 -- Serve para avisar por e-mail quando a conta entra de um aparelho novo e para investigar acessos.
--- Guardar por pelo menos 6 meses (Marco Civil da Internet, art. 15: registros de acesso a aplicações).
+-- Guardado por 1 ano e apagado depois (db.RETENTION); o Marco Civil (art. 15) exige pelo menos 6 meses.
 
 create table if not exists login_events (
   id          bigserial primary key,

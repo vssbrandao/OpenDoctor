@@ -271,6 +271,23 @@ def record_login(user_id, event, method, ip=None, user_agent=None, device=None):
     return new_device
 
 
+# ----- limpeza (LGPD: não guardar além do necessário) -----
+# Códigos de e-mail: 1 dia. Registro de acessos: 1 ano (o Marco Civil exige pelo menos 6 meses).
+# O registro de acesso ao PRONTUÁRIO (access_log) não entra aqui: faz parte do prontuário.
+RETENTION = {"login_codes": "1 day", "login_events": "1 year"}
+
+
+def cleanup_old_records():
+    """Apaga o que passou do prazo. Devolve {tabela: linhas apagadas}."""
+    out = {}
+    with connection() as conn:
+        for table, keep in RETENTION.items():
+            cur = conn.execute(f"delete from {table} where created_at < now() - interval '{keep}'")
+            out[table] = cur.rowcount
+        conn.commit()
+    return out
+
+
 def set_password(user_id, password_hash):
     """Nova senha (redefinição): zera bloqueio e muda a versão da sessão — as sessões abertas em
     outros aparelhos deixam de valer. Devolve o usuário atualizado."""

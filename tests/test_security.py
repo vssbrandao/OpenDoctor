@@ -134,3 +134,31 @@ def test_scripts_externos_fixos_e_permitidos_na_csp():
             assert 'integrity="sha384-' in tag and 'crossorigin="anonymous"' in tag, f"{f}: {tag}"
             assert src in script_src, f"{f}: {src} fora da CSP"
             assert not re.search(r"@\d+/", tag), f"{f}: versão não fixa em {tag}"
+
+
+def test_csp_nao_aceita_script_injetado():
+    """Só rodam os <script> escritos nas páginas (pelo hash). Nada de 'unsafe-inline', onclick= no HTML
+    ou javascript: — com eles, um texto injetado (XSS) viraria código."""
+    import base64
+    import hashlib
+    script_src = next(d for d in server._CSP.split("; ") if d.startswith("script-src"))
+    assert "'unsafe-inline'" not in script_src and "'unsafe-eval'" not in script_src
+    for f in os.listdir(WEB):
+        if not f.endswith(".html"):
+            continue
+        html = open(os.path.join(WEB, f), encoding="utf-8").read()
+        assert not re.search(r"<[^>]+\son[a-z]+\s*=", html), f"{f}: atributo on*= (use addEventListener)"
+        assert "javascript:" not in html, f"{f}: link javascript:"
+        for body in re.findall(r"<script>(.*?)</script>", html, re.S):
+            h = "'sha256-" + base64.b64encode(hashlib.sha256(body.encode()).digest()).decode() + "'"
+            assert h in script_src, f"{f}: script sem hash na CSP"
+
+
+def test_retencao_respeita_a_lei():
+    """Registro de acessos: o Marco Civil exige pelo menos 6 meses. E a limpeza nunca toca o prontuário."""
+    from app import db
+    keep = db.RETENTION["login_events"]
+    n, unit = keep.split()
+    meses = int(n) * {"year": 12, "years": 12, "month": 1, "months": 1}[unit]
+    assert meses >= 6
+    assert not set(db.RETENTION) & {"clinical_notes", "note_addenda", "patients", "access_log", "users"}

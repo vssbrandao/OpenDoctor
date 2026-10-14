@@ -1,7 +1,7 @@
 name: CI
 
-# Testes rodam sempre. O eval (gate de regressão) roda quando os secrets existem.
-# Dispara em PRs que tocam prompt, código do RAG, evals ou dependências (spec §6.2).
+# Testes rodam em todo push (o Render só publica depois que passam).
+# O eval do assistente (gasta OpenAI) fica em eval.yml e só roda quando o código do assistente muda.
 on:
   push:
     branches: [main]
@@ -16,9 +16,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -31,9 +28,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Testes unitários (sempre)
+      - name: Testes (sempre; sem banco e sem OpenAI — tests/conftest.py garante)
         run: python -m pytest tests/ -q
-
-      - name: Eval — gate de regressão (só com secrets)
-        if: ${{ env.OPENAI_API_KEY != '' && env.DATABASE_URL != '' }}
-        run: python -m app.eval --check --no-history
