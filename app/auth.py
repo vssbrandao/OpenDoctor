@@ -94,10 +94,47 @@ def current_user(request):
 LOGIN_SCOPE = "openid email profile"
 
 
-def login_url(hint: str = "") -> str:
-    """URL do login Google. `hint` (e-mail digitado na tela de login) já abre a conta certa."""
+HOME = "/opendoctor-agenda.html"
+
+
+def safe_next(nxt) -> str:
+    """Destino depois do login: só caminhos deste site ("/pagina.html?x#y"); qualquer outra
+    coisa (URL externa, "//host", barra invertida) vira a agenda — evita redirecionamento aberto."""
+    if not isinstance(nxt, str) or not nxt.startswith("/") or nxt.startswith("//") or len(nxt) > 300:
+        return HOME
+    if "\\" in nxt or any(c in nxt for c in "\r\n\t ") or nxt.startswith("/auth/"):
+        return HOME
+    parts = urllib.parse.urlsplit(nxt)
+    if parts.scheme or parts.netloc:
+        return HOME
+    return nxt
+
+
+def with_welcome(url: str) -> str:
+    """Marca o primeiro acesso para a agenda mostrar as boas-vindas."""
+    if not url.split("?")[0].split("#")[0] == HOME:
+        return url
+    base, _, frag = url.partition("#")
+    base += ("&" if "?" in base else "?") + "bemvindo=1"
+    return base + ("#" + frag if frag else "")
+
+
+# ----- login por e-mail: código de 6 dígitos -----
+
+def new_code() -> str:
+    return f"{secrets.randbelow(10 ** 6):06d}"
+
+
+def code_hash(email: str, code: str) -> str:
+    """O código não é guardado: só este HMAC (vale para um e-mail só)."""
+    return hmac.new(_SECRET, f"login-code:{email}:{code}".encode(), hashlib.sha256).hexdigest()
+
+
+def login_url(hint: str = "", nxt: str = "") -> str:
+    """URL do login Google. `hint` (e-mail digitado na tela de login) já abre a conta certa;
+    `nxt` é a página para onde voltar depois."""
     p = integrations.PROVIDERS["google"]
-    state = sign({"k": "login", "n": secrets.token_urlsafe(8)})
+    state = sign({"k": "login", "n": secrets.token_urlsafe(8), "nx": safe_next(nxt)})
     params = {
         "client_id": integrations._cid("google"),
         "redirect_uri": integrations.redirect_uri("google"),

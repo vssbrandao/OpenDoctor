@@ -11,6 +11,7 @@ import re
 import json
 import time
 import hashlib
+import urllib.parse
 import datetime
 import threading
 import collections
@@ -19,7 +20,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10
+from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer
 
 app = FastAPI(title="OpenDoctor Assistant")
 WEB_DIR = os.path.join(config.ROOT, "web")
@@ -277,7 +278,8 @@ def _clean_history(raw):
 
 
 # ===== limite de uso por IP (sem login por enquanto) =====
-RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600)}   # (pedidos, janela em s)
+RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em s)
+               "login_code": (10, 600), "login_verify": (30, 600)}
 MAX_QUERY_CHARS = 2000
 _RL = {}
 _RL_LOCK = threading.Lock()
@@ -518,10 +520,19 @@ async def followups(request: Request):
 
 # ===== login do app (Google, escopos básicos) =====
 @app.get("/auth/google/login")
-def google_login():
+def google_login(next: str = ""):
     if not integrations.configured("google"):
         return JSONResponse({"error": "google não configurado"}, status_code=400)
-    return RedirectResponse(auth.login_url())
+    return RedirectResponse(auth.login_url("", next))
+
+
+def _login_page(erro, nxt=""):
+    """Volta para a tela de login com o motivo (e a página de origem, se houver)."""
+    q = {"erro": erro}
+    nxt = auth.safe_next(nxt)
+    if nxt != auth.HOME:
+        q["next"] = nxt
+    return "/opendoctor-login.html?" + urllib.parse.urlencode(q)
 
 
 _EMAIL = re.compile(r"[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s.]{2,63}")
@@ -534,12 +545,106 @@ async def google_start(request: Request):
     if not integrations.configured("google"):
         return JSONResponse({"error": "google não configurado"}, status_code=400)
     try:
-        email = str((await request.json()).get("email") or "").strip()
+        body = await request.json()
+        email, nxt = str(body.get("email") or "").strip(), str(body.get("next") or "")
     except Exception:
-        email = ""
+        email, nxt = "", ""
     if email and not _EMAIL.fullmatch(email):
         return JSONResponse({"error": "e-mail inválido"}, status_code=400)
-    return {"url": auth.login_url(email)}
+    return {"url": auth.login_url(email, nxt)}
+
+
+# ----- login por e-mail: código de 6 dígitos (sem senha) -----
+# A resposta do envio é a mesma para e-mail com ou sem conta (não revela quem usa o app);
+# só depois de provar que o e-mail é dele a pessoa vê se vai entrar ou criar a conta.
+
+async def _body(request):
+    try:
+        b = await request.json()
+        return b if isinstance(b, dict) else {}
+    except Exception:
+        return {}
+
+
+def _err(code, status=400, **extra):
+    return JSONResponse(dict({"error": code}, **extra), status_code=status)
+
+
+@app.post("/auth/email/start")
+async def email_start(request: Request):
+    b = await _body(request)
+    email = str(b.get("email") or "").strip().lower()
+    if not _EMAIL.fullmatch(email):
+        return _err("email_invalido")
+    if not mailer.configured():
+        return _err("email_indisponivel", 503)
+    if _rate_limited(request, "login_code"):
+        return _err("muitas_tentativas", 429)
+    code = auth.new_code()
+    try:
+        status, wait = db.new_login_code(email, auth.code_hash(email, code))
+    except Exception as e:
+        print("[login] código falhou:", str(e)[:200], flush=True)
+        return _err("erro", 500)
+    if status == "aguarde":
+        return _err("aguarde", 429, wait=wait)
+    if status == "limite":
+        return _err("limite", 429)
+    try:
+        mailer.send_login_code(email, code)
+    except Exception as e:
+        print("[login] envio falhou:", str(e)[:200], flush=True)
+        return _err("envio_falhou", 502)
+    return {"ok": True, "resend_in": db.CODE_RESEND_S}
+
+
+@app.post("/auth/email/verify")
+async def email_verify(request: Request):
+    b = await _body(request)
+    email = str(b.get("email") or "").strip().lower()
+    code = re.sub(r"\D", "", str(b.get("code") or ""))
+    if not _EMAIL.fullmatch(email) or len(code) != 6:
+        return _err("codigo_invalido")
+    if _rate_limited(request, "login_verify"):
+        return _err("muitas_tentativas", 429)
+    try:
+        status, left = db.check_login_code(email, auth.code_hash(email, code))
+        if status != "ok":
+            return _err({"errado": "codigo_incorreto", "expirado": "codigo_expirado",
+                         "bloqueado": "muitas_tentativas"}[status],
+                        429 if status == "bloqueado" else 400, left=left)
+        user = db.user_by_email(email)
+        if not user:
+            # e-mail confirmado e sem conta: o cadastro vem a seguir (vale 30 min)
+            return {"ok": True, "signup": True, "ticket": auth.sign({"k": "signup", "email": email})}
+        db.touch_login(user["id"])
+    except Exception as e:
+        print("[login] verificação falhou:", str(e)[:200], flush=True)
+        return _err("erro", 500)
+    resp = JSONResponse({"ok": True, "redirect": auth.safe_next(b.get("next"))})
+    auth.set_session(resp, user["id"])
+    return resp
+
+
+@app.post("/auth/email/signup")
+async def email_signup(request: Request):
+    b = await _body(request)
+    ticket = auth.unsign(str(b.get("ticket") or ""), 30 * 60)
+    if not ticket or ticket.get("k") != "signup" or not ticket.get("email"):
+        return _err("sessao_expirada")
+    name = " ".join(str(b.get("name") or "").split())
+    if not (2 <= len(name) <= 120):
+        return _err("nome")
+    if b.get("terms") is not True:
+        return _err("termos")
+    try:
+        user = db.create_email_user(ticket["email"], name)
+    except Exception as e:
+        print("[login] cadastro falhou:", str(e)[:200], flush=True)
+        return _err("erro", 500)
+    resp = JSONResponse({"ok": True, "redirect": auth.with_welcome(auth.safe_next(b.get("next")))})
+    auth.set_session(resp, user["id"])
+    return resp
 
 
 @app.get("/auth/logout")
@@ -584,21 +689,26 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
     """Callback único por provedor: distingue login x conexão de calendário pelo `state`."""
     payload = auth.unsign(state, auth.STATE_MAX_AGE) if state else None
     if error or not code or not payload:
-        dest = "/opendoctor-integracao.html" if (payload or {}).get("k") == "cal" else "/opendoctor-login.html"
-        return RedirectResponse(dest + "?erro=" + (error or "sem_code"))
+        if (payload or {}).get("k") == "cal":
+            return RedirectResponse("/opendoctor-integracao.html?erro=" + urllib.parse.quote(error or "sem_code"))
+        # cancelou na tela do Google → aviso simples; o resto é erro de conexão
+        return RedirectResponse(_login_page("cancelado" if error == "access_denied" else "conexao",
+                                            (payload or {}).get("nx", "")))
 
     # --- login do app (só Google) ---
     if payload.get("k") == "login":
         try:
             info = auth.exchange_login(code)
+            novo = db.user_by_email(info["email"]) is None
             user = db.upsert_user(info["email"], info.get("name"),
                                   info.get("picture"), info.get("sub"))
-            resp = RedirectResponse("/opendoctor-agenda.html?login=ok")
+            dest = auth.safe_next(payload.get("nx"))
+            resp = RedirectResponse(auth.with_welcome(dest) if novo else dest)
             auth.set_session(resp, user["id"])
             return resp
         except Exception as e:
             print("[auth] login falhou:", str(e)[:200])
-            return RedirectResponse("/opendoctor-login.html?erro=login")
+            return RedirectResponse(_login_page("conexao", payload.get("nx", "")))
 
     # --- conexão de calendário ---
     if payload.get("k") == "cal":

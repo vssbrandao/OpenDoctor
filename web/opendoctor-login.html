@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OpenDoctor | Entrar (Figma 1040-6373)</title>
+  <title>OpenDoctor | Entrar</title>
   <style>
     @font-face{font-family:"Helvetica Now Display";font-weight:400;font-style:normal;font-display:swap;
       src:url("assets/fonts/HelveticaNowDisplay-Regular.woff2") format("woff2");}
@@ -40,11 +40,35 @@
     .btn-line:hover{background:#F7F8F8}
     .btn:disabled{opacity:.6;cursor:default}
     .btn:focus-visible,.field:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
+    .field[aria-invalid=true]:focus-visible{outline-color:#D93025}
     .divider{display:block;width:100%;height:1px;margin-top:-1px}   /* linha de altura 0 no Figma, desenhada 1px acima */
     .g-ico{position:relative;width:24px;height:24px;flex:none;overflow:hidden}
     .g-ico img{position:absolute;left:8.33%;top:8.33%;display:block}
     .err{font-weight:500;font-size:14px;line-height:1.4;color:#D93025;padding:0 32px}
-    .err[hidden]{display:none}
+    [hidden]{display:none!important}
+
+    /* etapas (e-mail → código → cadastro) no mesmo layout */
+    .head{display:flex;flex-direction:column;gap:12px}
+    .sub{font-weight:500;font-size:14px;line-height:1.4;color:#7D7D82}
+    .sub b{font-weight:500;color:#0C0C0D;word-break:break-all}
+    .link{background:none;border:0;padding:0;font:inherit;color:#0C0C0D;cursor:pointer;
+      text-decoration:underline;text-underline-offset:2px}
+    .link:disabled{color:#7D7D82;text-decoration:none;cursor:default}
+    .alert{display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:14px;line-height:1.4;color:#D93025}
+    .alert.info{color:#3C3C40}
+    .alert svg{flex:none;margin-top:1px}
+    .field.code:not(:placeholder-shown){letter-spacing:6px}
+    .resend{font-weight:500;font-size:14px;line-height:1.4;color:#7D7D82;text-align:center}
+    .check{display:flex;gap:12px;align-items:flex-start;padding:4px 8px 0;cursor:pointer;
+      font-weight:500;font-size:14px;line-height:1.4;color:#3C3C40}
+    .check input{appearance:none;-webkit-appearance:none;flex:none;width:20px;height:20px;margin:0;border-radius:6px;cursor:pointer;
+      border:1.5px solid rgba(26,26,26,.32);background:#fff center/12px no-repeat}
+    .check input:checked{border-color:#000033;background-color:#000033;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.3 2.3 4.7-5' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+    .check input[aria-invalid=true]{border-color:#D93025}
+    .check input:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
+    .check a{color:#0C0C0D;text-decoration:underline;text-underline-offset:2px}
+    .check-err{padding:0 8px 0 40px}
     .legal{width:341px;max-width:100%;font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
     .legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 
@@ -66,8 +90,17 @@
       <div class="col">
         <img class="logo" src="assets/login/logo.svg" width="24" height="24" alt="OpenDoctor">
         <div class="main">
-          <h1 class="title">Bem vindo a OpenDoctor</h1>
-          <div class="forms">
+          <div class="head">
+            <h1 class="title" id="title" tabindex="-1">Bem vindo a OpenDoctor</h1>
+            <p class="sub" id="sub" hidden></p>
+            <div class="alert" id="alert" role="alert" hidden>
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="7.75" stroke="currentColor" stroke-width="1.5"/><path d="M9 5v4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="9" cy="12.6" r="1" fill="currentColor"/></svg>
+              <span id="alertText"></span>
+            </div>
+          </div>
+
+          <!-- 1. e-mail (ou Google) -->
+          <div class="forms" data-step="email">
             <form class="email-form" id="emailForm" novalidate>
               <input class="field" id="email" type="email" name="email" placeholder="Email" autocomplete="email"
                      inputmode="email" autocapitalize="off" spellcheck="false" aria-label="Email" aria-describedby="err">
@@ -80,6 +113,32 @@
               Continuar com o Google
             </a>
           </div>
+
+          <!-- 2. código de 6 dígitos enviado por e-mail -->
+          <form class="email-form" data-step="code" id="codeForm" novalidate hidden>
+            <input class="field code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                   placeholder="Código de 6 dígitos" aria-label="Código de 6 dígitos" aria-describedby="codeErr">
+            <div class="err" id="codeErr" role="alert" hidden></div>
+            <button class="btn btn-dark" id="codeGo" type="submit">Entrar</button>
+            <p class="resend"><span id="resendWait"></span><button class="link" id="resend" type="button">Reenviar código</button></p>
+          </form>
+
+          <!-- 3. cadastro (e-mail confirmado e ainda sem conta) -->
+          <form class="email-form" data-step="signup" id="signupForm" novalidate hidden>
+            <input class="field" id="name" type="text" placeholder="Nome completo" autocomplete="name" maxlength="120"
+                   aria-label="Nome completo" aria-describedby="nameErr">
+            <div class="err" id="nameErr" role="alert" hidden></div>
+            <label class="check"><input type="checkbox" id="terms" aria-describedby="termsErr">
+              <span>Li e aceito os <a href="terms.html" target="_blank" rel="noopener">Termos de Serviço</a> e a
+                <a href="privacy.html" target="_blank" rel="noopener">Política de Privacidade</a> da OpenDoctor.</span></label>
+            <div class="err check-err" id="termsErr" role="alert" hidden></div>
+            <button class="btn btn-dark" id="signupGo" type="submit">Criar conta</button>
+          </form>
+
+          <!-- 4. erro de conexão com o Google -->
+          <div class="email-form" data-step="erro" hidden>
+            <button class="btn btn-dark" id="backBtn" type="button">Voltar para entrar</button>
+          </div>
         </div>
         <p class="legal">Ao acessar este app e/ou criar uma conta de usuario, você concorda com os <a href="terms.html">Termos de Serviço</a> da OpenDoctor.</p>
       </div>
@@ -87,44 +146,183 @@
   </main>
   <script>
     (function () {
-      var form = document.getElementById('emailForm'), input = document.getElementById('email'),
-          err = document.getElementById('err'), go = document.getElementById('go');
+      function $(id) { return document.getElementById(id); }
       var RE = /^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s.]{2,63}$/;
+      var params = new URLSearchParams(location.search);
+      var nextUrl = params.get('next') || '';
+      if (!/^\/(?!\/)/.test(nextUrl) || nextUrl.indexOf('\\') >= 0) nextUrl = '';   // só páginas deste site
+      var st = { email: '', ticket: '' }, timer = null;
 
-      function showErr(msg) {
-        err.textContent = msg || ''; err.hidden = !msg;
+      var TITLES = { email: 'Bem vindo a OpenDoctor', code: 'Confira seu e-mail', signup: 'Crie sua conta', erro: 'Erro de conexão' };
+
+      function post(url, body) {
+        return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body) })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); });
+      }
+      function fieldErr(input, box, msg) {
+        box.textContent = msg || ''; box.hidden = !msg;
         input.setAttribute('aria-invalid', msg ? 'true' : 'false');
       }
-
-      // quem já entrou vai direto para a agenda
-      fetch('/me', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { if (j && j.logged_in) location.replace('/opendoctor-agenda.html'); }).catch(function () {});
-
-      // volta do Google com erro (cancelado / falhou)
-      var q = new URLSearchParams(location.search).get('erro');
-      if (q) {
-        showErr(q === 'access_denied' ? 'Login cancelado. Tente de novo quando quiser.' : 'Não foi possível entrar. Tente de novo.');
-        history.replaceState(null, '', location.pathname);
+      function alertMsg(msg, info) {
+        $('alert').hidden = !msg; $('alertText').textContent = msg || '';
+        $('alert').classList.toggle('info', !!info);
       }
+      function sub(parts) {             // texto + e-mail em destaque + link "Editar"
+        var el = $('sub'); el.textContent = ''; el.hidden = !parts;
+        if (!parts) return;
+        el.appendChild(document.createTextNode(parts[0]));
+        if (parts[1]) { var b = document.createElement('b'); b.textContent = parts[1]; el.appendChild(b); }
+        if (parts[2]) el.appendChild(document.createTextNode(parts[2]));
+        if (parts[3]) {
+          var a = document.createElement('button'); a.type = 'button'; a.className = 'link'; a.textContent = 'Editar';
+          a.addEventListener('click', function () { show('email', true); $('email').focus(); $('email').select(); });
+          el.appendChild(document.createTextNode(' ')); el.appendChild(a);
+        }
+      }
+      function show(step, push) {
+        [].forEach.call(document.querySelectorAll('[data-step]'), function (s) { s.hidden = s.getAttribute('data-step') !== step; });
+        $('title').textContent = TITLES[step];
+        alertMsg('');
+        if (step === 'email') sub(null);
+        if (step === 'code') sub(['Enviamos um código de 6 dígitos para ', st.email, '. Ele vale 10 minutos.', true]);
+        if (step === 'signup') sub(['E-mail confirmado: ', st.email, '. Falta só o seu nome.', true]);
+        if (step === 'erro') sub(['Houve um problema ao conectar sua conta do Google. Tente entrar novamente.']);
+        if (push) history.pushState({ step: step }, '');
+      }
+      window.addEventListener('popstate', function (e) {
+        var s = e.state && e.state.step;
+        show(s === 'code' && st.email ? 'code' : s === 'signup' && st.ticket ? 'signup' : 'email');
+      });
+      history.replaceState({ step: 'email' }, '');
 
-      input.addEventListener('input', function () { if (!err.hidden) showErr(''); });
+      function go(url) { location.href = url || nextUrl || '/opendoctor-agenda.html'; }
 
-      // e-mail → login do Google já nessa conta (o e-mail vai no corpo do POST, não na URL)
-      form.addEventListener('submit', function (e) {
+      // link do Google leva junto a página de origem
+      if (nextUrl) $('google').href = '/auth/google/login?next=' + encodeURIComponent(nextUrl);
+
+      // quem já entrou vai direto
+      fetch('/me', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j && j.logged_in) location.replace(nextUrl || '/opendoctor-agenda.html'); }).catch(function () {});
+
+      // volta do Google / sessão expirada
+      var erro = params.get('erro');
+      if (erro) {
+        if (erro === 'cancelado' || erro === 'access_denied') alertMsg('Login cancelado. Tente de novo quando quiser.', true);
+        else if (erro === 'sessao') alertMsg('Sua sessão expirou. Entre novamente — o que você estava escrevendo continua salvo neste navegador.', true);
+        else show('erro');
+        params.delete('erro');
+        history.replaceState({ step: erro === 'cancelado' || erro === 'access_denied' || erro === 'sessao' ? 'email' : 'erro' }, '',
+                             location.pathname + (params.toString() ? '?' + params.toString() : ''));
+      }
+      $('backBtn').addEventListener('click', function () { show('email', true); $('email').focus(); });
+
+      // ----- 1. e-mail -----
+      var email = $('email');
+      email.addEventListener('input', function () { fieldErr(email, $('err'), ''); alertMsg(''); });
+      function googleWithHint(addr) {
+        return post('/auth/google/start', { email: addr, next: nextUrl }).then(function (res) {
+          if (res.ok && res.j.url) { location.href = res.j.url; return true; }
+          return false;
+        });
+      }
+      function sendCode(addr, btn) {
+        btn.disabled = true;
+        return post('/auth/email/start', { email: addr }).then(function (res) {
+          btn.disabled = false;
+          var e = res.j.error;
+          if (res.ok) { cooldown(res.j.resend_in || 30); return 'ok'; }
+          if (e === 'email_indisponivel') {       // login por e-mail ainda não configurado: segue pelo Google
+            btn.disabled = true;
+            return googleWithHint(addr).then(function (ok) { btn.disabled = false; if (!ok) alertMsg('Não foi possível entrar agora. Tente de novo.'); return 'google'; });
+          }
+          if (e === 'aguarde') { cooldown(res.j.wait || 30); return 'ok'; }      // já há um código recente
+          if (e === 'email_invalido') return 'invalido';
+          alertMsg(e === 'limite' ? 'Você pediu muitos códigos para este e-mail. Tente de novo em uma hora ou entre com o Google.'
+                 : e === 'muitas_tentativas' ? 'Muitas tentativas em pouco tempo. Aguarde alguns minutos.'
+                 : e === 'envio_falhou' ? 'Não conseguimos enviar o e-mail agora. Tente de novo ou entre com o Google.'
+                 : 'Ocorreu um erro. Tente novamente em instantes.');
+          return 'erro';
+        }).catch(function () { btn.disabled = false; alertMsg('Sem conexão. Verifique a internet e tente de novo.'); return 'erro'; });
+      }
+      $('emailForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var email = input.value.trim();
-        if (!email) { showErr('Digite seu e-mail.'); input.focus(); return; }
-        if (!RE.test(email)) { showErr('Confira o e-mail digitado.'); input.focus(); return; }
-        go.disabled = true; showErr('');
-        fetch('/auth/google/start', { method: 'POST', credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
-          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-          .then(function (res) {
-            if (res.ok && res.j.url) { location.href = res.j.url; return; }
-            go.disabled = false;
-            showErr(res.j && res.j.error === 'e-mail inválido' ? 'Confira o e-mail digitado.' : 'Não foi possível entrar agora. Tente de novo.');
-          })
-          .catch(function () { go.disabled = false; showErr('Sem conexão. Tente de novo.'); });
+        var addr = email.value.trim().toLowerCase();
+        if (!addr) { fieldErr(email, $('err'), 'Digite seu e-mail.'); email.focus(); return; }
+        if (!RE.test(addr)) { fieldErr(email, $('err'), 'Confira o e-mail digitado.'); email.focus(); return; }
+        fieldErr(email, $('err'), ''); alertMsg('');
+        sendCode(addr, $('go')).then(function (r) {
+          if (r === 'invalido') { fieldErr(email, $('err'), 'Confira o e-mail digitado.'); return; }
+          if (r !== 'ok') return;
+          if (st.email !== addr) { st.ticket = ''; }
+          st.email = addr; $('code').value = ''; fieldErr($('code'), $('codeErr'), '');
+          show('code', true); $('code').focus();
+        });
+      });
+
+      // ----- 2. código -----
+      var code = $('code');
+      function cooldown(sec) {
+        clearInterval(timer);
+        var left = sec, btn = $('resend'), w = $('resendWait');
+        function tick() {
+          if (left <= 0) { clearInterval(timer); w.textContent = 'Não recebeu? '; btn.hidden = false; return; }
+          w.textContent = 'Reenviar código em ' + left + 's'; btn.hidden = true; left--;
+        }
+        tick(); timer = setInterval(tick, 1000);
+      }
+      code.addEventListener('input', function () {
+        var v = code.value.replace(/\D/g, '').slice(0, 6);
+        if (v !== code.value) code.value = v;
+        fieldErr(code, $('codeErr'), '');
+        if (v.length === 6) $('codeForm').requestSubmit();
+      });
+      $('resend').addEventListener('click', function () {
+        fieldErr(code, $('codeErr'), '');
+        sendCode(st.email, $('resend')).then(function (r) {
+          if (r === 'ok') { alertMsg('Enviamos um novo código.', true); code.value = ''; code.focus(); }
+        });
+      });
+      $('codeForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var v = code.value.replace(/\D/g, '');
+        if (v.length !== 6) { fieldErr(code, $('codeErr'), 'Digite os 6 dígitos do código.'); code.focus(); return; }
+        var btn = $('codeGo'); btn.disabled = true; alertMsg('');
+        post('/auth/email/verify', { email: st.email, code: v, next: nextUrl }).then(function (res) {
+          btn.disabled = false;
+          var e = res.j.error;
+          if (res.ok && res.j.redirect) { go(res.j.redirect); return; }
+          if (res.ok && res.j.signup) { st.ticket = res.j.ticket; show('signup', true); $('name').focus(); return; }
+          code.select();
+          if (e === 'codigo_incorreto') fieldErr(code, $('codeErr'), 'Código incorreto. ' + (res.j.left === 1 ? 'Resta 1 tentativa.' : 'Restam ' + res.j.left + ' tentativas.'));
+          else if (e === 'codigo_expirado') fieldErr(code, $('codeErr'), 'Este código expirou ou já foi usado. Peça um novo abaixo.');
+          else if (e === 'muitas_tentativas') fieldErr(code, $('codeErr'), 'Muitas tentativas erradas. Peça um novo código abaixo.');
+          else if (e === 'codigo_invalido') fieldErr(code, $('codeErr'), 'Digite os 6 dígitos do código.');
+          else alertMsg('Ocorreu um erro. Tente novamente em instantes.');
+          if (e === 'codigo_expirado' || e === 'muitas_tentativas') { clearInterval(timer); $('resendWait').textContent = ''; $('resend').hidden = false; }
+        }).catch(function () { btn.disabled = false; alertMsg('Sem conexão. Verifique a internet e tente de novo.'); });
+      });
+
+      // ----- 3. cadastro -----
+      var name = $('name'), terms = $('terms');
+      name.addEventListener('input', function () { fieldErr(name, $('nameErr'), ''); });
+      terms.addEventListener('change', function () { fieldErr(terms, $('termsErr'), ''); });
+      $('signupForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var n = name.value.replace(/\s+/g, ' ').trim(), ok = true;
+        if (n.length < 2) { fieldErr(name, $('nameErr'), 'Digite seu nome completo.'); ok = false; }
+        if (!terms.checked) { fieldErr(terms, $('termsErr'), 'Aceite os termos para criar a conta.'); ok = false; }
+        if (!ok) { (n.length < 2 ? name : terms).focus(); return; }
+        var btn = $('signupGo'); btn.disabled = true; alertMsg('');
+        post('/auth/email/signup', { ticket: st.ticket, name: n, terms: true, next: nextUrl }).then(function (res) {
+          btn.disabled = false;
+          var e = res.j.error;
+          if (res.ok && res.j.redirect) { go(res.j.redirect); return; }
+          if (e === 'sessao_expirada') { st.ticket = ''; show('email', true); alertMsg('A confirmação do e-mail expirou. Digite o e-mail de novo para receber outro código.'); return; }
+          if (e === 'nome') fieldErr(name, $('nameErr'), 'Digite seu nome completo.');
+          else if (e === 'termos') fieldErr(terms, $('termsErr'), 'Aceite os termos para criar a conta.');
+          else alertMsg('Ocorreu um erro. Tente novamente em instantes.');
+        }).catch(function () { btn.disabled = false; alertMsg('Sem conexão. Verifique a internet e tente de novo.'); });
       });
     })();
   </script>

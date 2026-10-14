@@ -154,6 +154,103 @@ def get_user(user_id):
             return _row_to_user(cur.fetchone())
 
 
+# ===== login por e-mail (código de 6 dígitos, sem senha) =====
+
+CODE_TTL_S = 10 * 60          # o código vale 10 min
+CODE_MAX_ATTEMPTS = 5         # tentativas por código
+CODE_RESEND_S = 30            # intervalo mínimo entre envios para o mesmo e-mail
+CODE_MAX_PER_HOUR = 5         # envios por e-mail por hora
+
+
+def user_by_email(email):
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("select id, email, name, picture from users where lower(email) = lower(%s)", (email,))
+            return _row_to_user(cur.fetchone())
+
+
+def touch_login(user_id):
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("update users set last_login = now() where id = %s", (user_id,))
+        conn.commit()
+
+
+def create_email_user(email, name):
+    """Cadastro por e-mail (após confirmar o código): grava o aceite dos termos. Se o e-mail já
+    existir (ex.: entrou pelo Google entre um passo e outro), só atualiza o login."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                insert into users (email, name, terms_accepted_at, last_login)
+                values (%s, %s, now(), now())
+                on conflict (email) do update set
+                  name = coalesce(users.name, excluded.name),
+                  terms_accepted_at = coalesce(users.terms_accepted_at, excluded.terms_accepted_at),
+                  last_login = now()
+                returning id, email, name, picture
+                """,
+                (email, name),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return _row_to_user(row)
+
+
+def new_login_code(email, code_hash):
+    """Guarda um código novo e invalida os anteriores. Devolve ("ok", 0), ("aguarde", segundos)
+    ou ("limite", 0) quando o e-mail já recebeu códigos demais."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("delete from login_codes where created_at < now() - interval '1 day'")
+            cur.execute(
+                """select count(*), extract(epoch from now() - max(created_at))
+                   from login_codes where email = %s and created_at > now() - interval '1 hour'""",
+                (email,))
+            n, since = cur.fetchone()
+            if since is not None and since < CODE_RESEND_S:
+                conn.commit()
+                return "aguarde", int(CODE_RESEND_S - since) + 1
+            if n >= CODE_MAX_PER_HOUR:
+                conn.commit()
+                return "limite", 0
+            cur.execute("update login_codes set used_at = now() where email = %s and used_at is null", (email,))
+            cur.execute(
+                "insert into login_codes (email, code_hash, expires_at) values (%s, %s, now() + %s * interval '1 second')",
+                (email, code_hash, CODE_TTL_S))
+        conn.commit()
+    return "ok", 0
+
+
+def check_login_code(email, code_hash):
+    """Confere o código mais recente do e-mail. Devolve ("ok", 0), ("errado", tentativas restantes),
+    ("expirado", 0) ou ("bloqueado", 0). O código só serve uma vez."""
+    import hmac
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """select id, code_hash, attempts, expires_at > now() from login_codes
+                   where email = %s and used_at is null order by created_at desc limit 1 for update""",
+                (email,))
+            row = cur.fetchone()
+            if not row or not row[3]:
+                conn.commit()
+                return "expirado", 0
+            cid, h, attempts, _ = row
+            if attempts >= CODE_MAX_ATTEMPTS:
+                conn.commit()
+                return "bloqueado", 0
+            if hmac.compare_digest(h, code_hash):
+                cur.execute("update login_codes set used_at = now() where id = %s", (cid,))
+                conn.commit()
+                return "ok", 0
+            cur.execute("update login_codes set attempts = attempts + 1 where id = %s", (cid,))
+            conn.commit()
+    left = CODE_MAX_ATTEMPTS - attempts - 1
+    return ("errado", left) if left > 0 else ("bloqueado", 0)
+
+
 def set_token(user_id, provider, *, access_token, refresh_token, expires_at, scope, account_email):
     """Grava/atualiza o token de calendário do usuário. Não apaga o refresh_token
     existente se o provedor não mandar um novo nesta troca."""
