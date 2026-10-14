@@ -31,7 +31,7 @@ def configured():
 
 def _body(code):
     c = html.escape(code)
-    return f"""<!doctype html><html><body style="margin:0;background:#ffffff">
+    return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"></head><body style="margin:0;background:#ffffff">
 <div style="max-width:480px;margin:0 auto;padding:40px 24px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#0C0C0D">
   <p style="margin:0 0 24px;font-size:20px;line-height:1.3;font-weight:500">Seu código de acesso ao OpenDoctor</p>
   <p style="margin:0 0 24px;font-size:14px;line-height:1.5;color:#3C3C40">Digite este código na tela de login para continuar:</p>
@@ -56,4 +56,5 @@ def send_login_code(to, code):
                 "Se não foi você que pediu, ignore este e-mail.",
     })
     if r.status_code >= 300:
-        raise RuntimeError(f"resend {r.status_code}: {r.text[:200]}")
+        # só o status: a resposta do provedor pode repetir o e-mail do médico (fica fora do log)
+        raise RuntimeError(f"resend {r.status_code}")

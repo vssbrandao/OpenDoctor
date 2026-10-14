@@ -152,3 +152,24 @@ def test_integracao_sem_login_vai_para_tela_de_login(monkeypatch):
     r = TestClient(server.app).get("/integrations/google/connect", follow_redirects=False)
     assert r.headers["location"] == "/opendoctor-login.html?next=%2Fopendoctor-integracao.html"
     assert auth.safe_next("/opendoctor-integracao.html") == "/opendoctor-integracao.html"
+
+
+def test_envio_falhou_descarta_codigo(monkeypatch):
+    from app import db, mailer
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    descartados = []
+    monkeypatch.setattr(db, "discard_login_code", lambda e: descartados.append(e))
+
+    def falha(to, code):
+        raise RuntimeError("resend 500")
+    monkeypatch.setattr(mailer, "send_login_code", falha)
+    r = c.post("/auth/email/start", json={"email": "ana@clinica.com.br"})
+    assert r.status_code == 502 and r.json()["error"] == "envio_falhou" and descartados == ["ana@clinica.com.br"]
+
+
+def test_limite_por_ip_na_verificacao(monkeypatch):
+    c = _client(monkeypatch, _Fake())
+    codes = [c.post("/auth/email/verify", json={"email": "a@b.com", "code": "123456"}) for _ in range(31)]
+    assert codes[29].json()["error"] == "codigo_expirado"
+    assert codes[30].status_code == 429 and codes[30].json()["error"] == "limite_ip"

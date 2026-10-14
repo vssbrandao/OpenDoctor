@@ -594,6 +594,10 @@ async def email_start(request: Request):
         mailer.send_login_code(email, code)
     except Exception as e:
         print("[login] envio falhou:", str(e)[:200], flush=True)
+        try:
+            db.discard_login_code(email)          # sem e-mail enviado, não conta reenvio nem limite
+        except Exception:
+            pass
         return _err("envio_falhou", 502)
     return {"ok": True, "resend_in": db.CODE_RESEND_S}
 
@@ -606,7 +610,7 @@ async def email_verify(request: Request):
     if not _EMAIL.fullmatch(email) or len(code) != 6:
         return _err("codigo_invalido")
     if _rate_limited(request, "login_verify"):
-        return _err("muitas_tentativas", 429)
+        return _err("limite_ip", 429)            # limite por IP (o do código é "muitas_tentativas")
     try:
         status, left = db.check_login_code(email, auth.code_hash(email, code))
         if status != "ok":

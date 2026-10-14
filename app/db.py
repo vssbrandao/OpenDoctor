@@ -225,6 +225,16 @@ def new_login_code(email, code_hash):
     return "ok", 0
 
 
+def discard_login_code(email):
+    """O envio falhou: apaga o código que acabou de ser criado (não conta para reenvio/limite)."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """delete from login_codes where id = (select id from login_codes
+                   where email = %s and used_at is null order by created_at desc limit 1)""", (email,))
+        conn.commit()
+
+
 def check_login_code(email, code_hash):
     """Confere o código mais recente do e-mail. Devolve ("ok", 0), ("errado", tentativas restantes),
     ("expirado", 0) ou ("bloqueado", 0). O código só serve uma vez."""

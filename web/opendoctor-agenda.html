@@ -3626,6 +3626,7 @@
         location.href = '/opendoctor-login.html?erro=sessao&next=' + encodeURIComponent(location.pathname + location.hash);
       });
       document.getElementById('odSessionLater').addEventListener('click', function () { modal.hidden = true; });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) modal.hidden = true; });
       // links "Entre na sua conta" levam a tela atual para voltar a ela depois do login
       document.addEventListener('click', function (e) {
         var a = e.target.closest && e.target.closest('a[href="/opendoctor-login.html"]');

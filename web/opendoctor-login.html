@@ -16,20 +16,21 @@
 
     /* frame 1440×780 (Figma 1043-11354): ilustração 610×521 colada à esquerda (x=-1) e centrada na altura;
        coluna do formulário 447px em x=803 (83px depois do meio), de y=60 até y=722 (58px do fim) */
-    .login{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    .login{min-height:100vh;min-height:100svh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
     .hero{position:relative;display:flex;align-items:center}
     .hero-img{position:relative;left:-1px;top:.5px;width:min(610px,calc(100% + 1px));aspect-ratio:610/521;overflow:hidden}
     .hero-img img{position:absolute;left:-2.33%;top:-50.68%;width:102.33%;height:209.76%;max-width:none;display:block}
     .side{padding:60px 24px 58px 83px;display:flex}
-    .col{width:447px;max-width:100%;min-height:calc(100vh - 118px);display:flex;flex-direction:column;justify-content:space-between;gap:48px}
+    .col{width:447px;max-width:100%;min-height:calc(100vh - 118px);min-height:calc(100svh - 118px);display:flex;flex-direction:column}
     .logo{display:block}
-    .main{display:flex;flex-direction:column;gap:56px}
+    /* título sempre no mesmo lugar em todas as etapas (Figma 1043-11354: 82px abaixo do logo); rodapé colado embaixo */
+    .main{display:flex;flex-direction:column;gap:56px;margin-top:82px}
     .title{font-weight:500;font-size:24px;line-height:1.15;min-height:32px;display:flex;align-items:center;color:#0C0C0D}
     .forms{display:flex;flex-direction:column;gap:42px}
     .email-form{display:flex;flex-direction:column;gap:16px}
     .field{width:100%;height:84px;padding:0 32px;border:0;border-radius:24px;background:#F4F4F6;outline:none;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;color:#000}
-    .field::placeholder{color:#000;opacity:1}
+    .field::placeholder{color:#6B6B70;opacity:1}   /* cinza: diferencia o exemplo do texto digitado */
     .field:focus{box-shadow:inset 0 0 0 1px rgba(26,26,26,.16)}
     .field[aria-invalid=true]{box-shadow:inset 0 0 0 1px #D93025}
     .btn{width:100%;height:84px;padding:0 48px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;
@@ -40,7 +41,7 @@
     .btn-line:hover{background:#F7F8F8}
     .btn:disabled{opacity:.6;cursor:default}
     .btn:focus-visible,.field:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
-    .field[aria-invalid=true]:focus-visible{outline-color:#D93025}
+    .field[aria-invalid=true]:focus-visible{outline:none;box-shadow:inset 0 0 0 2px #D93025}
     .divider{display:block;width:100%;height:1px;margin-top:-1px}   /* linha de altura 0 no Figma, desenhada 1px acima */
     .g-ico{position:relative;width:24px;height:24px;flex:none;overflow:hidden}
     .g-ico img{position:absolute;left:8.33%;top:8.33%;display:block}
@@ -50,7 +51,7 @@
     /* etapas (e-mail → código → cadastro) no mesmo layout */
     .head{display:flex;flex-direction:column;gap:12px}
     .sub{font-weight:500;font-size:14px;line-height:1.4;color:#7D7D82}
-    .sub b{font-weight:500;color:#0C0C0D;word-break:break-all}
+    .sub b{font-weight:500;color:#0C0C0D;overflow-wrap:anywhere}
     .link{background:none;border:0;padding:0;font:inherit;color:#0C0C0D;cursor:pointer;
       text-decoration:underline;text-underline-offset:2px}
     .link:disabled{color:#7D7D82;text-decoration:none;cursor:default}
@@ -69,7 +70,7 @@
     .check input:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
     .check a{color:#0C0C0D;text-decoration:underline;text-underline-offset:2px}
     .check-err{padding:0 8px 0 40px}
-    .legal{width:341px;max-width:100%;font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
+    .legal{margin-top:auto;padding-top:48px;width:341px;max-width:100%;font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
     .legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 
     /* telas estreitas: sem ilustração, formulário centralizado */
@@ -77,8 +78,10 @@
       .login{grid-template-columns:minmax(0,1fr)}
       .hero{display:none}
       .side{padding:40px 24px;justify-content:center}
-      .col{min-height:calc(100vh - 80px)}
+      .col{min-height:calc(100vh - 80px);min-height:calc(100svh - 80px)}
     }
+    /* celular: 16px nos campos evita o zoom automático do Safari ao tocar no campo */
+    @media (max-width:900px),(pointer:coarse){.field{font-size:16px}}
   </style>
 </head>
 <body>
@@ -91,7 +94,7 @@
         <img class="logo" src="assets/login/logo.svg" width="24" height="24" alt="OpenDoctor">
         <div class="main">
           <div class="head">
-            <h1 class="title" id="title" tabindex="-1">Bem vindo a OpenDoctor</h1>
+            <h1 class="title" id="title" tabindex="-1">Bem-vindo ao OpenDoctor</h1>
             <p class="sub" id="sub" hidden></p>
             <div class="alert" id="alert" role="alert" hidden>
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="7.75" stroke="currentColor" stroke-width="1.5"/><path d="M9 5v4.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="9" cy="12.6" r="1" fill="currentColor"/></svg>
@@ -102,8 +105,8 @@
           <!-- 1. e-mail (ou Google) -->
           <div class="forms" data-step="email">
             <form class="email-form" id="emailForm" novalidate>
-              <input class="field" id="email" type="email" name="email" placeholder="Email" autocomplete="email"
-                     inputmode="email" autocapitalize="off" spellcheck="false" aria-label="Email" aria-describedby="err">
+              <input class="field" id="email" type="email" name="email" placeholder="E-mail" autocomplete="email" enterkeyhint="go"
+                     inputmode="email" autocapitalize="off" spellcheck="false" aria-label="E-mail" aria-describedby="err">
               <div class="err" id="err" role="alert" hidden></div>
               <button class="btn btn-dark" id="go" type="submit">Continuar</button>
             </form>
@@ -116,7 +119,7 @@
 
           <!-- 2. código de 6 dígitos enviado por e-mail -->
           <form class="email-form" data-step="code" id="codeForm" novalidate hidden>
-            <input class="field code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code"
+            <input class="field code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code" enterkeyhint="go"
                    placeholder="Código de 6 dígitos" aria-label="Código de 6 dígitos" aria-describedby="codeErr">
             <div class="err" id="codeErr" role="alert" hidden></div>
             <button class="btn btn-dark" id="codeGo" type="submit">Entrar</button>
@@ -125,7 +128,7 @@
 
           <!-- 3. cadastro (e-mail confirmado e ainda sem conta) -->
           <form class="email-form" data-step="signup" id="signupForm" novalidate hidden>
-            <input class="field" id="name" type="text" placeholder="Nome completo" autocomplete="name" maxlength="120"
+            <input class="field" id="name" type="text" placeholder="Nome completo" autocomplete="name" maxlength="120" autocapitalize="words" enterkeyhint="go"
                    aria-label="Nome completo" aria-describedby="nameErr">
             <div class="err" id="nameErr" role="alert" hidden></div>
             <label class="check"><input type="checkbox" id="terms" aria-describedby="termsErr">
@@ -140,7 +143,7 @@
             <button class="btn btn-dark" id="backBtn" type="button">Voltar para entrar</button>
           </div>
         </div>
-        <p class="legal">Ao acessar este app e/ou criar uma conta de usuário, você concorda com os <a href="terms.html">Termos de Serviço</a> da OpenDoctor.</p>
+        <p class="legal">Ao acessar este app e/ou criar uma conta de usuário, você concorda com os <a href="terms.html">Termos de Serviço</a> e a <a href="privacy.html">Política de Privacidade</a> da OpenDoctor.</p>
       </div>
     </div>
   </main>
@@ -153,7 +156,7 @@
       if (!/^\/(?!\/)/.test(nextUrl) || nextUrl.indexOf('\\') >= 0) nextUrl = '';   // só páginas deste site
       var st = { email: '', ticket: '' }, timer = null;
 
-      var TITLES = { email: 'Bem vindo a OpenDoctor', code: 'Confira seu e-mail', signup: 'Crie sua conta', erro: 'Erro de conexão' };
+      var TITLES = { email: 'Bem-vindo ao OpenDoctor', code: 'Confira seu e-mail', signup: 'Crie sua conta', erro: 'Erro de conexão' };
 
       function post(url, body) {
         return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
@@ -297,6 +300,7 @@
           if (e === 'codigo_incorreto') fieldErr(code, $('codeErr'), 'Código incorreto. ' + (res.j.left === 1 ? 'Resta 1 tentativa.' : 'Restam ' + res.j.left + ' tentativas.'));
           else if (e === 'codigo_expirado') fieldErr(code, $('codeErr'), 'Este código expirou ou já foi usado. Peça um novo abaixo.');
           else if (e === 'muitas_tentativas') fieldErr(code, $('codeErr'), 'Muitas tentativas erradas. Peça um novo código abaixo.');
+          else if (e === 'limite_ip') alertMsg('Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.');
           else if (e === 'codigo_invalido') fieldErr(code, $('codeErr'), 'Digite os 6 dígitos do código.');
           else alertMsg('Ocorreu um erro. Tente novamente em instantes.');
           if (e === 'codigo_expirado' || e === 'muitas_tentativas') { clearInterval(timer); $('resendWait').textContent = ''; $('resend').hidden = false; }
