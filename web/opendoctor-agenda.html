@@ -3626,6 +3626,11 @@
         location.href = '/opendoctor-login.html?erro=sessao&next=' + encodeURIComponent(location.pathname + location.hash);
       });
       document.getElementById('odSessionLater').addEventListener('click', function () { modal.hidden = true; });
+      // links "Entre na sua conta" levam a tela atual para voltar a ela depois do login
+      document.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('a[href="/opendoctor-login.html"]');
+        if (a) a.href = '/opendoctor-login.html?next=' + encodeURIComponent(location.pathname + location.hash);
+      }, true);
 
       // boas-vindas no primeiro acesso (?bemvindo=1, vindo do cadastro)
       var q = new URLSearchParams(location.search);

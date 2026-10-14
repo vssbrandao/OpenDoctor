@@ -116,7 +116,7 @@
 
           <!-- 2. código de 6 dígitos enviado por e-mail -->
           <form class="email-form" data-step="code" id="codeForm" novalidate hidden>
-            <input class="field code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+            <input class="field code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code"
                    placeholder="Código de 6 dígitos" aria-label="Código de 6 dígitos" aria-describedby="codeErr">
             <div class="err" id="codeErr" role="alert" hidden></div>
             <button class="btn btn-dark" id="codeGo" type="submit">Entrar</button>
@@ -140,7 +140,7 @@
             <button class="btn btn-dark" id="backBtn" type="button">Voltar para entrar</button>
           </div>
         </div>
-        <p class="legal">Ao acessar este app e/ou criar uma conta de usuario, você concorda com os <a href="terms.html">Termos de Serviço</a> da OpenDoctor.</p>
+        <p class="legal">Ao acessar este app e/ou criar uma conta de usuário, você concorda com os <a href="terms.html">Termos de Serviço</a> da OpenDoctor.</p>
       </div>
     </div>
   </main>
@@ -236,7 +236,7 @@
             btn.disabled = true;
             return googleWithHint(addr).then(function (ok) { btn.disabled = false; if (!ok) alertMsg('Não foi possível entrar agora. Tente de novo.'); return 'google'; });
           }
-          if (e === 'aguarde') { cooldown(res.j.wait || 30); return 'ok'; }      // já há um código recente
+          if (e === 'aguarde') { cooldown(res.j.wait || 30); return 'aguarde'; } // já há um código recente
           if (e === 'email_invalido') return 'invalido';
           alertMsg(e === 'limite' ? 'Você pediu muitos códigos para este e-mail. Tente de novo em uma hora ou entre com o Google.'
                  : e === 'muitas_tentativas' ? 'Muitas tentativas em pouco tempo. Aguarde alguns minutos.'
@@ -253,7 +253,7 @@
         fieldErr(email, $('err'), ''); alertMsg('');
         sendCode(addr, $('go')).then(function (r) {
           if (r === 'invalido') { fieldErr(email, $('err'), 'Confira o e-mail digitado.'); return; }
-          if (r !== 'ok') return;
+          if (r !== 'ok' && r !== 'aguarde') return;
           if (st.email !== addr) { st.ticket = ''; }
           st.email = addr; $('code').value = ''; fieldErr($('code'), $('codeErr'), '');
           show('code', true); $('code').focus();
@@ -275,7 +275,7 @@
         var v = code.value.replace(/\D/g, '').slice(0, 6);
         if (v !== code.value) code.value = v;
         fieldErr(code, $('codeErr'), '');
-        if (v.length === 6) $('codeForm').requestSubmit();
+        if (v.length === 6) $('codeGo').click();
       });
       $('resend').addEventListener('click', function () {
         fieldErr(code, $('codeErr'), '');

@@ -679,7 +679,7 @@ def integrations_connect(provider: str, request: Request):
     u = auth.current_user(request)
     if not u:
         # precisa estar logado para conectar um calendário a uma conta
-        return RedirectResponse("/auth/google/login")
+        return RedirectResponse("/opendoctor-login.html?next=" + urllib.parse.quote("/opendoctor-integracao.html", safe=""))
     state = auth.sign({"k": "cal", "prov": provider, "uid": u["id"]})
     return RedirectResponse(integrations.connect_url(provider, state))
 

@@ -134,3 +134,21 @@ def test_email_erros(monkeypatch):
     assert c.post("/auth/email/verify", json={"email": "a@b.com", "code": "123456"}).json()["error"] == "codigo_expirado"
     codes = [c.post("/auth/email/start", json={"email": "x%d@b.com" % i}).status_code for i in range(11)]
     assert codes[:10] == [200] * 10 and codes[10] == 429      # limite por IP
+
+
+def test_codigo_nunca_no_log_do_render(monkeypatch):
+    from app import mailer
+    monkeypatch.delenv("RESEND_API_KEY", raising=False)
+    monkeypatch.setenv("LOGIN_CODE_DEBUG", "1")
+    monkeypatch.setenv("RENDER", "true")
+    assert not mailer.debug_codes() and not mailer.configured()
+    monkeypatch.delenv("RENDER")
+    assert mailer.debug_codes()
+
+
+def test_integracao_sem_login_vai_para_tela_de_login(monkeypatch):
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(integrations, "configured", lambda p: True)
+    r = TestClient(server.app).get("/integrations/google/connect", follow_redirects=False)
+    assert r.headers["location"] == "/opendoctor-login.html?next=%2Fopendoctor-integracao.html"
+    assert auth.safe_next("/opendoctor-integracao.html") == "/opendoctor-integracao.html"

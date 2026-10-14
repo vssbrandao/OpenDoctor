@@ -20,7 +20,9 @@ def _key():
 
 
 def debug_codes():
-    return os.environ.get("LOGIN_CODE_DEBUG", "").strip() == "1" and not _key()
+    # nunca no Render (RENDER=true lá): o código não pode ir para o log de produção
+    return (os.environ.get("LOGIN_CODE_DEBUG", "").strip() == "1" and not _key()
+            and not os.environ.get("RENDER"))
 
 
 def configured():

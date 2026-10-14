@@ -126,7 +126,9 @@ def _row_to_user(row):
 
 
 def upsert_user(email, name=None, picture=None, google_sub=None):
-    """Cria ou atualiza o usuário pela conta Google; devolve o dict do usuário."""
+    """Cria ou atualiza o usuário pela conta Google; devolve o dict do usuário.
+    E-mail sempre em minúsculas — o mesmo do login por código, para não duplicar a conta."""
+    email = (email or "").strip().lower()
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(

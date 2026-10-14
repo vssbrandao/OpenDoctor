@@ -245,7 +245,7 @@
           if (btn.dataset.action === 'disconnect') {
             fetch('/integrations/' + prov + '/disconnect', { method: 'POST' }).then(load);
           } else if (!LOGGED_IN) {
-            location.href = '/auth/google/login';
+            location.href = '/opendoctor-login.html?next=' + encodeURIComponent('/opendoctor-integracao.html');
           } else {
             location.href = '/integrations/' + prov + '/connect';
           }
