@@ -14,11 +14,11 @@
     html,body{min-height:100%}
     body{background:#fff;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-family:var(--disp)}
 
-    /* frame 1440×780: ilustração 600×512 colada à esquerda (x=-1) e centrada na altura;
+    /* frame 1440×780 (Figma 1043-11354): ilustração 610×521 colada à esquerda (x=-1) e centrada na altura;
        coluna do formulário 447px em x=803 (83px depois do meio), de y=60 até y=722 (58px do fim) */
     .login{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
     .hero{position:relative;display:flex;align-items:center}
-    .hero-img{position:relative;left:-1px;width:min(600px,calc(100% + 1px));aspect-ratio:600/512;overflow:hidden}
+    .hero-img{position:relative;left:-1px;top:.5px;width:min(610px,calc(100% + 1px));aspect-ratio:610/521;overflow:hidden}
     .hero-img img{position:absolute;left:-2.33%;top:-50.68%;width:102.33%;height:209.76%;max-width:none;display:block}
     .side{padding:60px 24px 58px 83px;display:flex}
     .col{width:447px;max-width:100%;min-height:calc(100vh - 118px);display:flex;flex-direction:column;justify-content:space-between;gap:48px}
@@ -26,13 +26,13 @@
     .main{display:flex;flex-direction:column;gap:56px}
     .title{font-weight:500;font-size:24px;line-height:1.15;min-height:32px;display:flex;align-items:center;color:#0C0C0D}
     .forms{display:flex;flex-direction:column;gap:42px}
-    .email-form{display:flex;flex-direction:column;gap:8px}
-    .field{width:100%;height:68px;padding:24px;border:0;border-radius:24px;background:#F4F4F6;outline:none;
+    .email-form{display:flex;flex-direction:column;gap:16px}
+    .field{width:100%;height:84px;padding:0 32px;border:0;border-radius:24px;background:#F4F4F6;outline:none;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;color:#000}
     .field::placeholder{color:#000;opacity:1}
     .field:focus{box-shadow:inset 0 0 0 1px rgba(26,26,26,.16)}
     .field[aria-invalid=true]{box-shadow:inset 0 0 0 1px #D93025}
-    .btn{width:100%;height:64px;padding:0 48px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;
+    .btn{width:100%;height:84px;padding:0 48px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;
       cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;white-space:nowrap;text-decoration:none}
     .btn-dark{border:0;background:#000033;color:#fff}
     .btn-dark:hover{background:#00004D}
@@ -43,7 +43,7 @@
     .divider{display:block;width:100%;height:1px;margin-top:-1px}   /* linha de altura 0 no Figma, desenhada 1px acima */
     .g-ico{position:relative;width:24px;height:24px;flex:none;overflow:hidden}
     .g-ico img{position:absolute;left:8.33%;top:8.33%;display:block}
-    .err{font-weight:500;font-size:14px;line-height:1.4;color:#D93025;padding:0 24px}
+    .err{font-weight:500;font-size:14px;line-height:1.4;color:#D93025;padding:0 32px}
     .err[hidden]{display:none}
     .legal{width:341px;max-width:100%;font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
     .legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}
@@ -60,7 +60,7 @@
 <body>
   <main class="login">
     <div class="hero" aria-hidden="true">
-      <div class="hero-img"><img src="assets/login/hero.png" alt=""></div>
+      <div class="hero-img"><img src="assets/login/hero.png?v=2" alt=""></div>
     </div>
     <div class="side">
       <div class="col">
