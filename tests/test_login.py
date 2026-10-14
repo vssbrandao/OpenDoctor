@@ -492,3 +492,26 @@ def test_sem_session_secret_o_render_nao_sobe():
     assert r.returncode != 0 and "SESSION_SECRET" in r.stderr
     env["SESSION_SECRET"] = "x" * 40
     assert subprocess.run([sys.executable, "-c", "import app.auth"], env=env, cwd=root).returncode == 0
+
+
+def test_paginas_do_app_exigem_login(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app import db
+    c = TestClient(server.app)
+    for path in ("/opendoctor-agenda.html", "/opendoctor-prontuario.html", "/opendoctor-integracao.html",
+                 "http://testserver//opendoctor-agenda.html", "/./opendoctor-agenda.html", "/OpenDoctor-Agenda.html", "/nao-existe.html"):
+        r = c.get(path, follow_redirects=False)
+        assert r.status_code == 302 and r.headers["location"].startswith("/opendoctor-login.html?next=%2F"), path
+    assert c.get("/opendoctor-agenda.html", follow_redirects=False).headers["location"] == \
+        "/opendoctor-login.html?next=%2Fopendoctor-agenda.html"
+    for path in ("/opendoctor-login.html", "/privacy.html", "/terms.html", "/privacy", "/assets/email/logo.png"):
+        assert c.get(path, follow_redirects=False).status_code == 200, path
+    assert c.get("/README.md").status_code == 404
+    # o assistente de IA também só responde com login
+    assert c.post("/ask", json={"query": "dose de amoxicilina"}).status_code == 401
+    assert c.post("/followups", json={"answer": "x"}).status_code == 401
+    # com sessão: a página abre e não fica em cache
+    monkeypatch.setattr(db, "get_user", lambda uid: {"id": uid, "email": "ana@clinica.com.br", "sv": 0})
+    c.cookies.set(auth.COOKIE_NAME, auth.sign({"k": "sess", "uid": "u1", "sv": 0}))
+    r = c.get("/opendoctor-agenda.html", follow_redirects=False)
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-store" and "<html" in r.text.lower()

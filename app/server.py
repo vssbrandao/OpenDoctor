@@ -12,6 +12,7 @@ import json
 import time
 import hashlib
 import urllib.parse
+import posixpath
 import datetime
 import threading
 import collections
@@ -21,6 +22,7 @@ import concurrent.futures
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer
 
@@ -88,15 +90,41 @@ _SECURITY_HEADERS = {
 }
 
 
+# páginas que abrem sem login; qualquer outra página .html do app exige sessão
+_PUBLIC_HTML = {"opendoctor-login.html", "privacy.html", "terms.html"}
+
+
+def _norm(path):
+    # "/" + lstrip: o normpath mantém "//" no começo (regra POSIX)
+    return posixpath.normpath("/" + path.lstrip("/"))
+
+
+def _private_page(path):
+    """Página do app que exige login. O caminho é normalizado (//, /./, maiúsculas) para não haver
+    outro jeito de pedir o mesmo arquivo."""
+    p = _norm(path).lower()
+    return p.endswith(".html") and posixpath.basename(p) not in _PUBLIC_HTML
+
+
 @app.middleware("http")
 async def _no_cache_html(request: Request, call_next):
-    """Impede o navegador de servir HTML velho do cache após um deploy, e de guardar
-    respostas com dados de pacientes. Também põe os cabeçalhos de segurança."""
-    resp = await call_next(request)
+    """Exige login nas páginas do app; impede o navegador de servir HTML velho do cache após um
+    deploy, e de guardar respostas com dados de pacientes. Também põe os cabeçalhos de segurança."""
+    path = request.url.path
+    private = _private_page(path)
+    if private and not await run_in_threadpool(auth.current_user, request):
+        nxt = _norm(path)
+        resp = RedirectResponse("/opendoctor-login.html?next=" + urllib.parse.quote(nxt, safe=""), status_code=302)
+    elif path.lower().endswith(".md"):
+        resp = JSONResponse({"error": "não encontrado"}, status_code=404)   # notas internas da pasta web
+    else:
+        resp = await call_next(request)
     for k, v in _SECURITY_HEADERS.items():
         resp.headers.setdefault(k, v)
-    path = request.url.path
-    if path.endswith(".html") or path == "/":
+    if private:
+        # páginas com dados: nada em cache (nem para o botão Voltar depois de sair)
+        resp.headers["Cache-Control"] = "no-store"
+    elif path.endswith(".html") or path == "/":
         resp.headers["Cache-Control"] = "no-cache, must-revalidate"
     elif path.startswith(_NO_STORE):
         resp.headers["Cache-Control"] = "no-store"
@@ -305,7 +333,7 @@ def _clean_history(raw):
     return out[-synthesize.HISTORY_TURNS:]
 
 
-# ===== limite de uso por IP (sem login por enquanto) =====
+# ===== limite de uso por IP (além do login) =====
 RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em s)
                "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600)}
 MAX_QUERY_CHARS = 2000
@@ -498,7 +526,10 @@ def _ask_stream(query, k, history=None):
 
 @app.post("/ask")
 async def ask_post(request: Request):
-    """Body: {query, k?, history?[{role,content,sig?}]} → SSE."""
+    """Body: {query, k?, history?[{role,content,sig?}]} → SSE. Só com login."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
     if _rate_limited(request, "ask"):
         return _too_many()
     try:
@@ -523,7 +554,10 @@ async def ask_post(request: Request):
 
 @app.post("/followups")
 async def followups(request: Request):
-    """Sugere 3 perguntas de acompanhamento curtas a partir da última resposta."""
+    """Sugere 3 perguntas de acompanhamento curtas a partir da última resposta. Só com login."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
     if _rate_limited(request, "followups"):
         return _too_many()
     try:
