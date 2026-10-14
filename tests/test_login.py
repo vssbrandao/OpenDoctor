@@ -113,7 +113,8 @@ def _client(monkeypatch, fake, configured=True):
     from app import db, mailer
     server._RL.clear()
     monkeypatch.setattr(mailer, "configured", lambda: configured)
-    monkeypatch.setattr(mailer, "send_code", lambda to, code, purpose: fake.sent.append((to, code, purpose)))
+    monkeypatch.setattr(mailer, "send_code", lambda to, code, purpose, name="": fake.sent.append((to, code, purpose)))
+    monkeypatch.setattr(mailer, "send_password_changed", lambda to, name="": fake.sent.append((to, "", "changed")))
     monkeypatch.setattr(db, "new_login_code", lambda e, h: (fake.codes.__setitem__(e, h), ("ok", 0))[1])
     monkeypatch.setattr(db, "discard_login_code", lambda e: fake.codes.pop(e, None))
 
@@ -248,7 +249,7 @@ def test_envio_falhou_descarta_codigo(monkeypatch):
     fake = _Fake()
     c = _client(monkeypatch, fake)
 
-    def falha(to, code, purpose):
+    def falha(to, code, purpose, name=""):
         raise RuntimeError("resend 500")
     monkeypatch.setattr(mailer, "send_code", falha)
     r = c.post("/auth/signup/start", json={"email": "novo@clinica.com.br", "name": "Nova", "password": PW})
@@ -299,3 +300,29 @@ def test_reenvio_dentro_de_30s_nao_finge_envio(monkeypatch):
 def test_regras_aceitam_acentos():
     assert auth.password_problems("éXEMPLO12!") == []           # maiúscula/minúscula com acento valem
     assert auth.password_problems("ÉXEMPLO12!") == ["letras"]
+
+
+def test_template_dos_emails():
+    from app import mailer
+    assert mailer.first_name("Dra. Ana Paula Lima") == "Ana" and mailer.first_name("") == ""
+    assert mailer.first_name("Dr.") == "Dr."
+    subj, body, text = mailer.render("reset", name="Vinicius Brandão", code="482913")
+    assert subj.startswith("482913") and "Vinicius," in body and "Seu código para uma nova senha" in body
+    assert body.count('class="box"') == 6 and ">4</td>" in body and ">3</td>" in body
+    assert "https://opendoctor.app/assets/email/logo.png" in body and "Código: 482913" in text
+    subj, body, text = mailer.render("signup", name="<script>x</script>", code="111111")
+    assert "<script>x" not in body and "Confirme seu e-mail" in body
+    subj, body, text = mailer.render("changed", when="14/10/2026 às 00:30 (horário de Brasília)")
+    assert "Olá," in body and 'class="box"' not in body and "opendoctor-login.html" in body
+    assert "14/10/2026 às 00:30" in body and "Esqueci minha senha" in text
+
+
+def test_aviso_de_senha_alterada(monkeypatch):
+    from app import db
+    fake = _Fake(_user("ana@clinica.com.br"))
+    c = _client(monkeypatch, fake)
+    monkeypatch.setattr(db, "get_user", lambda uid: next((u for u in fake.users.values() if u["id"] == uid), None))
+    c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"})
+    tk = c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": fake.sent[-1][1]}).json()["ticket"]
+    assert c.post("/auth/password/reset", json={"ticket": tk, "password": "Nova!12ab"}).json()["ok"]
+    assert fake.sent[-1] == ("ana@clinica.com.br", "", "changed")

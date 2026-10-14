@@ -584,7 +584,7 @@ def _logged(user, nxt, welcome=False):
     return resp
 
 
-def _send_code(email, purpose):
+def _send_code(email, purpose, name=""):
     """Cria e envia um código. Devolve (resposta de erro ou None, segundos até poder reenviar —
     negativo quando não enviou agora porque o código de menos de 30s atrás continua valendo)."""
     code = auth.new_code()
@@ -598,7 +598,7 @@ def _send_code(email, purpose):
     if status == "limite":
         return _err("limite", 429), 0
     try:
-        mailer.send_code(email, code, purpose)
+        mailer.send_code(email, code, purpose, name)
     except Exception as e:
         print("[login] envio falhou:", str(e)[:200], flush=True)
         try:
@@ -692,7 +692,7 @@ async def signup_start(request: Request):
     except Exception as e:
         print("[login] cadastro falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
-    fail, wait = _send_code(email, "signup")
+    fail, wait = _send_code(email, "signup", name)
     if fail:
         return fail
     # os dados esperam a confirmação num tíquete assinado (30 min), não no banco
@@ -712,7 +712,7 @@ async def signup_resend(request: Request):
         return _err("sessao_expirada")
     if _rate_limited(request, "login_code"):
         return _err("limite_ip", 429)
-    fail, wait = _send_code(t["email"], "signup")
+    fail, wait = _send_code(t["email"], "signup", t.get("name", ""))
     return fail or {"ok": True, "resend_in": abs(wait), "sent": wait > 0}
 
 
@@ -746,13 +746,13 @@ async def password_forgot(request: Request):
     if _rate_limited(request, "login_code"):
         return _err("limite_ip", 429)
     try:
-        exists = db.account(email) is not None
+        acc = db.user_by_email(email)
     except Exception as e:
         print("[login] esqueci falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
     wait = db.CODE_RESEND_S
-    if exists:
-        fail, wait = _send_code(email, "reset")
+    if acc:
+        fail, wait = _send_code(email, "reset", acc.get("name") or "")
         if fail:
             return fail
     return {"ok": True, "resend_in": abs(wait), "sent": wait > 0}
@@ -799,6 +799,10 @@ async def password_reset(request: Request):
     except Exception as e:
         print("[login] redefinição falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
+    try:
+        mailer.send_password_changed(user["email"], user.get("name") or "")   # aviso; falha não desfaz a troca
+    except Exception as e:
+        print("[login] aviso de senha alterada falhou:", str(e)[:200], flush=True)
     return _logged(user, b.get("next"))
 
 
