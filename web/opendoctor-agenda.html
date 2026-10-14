@@ -129,15 +129,6 @@
     .pr-allergy[hidden]{display:none}
     .pr-allergy img{flex:none;display:block}
     /* faixa de indicadores ("Último relatório | Período fiscal | …") */
-    .pr-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
-    .pr-kpi{display:flex;flex-direction:column;gap:4px;padding:2px 20px;border-left:1px solid #E8EAED;min-width:0}
-    .pr-kpi:first-child{border-left:0;padding-left:0}
-    .pr-kpi-l{font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#5F6368}
-    .pr-kpi-v{font-family:var(--disp);font-weight:400;font-size:18px;line-height:24px;color:#1F1F1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pr-kpi-s{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#5F6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pr-kpi-s.ok{color:#137333}
-    .pr-kpi-s.warn{color:#B06000}
-    .pr-kpi-s.link{color:#B3261E;cursor:pointer}
     /* abas (sublinhado azul de 3px, como na referência) */
     .pr-tabs{display:flex;gap:32px;border-bottom:1px solid #E8EAED;overflow-x:auto;scrollbar-width:none}
     .pr-tabs::-webkit-scrollbar{display:none}
@@ -297,18 +288,165 @@
     .pr-acc.th{font-weight:500;padding:10px 8px 12px;border-bottom-color:#DADCE0}
     .pr-acc b{font-weight:400;color:#3C4043}
     .pr-printcur{display:none}
+    /* ===== Visão geral (referência: novo Google Finance — gráfico com períodos e mira, destaques que
+       abrem em "em melhora / atenção", grade de indicadores, cartões com mini-gráfico, lista de notícias) ===== */
+    .pr-tabs{position:sticky;top:-24px;z-index:6;background:#fff;margin:0 -2px;padding:0 2px}
+    .ov{gap:32px}
+    .ov-sec{display:flex;flex-direction:column;gap:14px}
+    .ov-sec[hidden]{display:none}
+    .ov-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-family:var(--disp);font-weight:500;font-size:20px;line-height:28px;color:#1F1F1F}
+    .ov-hs{font-weight:400;font-size:13px;line-height:18px;color:#5F6368}
+    /* destaques */
+    .ov-ins{border-radius:16px;background:#F7F8FA}
+    .ov-ins[hidden]{display:none}
+    .ov-ins-head{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;padding:12px 16px;cursor:pointer;text-align:left;
+      border-radius:16px;font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#1F1F1F}
+    .ov-ins-head:hover{background:#F1F3F4}
+    .ov-ins-ico{flex:none;display:block}
+    .ov-ins-line{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ov-chev{flex:none;display:block;transition:transform .2s}
+    .ov-ins-head[aria-expanded=true] .ov-chev{transform:rotate(180deg)}
+    .ov-ins-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 28px;padding:4px 20px 18px 46px}
+    .ov-ins-body[hidden]{display:none}
+    .ov-ins-col{display:flex;flex-direction:column;gap:10px;min-width:0}
+    .ov-ins-t{display:flex;align-items:center;gap:6px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px}
+    .ov-ins-t.up{color:#137333}.ov-ins-t.down{color:#B3261E}.ov-ins-t.todo{color:#5F6368}
+    .ov-ins-col ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+    .ov-ins-col li{font-family:var(--disp);font-size:14px;line-height:20px;color:#3C4043}
+    .ov-ins-col li b{font-weight:500;color:#1F1F1F}
+    .ov-ins-src{grid-column:1 / -1;font-family:var(--disp);font-size:12px;line-height:16px;color:#5F6368}
+    /* gráfico */
+    .ov-chart{display:flex;flex-direction:column;gap:14px}
+    .ov-chart[hidden]{display:none}
+    .ov-chart-head{display:flex;flex-direction:column;gap:2px}
+    .ov-mlabel{font-family:var(--disp);font-size:14px;line-height:20px;color:#5F6368}
+    .ov-big{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:6px}
+    .ov-val{font-family:var(--disp);font-weight:500;font-size:28px;line-height:36px;color:#1F1F1F}
+    .ov-unit{font-family:var(--disp);font-size:15px;line-height:20px;color:#5F6368;margin-right:8px}
+    .ov-delta{display:inline-flex;align-items:center;gap:6px;font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#5F6368}
+    .ov-delta.up{color:#137333}.ov-delta.down{color:#B3261E}
+    .ov-delta i{width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#5F6368;flex:none}
+    .ov-delta.up i{background:#137333}.ov-delta.down i{background:#B3261E}
+    .ov-delta i svg{display:block}
+    .ov-delta small{font-size:14px;color:#5F6368}
+    .ov-when{font-family:var(--disp);font-size:13px;line-height:18px;color:#5F6368}
+    .ov-flag{display:inline-block;padding:0 8px;border-radius:999px;background:#FCE8E6;color:#B3261E;font-weight:500;font-size:12px;line-height:18px}
+    .ov-metrics{display:flex;gap:4px;flex-wrap:wrap}
+    .ov-metrics button,.ov-ranges button{border:0;background:none;cursor:pointer;border-radius:8px;white-space:nowrap;
+      font-family:var(--disp);font-weight:400;font-size:13px;line-height:18px;color:#444746;padding:6px 12px}
+    .ov-metrics button:hover,.ov-ranges button:hover{background:#F1F3F4;color:#1F1F1F}
+    .ov-metrics button.on,.ov-ranges button.on{background:#E9EBF0;color:#1F1F1F;font-weight:500}
+    .ov-ranges button{font-size:12px;line-height:16px;padding:4px 10px}
+    .ov-ranges button:disabled{opacity:.35;cursor:default;background:none}
+    .ov-plot{position:relative;height:248px;border-radius:16px;background:#F7F8FA;padding:16px 14px 10px;outline:none}
+    .ov-plot:focus-visible{box-shadow:0 0 0 2px #0B57D0}
+    .ov-plot svg{display:block;width:100%;height:100%;overflow:visible}
+    .ov-plot text{font-family:var(--disp);font-size:11px;fill:#5F6368}
+    .ov-tip{position:absolute;z-index:3;pointer-events:none;min-width:150px;max-width:240px;padding:10px 12px;border-radius:12px;background:#fff;
+      box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15);font-family:var(--disp)}
+    .ov-tip[hidden]{display:none}
+    .ov-tip-d{font-size:12px;line-height:16px;color:#5F6368}
+    .ov-tip-v{font-weight:500;font-size:16px;line-height:22px;color:#1F1F1F}
+    .ov-tip-v.bad{color:#B3261E}
+    .ov-tip-v small{font-weight:400;font-size:12px;color:#5F6368}
+    .ov-tip-c{font-size:12px;line-height:16px;color:#5F6368}
+    .ov-tip-c.up{color:#137333}.ov-tip-c.down{color:#B3261E}
+    .ov-tip-go{font-size:12px;line-height:16px;color:#0B57D0;margin-top:4px}
+    .ov-plotmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
+      font-family:var(--disp);font-size:14px;line-height:20px;color:#5F6368;pointer-events:none}
+    .ov-plotmsg[hidden]{display:none}
+    .ov-chart-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .ov-ranges{display:flex;gap:6px}
+    .ov-legend{display:flex;align-items:center;gap:14px;font-family:var(--disp);font-size:12px;line-height:16px;color:#5F6368}
+    .ov-legend span{display:inline-flex;align-items:center;gap:6px}
+    .ov-legend i{width:14px;height:0;border-top:2px solid #0B57D0;display:inline-block}
+    .ov-legend i.lt{border-top-color:#8AB4F8}
+    .ov-legend i.band{height:10px;border:0;border-radius:2px;background:rgba(19,115,51,.12)}
+    .ov-legend i.lim{border-top:1px dashed #D93025}
+    .ov-empty{border-radius:16px;background:#F7F8FA;padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+    .ov-empty[hidden]{display:none}
+    .ov-empty-t{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#1F1F1F}
+    .ov-empty-s{font-family:var(--disp);font-size:14px;line-height:20px;color:#5F6368;max-width:520px}
+    .ov-empty-s b{font-weight:500;color:#1F1F1F}
+    .ov-empty .pr-ghost{margin:8px 0 0 -14px;color:#0B57D0}
+    /* grade de indicadores (como "Abrir / Alta / Baixa…" do Finance) */
+    .ov-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:28px}
+    .ov-stats.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .ov-col{display:flex;flex-direction:column;min-width:0}
+    .ov-colh{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#5F6368;padding:0 0 8px;border-bottom:1px solid #E8EAED}
+    .ov-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;padding:8px 0;border-bottom:1px solid #E8EAED;
+      font-family:var(--disp);font-size:13px;line-height:18px}
+    .ov-row span{color:#5F6368;white-space:nowrap}
+    .ov-row b{font-weight:400;color:#1F1F1F;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ov-row b.bad{color:#B3261E;font-weight:500}
+    .ov-row b.warn{color:#B06000}
+    .ov-row b.muted{color:#80868B}
+    .ov-row button{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:#B3261E}
+    /* cartões com mini-gráfico (como "Ações relacionadas") */
+    .ov-cards{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(164px,1fr);gap:12px;overflow-x:auto;scroll-snap-type:x proximity;
+      scrollbar-width:thin;padding:2px;margin:-2px}
+    .ov-card{scroll-snap-align:start}
+    .ov-card{display:flex;flex-direction:column;gap:2px;border:0;border-radius:16px;background:#F7F8FA;padding:14px 14px 0;cursor:pointer;text-align:left;
+      overflow:hidden;min-width:0;font-family:var(--disp);box-shadow:inset 0 0 0 1px transparent}
+    .ov-card:hover{background:#F1F3F4}
+    .ov-card.on{box-shadow:inset 0 0 0 2px #0B57D0}
+    .ov-card-l{font-size:12px;line-height:16px;color:#5F6368}
+    .ov-card-v{font-weight:500;font-size:18px;line-height:24px;color:#1F1F1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ov-card-v.bad{color:#B3261E}
+    .ov-card-v small{font-weight:400;font-size:12px;color:#5F6368}
+    .ov-card-d{font-size:13px;line-height:18px;color:#5F6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ov-card-d.up{color:#137333}.ov-card-d.down{color:#B3261E}
+    .ov-card svg{display:block;width:calc(100% + 28px);height:44px;margin:8px -14px 0}
+    /* diagnósticos */
+    .ov-dx{display:flex;flex-direction:column}
+    .ov-dxrow{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid #E8EAED;
+      font-family:var(--disp);font-size:14px;line-height:20px}
+    .ov-dxrow:first-child{border-top:1px solid #E8EAED}
+    .ov-dxrow[hidden]{display:none}
+    .ov-dxcode{font-weight:500;color:#1F1F1F}
+    .ov-dxdesc{color:#1F1F1F;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ov-dxmeta{font-size:13px;color:#5F6368;white-space:nowrap;text-align:right}
+    .ov-dxmeta b{font-weight:500;color:#1F1F1F}
+    /* evoluções recentes (como "Notícias") */
+    .ov-feed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 28px}
+    .ov-post{display:flex;flex-direction:column;gap:4px;border:0;background:none;text-align:left;cursor:pointer;padding:12px;margin:0 -12px;border-radius:12px;min-width:0;font-family:var(--disp)}
+    .ov-post:hover{background:#F7F8FA}
+    .ov-post-src{display:flex;align-items:center;gap:6px;font-weight:500;font-size:12px;line-height:16px;color:#1F1F1F}
+    .ov-post-src i{width:8px;height:8px;border-radius:50%;background:#137333;flex:none}
+    .ov-post-src i.draft{background:#E8710A}
+    .ov-post-src small{font-weight:400;font-size:12px;color:#5F6368}
+    .ov-post-t{font-weight:500;font-size:15px;line-height:21px;color:#1F1F1F;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .ov-post-b{font-size:13px;line-height:19px;color:#5F6368;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .ov-more{align-self:flex-start;margin-left:-14px;color:#0B57D0}
+    .ov .pr-sumcol{background:#F7F8FA;border-radius:16px;padding:16px 18px}
+    .ov .pr-sumhead{font-size:14px;line-height:20px}
+    .ov-note{font-family:var(--disp);font-size:12px;line-height:16px;color:#80868B;margin-top:-8px}
+    .pr-item.flash{animation:prflash 1.6s ease-out}
+    @keyframes prflash{0%,30%{background:#E8F0FE}100%{background:transparent}}
     /* coluna estreita (assistente aberto) */
     @container pr (max-width:720px){
-      .pr-kpis{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:16px}
-      .pr-kpi:nth-child(3){border-left:0;padding-left:0}
+      .ov-stats{column-gap:20px}
+      .ov-ins-body{grid-template-columns:1fr;padding-left:16px}
       .pr-sum{grid-template-columns:1fr}
+      .ov .pr-sum{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .ov .pr-sumcol[data-k=medications]{grid-column:1 / -1}
       .pr-vitals{grid-template-columns:repeat(3,minmax(0,1fr))}
       .pr-trow{grid-template-columns:minmax(110px,1fr) minmax(0,1fr) 116px}
       .pr-trow .pr-tloc{display:none}
       .pr-bigcard{padding:18px 20px 20px}
       .pr-tabs{gap:24px}                                   /* 6 abas cabem sem rolar */
     }
+    @container pr (max-width:620px){
+      .ov-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}
+      .ov-col:nth-child(3) .ov-colh{grid-column:1 / -1;margin-top:20px}
+      .ov-feed{grid-template-columns:1fr}
+    }
     @container pr (max-width:520px){
+      .ov-stats,.ov-stats.two,.ov-col:nth-child(3),.ov .pr-sum{grid-template-columns:1fr}
+      .ov-col + .ov-col .ov-colh{margin-top:20px}
+      .ov-dxrow{grid-template-columns:52px minmax(0,1fr)}
+      .ov-dxmeta{grid-column:2;text-align:left}
       .pr-head{flex-wrap:wrap}
       .pr-form{grid-template-columns:1fr}
       .pr-histbar{flex-wrap:wrap}
@@ -319,7 +457,13 @@
       @page{margin:16mm}
       body{background:#fff}
       .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.pr-foot,.pr-chipin,.pr-tabs,
-      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=acessos],.pr-panel[data-panel=prescricoes],.pr-link,#prForm{display:none!important}
+      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=acessos],.pr-panel[data-panel=prescricoes],.pr-link,#prForm,
+      .ov-metrics,.ov-ranges,.ov-tip,.ov-more,.ov-chev,.ov-empty .pr-ghost,#ovCardsSec{display:none!important}
+      .ov-row b{white-space:normal}
+      .ov-ins-body{display:grid!important}
+      .ov-plot,.ov-ins,.ov-empty{background:none!important;box-shadow:inset 0 0 0 1px #E8EAED}
+      .ov-plot,.ov-plot svg{height:auto!important}
+      .pr-tabs{position:static}
       .stage,.center{display:block!important;position:static!important;height:auto!important;overflow:visible!important}
       .pr-view{display:block!important;position:static!important;overflow:visible!important;padding:0!important}
       .pr{max-width:none!important}
@@ -328,7 +472,7 @@
       #prFree,#prSoap{display:none!important}
       .pr-printcur{display:block!important}
       .pr-bigcard,.pr-sumcol{background:none!important;padding:0!important;border-radius:0!important}
-      .pr-sumcol,.pr-allergy,.pr-item,.pr-trow{break-inside:avoid}
+      .pr-sumcol,.pr-allergy,.pr-item,.pr-trow,.ov-chart,.ov-stats,.ov-dxrow,.ov-post{break-inside:avoid}
     }
     /* ===== PACIENTES (estilo "Configurações": título grande, seções com rótulo, cartões brancos com
        borda fina e linhas com divisória; ações à direita) — medidas em px reais (referência 2x) ===== */
@@ -848,26 +992,86 @@
               </div>
             </div>
 
-            <!-- faixa de indicadores -->
-            <div class="pr-kpis">
-              <div class="pr-kpi"><div class="pr-kpi-l">Idade</div><div class="pr-kpi-v" id="kAge">—</div><div class="pr-kpi-s" id="kAgeS"></div></div>
-              <div class="pr-kpi"><div class="pr-kpi-l">Última consulta</div><div class="pr-kpi-v" id="kLast">—</div><div class="pr-kpi-s" id="kLastS"></div></div>
-              <div class="pr-kpi"><div class="pr-kpi-l">Próxima consulta</div><div class="pr-kpi-v" id="kNext">—</div><div class="pr-kpi-s" id="kNextS"></div></div>
-              <div class="pr-kpi"><div class="pr-kpi-l">Evoluções</div><div class="pr-kpi-v" id="kNotes">—</div><div class="pr-kpi-s" id="kNotesS"></div></div>
-            </div>
-
-            <!-- abas -->
+            <!-- abas (fixas no topo ao rolar) -->
             <div class="pr-tabs" id="prTabs" role="tablist">
-              <button type="button" role="tab" data-tab="atual" class="on">Consulta atual</button>
-              <button type="button" role="tab" data-tab="resumo">Resumo clínico</button>
+              <button type="button" role="tab" data-tab="geral" class="on">Visão geral</button>
+              <button type="button" role="tab" data-tab="atual">Consulta</button>
               <button type="button" role="tab" data-tab="prescricoes">Prescrições</button>
               <button type="button" role="tab" data-tab="consultas">Consultas</button>
               <button type="button" role="tab" data-tab="historico">Histórico</button>
               <button type="button" role="tab" data-tab="acessos">Acessos</button>
             </div>
 
+            <!-- Visão geral (referência: novo Google Finance): destaques, gráfico dos sinais vitais,
+                 indicadores, cartões com tendência, resumo clínico, diagnósticos e evoluções recentes.
+                 Tudo calculado no navegador a partir do prontuário — nada vai para fora. -->
+            <section class="pr-panel ov" data-panel="geral">
+              <div class="ov-ins" id="ovIns" hidden>
+                <button class="ov-ins-head" type="button" id="ovInsHead" aria-expanded="false" aria-controls="ovInsBody">
+                  <svg class="ov-ins-ico" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><path d="M2 13.5l4.2-4.3 3 3L16 5.4" stroke="#0B57D0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M11.6 5.2H16v4.4" stroke="#0B57D0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span class="ov-ins-line" id="ovInsLine"></span>
+                  <svg class="ov-chev" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="#444746" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="ov-ins-body" id="ovInsBody" hidden></div>
+              </div>
+
+              <div class="ov-chart" id="ovChart">
+                <div class="ov-chart-head">
+                  <div class="ov-mlabel" id="ovMLabel"></div>
+                  <div class="ov-big"><span class="ov-val" id="ovVal">—</span><span class="ov-unit" id="ovUnit"></span><span class="ov-delta" id="ovDelta"></span></div>
+                  <div class="ov-when" id="ovWhen"></div>
+                </div>
+                <div class="ov-metrics" id="ovMetrics" role="tablist" aria-label="Sinal vital"></div>
+                <div class="ov-plot" id="ovPlot" tabindex="0" aria-label="Gráfico do sinal vital ao longo das consultas. Use as setas para percorrer as medidas e Enter para abrir a evolução.">
+                  <svg id="ovSvg" aria-hidden="true"></svg>
+                  <div class="ov-tip" id="ovTip" hidden></div>
+                  <div class="ov-plotmsg" id="ovPlotMsg" hidden></div>
+                </div>
+                <div class="ov-chart-foot">
+                  <div class="ov-ranges" id="ovRanges" role="tablist" aria-label="Período">
+                    <button type="button" data-r="6">6M</button><button type="button" data-r="12">1A</button><button type="button" data-r="24">2A</button><button type="button" data-r="60">5A</button><button type="button" data-r="0" class="on">Tudo</button>
+                  </div>
+                  <div class="ov-legend" id="ovLegend"></div>
+                </div>
+              </div>
+              <div class="ov-empty" id="ovEmpty" hidden>
+                <div class="ov-empty-t">Ainda não há sinais vitais registrados</div>
+                <div class="ov-empty-s">Pressão, peso, glicemia e os outros sinais aparecem aqui, em gráfico, quando a evolução é feita no modo <b>SOAP</b>.</div>
+                <button class="pr-ghost" type="button" id="ovEmptyGo">Abrir a consulta</button>
+              </div>
+
+              <div class="ov-stats" id="ovStats"></div>
+
+              <div class="ov-sec" id="ovCardsSec" hidden>
+                <div class="ov-h">Sinais vitais</div>
+                <div class="ov-cards" id="ovCards"></div>
+              </div>
+
+              <div class="ov-sec">
+                <div class="ov-h">Resumo clínico</div>
+                <div class="pr-sum">
+                  <div class="pr-sumcol" data-k="allergies"><div class="pr-sumhead">Alergias</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar alergia" autocomplete="off"></div>
+                  <div class="pr-sumcol" data-k="problems"><div class="pr-sumhead">Problemas ativos</div><div class="pr-chips" data-empty="Nenhum registrado"></div><input class="pr-chipin" placeholder="Adicionar problema" autocomplete="off"></div>
+                  <div class="pr-sumcol" data-k="medications"><div class="pr-sumhead">Medicações em uso</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar medicação" autocomplete="off"></div>
+                </div>
+              </div>
+
+              <div class="ov-sec" id="ovDxSec" hidden>
+                <div class="ov-h">Diagnósticos<span class="ov-hs">CID-10 registrados nas evoluções</span></div>
+                <div class="ov-dx" id="ovDx"></div>
+              </div>
+
+              <div class="ov-sec" id="ovFeedSec" hidden>
+                <div class="ov-h">Evoluções recentes</div>
+                <div class="ov-feed" id="ovFeed"></div>
+                <button class="pr-ghost ov-more" type="button" id="ovFeedMore">Ver histórico completo</button>
+              </div>
+
+              <div class="ov-note">Faixas de referência gerais para adultos, só para orientar a leitura — não substituem o julgamento clínico.</div>
+            </section>
+
             <!-- Consulta atual: evolução (texto livre ou SOAP) -->
-            <section class="pr-panel" data-panel="atual">
+            <section class="pr-panel" data-panel="atual" hidden>
               <div class="pr-bigcard" id="prEvoBox">
                 <div class="pr-cardhead">
                   <div>
@@ -934,14 +1138,6 @@
             </section>
 
             <!-- Resumo clínico (vale para todas as consultas) -->
-            <section class="pr-panel" data-panel="resumo" hidden>
-              <div class="pr-sum">
-                <div class="pr-sumcol" data-k="allergies"><div class="pr-sumhead">Alergias</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar alergia" autocomplete="off"></div>
-                <div class="pr-sumcol" data-k="problems"><div class="pr-sumhead">Problemas ativos</div><div class="pr-chips" data-empty="Nenhum registrado"></div><input class="pr-chipin" placeholder="Adicionar problema" autocomplete="off"></div>
-                <div class="pr-sumcol" data-k="medications"><div class="pr-sumhead">Medicações em uso</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="Adicionar medicação" autocomplete="off"></div>
-              </div>
-            </section>
-
             <!-- Prescrições: espaço reservado para o módulo próprio de prescrição (próxima etapa) -->
             <section class="pr-panel" data-panel="prescricoes" hidden>
               <div class="pr-bigcard">
@@ -2936,31 +3132,491 @@
         fillEditor({ content: last.content, data: d }); changed();
       });
 
-      // ===== faixa de indicadores (idade, última/próxima consulta, evoluções) =====
+      // ===== Visão geral (referência: novo Google Finance) =====
+      // Gráfico dos sinais vitais por consulta (períodos + mira), destaques "em melhora / atenção",
+      // grade de indicadores, cartões com mini-gráfico, diagnósticos e evoluções recentes.
+      // Tudo calculado aqui a partir do prontuário: nada sai do navegador.
       var visits = null;                                   // consultas do paciente na agenda (null = carregando)
       function dayMon(d) { return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
-      function kpi(id, v, sub, cls) { $(id).textContent = v; var s2 = $(id + 'S'); s2.textContent = sub || ''; s2.className = 'pr-kpi-s' + (cls ? ' ' + cls : ''); }
-      function renderKpis() {
-        var p = patient || {};
-        if (p.birth_date) { var b = parseStart(p.birth_date); kpi('kAge', age(p.birth_date), pad(b.getDate()) + '/' + pad(b.getMonth() + 1) + '/' + b.getFullYear()); }
-        else kpi('kAge', '—', patient ? 'Completar cadastro' : '', patient ? 'link' : '');
-        var now = Date.now(), vs = visits || [];
-        var past = vs.filter(function (v) { return parseStart(v.start) < now; }), fut = vs.filter(function (v) { return parseStart(v.start) >= now; });
-        var last = past[past.length - 1], next = fut[0];
-        function when(v) { var d = parseStart(v.start); return DOWS[d.getDay()] + (v.allDay ? '' : ' · ' + hm(d)) + ' · ' + eventTitle(v.title); }
-        if (last) kpi('kLast', dayMon(parseStart(last.start)), when(last));
-        else {
-          var ln = notes.filter(function (n) { return (n.content || '').trim() && n !== cur; })[0];
-          var ld = ln && (ln.event_start ? parseStart(ln.event_start) : new Date(ln.updated_at));
-          kpi('kLast', ld ? dayMon(ld) : '—', ld ? 'Última evolução' : (visits === null ? 'Carregando…' : 'Nenhuma ainda'));
-        }
-        if (next) kpi('kNext', dayMon(parseStart(next.start)), when(next));
-        else kpi('kNext', '—', visits === null ? 'Carregando…' : 'Nenhuma agendada');
-        var all = notes.filter(function (n) { return (n.content || '').trim() || n.signed_at; });
-        var fin = all.filter(function (n) { return n.signed_at; }).length, dr = all.length - fin;
-        kpi('kNotes', String(all.length), all.length ? fin + (fin === 1 ? ' finalizada' : ' finalizadas') + (dr ? ' · ' + dr + (dr === 1 ? ' rascunho' : ' rascunhos') : '') : 'Nenhuma ainda', dr ? 'warn' : '');
+      // faixas gerais para adultos (só orientam a leitura); minSpan evita que variação pequena pareça enorme
+      var METRICS = [
+        { k: 'pa', label: 'Pressão arterial', short: 'PA', unit: 'mmHg', ref: [90, 139], ref2: [60, 89], dec: 0, minSpan: 30, refTxt: 'Referência: abaixo de 140/90' },
+        { k: 'peso', label: 'Peso', short: 'Peso', unit: 'kg', dec: 1, minSpan: 4 },
+        { k: 'imc', label: 'Índice de massa corporal', short: 'IMC', unit: 'kg/m²', ref: [18.5, 24.9], dec: 1, minSpan: 2, refTxt: 'Referência: 18,5–24,9' },
+        { k: 'glicemia', label: 'Glicemia', short: 'Glicemia', unit: 'mg/dL', ref: [70, 99], dec: 0, minSpan: 30, refTxt: 'Referência em jejum: 70–99' },
+        { k: 'fc', label: 'Frequência cardíaca', short: 'FC', unit: 'bpm', ref: [50, 100], dec: 0, minSpan: 20, refTxt: 'Referência: 50–100' },
+        { k: 'spo2', label: 'Saturação de O₂', short: 'SpO₂', unit: '%', ref: [95, 100], dec: 0, minSpan: 6, refTxt: 'Referência: 95–100' },
+        { k: 'temp', label: 'Temperatura', short: 'Temp.', unit: '°C', ref: [35.5, 37.5], dec: 1, minSpan: 1.5, refTxt: 'Referência: 35,5–37,5' },
+        { k: 'fr', label: 'Frequência respiratória', short: 'FR', unit: 'irpm', ref: [12, 20], dec: 0, minSpan: 8, refTxt: 'Referência: 12–20' }
+      ];
+      var MBY = {}; METRICS.forEach(function (m) { MBY[m.k] = m; });
+      var ARROW = { up: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 8.6V1.6M1.9 4.6L5 1.5l3.1 3.1" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+                    down: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.4v7M1.9 5.4L5 8.5l3.1-3.1" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+                    flat: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5h6.4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' };
+      var ov = { metric: null, range: 0, hover: -1, pts: [], S: null, dirty: true };
+      try { ov.metric = localStorage.getItem('od_pr_metric'); ov.range = +(localStorage.getItem('od_pr_range') || 0) || 0; } catch (_) {}
+
+      function noteDate(n) { return n.event_start ? parseStart(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null); }
+      function fmtN(x, dec) { return x.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
+      function fmtV(m, p) { return m.k === 'pa' ? fmtN(p.v, 0) + '/' + fmtN(p.v2, 0) : fmtN(p.v, m.dec); }
+      function dist(x, r) { return !r || x == null ? 0 : x < r[0] ? r[0] - x : x > r[1] ? x - r[1] : 0; }
+      function off(m, p) { return !!m.ref && (dist(p.v, m.ref) > 0 || (!!m.ref2 && dist(p.v2, m.ref2) > 0)); }
+      function side(m, p) { return p.v > m.ref[1] || (m.ref2 && p.v2 > m.ref2[1]) ? 'acima' : 'abaixo'; }
+      // 'up' = aproximou-se da faixa de referência (melhora), 'down' = afastou-se (piora), '' = igual/sem faixa
+      function trend(m, a, b) {
+        if (!m.ref || !a || !b) return '';
+        var da = dist(a.v, m.ref) + dist(a.v2, m.ref2), db = dist(b.v, m.ref) + dist(b.v2, m.ref2);
+        return db < da - 1e-9 ? 'up' : db > da + 1e-9 ? 'down' : '';
       }
-      $('kAgeS').addEventListener('click', function () { if (this.classList.contains('link')) $('prEditBtn').click(); });
+      function signed(x, dec) { var r = Math.round(x * Math.pow(10, dec)) / Math.pow(10, dec); return (r > 0 ? '+' : r < 0 ? '−' : '±') + fmtN(Math.abs(r), dec); }
+      function deltaTxt(m, a, b) { return m.k === 'pa' ? signed(b.v - a.v, 0) + '/' + signed(b.v2 - a.v2, 0) : signed(b.v - a.v, m.dec); }
+      function dir(a, b) { return b.v > a.v ? 'up' : b.v < a.v ? 'down' : 'flat'; }
+      function spanTxt(a, b) {
+        var days = Math.round((b - a) / 864e5), mo = Math.round(days / 30.44);
+        if (days < 45) return days <= 1 ? 'em 1 dia' : 'em ' + days + ' dias';
+        if (mo < 24) return 'em ' + mo + ' meses';
+        var y = Math.round(mo / 12); return 'em ' + y + ' anos';
+      }
+      function untilTxt(d) {
+        var days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(new Date().toDateString())) / 864e5);
+        return days <= 0 ? 'hoje' : days === 1 ? 'amanhã' : 'em ' + days + ' dias';
+      }
+      function agoTxt(d) {
+        var days = Math.round((Date.now() - d) / 864e5), mo = Math.floor(days / 30.44);
+        return days < 1 ? 'hoje' : days < 2 ? 'ontem' : days < 45 ? 'há ' + days + ' dias' : mo < 24 ? 'há ' + mo + ' meses' : 'há ' + Math.floor(mo / 12) + ' anos';
+      }
+      // sinais vitais de cada evolução, em ordem de data (valores impossíveis = erro de digitação: ficam de fora)
+      function series() {
+        var S = {}; METRICS.forEach(function (m) { S[m.k] = []; });
+        var rows = notes.filter(function (n) { return n.data && n.data.vitals && Object.keys(n.data.vitals).length && noteDate(n); })
+                        .map(function (n) { return { n: n, t: noteDate(n), v: n.data.vitals }; })
+                        .sort(function (a, b) { return a.t - b.t; });
+        function val(v, k) { var x = num(v[k]), r = RANGE[k]; return x == null || (r && (x < r[0] || x > r[1])) ? null : x; }
+        var lastAlt = null;                                // altura de adulto não muda: vale a última informada
+        rows.forEach(function (r) { var h = val(r.v, 'altura'); if (h) lastAlt = h > 3 ? h / 100 : h; });
+        rows.forEach(function (r) {
+          function push(k, a, b) { if (a != null) S[k].push({ t: r.t, v: a, v2: b, n: r.n }); }
+          var s = val(r.v, 'pa_s'), d = val(r.v, 'pa_d'); if (s != null && d != null) push('pa', s, d);
+          ['peso', 'glicemia', 'fc', 'spo2', 'temp', 'fr'].forEach(function (k) { push(k, val(r.v, k)); });
+          var h = val(r.v, 'altura'), alt = h ? (h > 3 ? h / 100 : h) : lastAlt, p = val(r.v, 'peso');
+          if (p && alt) push('imc', p / (alt * alt));
+        });
+        return S;
+      }
+      function lastAltura() {
+        var a = notes.filter(function (n) { return n.data && n.data.vitals && num(n.data.vitals.altura); })[0];
+        if (!a) return null; var h = num(a.data.vitals.altura); return h > 3 ? h / 100 : h;
+      }
+      function imcClass(x) {
+        return x < 18.5 ? 'baixo peso' : x < 25 ? 'adequado' : x < 30 ? 'sobrepeso' : x < 35 ? 'obesidade grau I' : x < 40 ? 'obesidade grau II' : 'obesidade grau III';
+      }
+      function ovVisible() { var p = document.querySelector('.pr-panel[data-panel=geral]'); return isOpen() && p && !p.hidden; }
+      // nome antigo, chamado ao carregar, salvar, finalizar e ao chegar a agenda: só redesenha se estiver à vista
+      function renderKpis() { ov.dirty = true; if (ovVisible()) renderOverview(); }
+      function renderOverview() {
+        ov.dirty = false;
+        var S = ov.S = series(), avail = METRICS.filter(function (m) { return S[m.k].length; });
+        var any = avail.length > 0;
+        if (!MBY[ov.metric] || !S[ov.metric].length) ov.metric = any ? avail[0].k : null;
+        $('ovChart').hidden = !any;
+        $('ovEmpty').hidden = any || !patient;
+        $('ovEmptyGo').textContent = ctx && ctx.event_id ? 'Abrir a consulta' : 'Nova evolução';
+        if (any) { renderMetricTabs(avail); drawChart(); }
+        renderStats(S); renderInsights(S); renderCards(S, avail); renderDx(); renderFeed();
+      }
+
+      // ----- gráfico -----
+      function renderMetricTabs(avail) {
+        var box = $('ovMetrics'); box.innerHTML = '';
+        avail.forEach(function (m) {
+          var b = el('button', m.k === ov.metric ? 'on' : null, m.short); b.type = 'button'; b.setAttribute('role', 'tab');
+          b.setAttribute('aria-selected', m.k === ov.metric ? 'true' : 'false'); b.title = m.label;
+          b.addEventListener('click', function () { pickMetric(m.k); });
+          box.appendChild(b);
+        });
+      }
+      function pickMetric(k) {
+        ov.metric = k; try { localStorage.setItem('od_pr_metric', k); } catch (_) {}
+        [].forEach.call($('ovMetrics').children, function (b, i) { var on = b.textContent === MBY[k].short; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+        [].forEach.call($('ovCards').children, function (c) { c.classList.toggle('on', c._k === k); });
+        drawChart();
+      }
+      [].forEach.call($('ovRanges').children, function (b) {
+        b.addEventListener('click', function () { ov.range = +b.getAttribute('data-r'); try { localStorage.setItem('od_pr_range', String(ov.range)); } catch (_) {} drawChart(); });
+      });
+      function svgEl(tag, a) { var e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in a) e.setAttribute(k, a[k]); return e; }
+      function niceStep(span, n) {
+        var raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+        return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+      }
+      function drawChart() {
+        var m = MBY[ov.metric]; if (!m || !ov.S) return;
+        var all = ov.S[m.k], now = new Date(), last = all[all.length - 1];
+        var from = ov.range ? new Date(now.getFullYear(), now.getMonth() - ov.range, now.getDate()) : null;
+        var pts = from ? all.filter(function (p) { return p.t >= from; }) : all.slice();
+        ov.pts = pts; ov.hover = -1;
+        [].forEach.call($('ovRanges').children, function (b) { var on = +b.getAttribute('data-r') === ov.range; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+        // cabeçalho: valor grande = última medida; variação = no período escolhido (como o Finance)
+        $('ovMLabel').textContent = m.label;
+        $('ovVal').textContent = fmtV(m, last); $('ovUnit').textContent = m.unit;
+        var dl = $('ovDelta'), a = pts.length > 1 ? pts[0] : (all.length > 1 ? all[all.length - 2] : null);
+        dl.className = 'ov-delta'; dl.innerHTML = '';
+        if (a) {
+          var t = trend(m, a, last); if (t) dl.classList.add(t);
+          var ic = el('i'); ic.innerHTML = ARROW[dir(a, last)]; dl.appendChild(ic);
+          dl.appendChild(document.createTextNode(deltaTxt(m, a, last) + ' '));
+          dl.appendChild(el('small', null, pts.length > 1 ? spanTxt(a.t, last.t) : 'vs. medida anterior'));
+          dl.title = t === 'up' ? 'Aproximou-se da faixa de referência' : t === 'down' ? 'Afastou-se da faixa de referência' : '';
+        }
+        var w = $('ovWhen'); w.innerHTML = '';
+        w.appendChild(document.createTextNode('Última medida: ' + dayMon(last.t) + ' · ' + eventTitle(last.n.event_title)));
+        if (off(m, last)) { w.appendChild(document.createTextNode(' · ')); w.appendChild(el('span', 'ov-flag', side(m, last) === 'acima' ? 'Acima da referência' : 'Abaixo da referência')); }
+        if (all.length === 1) w.appendChild(document.createTextNode(' · a tendência aparece a partir da segunda medida'));
+        // legenda
+        var lg = $('ovLegend'); lg.innerHTML = '';
+        function leg(cls, txt) { var s2 = el('span'); s2.appendChild(el('i', cls)); s2.appendChild(document.createTextNode(txt)); lg.appendChild(s2); }
+        if (m.k === 'pa') { leg(null, 'Sistólica'); leg('lt', 'Diastólica'); leg('lim', 'Limite 140/90'); }
+        else if (m.ref) leg('band', m.refTxt);
+        // desenho
+        var svg = $('ovSvg'); svg.innerHTML = '';
+        var W = svg.clientWidth || 600, H = svg.clientHeight || 220;
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);   // na impressão o desenho acompanha a largura da página
+        var L = 34, R = 10, T = 8, B = 22, pw = Math.max(10, W - L - R), ph = Math.max(10, H - T - B);
+        var msgEl = $('ovPlotMsg');
+        msgEl.hidden = pts.length > 0;
+        if (!pts.length) { msgEl.textContent = 'Nenhuma medida de ' + m.label.toLowerCase() + ' neste período. A última foi em ' + dayMon(last.t) + '.'; return; }
+        var x1 = now.getTime(), x0 = from ? from.getTime() : pts[0].t.getTime();
+        if (!from) x0 -= Math.max((x1 - x0) * 0.04, 864e5 * 3);
+        var vals = []; pts.forEach(function (p) { vals.push(p.v); if (p.v2 != null) vals.push(p.v2); });
+        var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+        if (hi - lo < m.minSpan) { var c = (hi + lo) / 2; lo = c - m.minSpan / 2; hi = c + m.minSpan / 2; }
+        var pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
+        // limites de referência próximos dos dados entram na escala (dão o contexto clínico)
+        var lims = m.k === 'pa' ? [140, 90] : m.ref ? [m.ref[0], m.ref[1]] : [];
+        lims.forEach(function (v) { if (v >= lo - (hi - lo) * 0.6 && v <= hi + (hi - lo) * 0.6) { lo = Math.min(lo, v - pad * 0.5); hi = Math.max(hi, v + pad * 0.5); } });
+        if (m.k === 'spo2') hi = Math.min(hi, 101);
+        var step = niceStep(hi - lo, 4); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+        function X(t) { return L + (t - x0) / (x1 - x0 || 1) * pw; }
+        function Y(v) { return T + (hi - v) / (hi - lo || 1) * ph; }
+        var defs = svgEl('defs', {}), gr = svgEl('linearGradient', { id: 'ovGrad', x1: 0, y1: 0, x2: 0, y2: 1 });
+        gr.appendChild(svgEl('stop', { offset: '0%', 'stop-color': '#0B57D0', 'stop-opacity': '0.22' }));
+        gr.appendChild(svgEl('stop', { offset: '90%', 'stop-color': '#0B57D0', 'stop-opacity': '0' }));
+        defs.appendChild(gr); svg.appendChild(defs);
+        // grade e eixo y
+        for (var v = lo; v <= hi + step / 2; v += step) {
+          var y = Y(v);
+          svg.appendChild(svgEl('line', { x1: L, x2: L + pw, y1: y, y2: y, stroke: '#E1E3E6', 'stroke-width': 1 }));
+          var tx = svgEl('text', { x: L - 8, y: y + 4, 'text-anchor': 'end' }); tx.textContent = fmtN(v, step < 1 ? 1 : 0); svg.appendChild(tx);
+        }
+        // faixa / limites de referência
+        if (m.k === 'pa') {
+          [140, 90].forEach(function (lv) {
+            if (lv < lo || lv > hi) return;
+            svg.appendChild(svgEl('line', { x1: L, x2: L + pw, y1: Y(lv), y2: Y(lv), stroke: '#D93025', 'stroke-opacity': '0.55', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
+          });
+        } else if (m.ref) {
+          var ya = Y(Math.min(hi, m.ref[1])), yb = Y(Math.max(lo, m.ref[0]));
+          if (yb > ya) svg.appendChild(svgEl('rect', { x: L, y: ya, width: pw, height: yb - ya, fill: '#137333', 'fill-opacity': '0.07' }));
+        }
+        // eixo x: meses (ou dias, em períodos curtos)
+        var span = x1 - x0, ticks = [];
+        if (span < 75 * 864e5) {
+          var d0 = new Date(x0); d0.setHours(0, 0, 0, 0); var stepD = Math.max(1, Math.round(span / 864e5 / 5));
+          for (var dd = new Date(d0.getTime() + 864e5); dd.getTime() <= x1; dd = new Date(dd.getTime() + stepD * 864e5)) ticks.push({ t: dd.getTime(), s: dd.getDate() + ' ' + MON[dd.getMonth()] });
+        } else {
+          var months = span / (30.44 * 864e5), stepM = [1, 2, 3, 6, 12, 24, 60].filter(function (q) { return months / q <= 6; })[0] || 60;
+          var dm = new Date(x0); dm = new Date(dm.getFullYear(), dm.getMonth() + 1, 1);
+          while (dm.getMonth() % stepM && stepM <= 12) dm = new Date(dm.getFullYear(), dm.getMonth() + 1, 1);
+          for (; dm.getTime() <= x1; dm = new Date(dm.getFullYear(), dm.getMonth() + stepM, 1))
+            ticks.push({ t: dm.getTime(), s: stepM >= 12 ? String(dm.getFullYear()) : MON[dm.getMonth()] + (dm.getMonth() === 0 || !ticks.length ? ' ' + dm.getFullYear() : '') });
+        }
+        ticks.forEach(function (k) {
+          var x = X(k.t); if (x < L + 14 || x > L + pw - 14) return;
+          var tx = svgEl('text', { x: x, y: T + ph + 16, 'text-anchor': 'middle' }); tx.textContent = k.s; svg.appendChild(tx);
+        });
+        // linha do valor inicial do período (como "Fech. ant." do Finance)
+        if (m.k !== 'pa' && pts.length > 1) {
+          var yb0 = Y(pts[0].v);
+          svg.appendChild(svgEl('line', { x1: L, x2: L + pw, y1: yb0, y2: yb0, stroke: '#5E5E5E', 'stroke-width': 1, 'stroke-dasharray': '1 6', 'stroke-linecap': 'round' }));
+          var bt = svgEl('text', { x: L + pw, y: yb0 - 6, 'text-anchor': 'end' }); bt.textContent = 'Início ' + fmtV(m, pts[0]); svg.appendChild(bt);
+        }
+        // área + linhas
+        function path(key) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p[key]).toFixed(1); }).join(' '); }
+        if (pts.length > 1) {
+          var d1 = path('v');
+          svg.appendChild(svgEl('path', { d: d1 + ' L' + X(pts[pts.length - 1].t).toFixed(1) + ' ' + (T + ph) + ' L' + X(pts[0].t).toFixed(1) + ' ' + (T + ph) + ' Z', fill: 'url(#ovGrad)' }));
+          if (m.k === 'pa') svg.appendChild(svgEl('path', { d: path('v2'), fill: 'none', stroke: '#8AB4F8', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+          svg.appendChild(svgEl('path', { d: d1, fill: 'none', stroke: '#0B57D0', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+        }
+        // pontos (fora da faixa = vermelho); a última medida fica destacada
+        function dot(p, key, isLast) {
+          var bad = key === 'v2' ? dist(p.v2, m.ref2) > 0 : dist(p.v, m.ref) > 0;
+          svg.appendChild(svgEl('circle', { cx: X(p.t), cy: Y(p[key]), r: isLast ? 4.5 : 3,
+            fill: bad ? '#D93025' : isLast ? (key === 'v2' ? '#8AB4F8' : '#0B57D0') : '#fff',
+            stroke: bad || isLast ? '#fff' : (key === 'v2' ? '#8AB4F8' : '#0B57D0'), 'stroke-width': isLast ? 2 : 1.5 }));
+        }
+        pts.forEach(function (p, i) { if (m.k === 'pa') dot(p, 'v2', i === pts.length - 1); dot(p, 'v', i === pts.length - 1); });
+        // mira (aparece ao passar o mouse / com as setas)
+        ov.cross = svgEl('line', { x1: 0, x2: 0, y1: T, y2: T + ph, stroke: '#80868B', 'stroke-width': 1, visibility: 'hidden' });
+        ov.ring = svgEl('circle', { r: 6, fill: 'none', stroke: '#0B57D0', 'stroke-width': 2, visibility: 'hidden' });
+        svg.appendChild(ov.cross); svg.appendChild(ov.ring);
+        ov.X = X; ov.Y = Y; ov.geo = { L: L, pw: pw };
+        $('ovTip').hidden = true;
+      }
+      function setHover(i) {
+        var pts = ov.pts, m = MBY[ov.metric], tip = $('ovTip');
+        ov.hover = i;
+        if (!ov.cross) return;
+        if (i < 0 || !pts[i]) { ov.cross.setAttribute('visibility', 'hidden'); ov.ring.setAttribute('visibility', 'hidden'); tip.hidden = true; return; }
+        var p = pts[i], x = ov.X(p.t), y = ov.Y(p.v);
+        ov.cross.setAttribute('x1', x); ov.cross.setAttribute('x2', x); ov.cross.setAttribute('visibility', 'visible');
+        ov.ring.setAttribute('cx', x); ov.ring.setAttribute('cy', y); ov.ring.setAttribute('visibility', 'visible');
+        tip.innerHTML = '';
+        tip.appendChild(el('div', 'ov-tip-d', dayMon(p.t) + ' · ' + eventTitle(p.n.event_title)));
+        var vv = el('div', 'ov-tip-v' + (off(m, p) ? ' bad' : ''), fmtV(m, p) + ' '); vv.appendChild(el('small', null, m.unit)); tip.appendChild(vv);
+        if (m.k === 'imc') tip.appendChild(el('div', 'ov-tip-c', imcClass(p.v)));
+        var all = ov.S[m.k], j = all.indexOf(p);
+        if (j > 0) { var t = trend(m, all[j - 1], p); tip.appendChild(el('div', 'ov-tip-c' + (t ? ' ' + t : ''), deltaTxt(m, all[j - 1], p) + ' vs. medida anterior')); }
+        tip.appendChild(el('div', 'ov-tip-go', p.n === cur ? 'Clique para abrir a consulta' : p.n.signed_at ? 'Clique para ler a evolução' : 'Clique para abrir o rascunho'));
+        tip.hidden = false;
+        var svg = $('ovSvg'), bw = $('ovPlot').clientWidth, tw = tip.offsetWidth, th = tip.offsetHeight;
+        var px = svg.offsetLeft + x, py = svg.offsetTop + y;
+        tip.style.left = Math.max(4, Math.min(bw - tw - 4, px - tw / 2)) + 'px';
+        tip.style.top = (py - th - 14 >= 0 ? py - th - 14 : py + 16) + 'px';
+      }
+      (function () {
+        var plot = $('ovPlot');
+        function nearest(e) {
+          if (!ov.pts.length || !ov.X) return -1;
+          var r = $('ovSvg').getBoundingClientRect(), x = e.clientX - r.left, best = -1, bd = 1e9;
+          ov.pts.forEach(function (p, i) { var d = Math.abs(ov.X(p.t) - x); if (d < bd) { bd = d; best = i; } });
+          return best;
+        }
+        plot.addEventListener('mousemove', function (e) { var i = nearest(e); if (i !== ov.hover) setHover(i); });
+        plot.addEventListener('mouseleave', function () { setHover(-1); });
+        plot.addEventListener('click', function (e) { var i = nearest(e); if (i >= 0) openNote(ov.pts[i].n); });
+        plot.addEventListener('keydown', function (e) {
+          var n = ov.pts.length; if (!n) return;
+          if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); setHover(ov.hover < 0 ? n - 1 : Math.max(0, Math.min(n - 1, ov.hover + (e.key === 'ArrowRight' ? 1 : -1)))); }
+          else if (e.key === 'Home') { e.preventDefault(); setHover(0); }
+          else if (e.key === 'End') { e.preventDefault(); setHover(n - 1); }
+          else if (e.key === 'Enter' && ov.hover >= 0) { e.preventDefault(); openNote(ov.pts[ov.hover].n); }
+          else if (e.key === 'Escape') setHover(-1);
+        });
+        plot.addEventListener('blur', function () { setHover(-1); });
+        if (window.ResizeObserver) {
+          var raf = 0, lastW = 0;
+          new ResizeObserver(function () {
+            var w = plot.clientWidth; if (w === lastW) return; lastW = w;
+            cancelAnimationFrame(raf); raf = requestAnimationFrame(function () { if (ovVisible() && ov.metric) drawChart(); });
+          }).observe(plot);
+        }
+      })();
+
+      // ----- abrir a evolução de um ponto / da lista -----
+      function openNote(n) {
+        if (!n) return;
+        if (n === cur) { setTab('atual'); $('prEvoBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+        if (!n.signed_at) { switchTo(n.event_id ? { event_id: n.event_id, title: eventTitle(n.event_title), start: n.event_start } : { note_id: n.id }); return; }
+        setTab('historico'); $('prHistQ').value = ''; filterHist();
+        var it = [].filter.call($('prHist').querySelectorAll('.pr-item'), function (x) { return x._note === n; })[0];
+        if (!it) return;
+        var b = it.querySelector('.pr-item-body'); if (b) b.classList.remove('clamp');
+        it.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        it.classList.remove('flash'); void it.offsetWidth; it.classList.add('flash');
+      }
+
+      // ----- grade de indicadores -----
+      function renderStats(S) {
+        var box = $('ovStats'); box.innerHTML = '';
+        function col(title) { var c = el('div', 'ov-col'); c.appendChild(el('div', 'ov-colh', title)); box.appendChild(c); return c; }
+        function row(c, label, val, cls, tip) {
+          var r = el('div', 'ov-row'); r.appendChild(el('span', null, label));
+          var b = typeof val === 'string' ? el('b', cls || null, val) : val; if (tip && b.title !== undefined) b.title = tip;
+          r.appendChild(b); c.appendChild(r);
+        }
+        var p = patient || {}, now = Date.now();
+        var c1 = col('Paciente');
+        if (p.birth_date) { var bd = parseStart(p.birth_date); row(c1, 'Idade', age(p.birth_date)); row(c1, 'Nascimento', pad(bd.getDate()) + '/' + pad(bd.getMonth() + 1) + '/' + bd.getFullYear()); }
+        else {
+          var bb = el('b'), lk = el('button', null, 'Completar cadastro'); lk.type = 'button';
+          lk.addEventListener('click', function () { $('prEditBtn').click(); }); bb.appendChild(lk);
+          row(c1, 'Idade', patient ? bb : '—'); row(c1, 'Nascimento', '—', 'muted');
+        }
+        row(c1, 'Sexo', p.sex ? SEX[p.sex] : '—', p.sex ? '' : 'muted');
+        var alt = lastAltura();
+        row(c1, 'Altura', alt ? fmtN(alt, 2) + ' m' : '—', alt ? '' : 'muted');
+        var pw = S.peso[S.peso.length - 1], im = S.imc[S.imc.length - 1];
+        row(c1, 'Peso', pw ? fmtN(pw.v, 1) + ' kg' : '—', pw ? '' : 'muted', pw ? 'Em ' + dayMon(pw.t) : '');
+        row(c1, 'IMC', im ? fmtN(im.v, 1) + ' · ' + imcClass(im.v) : '—', im ? (off(MBY.imc, im) ? 'bad' : '') : 'muted', im ? 'Em ' + dayMon(im.t) : '');
+
+        var c2 = col('Consultas');
+        var vs = visits || [], past = vs.filter(function (v) { return parseStart(v.start) < now; }), fut = vs.filter(function (v) { return parseStart(v.start) >= now; });
+        var withText = notes.filter(function (n) { return (n.content || '').trim() || n.signed_at; });
+        var dates = withText.map(noteDate).filter(Boolean).concat(past.map(function (v) { return parseStart(v.start); })).sort(function (a, b) { return a - b; });
+        var lastV = past[past.length - 1], lastD = lastV ? parseStart(lastV.start) : dates[dates.length - 1];
+        row(c2, 'Primeira consulta', dates.length ? dayMon(dates[0]) : '—', dates.length ? '' : 'muted');
+        row(c2, 'Última consulta', lastD ? dayMon(lastD) + ' · ' + agoTxt(lastD) : (visits === null ? 'Carregando…' : '—'), lastD ? '' : 'muted');
+        var nx = fut[0];
+        row(c2, 'Próxima consulta', nx ? dayMon(parseStart(nx.start)) + ' · ' + untilTxt(parseStart(nx.start)) : (visits === null ? 'Carregando…' : 'Nenhuma agendada'), nx ? '' : 'muted');
+        var yearAgo = now - 365 * 864e5, n12 = past.length ? past.filter(function (v) { return parseStart(v.start) >= yearAgo; }).length
+                                                             : withText.filter(function (n) { var d = noteDate(n); return d && d >= yearAgo; }).length;
+        row(c2, 'Últimos 12 meses', n12 + (n12 === 1 ? ' consulta' : ' consultas'));
+        var fin = withText.filter(function (n) { return n.signed_at; }).length, dr = withText.length - fin;
+        row(c2, 'Evoluções', withText.length + (withText.length ? ' · ' + fin + (fin === 1 ? ' finalizada' : ' finalizadas') : ''));
+        row(c2, 'Rascunhos', String(dr), dr ? 'warn' : 'muted', dr ? 'Evoluções ainda não finalizadas' : '');
+
+        box.classList.toggle('two', !['pa', 'fc', 'glicemia', 'spo2', 'temp', 'fr'].some(function (k) { return S[k].length; }));
+        if (box.classList.contains('two')) return;          // sem medidas: sem coluna só de traços
+        var c3 = col('Últimas medidas');
+        ['pa', 'fc', 'glicemia', 'spo2', 'temp', 'fr'].forEach(function (k) {
+          var m = MBY[k], a = S[k], q = a[a.length - 1];
+          row(c3, m.short === 'Temp.' ? 'Temperatura' : m.short, q ? fmtV(m, q) + ' ' + m.unit : '—', q ? (off(m, q) ? 'bad' : '') : 'muted',
+              q ? 'Em ' + dayMon(q.t) + (off(m, q) ? ' · ' + side(m, q) + ' da referência' : '') : '');
+        });
+      }
+
+      // ----- destaques: em melhora / atenção / pendências (como "visão otimista / pessimista") -----
+      function renderInsights(S) {
+        var good = [], bad = [], todo = [], line = [], heads = [];
+        function item(list, label, txt) { list.push({ b: label, t: txt }); }
+        ['pa', 'imc', 'glicemia', 'fc', 'spo2', 'temp', 'fr'].forEach(function (k) {
+          var m = MBY[k], a = S[k]; if (!a.length) return;
+          var first = a[0], last = a[a.length - 1], t = a.length > 1 ? trend(m, first, last) : '', o = off(m, last);
+          if (t) {
+            var extra = k === 'imc' && S.peso.length > 1 ? ' (peso ' + signed(S.peso[S.peso.length - 1].v - S.peso[0].v, 1) + ' kg)' : '';
+            var txt = 'de ' + fmtV(m, first) + ' para ' + fmtV(m, last) + ' ' + m.unit + ' ' + spanTxt(first.t, last.t) + extra + '.';
+            if (t === 'up') item(good, m.label, txt); else item(bad, m.label, 'piorou ' + txt);
+          }
+          if (o) item(bad, m.label, 'última medida ' + fmtV(m, last) + ' ' + m.unit + ', ' + side(m, last) + ' da referência' + (k === 'glicemia' ? ' em jejum' : '') + ' (' + dayMon(last.t) + ').');
+          // uma frase curta por sinal na linha de destaque; o que pede atenção vem primeiro
+          var ref = o ? ' (' + side(m, last) + ' da ref.)' : '';
+          if (t === 'down') heads.push({ p: 0, s: m.short + ' piorou: ' + fmtV(m, first) + ' → ' + fmtV(m, last) + ref });
+          else if (t === 'up') heads.push({ p: o ? 1 : 2, s: m.short + ' ' + fmtV(m, first) + ' → ' + fmtV(m, last) + ref });
+          else if (o) heads.push({ p: 1, s: m.short + ' ' + fmtV(m, last) + ' ' + side(m, last) + ' da ref.' });
+        });
+        heads.sort(function (x, y) { return x.p - y.p; }).slice(0, 3).forEach(function (h) { line.push(h.s); });
+        var drafts = notes.filter(function (n) { return !n.signed_at && (n.content || '').trim() && n !== cur; });
+        if (drafts.length) {
+          var od = drafts.map(noteDate).filter(Boolean).sort(function (a, b) { return a - b; })[0];
+          item(todo, drafts.length === 1 ? '1 evolução em rascunho' : drafts.length + ' evoluções em rascunho', (od ? 'a mais antiga de ' + dayMon(od) + '. ' : '') + 'Finalize para valer como registro do prontuário.');
+          line.push(drafts.length === 1 ? '1 rascunho' : drafts.length + ' rascunhos');
+        }
+        if (patient && !patient.birth_date) item(todo, 'Cadastro incompleto', 'sem data de nascimento — necessária para diferenciar homônimos.');
+        var vs = visits || [], fut = vs.filter(function (v) { return parseStart(v.start) >= Date.now(); });
+        if (fut.length) line.push('Retorno ' + untilTxt(parseStart(fut[0].start)));
+        else if (visits && visits.length) item(todo, 'Sem retorno agendado', 'nenhuma consulta futura na agenda.');
+        var box = $('ovIns'), has = good.length || bad.length || todo.length;
+        box.hidden = !has || !patient;
+        if (!has) return;
+        if (!line.length) line.push(bad.length ? bad[0].b : good.length ? good[0].b : todo[0].b);
+        $('ovInsLine').textContent = line.join(' · ');
+        var body = $('ovInsBody'); body.innerHTML = '';
+        function colOf(cls, title, list) {
+          if (!list.length) return;
+          var c = el('div', 'ov-ins-col'), h = el('div', 'ov-ins-t ' + cls);
+          h.innerHTML = cls === 'up' ? '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 11.5l3.8-3.8 2.6 2.6L14 4.6M10 4.5h4v4" fill="none" stroke="#137333" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+                  : cls === 'down' ? '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2l6.3 11H1.7z" fill="none" stroke="#B3261E" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.6v3M8 11.4v.1" stroke="#B3261E" stroke-width="1.6" stroke-linecap="round"/></svg>'
+                  : '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="#5F6368" stroke-width="1.5"/><path d="M8 4.8V8l2.2 1.4" fill="none" stroke="#5F6368" stroke-width="1.5" stroke-linecap="round"/></svg>';
+          h.appendChild(document.createTextNode(title)); c.appendChild(h);
+          var ul = el('ul'); list.forEach(function (x) { var li = el('li'); li.appendChild(el('b', null, x.b + ': ')); li.appendChild(document.createTextNode(x.t)); ul.appendChild(li); });
+          c.appendChild(ul); body.appendChild(c);
+        }
+        colOf('up', 'Em melhora', good); colOf('down', 'Atenção', bad); colOf('todo', 'Pendências', todo);
+        var withV = notes.filter(function (n) { return n.data && n.data.vitals && Object.keys(n.data.vitals).length; }).length;
+        body.appendChild(el('div', 'ov-ins-src', 'Resumo calculado automaticamente a partir ' + (withV ? 'de ' + withV + (withV === 1 ? ' evolução' : ' evoluções') + ' com sinais vitais' : 'do prontuário') +
+                                                 ' e da agenda, comparando com faixas gerais de referência. Não usa IA — confira sempre.'));
+      }
+      $('ovInsHead').addEventListener('click', function () {
+        var open = this.getAttribute('aria-expanded') !== 'true';
+        this.setAttribute('aria-expanded', open ? 'true' : 'false'); $('ovInsBody').hidden = !open;
+      });
+
+      // ----- cartões com mini-gráfico (um por sinal vital) -----
+      function renderCards(S, avail) {
+        var box = $('ovCards'); box.innerHTML = '';
+        $('ovCardsSec').hidden = avail.length < 2;
+        avail.forEach(function (m) {
+          var a = S[m.k], last = a[a.length - 1], first = a[0];
+          var c = el('button', 'ov-card' + (m.k === ov.metric ? ' on' : '')); c.type = 'button'; c._k = m.k; c.title = m.label;
+          c.appendChild(el('span', 'ov-card-l', m.label));
+          var v = el('span', 'ov-card-v' + (off(m, last) ? ' bad' : ''), fmtV(m, last) + ' '); v.appendChild(el('small', null, m.unit)); c.appendChild(v);
+          var t = a.length > 1 ? trend(m, first, last) : '';
+          c.appendChild(el('span', 'ov-card-d' + (t ? ' ' + t : ''), a.length > 1 ? (dir(first, last) === 'up' ? '▲ ' : dir(first, last) === 'down' ? '▼ ' : '') + deltaTxt(m, first, last) + ' ' + spanTxt(first.t, last.t) : '1 medida'));
+          // mini-gráfico
+          var W = 200, H = 44, s = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+          if (a.length > 1) {
+            var lo = Math.min.apply(null, a.map(function (p) { return p.v; })), hi = Math.max.apply(null, a.map(function (p) { return p.v; }));
+            if (hi - lo < m.minSpan / 2) { var mid = (hi + lo) / 2; lo = mid - m.minSpan / 4; hi = mid + m.minSpan / 4; }
+            var t0 = a[0].t.getTime(), t1 = a[a.length - 1].t.getTime() || t0 + 1;
+            var col = t === 'down' ? '#B3261E' : t === 'up' ? '#137333' : '#0B57D0', gid = 'ovG' + m.k;
+            var g = svgEl('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 });
+            g.appendChild(svgEl('stop', { offset: '0%', 'stop-color': col, 'stop-opacity': '0.25' })); g.appendChild(svgEl('stop', { offset: '100%', 'stop-color': col, 'stop-opacity': '0' }));
+            var df = svgEl('defs', {}); df.appendChild(g); s.appendChild(df);
+            var d = a.map(function (p, i) { return (i ? 'L' : 'M') + ((p.t - t0) / (t1 - t0 || 1) * W).toFixed(1) + ' ' + (4 + (hi - p.v) / (hi - lo || 1) * (H - 10)).toFixed(1); }).join(' ');
+            s.appendChild(svgEl('path', { d: d + ' L' + W + ' ' + H + ' L0 ' + H + ' Z', fill: 'url(#' + gid + ')' }));
+            s.appendChild(svgEl('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 1.6, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round' }));
+          }
+          c.appendChild(s);
+          c.addEventListener('click', function () { pickMetric(m.k); $('ovChart').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+          box.appendChild(c);
+        });
+      }
+
+      // ----- diagnósticos (CID-10 das evoluções) -----
+      function renderDx() {
+        var map = {}, list = [];
+        notes.forEach(function (n) {
+          var d = noteDate(n), seen = {};
+          ((n.data && n.data.cid) || []).forEach(function (c) {
+            var key = (c.code || '').toUpperCase() || norm(c.desc); if (!key || seen[key]) return; seen[key] = 1;
+            var x = map[key] || (map[key] = { code: (c.code || '').toUpperCase(), desc: c.desc || '', n: 0, last: null });
+            x.n++; if (d && (!x.last || d > x.last)) { x.last = d; if (c.desc) x.desc = c.desc; }
+          });
+        });
+        for (var k in map) list.push(map[k]);
+        list.sort(function (a, b) { return b.n - a.n || (b.last || 0) - (a.last || 0); });
+        var box = $('ovDx'); box.innerHTML = '';
+        $('ovDxSec').hidden = !list.length;
+        list.forEach(function (x, i) {
+          var r = el('div', 'ov-dxrow'); r.hidden = i >= 6;
+          r.appendChild(el('span', 'ov-dxcode', x.code || '—'));
+          var ds = el('span', 'ov-dxdesc', x.desc || 'Sem descrição'); ds.title = x.desc; r.appendChild(ds);
+          var mt = el('span', 'ov-dxmeta'); mt.appendChild(el('b', null, x.n + (x.n === 1 ? ' consulta' : ' consultas')));
+          if (x.last) mt.appendChild(document.createTextNode(' · última em ' + dayMon(x.last)));
+          r.appendChild(mt); box.appendChild(r);
+        });
+        if (list.length > 6) {
+          var mb = el('button', 'pr-ghost ov-more', 'Mostrar todos (' + list.length + ')'); mb.type = 'button';
+          mb.addEventListener('click', function () { [].forEach.call(box.querySelectorAll('.ov-dxrow'), function (r) { r.hidden = false; }); mb.remove(); });
+          box.appendChild(mb);
+        }
+      }
+
+      // ----- evoluções recentes (como "Notícias") -----
+      function strip(t) { return (t || '').replace(/^\s*(S|O|A|P)\s*:\s*/gm, '').replace(/\s+/g, ' ').trim(); }
+      function renderFeed() {
+        var list = notes.filter(function (n) { return (n.content || '').trim() || n.signed_at; }).slice(0, 6);
+        var box = $('ovFeed'); box.innerHTML = '';
+        $('ovFeedSec').hidden = !list.length;
+        list.forEach(function (n) {
+          var b = el('button', 'ov-post'); b.type = 'button';
+          var d = noteDate(n), src = el('span', 'ov-post-src');
+          src.appendChild(el('i', n.signed_at ? null : 'draft'));
+          src.appendChild(document.createTextNode(n === cur ? 'Consulta aberta' : eventTitle(n.event_title || (n.event_id ? '' : 'Evolução avulsa'))));
+          src.appendChild(el('small', null, ' · ' + (d ? dayMon(d) : '') + (n.signed_at ? '' : ' · rascunho')));
+          b.appendChild(src);
+          var dd = n.data || {}, cid = (dd.cid || []).map(function (c) { return c.desc || c.code; }).filter(Boolean);
+          var title = cid.length ? cid.slice(0, 2).join(' · ') : strip(dd.a) || strip(dd.s) || strip((n.content || '').split('\n')[0]) || 'Evolução';
+          b.appendChild(el('span', 'ov-post-t', title));
+          var bodyTxt = strip(dd.mode === 'soap' ? [dd.s, dd.p].filter(Boolean).join(' ') : n.content);
+          if (bodyTxt && bodyTxt !== title) b.appendChild(el('span', 'ov-post-b', bodyTxt));
+          b.addEventListener('click', function () { openNote(n); });
+          box.appendChild(b);
+        });
+      }
+      $('ovFeedMore').addEventListener('click', function () { setTab('historico'); $('prView').scrollTop = 0; });
+      $('ovEmptyGo').addEventListener('click', function () { setTab('atual'); (mode === 'soap' ? soapEls[0] : note).focus(); });
 
       // ===== abas =====
       var tabs = [].slice.call(document.querySelectorAll('#prTabs button'));
@@ -2968,6 +3624,7 @@
         tabs.forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
         [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { p.hidden = p.getAttribute('data-panel') !== t; });
         if (t === 'acessos') loadAccess();
+        if (t === 'geral') { if (ov.dirty) renderOverview(); else if (ov.metric) drawChart(); }
       }
       tabs.forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
 
@@ -3030,7 +3687,7 @@
         var list = notes.filter(function (n) { return n !== cur && ((n.content || '').trim() || n.signed_at); });
         if (!list.length) { box.innerHTML = '<div class="pr-empty">Nenhuma evolução anterior deste paciente.</div>'; return; }
         list.forEach(function (n) {
-          var it = el('div', 'pr-item'); it._q = norm([n.content, n.event_title].concat((n.addenda || []).map(function (a) { return a.content; })).join(' '));
+          var it = el('div', 'pr-item'); it._note = n; it._q = norm([n.content, n.event_title].concat((n.addenda || []).map(function (a) { return a.content; })).join(' '));
           var head = el('div', 'pr-item-head');
           var d = n.event_start ? parseStart(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null);
           var wh = el('span', 'pr-item-when', d ? fmtDay(d) : '');
@@ -3089,6 +3746,7 @@
         if (!ready || locked()) return;
         var t0 = visitStart();
         if (!t0) {
+          setTab('atual');
           try { sessionStorage.setItem(vkey(), String(Date.now())); } catch (_) {}
           renderVisit(); (mode === 'soap' ? soapEls[0] : note).focus(); return;
         }
@@ -3173,7 +3831,7 @@
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
         $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prExport').hidden = true;
-        visits = null; setTab('atual');
+        visits = null; setTab(c && c.event_id ? 'atual' : 'geral');
         if (!ctx || (!ctx.patient && !ctx.patient_id)) {
           msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return;
         }
