@@ -326,3 +326,58 @@ def test_aviso_de_senha_alterada(monkeypatch):
     tk = c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": fake.sent[-1][1]}).json()["ticket"]
     assert c.post("/auth/password/reset", json={"ticket": tk, "password": "Nova!12ab"}).json()["ok"]
     assert fake.sent[-1] == ("ana@clinica.com.br", "", "changed")
+
+
+# ----- revisão de segurança -----
+
+class _Rq:
+    def __init__(self, cookies):
+        self.cookies = cookies
+
+
+def test_so_cookie_de_sessao_vale_como_sessao(monkeypatch):
+    from app import db
+    monkeypatch.setattr(db, "get_user", lambda uid: {"id": uid, "email": "a@b.com", "sv": 0})
+    ok = auth.sign({"k": "sess", "uid": "u1", "sv": 0})
+    antigo = auth.sign({"uid": "u1", "sv": 0})                      # cookie de antes desta versão
+    cal = auth.sign({"k": "cal", "prov": "google", "uid": "u1"})     # state do calendário (vai na URL do Google)
+    reset = auth.sign({"k": "reset", "uid": "u1", "sv": 0})          # tíquete de nova senha
+    assert auth.current_user(_Rq({auth.COOKIE_NAME: ok}))["id"] == "u1"
+    assert auth.current_user(_Rq({auth.COOKIE_NAME: antigo}))["id"] == "u1"
+    assert auth.current_user(_Rq({auth.COOKIE_NAME: cal})) is None
+    assert auth.current_user(_Rq({auth.COOKIE_NAME: reset})) is None
+
+
+def test_rotas_de_login_so_aceitam_json(monkeypatch):
+    c = _client(monkeypatch, _Fake(_user("ana@clinica.com.br")))
+    body = '{"email": "ana@clinica.com.br", "password": "%s"}' % PW
+    for ctype in ("text/plain", "application/x-www-form-urlencoded", ""):
+        r = c.post("/auth/password/login", content=body, headers={"content-type": ctype})
+        assert r.json()["error"] == "email_invalido" and auth.COOKIE_NAME not in r.cookies
+    r = c.post("/auth/password/login", content=body, headers={"content-type": "application/json; charset=utf-8"})
+    assert r.json()["ok"]
+
+
+def test_login_google_amarrado_ao_navegador(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app import db
+    import urllib.parse as up
+    monkeypatch.setattr(integrations, "configured", lambda p: True)
+    monkeypatch.setattr(integrations, "_cid", lambda p: "cid")
+    monkeypatch.setattr(auth, "exchange_login", lambda code: {"email": "ana@clinica.com.br", "name": "Ana", "sub": "1"})
+    monkeypatch.setattr(db, "user_by_email", lambda e: {"id": "u1"})
+    monkeypatch.setattr(db, "upsert_user", lambda *a, **k: {"id": "u1", "email": "ana@clinica.com.br", "sv": 0})
+    c = TestClient(server.app)
+    r = c.get("/auth/google/login?next=/opendoctor-agenda.html%23pacientes", follow_redirects=False)
+    state = up.parse_qs(up.urlparse(r.headers["location"]).query)["state"][0]
+    nonce = r.cookies.get(auth.OAUTH_COOKIE)
+    assert nonce and auth.unsign(state)["n"] == nonce
+    # outro navegador (sem o cookie) usando o mesmo retorno: não loga
+    r2 = TestClient(server.app).get("/auth/google/callback?code=x&state=" + up.quote(state), follow_redirects=False)
+    assert "erro=conexao" in r2.headers["location"] and auth.COOKIE_NAME not in r2.cookies
+    # o mesmo navegador: loga e volta para a página de origem
+    r3 = c.get("/auth/google/callback?code=x&state=" + up.quote(state), follow_redirects=False)
+    assert r3.headers["location"] == "/opendoctor-agenda.html#pacientes" and auth.COOKIE_NAME in r3.cookies
+    # /auth/google/start (e-mail digitado) também marca o navegador
+    r4 = c.post("/auth/google/start", json={"email": "ana@clinica.com.br"})
+    assert r4.json()["url"].startswith("https://") and r4.cookies.get(auth.OAUTH_COOKIE)

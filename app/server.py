@@ -523,7 +523,10 @@ async def followups(request: Request):
 def google_login(next: str = ""):
     if not integrations.configured("google"):
         return JSONResponse({"error": "google não configurado"}, status_code=400)
-    return RedirectResponse(auth.login_url("", next))
+    url, nonce = auth.google_login_start("", next)
+    resp = RedirectResponse(url)
+    auth.set_oauth_cookie(resp, nonce)
+    return resp
 
 
 def _login_page(erro, nxt=""):
@@ -551,7 +554,10 @@ async def google_start(request: Request):
         email, nxt = "", ""
     if email and not _EMAIL.fullmatch(email):
         return JSONResponse({"error": "e-mail inválido"}, status_code=400)
-    return {"url": auth.login_url(email, nxt)}
+    url, nonce = auth.google_login_start(email, nxt)
+    resp = JSONResponse({"url": url})
+    auth.set_oauth_cookie(resp, nonce)
+    return resp
 
 
 # ----- login por e-mail e senha -----
@@ -560,6 +566,10 @@ async def google_start(request: Request):
 # conta (nem troca a senha) de um e-mail que não é seu.
 
 async def _body(request):
+    """Corpo JSON. Exige Content-Type application/json: um formulário de outro site só consegue mandar
+    text/plain/form — sem isso, ele poderia logar a vítima na conta do atacante (login CSRF)."""
+    if not (request.headers.get("content-type") or "").lower().startswith("application/json"):
+        return {}
     try:
         b = await request.json()
         return b if isinstance(b, dict) else {}
@@ -858,6 +868,11 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
 
     # --- login do app (só Google) ---
     if payload.get("k") == "login":
+        if not auth.login_nonce_ok(request, payload):
+            # retorno que não começou neste navegador (ou começou em outra aba): não loga
+            resp = RedirectResponse(_login_page("conexao", payload.get("nx", "")))
+            resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
+            return resp
         try:
             info = auth.exchange_login(code)
             novo = db.user_by_email(info["email"]) is None
@@ -866,6 +881,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             dest = auth.safe_next(payload.get("nx"))
             resp = RedirectResponse(auth.with_welcome(dest) if novo else dest)
             auth.set_session(resp, user["id"], user.get("sv", 0))
+            resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
             return resp
         except Exception as e:
             print("[auth] login falhou:", str(e)[:200])

@@ -66,7 +66,7 @@ def set_session(response, user_id: str, sv: int = 0):
     """`sv` = versão da sessão do usuário; ao trocar a senha ela muda e os cookies antigos param de valer."""
     secure = integrations.REDIRECT_BASE.startswith("https://")
     response.set_cookie(
-        COOKIE_NAME, sign({"uid": user_id, "sv": int(sv or 0)}),
+        COOKIE_NAME, sign({"k": "sess", "uid": user_id, "sv": int(sv or 0)}),
         max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
         secure=secure, path="/")
 
@@ -82,7 +82,9 @@ def current_user(request):
     if not tok:
         return None
     payload = unsign(tok, SESSION_MAX_AGE)
-    if not payload or "uid" not in payload:
+    # só tíquete de sessão: os de calendário/redefinição também têm "uid" mas outro "k" (o do calendário
+    # passa pela URL do Google). Sem "k" = cookies anteriores a esta versão (ainda valem até expirar).
+    if not payload or "uid" not in payload or payload.get("k", "sess") != "sess":
         return None
     try:
         user = db.get_user(payload["uid"])
@@ -180,11 +182,32 @@ def check_password(pw, stored) -> bool:
         return False
 
 
-def login_url(hint: str = "", nxt: str = "") -> str:
+OAUTH_COOKIE = "od_oauth"
+
+
+def google_login_start(hint: str = "", nxt: str = ""):
+    """(URL do Google, nonce). O nonce vai no `state` e num cookie deste navegador (set_oauth_cookie);
+    no retorno, o callback só aceita se os dois baterem — impede que outro site faça a vítima entrar
+    na conta Google do atacante (login CSRF)."""
+    nonce = secrets.token_urlsafe(16)
+    return login_url(hint, nxt, nonce), nonce
+
+
+def set_oauth_cookie(response, nonce):
+    response.set_cookie(OAUTH_COOKIE, nonce, max_age=STATE_MAX_AGE, httponly=True, samesite="lax",
+                        secure=integrations.REDIRECT_BASE.startswith("https://"), path="/auth/")
+
+
+def login_nonce_ok(request, payload) -> bool:
+    got = request.cookies.get(OAUTH_COOKIE) or ""
+    return bool(got) and hmac.compare_digest(got, str((payload or {}).get("n") or ""))
+
+
+def login_url(hint: str = "", nxt: str = "", nonce: str = "") -> str:
     """URL do login Google. `hint` (e-mail digitado na tela de login) já abre a conta certa;
-    `nxt` é a página para onde voltar depois."""
+    `nxt` é a página para onde voltar depois. Use google_login_start + set_oauth_cookie."""
     p = integrations.PROVIDERS["google"]
-    state = sign({"k": "login", "n": secrets.token_urlsafe(8), "nx": safe_next(nxt)})
+    state = sign({"k": "login", "n": nonce or secrets.token_urlsafe(16), "nx": safe_next(nxt)})
     params = {
         "client_id": integrations._cid("google"),
         "redirect_uri": integrations.redirect_uri("google"),

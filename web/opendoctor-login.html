@@ -272,7 +272,12 @@
         var fl = input.closest && input.closest('.fl');
         if (fl) fl.classList.toggle('bad', !!msg);
       }
-      function clearErrs(form) { [].forEach.call(form.querySelectorAll('.fl-input'), function (f) { fieldErr(f, ''); }); }
+      function clearErrs(form) {          // limpa erros e volta as senhas a ficarem ocultas
+        [].forEach.call(form.querySelectorAll('.fl-input'), function (f) { fieldErr(f, ''); });
+        [].forEach.call(form.querySelectorAll('[data-eye]'), function (b) {
+          $(b.getAttribute('data-eye')).type = 'password'; b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'Mostrar senha');
+        });
+      }
       function alertMsg(msg, info) {
         $('alert').hidden = !msg; $('alertText').textContent = msg || '';
         $('alert').classList.toggle('info', !!info);
@@ -374,7 +379,7 @@
       }
 
       // ----- caixas do código (6 dígitos) -----
-      var boxes = [].slice.call(document.querySelectorAll('#otp input')), otp = $('otp');
+      var boxes = [].slice.call(document.querySelectorAll('#otp input'));
       function codeValue() { return boxes.map(function (b) { return b.value; }).join(''); }
       function otpErr(msg) {
         $('otpErr').textContent = msg || ''; $('otpErr').hidden = !msg;

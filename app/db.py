@@ -138,8 +138,8 @@ def upsert_user(email, name=None, picture=None, google_sub=None):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                insert into users (email, name, picture, google_sub, last_login)
-                values (%s,%s,%s,%s, now())
+                insert into users (email, name, picture, google_sub, terms_accepted_at, last_login)
+                values (%s,%s,%s,%s, now(), now())
                 on conflict (email) do update set
                   name = coalesce(excluded.name, users.name),
                   picture = coalesce(excluded.picture, users.picture),
