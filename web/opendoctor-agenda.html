@@ -88,21 +88,22 @@
       font-family:var(--disp);color:#1F1F1F}
     .stage.prontuario .pr-view{display:flex}
     .stage.prontuario .ag-head,.stage.prontuario .cal,.stage.prontuario .wk{display:none}
-    .pr{width:100%;max-width:960px;height:max-content;display:flex;flex-direction:column;gap:20px}
-    #prMain{display:flex;flex-direction:column;gap:24px}
+    /* coluna do prontuário = coluna do Google Finance (748px); trilha → nome a 8px */
+    .pr{width:100%;max-width:748px;height:max-content;display:flex;flex-direction:column;gap:8px}
+    #prMain{display:flex;flex-direction:column;gap:16px}
     #prMain[hidden]{display:none}
-    .pr-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .pr-tools{display:flex;gap:4px}
-    .pr-back{border:0;background:none;padding:0;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#5F6368}
-    .pr-back:hover{color:#1F1F1F}
+    .pr-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px}
+    .pr-tools{display:flex;gap:4px;margin-right:-16px}
+    .pr-back{border:0;background:none;padding:0;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:24px;color:#0A0A0A}
+    .pr-back:hover{text-decoration:underline}
     /* botões: "fantasma" (texto) e pílula escura; pílula clara como "Saiba mais" */
-    .pr-ghost{height:36px;padding:0 14px;border:0;border-radius:999px;background:none;cursor:pointer;white-space:nowrap;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#3C4043}
-    .pr-ghost:hover{background:#F1F3F4;color:#1F1F1F}
+    .pr-ghost{height:36px;padding:0 16px;border:0;border-radius:18px;background:none;cursor:pointer;white-space:nowrap;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
+    .pr-ghost:hover{background:#F0F2F5}
     .pr-ghost:disabled{opacity:.4;cursor:default;background:none}
     .pr-ghost[hidden]{display:none}
-    .pr-ghost.warn{color:#B3261E}
-    .pr-save{height:36px;padding:0 18px;border:0;border-radius:999px;background:#1F1F1F;color:#fff;cursor:pointer;white-space:nowrap;
+    .pr-ghost.warn{color:#C0151D}
+    .pr-save{height:36px;padding:0 16px;border:0;border-radius:18px;background:#1F1F1F;color:#fff;cursor:pointer;white-space:nowrap;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px}
     .pr-save:hover{background:#000}
     .pr-save.live{background:#fff;color:#1F1F1F;box-shadow:inset 0 0 0 1px #DADCE0}
@@ -113,39 +114,40 @@
     .pr-link.warn{color:#B3261E}
     .pr-msg{font-family:var(--disp);font-size:15px;line-height:24px;color:#1F1F1F}
     .pr-msg a{color:#0B57D0}
-    /* cabeçalho do paciente */
-    .pr-head{display:flex;align-items:center;gap:16px}
-    .pr-avatar{width:48px;height:48px;flex:none;border-radius:50%;background:#D3E3FD;color:#0842A0;
-      display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:500;font-size:16px}
-    .pr-id{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-    .pr-name{font-family:var(--disp);font-weight:500;font-size:22px;line-height:28px;color:#1F1F1F;
+    /* cabeçalho do paciente = bloco "logo 32 + nome 20/26" do Finance; linha de dados 14/16 */
+    .pr-head{display:flex;align-items:flex-start;gap:8px}
+    .pr-avatar{width:32px;height:32px;flex:none;border-radius:50%;background:#D3E3FD;color:#0842A0;
+      display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:500;font-size:13px}
+    .pr-id{flex:1;min-width:0;display:flex;flex-direction:column;padding-top:3px}
+    .pr-name{font-family:var(--disp);font-weight:400;font-size:20px;line-height:26px;color:#0A0A0A;
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .pr-sub{font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#5F6368}
+    .pr-sub{margin-top:6px;font-family:var(--disp);font-weight:400;font-size:14px;line-height:16px;color:#56595E}
     .pr-visit{display:flex;align-items:center;gap:12px;flex:none}
     .pr-visit[hidden]{display:none}
     .pr-timer{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#E8710A}
-    .pr-tags{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px}
+    /* etiquetas: mesmas medidas dos botões de período (24px, raio 8, 12/16) */
+    .pr-tags{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:12px}
     .pr-tags:has(.pr-allergy[hidden]):not(:has(.pr-tag)){display:none}
-    .pr-allergy{display:inline-flex;align-items:center;gap:6px;padding:3px 12px 3px 10px;border-radius:999px;background:#FCE8E6;
-      font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#B3261E}
+    .pr-allergy{display:inline-flex;align-items:center;gap:6px;height:24px;padding:4px 10px 4px 8px;border-radius:8px;background:#FCE8E6;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#C0151D}
     #prProbTags{display:contents}
-    .pr-tag{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:#F3F5F8;
-      font-family:var(--disp);font-weight:400;font-size:13px;line-height:18px;color:#3C4043;white-space:nowrap}
-    .pr-crumb{display:flex;align-items:center;gap:12px}
+    .pr-tag{display:inline-flex;align-items:center;height:24px;padding:4px 10px;border-radius:8px;background:#F0F2F5;
+      font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:#0A0A0A;white-space:nowrap}
+    .pr-crumb{display:flex;align-items:center;gap:10px}
     .pr-crumb-sep{width:1px;height:16px;background:#C4C7C5}
-    .pr-crumb-t{font-family:var(--disp);font-size:14px;line-height:20px;color:#5F6368}
-    .pr-back{display:inline-flex;align-items:center;gap:6px}
+    .pr-crumb-t{font-family:var(--disp);font-size:14px;line-height:24px;color:#56595E}
+    .pr-back{display:inline-flex;align-items:center;gap:4px}
+    .pr-back svg{width:20px;height:20px}
     .pr-allergy[hidden]{display:none}
     .pr-allergy img{flex:none;display:block}
-    /* faixa de indicadores ("Último relatório | Período fiscal | …") */
-    /* abas (sublinhado azul de 3px, como na referência) */
-    .pr-tabs{display:flex;gap:32px;border-bottom:1px solid #E8EAED;overflow-x:auto;scrollbar-width:none}
+    /* abas = abas do Finance: 47px, 0 16px, 14/20 500; indicador 2px #0B57D0 sobre linha 1px #E1E3E1 */
+    .pr-tabs{display:flex;gap:0;border-bottom:1px solid #E1E3E1;overflow-x:auto;scrollbar-width:none}
     .pr-tabs::-webkit-scrollbar{display:none}
-    .pr-tabs button{position:relative;flex:none;border:0;background:none;padding:12px 2px 13px;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#5F6368;white-space:nowrap}
-    .pr-tabs button:hover{color:#1F1F1F}
+    .pr-tabs button{position:relative;flex:none;height:47px;border:0;background:none;padding:0 16px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#444746;white-space:nowrap}
+    .pr-tabs button:hover{color:#1F1F1F;background:#F8F9FA}
     .pr-tabs button.on{color:#1F1F1F}
-    .pr-tabs button.on::after{content:'';position:absolute;left:-8px;right:-8px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:#0B57D0}
+    .pr-tabs button.on::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px 2px 0 0;background:#0B57D0}
     .pr-panel{display:flex;flex-direction:column;gap:16px}
     .pr-panel[hidden]{display:none}
     /* cartões */
@@ -297,179 +299,188 @@
     .pr-acc.th{font-weight:500;padding:10px 8px 12px;border-bottom-color:#DADCE0}
     .pr-acc b{font-weight:400;color:#3C4043}
     .pr-printcur{display:none}
-    /* ===== Visão geral — referência: novo Google Finance (barra "Perspectiva", cartões de índices,
-       gráfico com moldura e barras de volume, "Resumo do mercado" em sanfona, grade de indicadores,
-       "Próximos resultados" com bloco de data, "Mais notícias") ===== */
-    .pr-tabs{position:sticky;top:-24px;z-index:6;background:#fff;margin:0 -2px;padding:0 2px}
-    .ov{gap:28px}
-    .ov-sec{display:flex;flex-direction:column;gap:12px}
+    /* ===== Visão geral — medidas do novo Google Finance (google.com/finance, 1440px), tiradas dos
+       próprios elementos: coluna 748; título de seção 20/28 500; nome 20/26 400; número grande 24/32 500;
+       variação 20/26; texto 14/20; indicadores 12/16; data 11/16. Cores: texto #0A0A0A, secundário
+       #56595E, terciário #36373A, linhas #F0F2F5, painéis #F7F8FA, botão de período #E9EBF0,
+       pílula #E1E3E8, verde #046E00, vermelho #C0151D. Seções a 32px; título → conteúdo 16px. ===== */
+    .pr-view{--g-ink:#0A0A0A;--g-ink2:#56595E;--g-ink3:#36373A;--g-line:#F0F2F5;--g-panel:#F7F8FA;--g-chip:#E9EBF0;
+      --g-pill:#E1E3E8;--g-green:#046E00;--g-red:#C0151D;--g-blue:#0B57D0}
+    .pr-tabs{position:sticky;top:-24px;z-index:6;background:#fff}
+    .ov{gap:32px;padding-top:4px}
+    .ov-sec{display:flex;flex-direction:column;gap:16px}
     .ov-sec[hidden]{display:none}
-    .ov-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-family:var(--disp);font-weight:500;font-size:20px;line-height:28px;color:#1F1F1F}
-    .ov-hs{font-weight:400;font-size:13px;line-height:18px;color:#5F6368}
-    /* perspectiva */
-    .ov-persp{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:12px;background:#F3F5F8;padding:12px 16px;cursor:pointer;text-align:left;
-      font-family:var(--disp);font-size:14px;line-height:20px;color:#1F1F1F}
+    .ov-hd{display:flex;flex-direction:column}
+    .ov-h{font-family:var(--disp);font-weight:500;font-size:20px;line-height:28px;color:var(--g-ink)}
+    .ov-hs{font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:var(--g-ink2)}
+    /* barra "Perspectiva" (48px, raio 12) */
+    .ov-persp{display:flex;align-items:center;gap:8px;width:100%;height:48px;border:0;border-radius:12px;background:var(--g-panel);padding:0 12px;
+      cursor:pointer;text-align:left;font-family:var(--disp);font-size:14px;line-height:20px;color:var(--g-ink)}
     .ov-persp[hidden]{display:none}
-    .ov-persp:hover{background:#ECEFF3}
-    .ov-persp svg{flex:none;display:block}
+    .ov-persp:hover{background:var(--g-line)}
+    .ov-persp > svg{flex:none;display:block;width:24px;height:24px}
     .ov-persp-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .ov-persp-t b{font-weight:500}
-    .ov-persp-t .g{color:#137333}.ov-persp-t .r{color:#B3261E}.ov-persp-t .n{color:#5F6368}
-    .ov-persp-go{flex:none;display:inline-flex;align-items:center;gap:2px;font-weight:500}
-    /* cartões dos sinais vitais (como os índices do Finance) */
-    .ov-tiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(148px,1fr);gap:8px;overflow-x:auto;scroll-snap-type:x proximity;
-      scrollbar-width:none;padding:2px;margin:-2px}
+    .ov-persp-t b{font-weight:400}
+    .ov-persp-t .g{color:var(--g-green)}.ov-persp-t .r{color:var(--g-red)}.ov-persp-t .n{color:var(--g-ink2)}
+    .ov-persp-go{flex:none;display:inline-flex;align-items:center;gap:4px;font-weight:500;font-size:14px}
+    .ov-persp-go svg{width:20px;height:20px}
+    /* cartões dos sinais vitais = cartões de índices (140×144, raio 12, espaço 12) */
+    .ov-persp + .ov-tiles{margin-top:-16px}
+    .ov-tiles{display:grid;grid-auto-flow:column;grid-auto-columns:140px;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;
+      scrollbar-width:none;padding:1px;margin:-1px}
     .ov-tiles::-webkit-scrollbar{display:none}
     .ov-tiles[hidden]{display:none}
-    .ov-tile{position:relative;display:flex;flex-direction:column;gap:1px;min-width:0;border:0;border-radius:12px;background:#F3F5F8;padding:10px 12px 0;
-      cursor:pointer;text-align:left;overflow:hidden;scroll-snap-align:start;font-family:var(--disp);box-shadow:inset 0 0 0 1px transparent}
-    .ov-tile:hover{background:#ECEFF3}
-    .ov-tile.on{background:#fff;box-shadow:inset 0 0 0 1px #747775}
-    .ov-tile-n{font-weight:500;font-size:15px;line-height:20px;color:#1F1F1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .ov-tile-v{font-size:12px;line-height:16px;color:#5F6368;white-space:nowrap}
-    .ov-tile-d{display:inline-flex;align-items:center;gap:5px;margin-top:3px;font-weight:500;font-size:15px;line-height:20px;color:#5F6368;white-space:nowrap}
-    .ov-tile-d.up{color:#137333}.ov-tile-d.down{color:#B3261E}
-    .ov-tile-v.bad{color:#B3261E;font-weight:500}
-    .ov-tile svg.sp{display:block;width:calc(100% + 24px);height:30px;margin:6px -12px 0}
-    /* círculo com seta (variação) */
-    .ov-ar{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;background:#5F6368}
-    .up > .ov-ar,.ov-ar.up{background:#137333}.down > .ov-ar,.ov-ar.down{background:#B3261E}
+    .ov-tile{display:flex;flex-direction:column;height:144px;min-width:0;border:0;border-radius:12px;background:var(--g-panel);padding:12px 16px 0 12px;
+      cursor:pointer;text-align:left;overflow:hidden;scroll-snap-align:start;font-family:var(--disp)}
+    .ov-tile:hover{background:var(--g-line)}
+    .ov-tile.on{box-shadow:inset 0 0 0 1px var(--g-ink2)}
+    .ov-tile-n{font-weight:500;font-size:16px;line-height:24px;color:var(--g-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ov-tile-v{margin-top:2px;font-weight:500;font-size:12px;line-height:16px;color:var(--g-ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ov-tile-v.bad{color:var(--g-red)}
+    .ov-tile-s{margin-top:2px;font-weight:400;font-size:12px;line-height:16px;color:var(--g-ink2);white-space:nowrap}
+    .ov-tile-d{display:inline-flex;align-items:center;gap:4px;margin-top:8px;font-weight:500;font-size:16px;line-height:20px;color:var(--g-ink2);white-space:nowrap}
+    .ov-tile-d.up{color:var(--g-green)}.ov-tile-d.down{color:var(--g-red)}
+    .ov-tile svg.sp{display:block;width:calc(100% + 28px);height:44px;margin:auto -16px 0 -12px;flex:none}
+    /* círculo com seta (16px) */
+    .ov-ar{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;background:var(--g-ink2)}
+    .up > .ov-ar,.ov-ar.up{background:var(--g-green)}.down > .ov-ar,.ov-ar.down{background:var(--g-red)}
     .ov-ar svg{display:block}
-    /* gráfico */
+    /* bloco do número (como nome / preço / data do Finance) */
+    .ov-tiles + .ov-chart{margin-top:-8px}
     .ov-chart{display:flex;flex-direction:column;gap:12px}
     .ov-chart[hidden]{display:none}
-    .ov-chart-head{display:flex;flex-direction:column;gap:2px}
-    .ov-mlabel{font-family:var(--disp);font-size:15px;line-height:20px;color:#1F1F1F}
-    .ov-big{display:flex;align-items:center;flex-wrap:wrap;column-gap:8px}
-    .ov-val{font-family:var(--disp);font-weight:500;font-size:26px;line-height:34px;color:#1F1F1F}
-    .ov-unit{font-family:var(--disp);font-size:15px;line-height:20px;color:#5F6368;margin:6px 4px 0 -4px;align-self:flex-start}
-    .ov-delta{display:inline-flex;align-items:center;gap:6px;font-family:var(--disp);font-size:18px;line-height:24px;color:#5F6368}
-    .ov-delta.up{color:#137333}.ov-delta.down{color:#B3261E}
-    .ov-delta small{font-size:15px;color:#1F1F1F}
-    .ov-delta.up small,.ov-delta.down small{color:inherit}
-    .ov-when{font-family:var(--disp);font-size:13px;line-height:18px;color:#5F6368}
-    .ov-flag{display:inline-block;padding:0 8px;border-radius:999px;background:#FCE8E6;color:#B3261E;font-weight:500;font-size:12px;line-height:18px}
-    .ov-frame{border-radius:12px;background:#F3F5F8;padding:10px 10px 8px;display:flex;flex-direction:column;gap:8px}
-    .ov-legend{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:2px 6px;font-family:var(--disp);font-size:12px;line-height:16px;color:#444746}
-    .ov-legend span{display:inline-flex;align-items:center;gap:6px}
-    .ov-legend i{width:14px;height:0;border-top:2px solid #0B57D0;display:inline-block}
+    .ov-chart-head{display:flex;flex-direction:column}
+    .ov-mlabel{font-family:var(--disp);font-weight:400;font-size:20px;line-height:26px;color:var(--g-ink)}
+    .ov-big{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:8px;margin-top:8px}
+    .ov-val{font-family:var(--disp);font-weight:500;font-size:24px;line-height:32px;color:var(--g-ink)}
+    .ov-unit{font-family:var(--disp);font-size:14px;line-height:20px;color:var(--g-ink2);margin-left:-4px}
+    .ov-delta{display:inline-flex;align-items:center;align-self:center;gap:6px;font-family:var(--disp);font-weight:400;font-size:20px;line-height:26px;color:var(--g-ink2)}
+    .ov-delta.up{color:var(--g-green)}.ov-delta.down{color:var(--g-red)}
+    .ov-delta small{font-size:20px;color:var(--g-ink)}
+    .ov-when{margin-top:2px;font-family:var(--disp);font-size:14px;line-height:16px;color:var(--g-ink2)}
+    .ov-flag{display:inline-block;padding:0 8px;border-radius:8px;background:#FCE8E6;color:var(--g-red);font-weight:500;font-size:12px;line-height:16px;vertical-align:1px}
+    /* moldura do gráfico: três painéis #F7F8FA separados por 2px (barra 40 · gráfico 227 · períodos 39) */
+    .ov-frame{display:flex;flex-direction:column;gap:2px}
+    .ov-legend{display:flex;align-items:center;gap:0;flex-wrap:wrap;min-height:40px;padding:0 8px;border-radius:16px 16px 4px 4px;background:var(--g-panel);
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:var(--g-ink)}
+    .ov-legend span{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 12px}
+    .ov-legend i{width:14px;height:0;border-top:2px solid var(--g-blue);display:inline-block}
     .ov-legend i.lt{border-top-color:#8AB4F8}
-    .ov-legend i.band{height:10px;border:0;border-radius:2px;background:rgba(19,115,51,.14)}
-    .ov-legend i.lim{border-top:1px dashed #D93025}
-    .ov-legend i.bar{width:3px;height:10px;border:0;border-radius:1px;background:#9AA0A6}
-    .ov-plot{position:relative;height:236px;border-radius:8px;background:#fff;padding:12px 12px 6px 4px;outline:none}
-    .ov-plot:focus-visible{box-shadow:0 0 0 2px #0B57D0}
+    .ov-legend i.band{height:10px;border:0;border-radius:2px;background:rgba(4,110,0,.16)}
+    .ov-legend i.lim{border-top:1px dashed var(--g-red)}
+    .ov-legend i.bar{width:3px;height:12px;border:0;border-radius:1px;background:#9AA0A6}
+    .ov-plot{position:relative;height:227px;border-radius:4px;background:var(--g-panel);padding:16px 13px 10px;outline:none}
+    .ov-plot:focus-visible{box-shadow:inset 0 0 0 2px var(--g-blue)}
     .ov-plot svg{display:block;width:100%;height:100%;overflow:visible}
-    .ov-plot text{font-family:var(--disp);font-size:11px;fill:#5F6368}
-    .ov-tip{position:absolute;z-index:3;pointer-events:none;min-width:150px;max-width:240px;padding:10px 12px;border-radius:12px;background:#fff;
-      box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15);font-family:var(--disp)}
+    .ov-plot text{font-family:var(--disp);font-size:11px;fill:var(--g-ink3)}
+    .ov-tip{position:absolute;z-index:3;pointer-events:none;min-width:150px;max-width:240px;padding:8px 12px;border-radius:8px;background:#fff;
+      box-shadow:0 1px 2px rgba(60,64,67,.3),0 2px 6px 2px rgba(60,64,67,.15);font-family:var(--disp)}
     .ov-tip[hidden]{display:none}
-    .ov-tip-d{font-size:12px;line-height:16px;color:#5F6368}
-    .ov-tip-v{font-weight:500;font-size:16px;line-height:22px;color:#1F1F1F}
-    .ov-tip-v.bad{color:#B3261E}
-    .ov-tip-v small{font-weight:400;font-size:12px;color:#5F6368}
-    .ov-tip-c{font-size:12px;line-height:16px;color:#5F6368}
-    .ov-tip-c.up{color:#137333}.ov-tip-c.down{color:#B3261E}
-    .ov-tip-go{font-size:12px;line-height:16px;color:#0B57D0;margin-top:4px}
+    .ov-tip-d{font-size:12px;line-height:16px;color:var(--g-ink2)}
+    .ov-tip-v{font-weight:500;font-size:16px;line-height:24px;color:var(--g-ink)}
+    .ov-tip-v.bad{color:var(--g-red)}
+    .ov-tip-v small{font-weight:400;font-size:12px;color:var(--g-ink2)}
+    .ov-tip-c{font-size:12px;line-height:16px;color:var(--g-ink2)}
+    .ov-tip-c.up{color:var(--g-green)}.ov-tip-c.down{color:var(--g-red)}
+    .ov-tip-go{font-size:12px;line-height:16px;color:var(--g-blue);margin-top:4px}
     .ov-plotmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
-      font-family:var(--disp);font-size:14px;line-height:20px;color:#5F6368;pointer-events:none}
+      font-family:var(--disp);font-size:14px;line-height:20px;color:var(--g-ink2);pointer-events:none}
     .ov-plotmsg[hidden]{display:none}
-    .ov-ranges{display:flex;gap:4px;padding:0 4px}
-    .ov-ranges button{border:0;background:none;cursor:pointer;border-radius:8px;white-space:nowrap;
-      font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:#444746;padding:4px 12px}
-    .ov-ranges button:hover{background:#E8EAED;color:#1F1F1F}
-    .ov-ranges button.on{background:#E1E5EA;color:#1F1F1F;font-weight:500}
-    .ov-empty{border-radius:12px;background:#F3F5F8;padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+    .ov-ranges{display:flex;gap:6px;height:39px;padding:7px 16px 8px;border-radius:4px 4px 16px 16px;background:var(--g-panel)}
+    .ov-ranges button{min-width:48px;height:24px;border:0;background:none;cursor:pointer;border-radius:8px;white-space:nowrap;
+      font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:var(--g-ink2);padding:4px 10px}
+    .ov-ranges button:hover{background:var(--g-line);color:var(--g-ink)}
+    .ov-ranges button.on{background:var(--g-chip);color:var(--g-ink);font-weight:500}
+    .ov-empty{border-radius:12px;background:var(--g-panel);padding:24px;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
     .ov-empty[hidden]{display:none}
-    .ov-empty-t{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#1F1F1F}
-    .ov-empty-s{font-family:var(--disp);font-size:14px;line-height:20px;color:#5F6368;max-width:520px}
-    .ov-empty-s b{font-weight:500;color:#1F1F1F}
-    .ov-empty .ov-pill{margin-top:10px}
-    /* botões em pílula (como "Aprenda mais com a IA") */
-    .ov-pill{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 16px;border:0;border-radius:999px;background:#E9EBF0;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#1F1F1F;white-space:nowrap}
-    .ov-pill:hover{background:#DFE2E8}
-    .ov-pill svg{flex:none;display:block}
-    /* resumo do paciente (sanfona) */
+    .ov-empty-t{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:var(--g-ink)}
+    .ov-empty-s{font-family:var(--disp);font-size:14px;line-height:20px;color:var(--g-ink2);max-width:520px}
+    .ov-empty-s b{font-weight:500;color:var(--g-ink)}
+    .ov-empty .ov-pill{margin-top:12px}
+    /* pílula (como "Aprenda mais com a IA": 36px, #E1E3E8, 14/20 500) */
+    .ov-pill{display:inline-flex;align-items:center;gap:4px;height:36px;padding:8px 16px 8px 12px;border:0;border-radius:100px;background:var(--g-pill);cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--g-ink);white-space:nowrap}
+    .ov-pill:hover{background:#D7DAE0}
+    .ov-pill svg{flex:none;display:block;width:20px;height:20px}
+    /* resumo do paciente = "Resumo do mercado" (linha 12px + divisória #F0F2F5; título 16/24 500; botão 40) */
     .ov-acc{display:flex;flex-direction:column}
-    .ov-ai{border-bottom:1px solid #E8EAED}
-    .ov-ai-h{display:flex;align-items:center;gap:16px;width:100%;border:0;background:none;padding:14px 0;cursor:pointer;text-align:left;
-      font-family:var(--disp);font-weight:500;font-size:16px;line-height:22px;color:#1F1F1F}
-    .ov-ai-h:hover .ov-ai-t{text-decoration:underline;text-decoration-color:#C4C7C5;text-underline-offset:3px}
-    .ov-ai-dot{width:8px;height:8px;border-radius:50%;flex:none;background:#9AA0A6}
-    .ov-ai-dot.up{background:#137333}.ov-ai-dot.down{background:#D93025}.ov-ai-dot.warn{background:#E37400}.ov-ai-dot.todo{background:#9AA0A6}
+    .ov-ai{padding:12px 0;border-bottom:1px solid var(--g-line)}
+    .ov-ai-h{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;border:0;background:none;padding:0;cursor:pointer;text-align:left;
+      font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:var(--g-ink)}
+    .ov-ai-dot{width:8px;height:8px;border-radius:50%;flex:none;background:#9AA0A6;margin-right:4px}
+    .ov-ai-dot.up{background:var(--g-green)}.ov-ai-dot.down{background:var(--g-red)}.ov-ai-dot.warn{background:#E37400}.ov-ai-dot.todo{background:#9AA0A6}
     .ov-ai-t{flex:1;min-width:0}
-    .ov-ai-chev{width:32px;height:32px;flex:none;border-radius:50%;background:#F3F5F8;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+    .ov-ai-chev{width:40px;height:40px;flex:none;border-radius:20px;background:var(--g-line);display:flex;align-items:center;justify-content:center;transition:transform .2s}
+    .ov-ai-chev svg{width:24px;height:24px}
+    .ov-ai-h:hover .ov-ai-chev{background:#E3E6EA}
     .ov-ai-h[aria-expanded=true] .ov-ai-chev{transform:rotate(180deg)}
-    .ov-ai-b{padding:0 48px 18px 24px;display:flex;flex-direction:column;align-items:flex-start;gap:14px}
+    .ov-ai-b{padding:12px 48px 4px 20px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
     .ov-ai-b[hidden]{display:none}
-    .ov-ai-b p{margin:0;font-family:var(--disp);font-size:15px;line-height:24px;color:#1F1F1F}
+    .ov-ai-b p{margin:0;max-width:650px;font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:var(--g-ink)}
     .ov-ai-acts{display:flex;gap:8px;flex-wrap:wrap}
-    /* grade de indicadores (como "Abrir / Alta / Baixa…" do Finance) */
-    .ov-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:24px}
+    /* indicadores = "Abrir / Alta / Baixa…" (3 colunas, espaço 20; linha 40 + 1px #F0F2F5; 12/16) */
+    .ov-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:20px}
     .ov-col{display:flex;flex-direction:column;min-width:0}
-    .ov-colh{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#5F6368;padding:0 0 8px;border-bottom:1px solid #E8EAED}
-    .ov-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px;padding:8px 0;border-bottom:1px solid #E8EAED;
-      font-family:var(--disp);font-size:13px;line-height:18px}
-    .ov-row span{color:#5F6368;white-space:nowrap}
-    .ov-row b{font-weight:400;color:#1F1F1F;text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .ov-row b.bad{color:#B3261E;font-weight:500}
+    .ov-row{display:flex;align-items:center;justify-content:space-between;gap:12px;height:41px;padding:0 8px;border-bottom:1px solid var(--g-line);
+      font-family:var(--disp);font-size:12px;line-height:16px}
+    .ov-row span{color:var(--g-ink2);white-space:nowrap}
+    .ov-row b{font-weight:400;color:var(--g-ink);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ov-row b.bad{color:var(--g-red);font-weight:500}
     .ov-row b.warn{color:#B06000;font-weight:500}
-    .ov-row b.muted{color:#80868B}
-    .ov-row button{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:#B3261E}
-    /* próximas consultas (como "Próximos resultados") */
+    .ov-row b.muted{color:var(--g-ink2)}
+    .ov-row button{border:0;background:none;padding:0;cursor:pointer;font:inherit;font-weight:500;color:var(--g-red)}
+    /* próximas consultas = "Próximos resultados" (linha 12px; bloco de data 42, raio 4) */
     .ov-next{display:flex;flex-direction:column}
-    .ov-nrow{display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:16px;padding:12px 0;border:0;border-bottom:1px solid #E8EAED;
+    .ov-nrow{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 0;border:0;border-bottom:1px solid var(--g-line);
       background:none;width:100%;text-align:left;cursor:pointer;font-family:var(--disp)}
-    .ov-nrow:hover{background:#F8F9FA}
-    .ov-date{display:flex;flex-direction:column;align-items:center;justify-content:center;width:44px;height:48px;border-radius:8px;background:#F3F5F8}
-    .ov-date small{font-weight:500;font-size:10px;line-height:12px;letter-spacing:.3px;color:#5F6368;text-transform:uppercase}
-    .ov-date b{font-weight:500;font-size:18px;line-height:22px;color:#1F1F1F}
-    .ov-nt{display:flex;flex-direction:column;gap:2px;min-width:0}
-    .ov-nt b{font-weight:500;font-size:15px;line-height:20px;color:#1F1F1F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .ov-nt span{font-size:13px;line-height:18px;color:#5F6368;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .ov-nwhen{font-size:13px;line-height:18px;color:#5F6368;white-space:nowrap}
-    .ov-nmsg{font-family:var(--disp);font-size:14px;line-height:20px;color:#5F6368;padding:4px 0}
-    .ov-nmsg a{color:#0B57D0}
-    /* resumo clínico como tabela de perfil (como "Sobre" do Finance) */
+    .ov-nrow:hover .ov-nt b{text-decoration:underline}
+    .ov-date{display:flex;flex-direction:column;align-items:center;width:42px;height:42px;padding:2px;border-radius:4px;background:var(--g-line)}
+    .ov-date small{font-weight:500;font-size:11px;line-height:16px;color:var(--g-ink);text-transform:uppercase}
+    .ov-date b{font-weight:400;font-size:18px;line-height:24px;color:var(--g-ink2)}
+    .ov-nt{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .ov-nt b{font-weight:500;font-size:14px;line-height:18px;color:var(--g-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ov-nt span{font-size:12px;line-height:16px;color:var(--g-ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ov-nwhen{font-size:12px;line-height:16px;color:var(--g-ink3);white-space:nowrap}
+    .ov-nmsg{font-family:var(--disp);font-size:14px;line-height:20px;color:var(--g-ink2)}
+    .ov-nmsg a{color:var(--g-blue)}
+    /* resumo clínico como tabela de perfil (rótulo 12/16; etiquetas 24px, raio 8, 12/16) */
     .ov .pr-sum{display:flex;flex-direction:column;gap:0}
-    .ov .pr-sumcol{display:grid;grid-template-columns:160px minmax(0,1fr);column-gap:16px;row-gap:4px;align-items:start;background:none;border-radius:0;
-      padding:12px 0;border-bottom:1px solid #E8EAED}
-    .ov .pr-sumcol:first-child{border-top:1px solid #E8EAED}
-    .ov .pr-sumhead{grid-row:1 / span 2;font-weight:400;font-size:14px;line-height:28px;color:#5F6368}
-    .ov .pr-chips{grid-column:2}
+    .ov .pr-sumcol{display:grid;grid-template-columns:140px minmax(0,1fr);column-gap:12px;row-gap:6px;align-items:start;background:none;border-radius:0;
+      padding:12px 8px;border-bottom:1px solid var(--g-line)}
+    .ov .pr-sumhead{grid-row:1 / span 2;font-weight:400;font-size:14px;line-height:24px;color:var(--g-ink)}
+    .ov .pr-chips{grid-column:2;gap:6px}
     .ov .pr-chips:empty{display:none}
-    .ov .pr-chipin{grid-column:2;border:0;padding:4px 0;font-size:14px;line-height:20px}
-    .ov .pr-chipin::placeholder{color:#0B57D0}
+    .ov .pr-chipin{grid-column:2;border:0;padding:4px 0;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:var(--g-ink)}
+    .ov .pr-chipin::placeholder{color:var(--g-blue)}
     .ov .pr-chipin:focus::placeholder{color:#9AA0A6}
-    .ov .pr-chip{background:#F3F5F8;box-shadow:none}
-    .ov .pr-chip.red{background:#FCE8E6}
-    /* diagnósticos */
+    .ov .pr-chip{height:24px;padding:4px 4px 4px 10px;border-radius:8px;background:var(--g-line);box-shadow:none;font-size:12px;line-height:16px;font-weight:400;color:var(--g-ink)}
+    .ov .pr-chip.red{background:#FCE8E6;color:var(--g-red);font-weight:500}
+    /* diagnósticos (linhas como "Próximos resultados") */
     .ov-dx{display:flex;flex-direction:column}
-    .ov-dxrow{display:grid;grid-template-columns:52px minmax(0,1fr) 148px;align-items:center;gap:16px;padding:10px 0;border-bottom:1px solid #E8EAED;
-      font-family:var(--disp);font-size:14px;line-height:20px}
-    .ov-dxrow:first-child{border-top:1px solid #E8EAED}
+    .ov-dxrow{display:grid;grid-template-columns:42px minmax(0,1fr) 128px;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--g-line);
+      font-family:var(--disp)}
     .ov-dxrow[hidden]{display:none}
-    .ov-dxcode{font-weight:500;color:#1F1F1F}
-    .ov-dxdesc{display:flex;flex-direction:column;min-width:0}
-    .ov-dxdesc b{font-weight:400;color:#1F1F1F;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .ov-dxdesc small{font-size:12px;line-height:16px;color:#5F6368}
-    .ov-dxbar{display:flex;align-items:center;gap:8px;font-size:13px;color:#1F1F1F;white-space:nowrap}
-    .ov-dxbar i{height:6px;border-radius:3px;background:#0B57D0;opacity:.75;flex:none}
-    .ov-link{display:inline-flex;align-items:center;gap:2px;align-self:flex-start;border:0;background:none;padding:4px 0;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#1F1F1F}
+    .ov-dxcode{font-weight:500;font-size:14px;line-height:18px;color:var(--g-ink)}
+    .ov-dxdesc{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .ov-dxdesc b{font-weight:500;font-size:14px;line-height:18px;color:var(--g-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ov-dxdesc small{font-size:12px;line-height:16px;color:var(--g-ink3)}
+    .ov-dxbar{display:flex;align-items:center;gap:8px;font-size:12px;line-height:16px;color:var(--g-ink3);white-space:nowrap}
+    .ov-dxbar i{height:6px;border-radius:3px;background:var(--g-blue);opacity:.8;flex:none}
+    .ov-link{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;border:0;background:none;padding:0;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--g-ink)}
+    .ov-link svg{width:20px;height:20px}
     .ov-link:hover{text-decoration:underline}
-    /* evoluções recentes (como "Mais notícias") */
-    .ov-feed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 24px}
-    .ov-post{display:flex;flex-direction:column;gap:4px;border:0;background:none;text-align:left;cursor:pointer;padding:10px 12px;margin:0 -12px;border-radius:12px;min-width:0;font-family:var(--disp)}
-    .ov-post:hover{background:#F3F5F8}
-    .ov-post-src{display:flex;align-items:center;gap:6px;font-weight:500;font-size:12px;line-height:16px;color:#1F1F1F}
-    .ov-post-src i{width:8px;height:8px;border-radius:50%;background:#137333;flex:none}
-    .ov-post-src i.draft{background:#E8710A}
-    .ov-post-src small{font-weight:400;font-size:12px;color:#5F6368}
-    .ov-post-t{font-weight:500;font-size:15px;line-height:21px;color:#1F1F1F;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-    .ov-post-b{font-size:13px;line-height:18px;color:#5F6368;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
-    .ov-note{font-family:var(--disp);font-size:12px;line-height:16px;color:#80868B;margin-top:-8px}
+    /* evoluções recentes = "Mais notícias" (2 colunas, espaço 24 × 16; fonte 12/16 500; título 14/20 500) */
+    .ov-feed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 24px}
+    .ov-post{display:flex;flex-direction:column;gap:6px;border:0;background:none;text-align:left;cursor:pointer;padding:0;min-width:0;font-family:var(--disp)}
+    .ov-post:hover .ov-post-t{text-decoration:underline}
+    .ov-post-src{display:flex;align-items:center;gap:4px;font-weight:500;font-size:12px;line-height:16px;color:var(--g-ink)}
+    .ov-post-src i{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center}
+    .ov-post-src i::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--g-green)}
+    .ov-post-src i.draft::before{background:#E37400}
+    .ov-post-src small{font-weight:400;font-size:12px;color:var(--g-ink2)}
+    .ov-post-t{font-weight:500;font-size:14px;line-height:20px;color:var(--g-ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .ov-note{font-family:var(--disp);font-size:12px;line-height:16px;color:var(--g-ink2)}
     .pr-item.flash{animation:prflash 1.6s ease-out}
     @keyframes prflash{0%,30%{background:#E8F0FE}100%{background:transparent}}
     /* coluna estreita (assistente aberto) */
@@ -483,18 +494,16 @@
       .pr-trow{grid-template-columns:minmax(110px,1fr) minmax(0,1fr) 116px}
       .pr-trow .pr-tloc{display:none}
       .pr-bigcard{padding:18px 20px 20px}
-      .pr-tabs{gap:24px}                                   /* 6 abas cabem sem rolar */
+      .pr-tabs button{padding:0 12px}                      /* 6 abas cabem sem rolar */
     }
     @container pr (max-width:620px){
       .ov-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
       .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px}
-      .ov-col:nth-child(3) .ov-colh{grid-column:1 / -1;margin-top:20px}
       .ov-feed{grid-template-columns:1fr}
       .ov .pr-sumcol{grid-template-columns:132px minmax(0,1fr)}
     }
     @container pr (max-width:520px){
       .ov-stats,.ov-col:nth-child(3){grid-template-columns:1fr}
-      .ov-col + .ov-col .ov-colh{margin-top:20px}
       .ov-dxrow{grid-template-columns:52px minmax(0,1fr)}
       .ov-dxbar{grid-column:2}
       .ov .pr-sumcol{grid-template-columns:1fr}
@@ -1097,7 +1106,7 @@
 
               <!-- "Resumo do mercado" do Finance: frases que abrem em detalhe -->
               <div class="ov-sec" id="ovSumSec" hidden>
-                <div class="ov-h">Resumo do paciente<span class="ov-hs">Calculado a partir do prontuário e da agenda · sem IA</span></div>
+                <div class="ov-hd"><div class="ov-h">Resumo do paciente</div><div class="ov-hs">Calculado a partir do prontuário e da agenda · sem IA</div></div>
                 <div class="ov-acc" id="ovAcc"></div>
               </div>
 
@@ -1105,7 +1114,7 @@
 
               <!-- "Próximos resultados" do Finance -->
               <div class="ov-sec" id="ovNextSec" hidden>
-                <div class="ov-h">Próximas consultas</div>
+                <div class="ov-hd"><div class="ov-h">Próximas consultas</div><div class="ov-hs">Da sua agenda</div></div>
                 <div class="ov-next" id="ovNext"></div>
               </div>
 
@@ -1119,13 +1128,13 @@
               </div>
 
               <div class="ov-sec" id="ovDxSec" hidden>
-                <div class="ov-h">Diagnósticos<span class="ov-hs">CID-10 registrados nas evoluções</span></div>
+                <div class="ov-hd"><div class="ov-h">Diagnósticos</div><div class="ov-hs">CID-10 registrados nas evoluções</div></div>
                 <div class="ov-dx" id="ovDx"></div>
               </div>
 
               <!-- "Mais notícias" do Finance -->
               <div class="ov-sec" id="ovFeedSec" hidden>
-                <div class="ov-h">Evoluções recentes</div>
+                <div class="ov-hd"><div class="ov-h">Evoluções recentes</div><div class="ov-hs">Do prontuário deste paciente</div></div>
                 <div class="ov-feed" id="ovFeed"></div>
                 <button class="ov-link" type="button" id="ovFeedMore">Ver histórico completo<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               </div>
@@ -3224,7 +3233,7 @@
       var ICON = { chart: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2.5 13.5l4-4.1 2.9 2.9 6.1-6.3" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
                    ask: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 2.9 8.6l3.4 3.4" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round"/><path d="M13.4 1.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="#1F1F1F"/></svg>',
                    open: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2.5h6.5l3.5 3.5v9.5H4z" fill="none" stroke="#1F1F1F" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 9.5h5M6.5 12h3.5" stroke="#1F1F1F" stroke-width="1.5" stroke-linecap="round"/></svg>',
-                   chev: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="#444746" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' };
+                   chev: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" fill="#444746"/></svg>' };
       var ov = { metric: null, range: 0, hover: -1, pts: [], S: null, dirty: true };
       try { ov.metric = localStorage.getItem('od_pr_metric'); ov.range = +(localStorage.getItem('od_pr_range') || 0) || 0; } catch (_) {}
 
@@ -3348,6 +3357,7 @@
           b.title = m.label + (o ? ' — última medida ' + side(m, last) + ' da referência' : '');
           b.appendChild(el('span', 'ov-tile-n', m.k === 'pa' ? 'Pressão' : m.label));
           b.appendChild(el('span', 'ov-tile-v' + (o ? ' bad' : ''), fmtV(m, last) + ' ' + m.unit));
+          b.appendChild(el('span', 'ov-tile-s', a.length > 1 ? a.length + ' medidas · ' + spanTxt(first.t, last.t).replace('em ', '') : dayMon(last.t)));
           var t = a.length > 1 ? trend(m, first, last) : '';
           var d = el('span', 'ov-tile-d' + (t ? ' ' + t : ''));
           if (a.length > 1) { d.appendChild(arrow(dir(first, last))); d.appendChild(document.createTextNode(deltaTxt(m, first, last))); }
@@ -3423,8 +3433,8 @@
         function X(t) { return L + (t - x0) / (x1 - x0 || 1) * pw; }
         function Y(v) { return T + (hi - v) / (hi - lo || 1) * ph; }
         var defs = svgEl('defs', {}), gr = svgEl('linearGradient', { id: 'ovGrad', x1: 0, y1: 0, x2: 0, y2: 1 });
-        gr.appendChild(svgEl('stop', { offset: '0%', 'stop-color': '#0B57D0', 'stop-opacity': '0.2' }));
-        gr.appendChild(svgEl('stop', { offset: '95%', 'stop-color': '#0B57D0', 'stop-opacity': '0' }));
+        gr.appendChild(svgEl('stop', { offset: '0%', 'stop-color': '#0B57D0', 'stop-opacity': '0.3' }));
+        gr.appendChild(svgEl('stop', { offset: '90%', 'stop-color': '#0B57D0', 'stop-opacity': '0' }));
         defs.appendChild(gr); svg.appendChild(defs);
         // eixo x (meses, ou dias em períodos curtos) com linhas verticais, como no Finance
         var span = x1 - x0, ticks = [];
@@ -3440,7 +3450,7 @@
         }
         ticks.forEach(function (k) {
           var x = X(k.t); if (x < L + 4 || x > L + pw - 4) return;
-          svg.appendChild(svgEl('line', { x1: x, x2: x, y1: T, y2: base + VB + 4, stroke: '#E8EAED', 'stroke-width': 1 }));
+          svg.appendChild(svgEl('line', { x1: x, x2: x, y1: T, y2: base + VB + 4, stroke: '#E1E3E6', 'stroke-width': 1 }));
           if (x < L + 18 || x > L + pw - 18) return;
           var tx = svgEl('text', { x: x, y: H - 4, 'text-anchor': 'middle' }); tx.textContent = k.s; svg.appendChild(tx);
         });
@@ -3672,7 +3682,7 @@
       // ----- grade de indicadores -----
       function renderStats(S) {
         var box = $('ovStats'); box.innerHTML = '';
-        function col(title) { var c = el('div', 'ov-col'); c.appendChild(el('div', 'ov-colh', title)); box.appendChild(c); return c; }
+        function col() { var c = el('div', 'ov-col'); box.appendChild(c); return c; }
         function row(c, label, val, cls, tip) {
           var r = el('div', 'ov-row'); r.appendChild(el('span', null, label));
           var b = typeof val === 'string' ? el('b', cls || null, val) : val; if (tip) b.title = tip;
@@ -3698,17 +3708,18 @@
         var wt = withText(), nd = wt.map(noteDate).filter(Boolean);
         var dates = (past.length ? past.map(function (v) { return parseStart(v.start); }) : nd).sort(function (a, b) { return a - b; });
         var lastD = dates[dates.length - 1];
-        row(c2, 'Primeira', dates.length ? dayMon(dates[0]) : '—', dates.length ? '' : 'muted');
-        row(c2, 'Última', lastD ? dayMon(lastD) + ' · ' + agoTxt(lastD) : (visits === null ? 'Carregando…' : '—'), lastD ? '' : 'muted');
+        row(c2, 'Primeira consulta', dates.length ? dayMon(dates[0]) : '—', dates.length ? '' : 'muted');
+        function dShort(d) { return Math.abs(d - now) < 300 * 864e5 ? d.getDate() + ' ' + MON[d.getMonth()] : dayMon(d); }   // perto de hoje: sem o ano
+        row(c2, 'Última consulta', lastD ? dShort(lastD) + ' · ' + agoTxt(lastD) : (visits === null ? 'Carregando…' : '—'), lastD ? '' : 'muted');
         var nx = fut[0];
-        row(c2, 'Próxima', nx ? dayMon(parseStart(nx.start)) + ' · ' + untilTxt(parseStart(nx.start)) : (visits === null ? 'Carregando…' : 'Nenhuma agendada'), nx ? '' : 'muted');
+        row(c2, 'Próxima consulta', nx ? dShort(parseStart(nx.start)) + ' · ' + untilTxt(parseStart(nx.start)) : (visits === null ? 'Carregando…' : 'Nenhuma agendada'), nx ? '' : 'muted');
         var yearAgo = now - 365 * 864e5, n12 = dates.filter(function (d) { return d >= yearAgo; }).length;
         row(c2, 'Últimos 12 meses', n12 + (n12 === 1 ? ' consulta' : ' consultas'));
         if (dates.length > 1) {
           var gap = (dates[dates.length - 1] - dates[0]) / (dates.length - 1) / 864e5;
           row(c2, 'Intervalo médio', gap < 45 ? Math.round(gap) + ' dias' : 'a cada ' + fmtN(gap / 30.44, gap / 30.44 < 10 ? 1 : 0) + ' meses');
         } else row(c2, 'Intervalo médio', '—', 'muted');
-        row(c2, 'Total', dates.length + (dates.length === 1 ? ' consulta' : ' consultas'));
+        row(c2, 'Consultas', dates.length + (dates.length === 1 ? ' consulta' : ' consultas'));
 
         var c3 = col('Prontuário');
         var fin = wt.filter(function (n) { return n.signed_at; }).length, dr = wt.length - fin;
@@ -3720,7 +3731,7 @@
         row(c3, 'Rascunhos', String(dr), dr ? 'warn' : 'muted', dr ? 'Evoluções ainda não finalizadas' : '');
         row(c3, 'Adendos', String(adds), adds ? '' : 'muted');
         row(c3, 'Diagnósticos', String(Object.keys(cids).length), Object.keys(cids).length ? '' : 'muted', 'CID-10 diferentes registrados');
-        row(c3, 'Atualizado', upd ? dayMon(upd) : '—', upd ? '' : 'muted');
+        row(c3, 'Atualizado em', upd ? dayMon(upd) : '—', upd ? '' : 'muted');
       }
 
       // ----- próximas consultas (como "Próximos resultados") -----
@@ -3797,8 +3808,7 @@
           var title = cid.length ? cid.slice(0, 2).join(' · ') : strip(dd.a) || strip(dd.s) || strip((n.content || '').split('\n')[0]) || 'Evolução';
           b.appendChild(el('span', 'ov-post-t', title));
           var bodyTxt = strip(dd.mode === 'soap' ? (dd.p || dd.s) : n.content);
-          if (bodyTxt && bodyTxt !== title) b.appendChild(el('span', 'ov-post-b', bodyTxt));
-          b.title = d ? dayMon(d) : '';
+          b.title = (d ? dayMon(d) : '') + (bodyTxt && bodyTxt !== title ? '\n' + bodyTxt.slice(0, 200) : '');
           b.addEventListener('click', function () { openNote(n); });
           box.appendChild(b);
         });
