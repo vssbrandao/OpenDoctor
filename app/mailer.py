@@ -16,8 +16,13 @@ import httpx
 _API = "https://api.resend.com/emails"
 
 
+def _env(name):
+    """Valor da variável sem espaços nem aspas em volta (comum ao colar no painel do Render)."""
+    return os.environ.get(name, "").strip().strip("\"'").strip()
+
+
 def _key():
-    return os.environ.get("RESEND_API_KEY", "").strip()
+    return _env("RESEND_API_KEY")
 
 
 def debug_codes():
@@ -59,7 +64,7 @@ def send_code(to, code, purpose):
     if debug_codes():
         print(f"[login-code:{purpose}] {to}: {code}", flush=True)   # só local (LOGIN_CODE_DEBUG=1, sem chave)
         return
-    sender = os.environ.get("EMAIL_FROM", "").strip() or "OpenDoctor <acesso@opendoctor.app>"
+    sender = _env("EMAIL_FROM") or "OpenDoctor <acesso@opendoctor.app>"
     r = httpx.post(_API, timeout=15, headers={"Authorization": "Bearer " + _key()}, json={
         "from": sender,
         "to": [to],
