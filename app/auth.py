@@ -25,8 +25,11 @@ COOKIE_NAME = "od_session"
 SESSION_MAX_AGE = 60 * 60 * 24 * 30          # 30 dias
 STATE_MAX_AGE = 60 * 15                        # 15 min para concluir o OAuth
 
-_SECRET = (os.environ.get("SESSION_SECRET", "").strip()
-           or "dev-inseguro-troque-em-producao").encode()
+_SECRET_ENV = os.environ.get("SESSION_SECRET", "").strip()
+if not _SECRET_ENV and os.environ.get("RENDER"):
+    # em produção, sem a chave os cookies seriam assinados com um valor público: melhor não subir
+    raise RuntimeError("SESSION_SECRET não configurado no Render")
+_SECRET = (_SECRET_ENV or "dev-inseguro-troque-em-producao").encode()
 
 
 def _b64e(b: bytes) -> str:
@@ -73,6 +76,41 @@ def set_session(response, user_id: str, sv: int = 0):
 
 def clear_session(response):
     response.delete_cookie(COOKIE_NAME, path="/")
+
+
+# ----- aparelho: cookie aleatório de longa duração, para reconhecer de onde a conta já entrou -----
+DEVICE_COOKIE = "od_dev"
+DEVICE_MAX_AGE = 60 * 60 * 24 * 400           # 400 dias (máximo que o Chrome aceita)
+
+
+def device_id(request):
+    """Identificador do aparelho deste navegador (ou None se ainda não tem)."""
+    v = request.cookies.get(DEVICE_COOKIE) or ""
+    return v if 20 <= len(v) <= 64 and all(c.isalnum() or c in "-_" for c in v) else None
+
+
+def set_device(response, dev):
+    response.set_cookie(DEVICE_COOKIE, dev, max_age=DEVICE_MAX_AGE, httponly=True, samesite="lax",
+                        secure=integrations.REDIRECT_BASE.startswith("https://"), path="/")
+
+
+def device_hash(dev):
+    """No banco vai só o hash: quem lê o registro não consegue se passar pelo aparelho."""
+    return hashlib.sha256(("dev:" + dev).encode()).hexdigest()[:32] if dev else None
+
+
+def device_label(ua):
+    """'Chrome no macOS' a partir do User-Agent (só nomes conhecidos; nada do texto cru vai para o e-mail)."""
+    ua = ua or ""
+    browser = next((n for k, n in (("Edg", "Edge"), ("OPR", "Opera"), ("SamsungBrowser", "Samsung Internet"),
+                                    ("Firefox", "Firefox"), ("FxiOS", "Firefox"), ("CriOS", "Chrome"),
+                                    ("Chrome", "Chrome"), ("Safari", "Safari")) if k in ua), "")
+    system = next((n for k, n in (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android"),
+                                   ("Windows", "Windows"), ("CrOS", "ChromeOS"), ("Mac OS X", "macOS"),
+                                   ("Macintosh", "macOS"), ("Linux", "Linux")) if k in ua), "")
+    if browser and system:
+        return f"{browser} no {system}"
+    return browser or system or "navegador não identificado"
 
 
 def current_user(request):

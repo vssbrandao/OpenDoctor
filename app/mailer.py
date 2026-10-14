@@ -4,6 +4,7 @@ logo · "Nome," + título 40px · texto · bloco (código em 6 caixas ou botão)
   signup   código para confirmar o e-mail do cadastro
   reset    código para criar uma nova senha (esqueci a senha / conta Google criando senha)
   changed  aviso de que a senha foi alterada (sem código)
+  device   aviso de entrada por um aparelho novo (sem código)
 
 Configuração (variáveis de ambiente no Render):
   RESEND_API_KEY   chave da API do Resend
@@ -83,6 +84,16 @@ _TEXTS = {
         "notes": ["Se não foi você, crie uma nova senha agora em “Esqueci minha senha”, na tela de login, e "
                   "confira a segurança do seu e-mail."],
     },
+    "device": {
+        "subject": "Novo acesso à sua conta do OpenDoctor",
+        "title": "Novo acesso à sua conta",
+        "lead": "Sua conta no OpenDoctor foi acessada em {when} por um aparelho novo: {device}, com {via}.",
+        "button": "Entrar no OpenDoctor",
+        "notes": ["Se foi você, não precisa fazer nada.",
+                  "Se não foi você, crie uma nova senha agora em “Esqueci minha senha”, na tela de login — isso "
+                  "encerra as sessões abertas em outros aparelhos — e confira a segurança do seu e-mail "
+                  "e da sua conta Google."],
+    },
 }
 
 
@@ -113,7 +124,7 @@ def _spacer(h):
     return f'<tr><td height="{h}" style="height:{h}px;font-size:0;line-height:0">&nbsp;</td></tr>'
 
 
-def render(purpose, name="", code="", when=""):
+def render(purpose, name="", code="", when="", device="", via=""):
     """(assunto, html, texto) do e-mail."""
     t = _TEXTS[purpose]
     base = _app_url()
@@ -121,7 +132,7 @@ def render(purpose, name="", code="", when=""):
             'style="display:block;width:24px;height:24px;border:0">')
     first = first_name(name)
     greet = f"{first}," if first else "Olá,"
-    lead = t["lead"].format(when=when)
+    lead = t["lead"].format(when=when, device=device, via=via)
     block = _code_boxes(code) if code else _button(t["button"], f"{base}/opendoctor-login.html")
     preheader = f"Seu código: {code} · vale 10 minutos" if code else lead
     notes = "<br><br>".join(html.escape(n) for n in t["notes"])
@@ -203,3 +214,12 @@ def send_password_changed(to, name=""):
         print(f"[login-mail:changed] {to}", flush=True)
         return
     _send(to, *render("changed", name=name, when=_now_brasilia()))
+
+
+def send_new_device(to, name="", device="", method=""):
+    """Aviso de entrada por um aparelho novo (sem código)."""
+    via = "a conta Google" if method == "google" else "e-mail e senha"
+    if debug_codes():
+        print(f"[login-mail:device] {to}: {device} ({via})", flush=True)
+        return
+    _send(to, *render("device", name=name, when=_now_brasilia(), device=device, via=via))

@@ -252,6 +252,25 @@ def login_succeeded(user_id):
         conn.commit()
 
 
+def record_login(user_id, event, method, ip=None, user_agent=None, device=None):
+    """Registra um acesso (tabela login_events). Numa entrada ("entrou"), devolve True se o aparelho é
+    novo numa conta que já tinha entradas registradas — a primeira registrada não conta (não há com o
+    que comparar: contas antigas e contas recém-criadas não recebem aviso)."""
+    with connection() as conn:
+        new_device = False
+        if event == "entrou":
+            before, known = conn.execute(
+                """select exists(select 1 from login_events where user_id = %s and event = 'entrou'),
+                          exists(select 1 from login_events where user_id = %s and event = 'entrou' and device = %s)""",
+                (user_id, user_id, device)).fetchone()
+            new_device = bool(before and not known)
+        conn.execute("""insert into login_events (user_id, event, method, ip, user_agent, device)
+                        values (%s,%s,%s,%s,%s,%s)""",
+                     (user_id, event, method, (ip or "")[:64] or None, (user_agent or "")[:400] or None, device))
+        conn.commit()
+    return new_device
+
+
 def set_password(user_id, password_hash):
     """Nova senha (redefinição): zera bloqueio e muda a versão da sessão — as sessões abertas em
     outros aparelhos deixam de valer. Devolve o usuário atualizado."""

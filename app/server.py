@@ -15,6 +15,8 @@ import urllib.parse
 import datetime
 import threading
 import collections
+import secrets
+import concurrent.futures
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse
@@ -62,11 +64,37 @@ def _sse(event, data):
 _NO_STORE = ("/patients", "/prontuario/", "/calendar/")
 
 
+# cabeçalhos de segurança em todas as respostas
+_CSP = "; ".join((
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",   # inline: onclick das páginas; jsdelivr: mermaid
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+))
+_SECURITY_HEADERS = {
+    "Strict-Transport-Security": "max-age=31536000",          # só HTTPS por 1 ano
+    "Content-Security-Policy": _CSP,                           # de onde a página pode carregar código
+    "X-Frame-Options": "DENY",                                 # ninguém embute o app num iframe (clickjacking)
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",       # links externos não recebem o endereço completo
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
+}
+
+
 @app.middleware("http")
 async def _no_cache_html(request: Request, call_next):
     """Impede o navegador de servir HTML velho do cache após um deploy, e de guardar
-    respostas com dados de pacientes."""
+    respostas com dados de pacientes. Também põe os cabeçalhos de segurança."""
     resp = await call_next(request)
+    for k, v in _SECURITY_HEADERS.items():
+        resp.headers.setdefault(k, v)
     path = request.url.path
     if path.endswith(".html") or path == "/":
         resp.headers["Cache-Control"] = "no-cache, must-revalidate"
@@ -82,15 +110,6 @@ async def _no_cache_html(request: Request, call_next):
 def root(request: Request):
     # raiz do site: agenda (home do app) para quem já entrou; senão, a tela de login
     return RedirectResponse("/opendoctor-agenda.html" if auth.current_user(request) else "/opendoctor-login.html")
-
-
-@app.get("/_diag/ip")
-def _diag_ip(request: Request):
-    """TEMPORÁRIO (remover): como o IP do visitante chega até aqui. Só cabeçalhos de rede do próprio chamador."""
-    h = request.headers
-    return {"cf": h.get("cf-connecting-ip"), "xff": h.get("x-forwarded-for"), "xrip": h.get("x-real-ip"),
-            "true_client": h.get("true-client-ip"), "client": request.client.host if request.client else None,
-            "host": h.get("host")}
 
 
 @app.get("/health")
@@ -295,8 +314,14 @@ _RL_LOCK = threading.Lock()
 
 
 def _client_ip(request):
+    """IP do visitante. O site fica atrás do Cloudflare, que põe o IP real em CF-Connecting-IP e recusa
+    quem tenta forjar esse cabeçalho. O X-Forwarded-For não serve: o primeiro item é o que o próprio
+    visitante mandar (trocar a cada pedido escaparia do limite) — dele só vale o último, do proxy."""
     h = request.headers
-    ip = h.get("cf-connecting-ip") or (h.get("x-forwarded-for") or "").split(",")[0].strip()
+    ip = (h.get("cf-connecting-ip") or "").strip()
+    if not ip:
+        hops = [x.strip() for x in (h.get("x-forwarded-for") or "").split(",") if x.strip()]
+        ip = hops[-1] if hops else ""
     return ip or (request.client.host if request.client else "?")
 
 
@@ -595,11 +620,40 @@ def _email_of(b):
     return email if _EMAIL.fullmatch(email) else None
 
 
-def _logged(user, nxt, welcome=False):
-    """Resposta de login concluído: cookie de sessão + para onde ir."""
+_AUDIT = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+
+
+def _audit(request, user_id, event, method, dev=None):
+    """Registra o acesso (login_events) em segundo plano, sem atrasar o login. Numa entrada por um
+    aparelho novo, avisa o dono da conta por e-mail. Falhas só vão para o log."""
+    ip, ua = _client_ip(request), request.headers.get("user-agent") or ""
+    dev = dev or auth.device_id(request)
+
+    def run():
+        try:
+            novo = db.record_login(user_id, event, method, ip, ua, auth.device_hash(dev))
+            if novo and method in ("senha", "google") and mailer.configured():
+                u = db.get_user(user_id)
+                if u:
+                    mailer.send_new_device(u["email"], u.get("name") or "", auth.device_label(ua), method)
+        except Exception as e:
+            print("[login] registro de acesso falhou:", str(e)[:200], flush=True)
+    _AUDIT.submit(run)
+
+
+def _device(request, resp):
+    """Aparelho deste navegador: o cookie que já tinha ou um novo (renovado a cada entrada)."""
+    dev = auth.device_id(request) or secrets.token_urlsafe(24)
+    auth.set_device(resp, dev)
+    return dev
+
+
+def _logged(request, user, nxt, method, welcome=False):
+    """Resposta de login concluído: cookie de sessão + para onde ir. Registra a entrada."""
     dest = auth.safe_next(nxt)
     resp = JSONResponse({"ok": True, "redirect": auth.with_welcome(dest) if welcome else dest})
     auth.set_session(resp, user["id"], user.get("sv", 0))
+    _audit(request, user["id"], "entrou", method, _device(request, resp))
     return resp
 
 
@@ -672,9 +726,11 @@ async def password_login(request: Request):
         if not info["hash"]:
             return _err("sem_senha")                        # conta criada pelo Google
         if info["locked_s"] > 0:
+            _audit(request, info["id"], "bloqueado", "senha")
             return _err("bloqueado", 429, minutes=-(-info["locked_s"] // 60))
         if not auth.check_password(pw, info["hash"]):
             left, locked = db.login_failed(info["id"])
+            _audit(request, info["id"], "bloqueado" if locked else "senha_incorreta", "senha")
             if locked:
                 return _err("bloqueado", 429, minutes=locked // 60)
             return _err("senha_incorreta", 401, left=left)
@@ -682,7 +738,7 @@ async def password_login(request: Request):
     except Exception as e:
         print("[login] senha falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
-    return _logged({"id": info["id"], "sv": info["sv"]}, b.get("next"))
+    return _logged(request, {"id": info["id"], "sv": info["sv"]}, b.get("next"), "senha")
 
 
 def _valid_name(raw):
@@ -751,7 +807,7 @@ async def signup_verify(request: Request):
     except Exception as e:
         print("[login] confirmação falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
-    return _logged(user, b.get("next"), welcome=True)
+    return _logged(request, user, b.get("next"), "cadastro", welcome=True)
 
 
 @app.post("/auth/password/forgot")
@@ -822,7 +878,7 @@ async def password_reset(request: Request):
         mailer.send_password_changed(user["email"], user.get("name") or "")   # aviso; falha não desfaz a troca
     except Exception as e:
         print("[login] aviso de senha alterada falhou:", str(e)[:200], flush=True)
-    return _logged(user, b.get("next"))
+    return _logged(request, user, b.get("next"), "nova_senha")
 
 
 @app.get("/auth/logout")
@@ -890,6 +946,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             dest = auth.safe_next(payload.get("nx"))
             resp = RedirectResponse(auth.with_welcome(dest) if novo else dest)
             auth.set_session(resp, user["id"], user.get("sv", 0))
+            _audit(request, user["id"], "entrou", "google", _device(request, resp))
             resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
             return resp
         except Exception as e:

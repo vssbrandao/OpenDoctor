@@ -106,6 +106,27 @@ class _Fake:
     def __init__(self, users=None):
         self.users = users or {}          # email -> {"id","hash","sv","locked_s"}
         self.codes, self.sent, self.failed = {}, [], {}
+        self.events = []                  # (user_id, event, method, device)
+
+
+class _NaHora:
+    """Executa o registro de acesso na hora (no servidor ele vai para uma thread)."""
+    def submit(self, fn):
+        fn()
+
+
+def _fake_audit(monkeypatch, fake):
+    from app import db, mailer
+    monkeypatch.setattr(server, "_AUDIT", _NaHora())
+
+    def record(uid, event, method, ip=None, user_agent=None, device=None):
+        mine = [e for e in fake.events if e[0] == uid and e[1] == "entrou"]
+        novo = event == "entrou" and bool(mine) and all(e[3] != device for e in mine)
+        fake.events.append((uid, event, method, device))
+        return novo
+    monkeypatch.setattr(db, "record_login", record)
+    monkeypatch.setattr(mailer, "send_new_device",
+                        lambda to, name="", device="", method="": fake.sent.append((to, device, "device:" + method)))
 
 
 def _client(monkeypatch, fake, configured=True):
@@ -148,6 +169,8 @@ def _client(monkeypatch, fake, configured=True):
         u.update(hash=ph, sv=u.get("sv", 0) + 1)
         return u
     monkeypatch.setattr(db, "set_password", set_pw)
+    monkeypatch.setattr(db, "get_user", lambda uid: next((u for u in fake.users.values() if u["id"] == uid), None))
+    _fake_audit(monkeypatch, fake)
     return TestClient(server.app)
 
 
@@ -367,6 +390,8 @@ def test_login_google_amarrado_ao_navegador(monkeypatch):
     monkeypatch.setattr(auth, "exchange_login", lambda code: {"email": "ana@clinica.com.br", "name": "Ana", "sub": "1"})
     monkeypatch.setattr(db, "user_by_email", lambda e: {"id": "u1"})
     monkeypatch.setattr(db, "upsert_user", lambda *a, **k: {"id": "u1", "email": "ana@clinica.com.br", "sv": 0})
+    fake = _Fake()
+    _fake_audit(monkeypatch, fake)
     c = TestClient(server.app)
     r = c.get("/auth/google/login?next=/opendoctor-agenda.html%23pacientes", follow_redirects=False)
     state = up.parse_qs(up.urlparse(r.headers["location"]).query)["state"][0]
@@ -378,6 +403,92 @@ def test_login_google_amarrado_ao_navegador(monkeypatch):
     # o mesmo navegador: loga e volta para a página de origem
     r3 = c.get("/auth/google/callback?code=x&state=" + up.quote(state), follow_redirects=False)
     assert r3.headers["location"] == "/opendoctor-agenda.html#pacientes" and auth.COOKIE_NAME in r3.cookies
+    assert r3.cookies.get(auth.DEVICE_COOKIE) and fake.events == [("u1", "entrou", "google", auth.device_hash(r3.cookies.get(auth.DEVICE_COOKIE)))]
     # /auth/google/start (e-mail digitado) também marca o navegador
     r4 = c.post("/auth/google/start", json={"email": "ana@clinica.com.br"})
     assert r4.json()["url"].startswith("https://") and r4.cookies.get(auth.OAUTH_COOKIE)
+
+
+# ----- nível 1: registro de acessos, aviso de aparelho novo, IP, cabeçalhos, chave da sessão -----
+
+def test_registro_de_acessos_e_aviso_de_aparelho_novo(monkeypatch):
+    from fastapi.testclient import TestClient
+    fake = _Fake(_user("ana@clinica.com.br", name="Dra. Ana Lima"))
+    c = _client(monkeypatch, fake)
+    login = {"email": "ana@clinica.com.br", "password": PW}
+    mac = {"user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/141.0 Safari/537.36"}
+    r = c.post("/auth/password/login", json=login, headers=mac)
+    dev = r.cookies.get(auth.DEVICE_COOKIE)
+    assert r.json()["ok"] and dev and fake.sent == []                 # primeira entrada registrada: sem aviso
+    assert c.post("/auth/password/login", json=login, headers=mac).json()["ok"]
+    assert fake.sent == [] and c.cookies.get(auth.DEVICE_COOKIE) == dev   # mesmo aparelho: sem aviso, mesmo cookie
+    win = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/141.0 Safari/537.36 Edg/141.0"}
+    outro = TestClient(server.app)
+    assert outro.post("/auth/password/login", json=login, headers=win).json()["ok"]
+    assert fake.sent == [("ana@clinica.com.br", "Edge no Windows", "device:senha")]
+    assert outro.post("/auth/password/login", json=login, headers=win).json()["ok"] and len(fake.sent) == 1
+    c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": "errada"})
+    assert [e[1] for e in fake.events] == ["entrou"] * 4 + ["senha_incorreta"]
+    assert all(e[3] for e in fake.events[:4]) and len({e[3] for e in fake.events[:4]}) == 2   # só o hash, 2 aparelhos
+    assert dev not in {e[3] for e in fake.events}
+
+
+def test_cadastro_registra_sem_aviso(monkeypatch):
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    t = c.post("/auth/signup/start", json={"email": "novo@clinica.com.br", "name": "Nova", "password": PW}).json()["ticket"]
+    r = c.post("/auth/signup/verify", json={"ticket": t, "code": fake.sent[-1][1]})
+    assert r.json()["ok"] and [e[1:3] for e in fake.events] == [("entrou", "cadastro")]
+    assert [s[2] for s in fake.sent] == ["signup"]
+
+
+def test_nome_do_aparelho():
+    assert auth.device_label("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit Version/18.0 Mobile Safari/604.1") == "Safari no iPhone"
+    assert auth.device_label("Mozilla/5.0 (Linux; Android 14) AppleWebKit Chrome/141.0 Mobile Safari/537.36") == "Chrome no Android"
+    assert auth.device_label("Mozilla/5.0 (Macintosh; Intel Mac OS X 14.6; rv:131.0) Gecko Firefox/131.0") == "Firefox no macOS"
+    assert auth.device_label("<script>") == "navegador não identificado" and auth.device_label(None)
+    assert auth.device_id(_Rq({auth.DEVICE_COOKIE: "x" * 32})) and auth.device_id(_Rq({auth.DEVICE_COOKIE: "<b>" * 10})) is None
+
+
+def test_email_de_aparelho_novo():
+    from app import mailer
+    subj, body, text = mailer.render("device", name="Ana", when="14/10/2026 às 09:00 (horário de Brasília)",
+                                     device="Chrome no Windows", via="e-mail e senha")
+    assert subj == "Novo acesso à sua conta do OpenDoctor" and "Ana," in body and 'class="box"' not in body
+    assert "Chrome no Windows, com e-mail e senha" in body and "Esqueci minha senha" in text
+    assert "todos os aparelhos" not in body
+
+
+class _Hd:
+    def __init__(self, headers, peer="10.0.0.9"):
+        self.headers = headers
+        self.client = type("C", (), {"host": peer})()
+
+
+def test_ip_do_visitante_nao_vem_do_cabecalho_forjado():
+    assert server._client_ip(_Hd({"cf-connecting-ip": "177.45.46.176", "x-forwarded-for": "7.7.7.7, 177.45.46.176"})) == "177.45.46.176"
+    assert server._client_ip(_Hd({"x-forwarded-for": "7.7.7.7, 177.45.46.176, 172.69.11.27"})) == "172.69.11.27"
+    assert server._client_ip(_Hd({})) == "10.0.0.9"
+
+
+def test_cabecalhos_de_seguranca():
+    from fastapi.testclient import TestClient
+    c = TestClient(server.app)
+    for path in ("/health", "/opendoctor-login.html", "/me"):
+        h = c.get(path).headers
+        assert h["x-frame-options"] == "DENY" and h["x-content-type-options"] == "nosniff"
+        assert "frame-ancestors 'none'" in h["content-security-policy"] and "max-age=31536000" in h["strict-transport-security"]
+        assert h["referrer-policy"] == "strict-origin-when-cross-origin" and "camera=()" in h["permissions-policy"]
+    assert c.get("/_diag/ip").status_code == 404                      # diagnóstico temporário removido
+
+
+def test_sem_session_secret_o_render_nao_sobe():
+    import os
+    import subprocess
+    import sys
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = dict(os.environ, RENDER="true", SESSION_SECRET="")
+    r = subprocess.run([sys.executable, "-c", "import app.auth"], env=env, cwd=root, capture_output=True, text=True)
+    assert r.returncode != 0 and "SESSION_SECRET" in r.stderr
+    env["SESSION_SECRET"] = "x" * 40
+    assert subprocess.run([sys.executable, "-c", "import app.auth"], env=env, cwd=root).returncode == 0
