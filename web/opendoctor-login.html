@@ -58,8 +58,23 @@
     .alert{display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:14px;line-height:1.4;color:#D93025}
     .alert.info{color:#3C3C40}
     .alert svg{flex:none;margin-top:1px}
-    .field.code:not(:placeholder-shown){letter-spacing:6px}
-    .resend{font-weight:500;font-size:14px;line-height:1.4;color:#7D7D82;text-align:center}
+    /* tela de código (Figma 1046-44660): bloco centrado na altura; título → texto 8px; texto → caixas 64px;
+       6 caixas 84px com 8px entre elas; botão 16px abaixo; "Reenviar código" 34px abaixo */
+    .col.centered{gap:48px}
+    .col.centered .main{margin:auto 0;gap:64px}
+    .col.centered .legal{margin-top:0;padding-top:0}
+    .col.centered .head{gap:8px}
+    .col.centered .sub{line-height:19px}
+    .code-form{display:flex;flex-direction:column;align-items:flex-start;gap:34px}
+    .code-main{width:100%;display:flex;flex-direction:column;gap:16px}
+    .otp{display:flex;gap:8px}
+    .otp .field{flex:1 1 0;min-width:0;padding:0;text-align:center;caret-color:#000033}
+    .code-main .err{padding:0}
+    .resend-link{background:none;border:0;padding:0;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:16px;
+      color:#7D7D82;text-decoration:underline;text-underline-offset:2px}
+    .resend-link:hover{color:#0C0C0D}
+    .resend-link:disabled{text-decoration:none;cursor:default;color:#7D7D82}
+    .resend-link:focus-visible{outline:2px solid #0B57D0;outline-offset:2px;border-radius:4px}
     .pw{position:relative}
     .pw .field{padding-right:76px}
     .eye{position:absolute;right:20px;top:50%;width:40px;height:40px;margin-top:-20px;border:0;border-radius:50%;
@@ -76,7 +91,8 @@
     .rules li.ok::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.3l3 3 6-6.6' fill='none' stroke='%23000033' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
     .forgot{align-self:flex-start;margin:0 32px;font-weight:500;font-size:14px;line-height:1.4;color:#6B6B70}
     .sr-user{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}   /* usuário para o gerenciador de senhas */
-    .legal{margin-top:auto;padding-top:48px;width:341px;max-width:100%;font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
+    .legal{margin-top:auto;padding-top:48px;width:447px;max-width:100%;   /* 447 (Figma: 341) para caber em 2 linhas com o link da Política de Privacidade */
+     font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
     .legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 
     /* telas estreitas: sem ilustração, formulário centralizado */
@@ -162,21 +178,26 @@
             <button class="btn btn-dark" id="signupGo" type="submit">Criar conta</button>
           </form>
 
-          <!-- 4. confirmar o e-mail do cadastro (código de 6 dígitos) -->
-          <form class="email-form" data-step="confirm" id="confirmForm" novalidate hidden>
-            <input class="field code" id="code" type="text" inputmode="numeric" autocomplete="one-time-code" enterkeyhint="go"
-                   placeholder="Código de 6 dígitos" aria-label="Código de 6 dígitos" aria-describedby="codeErr">
-            <div class="err" id="codeErr" role="alert" hidden></div>
-            <button class="btn btn-dark" id="confirmGo" type="submit">Confirmar e criar conta</button>
-            <p class="resend"><span data-wait></span><button class="link" type="button" data-resend>Reenviar código</button></p>
+          <!-- 4. código de 6 dígitos (confirmar cadastro / redefinir senha) — Figma 1046-44660 -->
+          <form class="code-form" data-step="code" id="codeForm" novalidate hidden>
+            <div class="code-main">
+              <div class="otp" id="otp" role="group" aria-label="Código de 6 dígitos" aria-describedby="otpErr">
+                <input class="field" inputmode="numeric" autocomplete="one-time-code" aria-label="Dígito 1 de 6">
+                <input class="field" inputmode="numeric" autocomplete="off" aria-label="Dígito 2 de 6">
+                <input class="field" inputmode="numeric" autocomplete="off" aria-label="Dígito 3 de 6">
+                <input class="field" inputmode="numeric" autocomplete="off" aria-label="Dígito 4 de 6">
+                <input class="field" inputmode="numeric" autocomplete="off" aria-label="Dígito 5 de 6">
+                <input class="field" inputmode="numeric" autocomplete="off" aria-label="Dígito 6 de 6">
+              </div>
+              <div class="err" id="otpErr" role="alert" hidden></div>
+              <button class="btn btn-dark" id="codeGo" type="submit">Continuar</button>
+            </div>
+            <button class="resend-link" id="resend" type="button">Reenviar código</button>
           </form>
 
-          <!-- 5. nova senha (esqueci a senha / conta Google que quer senha) -->
+          <!-- 5. nova senha (depois do código: esqueci a senha / conta Google que quer senha) -->
           <form class="email-form" data-step="reset" id="resetForm" novalidate hidden>
             <input class="sr-user" type="email" autocomplete="username" tabindex="-1" aria-hidden="true" data-user>
-            <input class="field code" id="rcode" type="text" inputmode="numeric" autocomplete="one-time-code" enterkeyhint="next"
-                   placeholder="Código de 6 dígitos" aria-label="Código de 6 dígitos" aria-describedby="rcodeErr">
-            <div class="err" id="rcodeErr" role="alert" hidden></div>
             <div class="pw">
               <input class="field" id="rPw" type="password" placeholder="Nova senha" autocomplete="new-password" enterkeyhint="go"
                      aria-label="Nova senha" aria-describedby="rPwErr">
@@ -201,7 +222,6 @@
             </div>
             <div class="err" id="rPw2Err" role="alert" hidden></div>
             <button class="btn btn-dark" id="resetGo" type="submit">Salvar nova senha</button>
-            <p class="resend"><span data-wait></span><button class="link" type="button" data-resend>Reenviar código</button></p>
           </form>
 
           <!-- 6. conta criada pelo Google (sem senha) -->
@@ -229,13 +249,14 @@
       var params = new URLSearchParams(location.search);
       var nextUrl = params.get('next') || '';
       if (!/^\/(?!\/)/.test(nextUrl) || nextUrl.indexOf('\\') >= 0) nextUrl = '';   // só páginas deste site
-      var st = { email: '', ticket: '', emailOk: true }, timer = null;
+      // codeMode: 'signup' (confirmar cadastro) | 'reset' (redefinir/criar senha); firstPw: conta Google criando a 1ª senha
+      var st = { email: '', ticket: '', resetTicket: '', codeMode: '', firstPw: false, emailOk: true }, timer = null;
       var HOME = '/opendoctor-agenda.html';
-
       var TITLES = { email: 'Bem-vindo ao OpenDoctor', password: 'Digite sua senha', signup: 'Crie sua conta',
-                     confirm: 'Confirme seu e-mail', reset: 'Crie uma nova senha', google: 'Entre com o Google',
+                     code: 'Confirme seu e-mail', reset: 'Crie uma nova senha', google: 'Entre com o Google',
                      erro: 'Erro de conexão' };
-      var GENERIC = 'Ocorreu um erro. Tente novamente em instantes.', OFFLINE = 'Sem conexão. Verifique a internet e tente de novo.';
+      var GENERIC = 'Ocorreu um erro. Tente novamente em instantes.', OFFLINE = 'Sem conexão. Verifique a internet e tente de novo.',
+          TOO_FAST = 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.';
 
       function post(url, body) {
         return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
@@ -247,7 +268,7 @@
         if (box) { box.textContent = msg || ''; box.hidden = !msg; }
         input.setAttribute('aria-invalid', msg ? 'true' : 'false');
       }
-      function clearErrs(form) { [].forEach.call(form.querySelectorAll('.field'), function (f) { fieldErr(f, ''); }); }
+      function clearErrs(form) { [].forEach.call(form.querySelectorAll('.field[id]'), function (f) { fieldErr(f, ''); }); }
       function alertMsg(msg, info) {
         $('alert').hidden = !msg; $('alertText').textContent = msg || '';
         $('alert').classList.toggle('info', !!info);
@@ -266,6 +287,7 @@
       }
       function show(step, push) {
         [].forEach.call(document.querySelectorAll('[data-step]'), function (s) { s.hidden = s.getAttribute('data-step') !== step; });
+        document.querySelector('.col').classList.toggle('centered', step === 'code');
         $('title').textContent = step === 'reset' && st.firstPw ? 'Crie uma senha' : TITLES[step];
         alertMsg('');
         [].forEach.call(document.querySelectorAll('[data-user]'), function (u) { u.value = st.email; });
@@ -273,16 +295,17 @@
         if (step === 'email') sub(null);
         if (step === 'password') sub(['Entrando como ', e, '.', true]);
         if (step === 'signup') sub(['Não encontramos uma conta com ', e, '. Crie a sua.', true]);
-        if (step === 'confirm') sub(['Enviamos um código de 6 dígitos para ', e, '. Ele vale 10 minutos.', true]);
-        if (step === 'reset') sub(['Enviamos um código de 6 dígitos para ', e, '. Ele vale 10 minutos.', true]);
+        if (step === 'code') sub(['Enviamos um código para seu e-mail ', e]);
+        if (step === 'reset') sub(['Para a conta ', e, '.']);
         if (step === 'google') sub(['A conta ', e, ' foi criada com o Google.', true]);
         if (step === 'erro') sub(['Houve um problema ao conectar sua conta do Google. Tente entrar novamente.']);
         $('wantPw').hidden = !st.emailOk;
         if (push) history.pushState({ step: step }, '');
       }
       var REACH = { password: function () { return !!st.email; }, signup: function () { return !!st.email; },
-                    google: function () { return !!st.email; }, confirm: function () { return !!st.ticket; },
-                    reset: function () { return !!st.email; } };
+                    google: function () { return !!st.email; },
+                    code: function () { return st.codeMode === 'signup' ? !!st.ticket : st.codeMode === 'reset' && !!st.email; },
+                    reset: function () { return !!st.resetTicket; } };
       window.addEventListener('popstate', function (e) {
         var s = e.state && e.state.step;
         show(REACH[s] && REACH[s]() ? s : 'email');
@@ -337,39 +360,64 @@
       }
       ['newPw', 'rPw'].forEach(function (id) { $(id).addEventListener('input', function () { paintRules(id); fieldErr($(id), ''); }); });
 
-      // contagem do "Reenviar código" (nas etapas confirmar e nova senha)
+      function sendFail(e) {         // erros comuns ao pedir um código
+        alertMsg(e === 'limite' ? 'Você pediu muitos códigos para este e-mail. Tente de novo em uma hora.'
+               : e === 'limite_ip' ? TOO_FAST
+               : e === 'envio_falhou' ? 'Não conseguimos enviar o e-mail agora. Tente de novo em instantes.'
+               : e === 'email_indisponivel' ? 'O envio de e-mails ainda não está disponível. Use Continuar com o Google.'
+               : GENERIC);
+      }
+
+      // ----- caixas do código (6 dígitos) -----
+      var boxes = [].slice.call(document.querySelectorAll('#otp input')), otp = $('otp');
+      function codeValue() { return boxes.map(function (b) { return b.value; }).join(''); }
+      function otpErr(msg) {
+        $('otpErr').textContent = msg || ''; $('otpErr').hidden = !msg;
+        boxes.forEach(function (b) { b.setAttribute('aria-invalid', msg ? 'true' : 'false'); });
+      }
+      function fillFrom(i, text) {   // espalha dígitos a partir da caixa i (digitação, colar, preenchimento automático)
+        var d = (text || '').replace(/\D/g, '').split('');
+        if (!d.length) return;
+        for (var k = 0; k < d.length && i + k < boxes.length; k++) boxes[i + k].value = d[k];
+        var nxt = Math.min(i + d.length, boxes.length - 1);
+        boxes[nxt].focus(); boxes[nxt].select();
+        if (codeValue().length === 6) $('codeGo').click();
+      }
+      function resetBoxes() { boxes.forEach(function (b) { b.value = ''; }); otpErr(''); }
+      boxes.forEach(function (b, i) {
+        b.addEventListener('input', function () {
+          var v = b.value; b.value = '';
+          otpErr('');
+          if (v) fillFrom(i, v);
+        });
+        b.addEventListener('keydown', function (e) {
+          if (e.key === 'Backspace' && !b.value && i > 0) { e.preventDefault(); boxes[i - 1].value = ''; boxes[i - 1].focus(); otpErr(''); }
+          else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); boxes[i - 1].focus(); boxes[i - 1].select(); }
+          else if (e.key === 'ArrowRight' && i < 5) { e.preventDefault(); boxes[i + 1].focus(); boxes[i + 1].select(); }
+        });
+        b.addEventListener('paste', function (e) {
+          e.preventDefault(); otpErr('');
+          fillFrom(i, (e.clipboardData || window.clipboardData).getData('text'));
+        });
+        b.addEventListener('focus', function () { b.select(); });
+      });
+
+      // "Reenviar código": desabilitado com contagem até poder reenviar
       function cooldown(sec) {
         clearInterval(timer);
-        var left = sec || 0;
+        var left = sec || 0, link = $('resend');
         function tick() {
-          [].forEach.call(document.querySelectorAll('[data-wait]'), function (w) { w.textContent = left > 0 ? 'Reenviar código em ' + left + 's' : 'Não recebeu? '; });
-          [].forEach.call(document.querySelectorAll('[data-resend]'), function (b) { b.hidden = left > 0; });
+          link.disabled = left > 0;
+          link.textContent = left > 0 ? 'Reenviar código em ' + left + 's' : 'Reenviar código';
           if (left <= 0) clearInterval(timer);
           left--;
         }
         tick(); timer = setInterval(tick, 1000);
       }
-      function codeErrMsg(e, j) {
-        return e === 'codigo_incorreto' ? 'Código incorreto. ' + (j.left === 1 ? 'Resta 1 tentativa.' : 'Restam ' + j.left + ' tentativas.')
-             : e === 'codigo_expirado' ? 'Este código expirou ou já foi usado. Peça um novo abaixo.'
-             : e === 'muitas_tentativas' ? 'Muitas tentativas erradas. Peça um novo código abaixo.'
-             : e === 'codigo_invalido' ? 'Digite os 6 dígitos do código.' : '';
+      function openCode(mode, wait) {
+        st.codeMode = mode; resetBoxes();
+        show('code', true); cooldown(wait); boxes[0].focus();
       }
-      function sendFail(e) {         // erros comuns ao pedir um código
-        alertMsg(e === 'limite' ? 'Você pediu muitos códigos para este e-mail. Tente de novo em uma hora.'
-               : e === 'limite_ip' ? 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.'
-               : e === 'envio_falhou' ? 'Não conseguimos enviar o e-mail agora. Tente de novo em instantes.'
-               : e === 'email_indisponivel' ? 'O envio de e-mails ainda não está disponível. Use Continuar com o Google.'
-               : GENERIC);
-      }
-      function digits(inp) {
-        inp.addEventListener('input', function () {
-          var v = inp.value.replace(/\D/g, '').slice(0, 6);
-          if (v !== inp.value) inp.value = v;
-          fieldErr(inp, '');
-        });
-      }
-      digits($('code')); digits($('rcode'));
 
       // ----- 1. e-mail → senha | criar conta | Google -----
       var email = $('email');
@@ -392,10 +440,10 @@
           var j = res.j;
           if (!res.ok) {
             if (j.error === 'email_invalido') { fieldErr(email, 'Confira o e-mail digitado.'); return; }
-            alertMsg(j.error === 'limite_ip' ? 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.' : GENERIC);
+            alertMsg(j.error === 'limite_ip' ? TOO_FAST : GENERIC);
             return;
           }
-          if (st.email !== addr) st.ticket = '';
+          if (st.email !== addr) { st.ticket = ''; st.resetTicket = ''; }
           st.email = addr; st.emailOk = j.email_ok !== false;
           if (j.exists && j.password) { $('pw').value = ''; clearErrs($('pwForm')); show('password', true); $('pw').focus(); return; }
           if (j.exists) { show('google', true); return; }
@@ -423,28 +471,27 @@
           if (er === 'sem_senha') { show('google', true); return; }
           if (er === 'sem_conta') { clearErrs($('signupForm')); paintRules('newPw'); show('signup', true); return; }
           if (er === 'senha_vazia') { fieldErr($('pw'), 'Digite sua senha.'); return; }
-          alertMsg(er === 'limite_ip' ? 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.' : GENERIC);
+          alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
         }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
       });
 
-      // ----- esqueci a senha / criar senha para conta Google → etapa "nova senha" -----
+      // ----- esqueci a senha / conta Google criar senha → código (modo reset) -----
       function forgot(btn) {
         if (!st.emailOk) { alertMsg('A redefinição de senha por e-mail ainda não está disponível. Use Continuar com o Google.'); return; }
         busy(btn, true); alertMsg('');
         post('/auth/password/forgot', { email: st.email }).then(function (res) {
           busy(btn, false);
-          if (!res.ok) { sendFail(res.j.error); return; }
-          var f = $('resetForm');
-          if (f.hidden) { f.reset(); clearErrs(f); paintRules('rPw'); show('reset', true); $('rcode').focus(); }
-          else if (res.j.sent) alertMsg('Enviamos um novo código.', true);
+          if (!res.ok) { sendFail(res.j.error); cooldown(0); return; }
+          if ($('codeForm').hidden || st.codeMode !== 'reset') { openCode('reset', res.j.resend_in); return; }
+          if (res.j.sent) { alertMsg('Enviamos um novo código.', true); resetBoxes(); boxes[0].focus(); }
           cooldown(res.j.resend_in);
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); cooldown(0); });
       }
       $('forgotBtn').addEventListener('click', function () { st.firstPw = false; forgot($('forgotBtn')); });
       $('wantPw').addEventListener('click', function () { st.firstPw = true; forgot($('wantPw')); });
       $('googleHint').addEventListener('click', function () { googleWithHint(st.email); });
 
-      // ----- 3. criar conta → código de confirmação -----
+      // ----- 3. criar conta → código (modo signup) -----
       var name = $('name');
       name.addEventListener('input', function () { fieldErr(name, ''); });
       $('signupForm').addEventListener('submit', function (e) {
@@ -457,10 +504,7 @@
         post('/auth/signup/start', { email: st.email, name: n, password: pw }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
-          if (res.ok && j.ticket) {
-            st.ticket = j.ticket; $('code').value = ''; fieldErr($('code'), '');
-            show('confirm', true); cooldown(j.resend_in); $('code').focus(); return;
-          }
+          if (res.ok && j.ticket) { st.ticket = j.ticket; openCode('signup', j.resend_in); return; }
           if (er === 'nome') { fieldErr(name, 'Digite seu nome completo.'); return; }
           if (er === 'senha_fraca') { paintRules('newPw'); fieldErr($('newPw'), 'Confira os requisitos da senha abaixo.'); return; }
           if (er === 'conta_existe') { $('pw').value = ''; show('password', true); alertMsg('Este e-mail já tem uma conta. Digite sua senha.', true); $('pw').focus(); return; }
@@ -468,54 +512,72 @@
         }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
       });
 
-      // ----- 4. confirmar o e-mail -----
-      $('code').addEventListener('input', function () { if ($('code').value.length === 6) $('confirmGo').click(); });
-      $('confirmForm').addEventListener('submit', function (e) {
+      // ----- 4. código -----
+      function codeErrMsg(e, j) {
+        return e === 'codigo_incorreto' ? 'Código incorreto. ' + (j.left === 1 ? 'Resta 1 tentativa.' : 'Restam ' + j.left + ' tentativas.')
+             : e === 'codigo_expirado' ? 'Este código expirou ou já foi usado. Peça um novo em "Reenviar código".'
+             : e === 'muitas_tentativas' ? 'Muitas tentativas erradas. Peça um novo código em "Reenviar código".'
+             : e === 'codigo_invalido' ? 'Digite os 6 dígitos do código.' : '';
+      }
+      $('codeForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var v = $('code').value;
-        if (v.length !== 6) { fieldErr($('code'), 'Digite os 6 dígitos do código.'); $('code').focus(); return; }
-        var btn = $('confirmGo'); busy(btn, true); alertMsg('');
-        post('/auth/signup/verify', { ticket: st.ticket, code: v, next: nextUrl }).then(function (res) {
+        var v = codeValue();
+        if (v.length !== 6) { otpErr('Digite os 6 dígitos do código.'); (boxes.filter(function (b) { return !b.value; })[0] || boxes[0]).focus(); return; }
+        var btn = $('codeGo'); busy(btn, true); alertMsg('');
+        var req = st.codeMode === 'signup'
+          ? post('/auth/signup/verify', { ticket: st.ticket, code: v, next: nextUrl })
+          : post('/auth/password/reset/verify', { email: st.email, code: v });
+        req.then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
           if (res.ok && j.redirect) { go(j.redirect); return; }
+          if (res.ok && j.ticket) {         // modo reset: código certo → escolher a senha
+            st.resetTicket = j.ticket;
+            var f = $('resetForm'); f.reset(); clearErrs(f); paintRules('rPw'); show('reset', true); $('rPw').focus(); return;
+          }
           if (er === 'sessao_expirada') { st.ticket = ''; show('signup', true); alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.'); return; }
           var m = codeErrMsg(er, j);
-          if (m) { fieldErr($('code'), m); $('code').select(); if (er === 'codigo_expirado' || er === 'muitas_tentativas') cooldown(0); return; }
-          alertMsg(er === 'limite_ip' ? 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.' : GENERIC);
+          if (m) {
+            otpErr(m); boxes[5].focus();
+            if (er === 'codigo_expirado' || er === 'muitas_tentativas') { resetBoxes(); otpErr(m); boxes[0].focus(); cooldown(0); }
+            return;
+          }
+          alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
         }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
       });
-      document.querySelector('#confirmForm [data-resend]').addEventListener('click', function () {
-        var btn = this; busy(btn, true); fieldErr($('code'), '');
+      $('resend').addEventListener('click', function () {
+        var link = this;
+        if (st.codeMode === 'reset') { forgot(link); return; }
+        busy(link, true); otpErr('');
         post('/auth/signup/resend', { ticket: st.ticket }).then(function (res) {
-          busy(btn, false);
-          if (res.ok) { if (res.j.sent) { alertMsg('Enviamos um novo código.', true); $('code').value = ''; } $('code').focus(); cooldown(res.j.resend_in); return; }
+          if (res.ok) {
+            if (res.j.sent) { alertMsg('Enviamos um novo código.', true); resetBoxes(); boxes[0].focus(); }
+            cooldown(res.j.resend_in); return;
+          }
+          cooldown(0);
           if (res.j.error === 'sessao_expirada') { st.ticket = ''; show('signup', true); alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.'); return; }
           sendFail(res.j.error);
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+        }).catch(function () { cooldown(0); alertMsg(OFFLINE); });
       });
 
       // ----- 5. nova senha -----
       $('rPw2').addEventListener('input', function () { fieldErr($('rPw2'), ''); });
       $('resetForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var c = $('rcode').value, pw = $('rPw').value, pw2 = $('rPw2').value, first = null;
-        if (c.length !== 6) { fieldErr($('rcode'), 'Digite os 6 dígitos do código.'); first = $('rcode'); }
-        if (paintRules('rPw').length) { fieldErr($('rPw'), pw ? 'Confira os requisitos da senha abaixo.' : 'Crie uma nova senha.'); first = first || $('rPw'); }
-        else if (pw2 !== pw) { fieldErr($('rPw2'), pw2 ? 'As senhas não conferem. Digite de novo.' : 'Confirme a nova senha.'); first = first || $('rPw2'); }
+        var pw = $('rPw').value, pw2 = $('rPw2').value, first = null;
+        if (paintRules('rPw').length) { fieldErr($('rPw'), pw ? 'Confira os requisitos da senha abaixo.' : 'Crie uma nova senha.'); first = $('rPw'); }
+        else if (pw2 !== pw) { fieldErr($('rPw2'), pw2 ? 'As senhas não conferem. Digite de novo.' : 'Confirme a nova senha.'); first = $('rPw2'); }
         if (first) { first.focus(); return; }
         var btn = $('resetGo'); busy(btn, true); alertMsg('');
-        post('/auth/password/reset', { email: st.email, code: c, password: pw, next: nextUrl }).then(function (res) {
+        post('/auth/password/reset', { ticket: st.resetTicket, password: pw, next: nextUrl }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
           if (res.ok && j.redirect) { go(j.redirect); return; }
           if (er === 'senha_fraca') { paintRules('rPw'); fieldErr($('rPw'), 'Confira os requisitos da senha abaixo.'); return; }
-          var m = codeErrMsg(er, j);
-          if (m) { fieldErr($('rcode'), m); $('rcode').focus(); $('rcode').select(); if (er === 'codigo_expirado' || er === 'muitas_tentativas') cooldown(0); return; }
-          alertMsg(er === 'limite_ip' ? 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.' : GENERIC);
+          if (er === 'sessao_expirada') { st.resetTicket = ''; show('email', true); alertMsg('O tempo para criar a senha expirou. Toque em Continuar e peça um novo código.'); return; }
+          alertMsg(GENERIC);
         }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
       });
-      document.querySelector('#resetForm [data-resend]').addEventListener('click', function () { forgot(this); });
     })();
   </script>
 </body>

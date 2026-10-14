@@ -758,14 +758,13 @@ async def password_forgot(request: Request):
     return {"ok": True, "resend_in": abs(wait), "sent": wait > 0}
 
 
-@app.post("/auth/password/reset")
-async def password_reset(request: Request):
+@app.post("/auth/password/reset/verify")
+async def password_reset_verify(request: Request):
+    """Etapa 1 da nova senha: confere o código e devolve um tíquete (15 min) para escolher a senha."""
     b = await _body(request)
-    email, pw = _email_of(b), b.get("password")
+    email = _email_of(b)
     if not email:
         return _err("email_invalido")
-    if auth.password_problems(pw):
-        return _err("senha_fraca", rules=auth.password_problems(pw))
     if _rate_limited(request, "login_verify"):
         return _err("limite_ip", 429)
     try:
@@ -773,9 +772,30 @@ async def password_reset(request: Request):
         if bad:
             return bad
         acc = db.user_by_email(email)
-        if not acc:
-            return _err("codigo_expirado")
-        user = db.set_password(acc["id"], auth.hash_password(pw))
+    except Exception as e:
+        print("[login] código de redefinição falhou:", str(e)[:200], flush=True)
+        return _err("erro", 500)
+    if not acc:
+        return _err("codigo_expirado")
+    # a versão da sessão vai no tíquete: depois que a senha muda, ele não serve mais (uso único)
+    return {"ok": True, "ticket": auth.sign({"k": "reset", "uid": acc["id"], "sv": acc.get("sv", 0)})}
+
+
+@app.post("/auth/password/reset")
+async def password_reset(request: Request):
+    """Etapa 2: nova senha com o tíquete da etapa 1."""
+    b = await _body(request)
+    pw = b.get("password")
+    t = auth.unsign(str(b.get("ticket") or ""), 15 * 60)
+    if not t or t.get("k") != "reset" or not t.get("uid"):
+        return _err("sessao_expirada")
+    if auth.password_problems(pw):
+        return _err("senha_fraca", rules=auth.password_problems(pw))
+    try:
+        cur = db.get_user(t["uid"])
+        if not cur or int(cur.get("sv") or 0) != int(t.get("sv") or 0):
+            return _err("sessao_expirada")                   # tíquete já usado (a senha já mudou)
+        user = db.set_password(t["uid"], auth.hash_password(pw))
     except Exception as e:
         print("[login] redefinição falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)

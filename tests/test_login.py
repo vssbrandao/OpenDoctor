@@ -207,26 +207,32 @@ def test_cadastro_exige_codigo(monkeypatch):
     # o código de cadastro não serve para redefinir senha
     c.post("/auth/signup/resend", json={"ticket": ticket})
     code2 = fake.sent[-1][1]
-    assert c.post("/auth/password/reset", json={"email": "novo@clinica.com.br", "code": code2, "password": "Outra!12ab"}).json()["error"] == "codigo_incorreto"
+    assert c.post("/auth/password/reset/verify", json={"email": "novo@clinica.com.br", "code": code2}).json()["error"] == "codigo_incorreto"
 
 
 def test_esqueci_a_senha(monkeypatch):
+    from app import db
     fake = _Fake(dict(_user("ana@clinica.com.br"), **_user("google@clinica.com.br", pw=None)))
     c = _client(monkeypatch, fake)
+    monkeypatch.setattr(db, "get_user", lambda uid: next((u for u in fake.users.values() if u["id"] == uid), None))
     assert c.post("/auth/password/forgot", json={"email": "ninguem@clinica.com.br"}).json()["ok"]   # não revela nem envia
     assert fake.sent == []
     c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"})
     to, code, purpose = fake.sent[-1]
     assert purpose == "reset"
-    assert c.post("/auth/password/reset", json={"email": "ana@clinica.com.br", "code": code, "password": "fraca"}).json()["error"] == "senha_fraca"
-    r = c.post("/auth/password/reset", json={"email": "ana@clinica.com.br", "code": code, "password": "Nova!12ab"})
+    assert c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": "000000"}).json()["error"] == "codigo_incorreto"
+    ticket = c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": code}).json()["ticket"]
+    assert c.post("/auth/password/reset", json={"ticket": ticket, "password": "fraca"}).json()["error"] == "senha_fraca"
+    assert c.post("/auth/password/reset", json={"ticket": "x.y", "password": "Nova!12ab"}).json()["error"] == "sessao_expirada"
+    r = c.post("/auth/password/reset", json={"ticket": ticket, "password": "Nova!12ab"})
     assert r.json()["ok"] and auth.COOKIE_NAME in r.cookies
     assert fake.users["ana@clinica.com.br"]["sv"] == 1                       # outras sessões caem
+    assert c.post("/auth/password/reset", json={"ticket": ticket, "password": "Outra!12ab"}).json()["error"] == "sessao_expirada"  # uso único
     assert c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": PW}).json()["error"] == "senha_incorreta"
     # conta só Google pode criar uma senha pelo mesmo caminho
     c.post("/auth/password/forgot", json={"email": "google@clinica.com.br"})
-    r = c.post("/auth/password/reset", json={"email": "google@clinica.com.br", "code": fake.sent[-1][1], "password": "Minha!12ab"})
-    assert r.json()["ok"]
+    tk = c.post("/auth/password/reset/verify", json={"email": "google@clinica.com.br", "code": fake.sent[-1][1]}).json()["ticket"]
+    assert c.post("/auth/password/reset", json={"ticket": tk, "password": "Minha!12ab"}).json()["ok"]
 
 
 def test_sem_provedor_de_email(monkeypatch):
