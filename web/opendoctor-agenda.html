@@ -83,7 +83,7 @@
     /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) =====
        escala das referências (Google Finance, em px reais): texto 14px, valores 18px, títulos de
        cartão 16px; cartões #F4F5F7 com raio 20; divisórias #E8EAED; destaque azul #0B57D0 */
-    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:32px 40px 96px;
+    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:32px 32px 96px;
       background:#fff;z-index:5;scrollbar-width:thin;container-type:inline-size;container-name:pr;
       font-family:var(--disp);color:#1F1F1F}
     .stage.prontuario .pr-view{display:flex}
@@ -804,8 +804,6 @@
 
     /* ===== RIGHT PANEL (487) ===== */
     .right{flex:1 1 0;min-width:520px;max-width:720px;height:100%;background:#fff;position:relative;box-shadow:inset 1px 0 0 var(--sb-border)}
-    /* no prontuário, as proporções do Google Finance (1440: menu · coluna 748 · painel de IA 344) */
-    .stage.prontuario:not(.expanded) .right{flex:0 0 344px;min-width:344px;max-width:344px}
     .rp-head{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 24px}   /* Figma 1020:13042 */
     .rp-title{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
     /* histórico de conversas no menu (Figma 1014:8439), só na versão expandida com o menu aberto */
@@ -868,18 +866,6 @@
     .rp-msgs{position:absolute;left:0;right:0;top:52px;bottom:160px;overflow-y:auto;
       padding:24px;display:none;flex-direction:column;gap:24px;scrollbar-width:thin}
     .rp-msgs.on{display:flex}
-    /* sugestões do prontuário: painel de IA do Finance (24px de margem; título 20/28 500; linhas #F7F8FA raio 12, 14/22) */
-    .rp-sug{display:none;position:absolute;left:24px;right:24px;top:72px;flex-direction:column;gap:16px;font-family:var(--disp)}
-    .stage.prontuario:not(.expanded) .rp-sug:not([hidden]){display:flex}
-    .rp-msgs.on ~ .rp-sug{display:none!important}
-    .rp-sug-t{font-weight:500;font-size:20px;line-height:28px;color:#0A0A0A}
-    .rp-sug-list{display:flex;flex-direction:column;gap:4px}
-    .rp-sug-q{display:flex;align-items:center;gap:4px;width:100%;border:0;border-radius:12px;background:#F7F8FA;padding:8px 16px 8px 12px;cursor:pointer;text-align:left;
-      font-family:var(--disp);font-weight:400;font-size:14px;line-height:22px;color:#0A0A0A}
-    .rp-sug-q:hover{background:#F0F2F5}
-    .rp-sug-q span{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-    .rp-sug-q svg{flex:none;width:24px;height:24px}
-    .rp-sug-n{font-size:12px;line-height:16px;color:#56595E}
     .msg-user{align-self:flex-end;max-width:255px;background:var(--pill);border-radius:24px;
       padding:16px;font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#0D0D0D}
     .msg-ai{align-self:flex-start;max-width:100%;font-family:var(--disp);font-weight:400;
@@ -1429,12 +1415,6 @@
       </div>
 
       <div class="rp-msgs" id="rpMsgs"></div>
-      <!-- prontuário aberto e conversa vazia: perguntas prontas (como "No que você está pensando?" do Finance) -->
-      <div class="rp-sug" id="rpSug" hidden>
-        <div class="rp-sug-t">Perguntas sobre este paciente</div>
-        <div class="rp-sug-list" id="rpSugList"></div>
-        <div class="rp-sug-n">Sem nome nem CPF. A pergunta só vai para o assistente quando você clicar em enviar.</div>
-      </div>
 
       <div class="big-input">
         <div class="bi-top">
@@ -3315,11 +3295,7 @@
       function withText() { return notes.filter(function (n) { return (n.content || '').trim() || n.signed_at; }); }
       function ovVisible() { var p = document.querySelector('.pr-panel[data-panel=geral]'); return isOpen() && p && !p.hidden; }
       // nome antigo, chamado ao carregar, salvar, finalizar e ao chegar a agenda: só redesenha se estiver à vista
-      function renderKpis() {
-        ov.dirty = true;
-        if (ovVisible()) renderOverview();
-        else if (patient) renderAcc(ov.S = series());          // sugestões do assistente valem em qualquer aba
-      }
+      function renderKpis() { ov.dirty = true; if (ovVisible()) renderOverview(); }
       function renderOverview() {
         ov.dirty = false;
         var S = ov.S = series(), avail = METRICS.filter(function (m) { return S[m.k].length; }), any = avail.length > 0;
@@ -3659,7 +3635,7 @@
           if (k === 'glicemia') body += ' Confira se cada medida foi feita em jejum.';
           items.push({ cls: cls, title: title, body: body, rank: cls === 'down' ? 0 : cls === 'warn' ? 1 : 2,
             acts: [{ t: 'Ver no gráfico', i: ICON.chart, f: function () { pickMetric(k); $('ovChart').scrollIntoView({ behavior: 'smooth', block: 'center' }); } },
-                   { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(QUESTION[k](lv)); } }], q: QUESTION[k](lv) });
+                   { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(QUESTION[k](lv)); } }] });
         });
         // pendências
         var drafts = notes.filter(function (n) { return !n.signed_at && (n.content || '').trim() && n !== cur; });
@@ -3682,9 +3658,6 @@
           items.push({ cls: 'todo', rank: 3, title: 'Nenhum retorno agendado', body: 'A última consulta na agenda foi ' + agoTxt(parseStart(lastV.start)) + ' (' + dayMon(parseStart(lastV.start)) + ').', acts: [] });
         }
         items.sort(function (a, b) { return a.rank - b.rank; });
-        var qs = items.filter(function (it) { return it.q; }).map(function (it) { return it.q; }).slice(0, 3);
-        if (qs.length < 3 && patient) qs.push('Quais exames de acompanhamento são indicados para ' + clinicalCtx() + '?');
-        renderSug(qs);
         var box = $('ovAcc'); box.innerHTML = '';
         $('ovSumSec').hidden = !items.length || !patient;
         items.forEach(function (it, i) {
@@ -3703,20 +3676,6 @@
           w.appendChild(h); w.appendChild(b); box.appendChild(w);
         });
         return c;
-      }
-
-      // perguntas prontas no painel do assistente (só preenchem; quem envia é o médico)
-      function renderSug(qs) {
-        var box = $('rpSug'), list = $('rpSugList'); if (!box) return;
-        list.innerHTML = ''; box.hidden = !qs.length;
-        qs.forEach(function (q) {
-          var b = el('button', 'rp-sug-q'); b.type = 'button'; b.appendChild(el('span', null, q));
-          var ic = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); ic.setAttribute('viewBox', '0 0 18 18'); ic.setAttribute('aria-hidden', 'true');
-          ic.innerHTML = '<path d="M8 3.2a4.8 4.8 0 1 0 2.9 8.6l3.4 3.4" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round"/><path d="M13.4 1.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="#1F1F1F"/>';
-          b.appendChild(ic); b.title = 'Coloca a pergunta no campo do assistente';
-          b.addEventListener('click', function () { askAssistant(q); });
-          list.appendChild(b);
-        });
       }
 
       // ----- grade de indicadores -----
@@ -4069,7 +4028,6 @@
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
         $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prProbTags').innerHTML = ''; $('prExport').hidden = true;
-        $('rpSug').hidden = true; $('rpSugList').innerHTML = '';
         visits = null; calOn = null; setTab(c && c.event_id ? 'atual' : 'geral');
         if (!ctx || (!ctx.patient && !ctx.patient_id)) {
           msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return;
