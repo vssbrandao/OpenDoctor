@@ -78,9 +78,9 @@ async def _no_cache_html(request: Request, call_next):
 
 
 @app.get("/")
-def root():
-    # raiz do site cai na agenda (home do app)
-    return RedirectResponse("/opendoctor-agenda.html")
+def root(request: Request):
+    # raiz do site: agenda (home do app) para quem já entrou; senão, a tela de login
+    return RedirectResponse("/opendoctor-agenda.html" if auth.current_user(request) else "/opendoctor-login.html")
 
 
 @app.get("/health")
@@ -524,9 +524,27 @@ def google_login():
     return RedirectResponse(auth.login_url())
 
 
+_EMAIL = re.compile(r"[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s.]{2,63}")
+
+
+@app.post("/auth/google/start")
+async def google_start(request: Request):
+    """Tela de login: recebe o e-mail no corpo (fora da URL e dos logs) e devolve a URL do Google
+    com `login_hint`, para abrir direto nessa conta."""
+    if not integrations.configured("google"):
+        return JSONResponse({"error": "google não configurado"}, status_code=400)
+    try:
+        email = str((await request.json()).get("email") or "").strip()
+    except Exception:
+        email = ""
+    if email and not _EMAIL.fullmatch(email):
+        return JSONResponse({"error": "e-mail inválido"}, status_code=400)
+    return {"url": auth.login_url(email)}
+
+
 @app.get("/auth/logout")
 def logout():
-    resp = RedirectResponse("/opendoctor-agenda.html")
+    resp = RedirectResponse("/opendoctor-login.html")
     auth.clear_session(resp)
     # apaga o que o app guardou neste navegador (rascunhos do prontuário, conversas) — LGPD
     resp.headers["Clear-Site-Data"] = '"storage"'
@@ -566,7 +584,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
     """Callback único por provedor: distingue login x conexão de calendário pelo `state`."""
     payload = auth.unsign(state, auth.STATE_MAX_AGE) if state else None
     if error or not code or not payload:
-        dest = "/opendoctor-integracao.html" if (payload or {}).get("k") == "cal" else "/opendoctor-agenda.html"
+        dest = "/opendoctor-integracao.html" if (payload or {}).get("k") == "cal" else "/opendoctor-login.html"
         return RedirectResponse(dest + "?erro=" + (error or "sem_code"))
 
     # --- login do app (só Google) ---
@@ -580,7 +598,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             return resp
         except Exception as e:
             print("[auth] login falhou:", str(e)[:200])
-            return RedirectResponse("/opendoctor-agenda.html?erro=login")
+            return RedirectResponse("/opendoctor-login.html?erro=login")
 
     # --- conexão de calendário ---
     if payload.get("k") == "cal":

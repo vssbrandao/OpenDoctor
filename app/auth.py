@@ -94,7 +94,8 @@ def current_user(request):
 LOGIN_SCOPE = "openid email profile"
 
 
-def login_url() -> str:
+def login_url(hint: str = "") -> str:
+    """URL do login Google. `hint` (e-mail digitado na tela de login) já abre a conta certa."""
     p = integrations.PROVIDERS["google"]
     state = sign({"k": "login", "n": secrets.token_urlsafe(8)})
     params = {
@@ -106,6 +107,9 @@ def login_url() -> str:
         "access_type": "online",
         "prompt": "select_account",
     }
+    if hint:
+        params["login_hint"] = hint
+        del params["prompt"]          # com a conta indicada, não precisa da lista de contas
     return p["auth"] + "?" + urllib.parse.urlencode(params)
 
 

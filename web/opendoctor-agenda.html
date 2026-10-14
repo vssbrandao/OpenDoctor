@@ -1603,7 +1603,7 @@
               if (confirm('Já existe um paciente chamado "' + name + '". É outra pessoa? Criar um novo cadastro mesmo assim?')) createPatient(name, true);
             } else {
               elMsg.className = 'evpop-msg'; elMsg.hidden = false;
-              if (res.status === 401) elMsg.innerHTML = 'Entre com Google em <a href="/opendoctor-integracao.html">Integrações</a> para cadastrar pacientes.';
+              if (res.status === 401) elMsg.innerHTML = '<a href="/opendoctor-login.html">Entre na sua conta</a> para cadastrar pacientes.';
               else elMsg.textContent = 'Não foi possível criar o paciente.';
             }
           }).catch(function () { elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false; });
@@ -2733,7 +2733,7 @@
           } else if (res.status === 413) {
             if (c === ctx) setStatus('Texto grande demais para salvar: reduza a evolução.', true);
           } else if (res.status === 401) {
-            if (c === ctx) setStatus('Entre com Google (tela de Integrações) para salvar o prontuário.', true);
+            if (c === ctx) setStatus('Entre na sua conta para salvar o prontuário.', true);
           } else {
             if (c === ctx) setStatus('Não foi possível salvar. Tentando de novo…', true);
             retryLater(c);
@@ -3129,7 +3129,7 @@
             if (ctx !== my) return;
             if (res.status === 401) {
               setStatus(''); main.hidden = true; msg.hidden = false;
-              msg.innerHTML = 'Entre com Google na tela de <a href="opendoctor-integracao.html">Integrações</a> para ver e salvar o prontuário.';
+              msg.innerHTML = '<a href="/opendoctor-login.html">Entre na sua conta</a> para ver e salvar o prontuário.';
               return;
             }
             if (res.status === 409 && res.j && res.j.ambiguous) {     // evento antigo + homônimos: não adivinha
@@ -3293,7 +3293,7 @@
           loaded = true; denied = res.status === 401;
           if (denied) {
             all = []; render();
-            list.innerHTML = '<div class="pt-empty">Entre com Google na tela de <a href="opendoctor-integracao.html">Integrações</a> para ver seus pacientes.</div>';
+            list.innerHTML = '<div class="pt-empty"><a href="/opendoctor-login.html">Entre na sua conta</a> para ver seus pacientes.</div>';
             return;
           }
           all = (res.j && res.j.patients) || []; render();
@@ -3349,7 +3349,7 @@
           } else if (res.status === 409 && res.j.duplicates) {   // homônimo: mostra quem já existe e confirma
             var who = res.j.duplicates.map(function (d) { return d.name + (d.birth_date ? ' (' + ptAge(d.birth_date) + ', nasc. ' + d.birth_date.split('-').reverse().join('/') + ')' : ' (sem data de nascimento)'); }).join('\n');
             if (confirm('Já existe paciente com esse nome:\n' + who + '\n\nÉ outra pessoa? Criar um novo cadastro?')) createNew(true);
-          } else showErr(res.status === 401 ? 'Entre com Google em Integrações para cadastrar pacientes.' : (res.j && res.j.error ? res.j.error.charAt(0).toUpperCase() + res.j.error.slice(1) + '.' : 'Não foi possível criar o paciente.'));
+          } else showErr(res.status === 401 ? 'Entre na sua conta para cadastrar pacientes.' : (res.j && res.j.error ? res.j.error.charAt(0).toUpperCase() + res.j.error.slice(1) + '.' : 'Não foi possível criar o paciente.'));
         });
       }
       $('ptNewSave').addEventListener('click', function () { createNew(false); });

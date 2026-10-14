@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenDoctor | Entrar (Figma 1040-6373)</title>
+  <style>
+    @font-face{font-family:"Helvetica Now Display";font-weight:400;font-style:normal;font-display:swap;
+      src:url("assets/fonts/HelveticaNowDisplay-Regular.woff2") format("woff2");}
+    @font-face{font-family:"Helvetica Now Display";font-weight:500;font-style:normal;font-display:swap;
+      src:url("assets/fonts/HelveticaNowDisplay-Medium.woff2") format("woff2");}
+    :root{--disp:"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{min-height:100%}
+    body{background:#fff;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-family:var(--disp)}
+
+    /* frame 1440×780: ilustração 600×512 colada à esquerda (x=-1) e centrada na altura;
+       coluna do formulário 447px em x=803 (83px depois do meio), de y=60 até y=722 (58px do fim) */
+    .login{min-height:100vh;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    .hero{position:relative;display:flex;align-items:center}
+    .hero-img{position:relative;left:-1px;width:min(600px,calc(100% + 1px));aspect-ratio:600/512;overflow:hidden}
+    .hero-img img{position:absolute;left:-2.33%;top:-50.68%;width:102.33%;height:209.76%;max-width:none;display:block}
+    .side{padding:60px 24px 58px 83px;display:flex}
+    .col{width:447px;max-width:100%;min-height:calc(100vh - 118px);display:flex;flex-direction:column;justify-content:space-between;gap:48px}
+    .logo{display:block}
+    .main{display:flex;flex-direction:column;gap:56px}
+    .title{font-weight:500;font-size:24px;line-height:1.15;min-height:32px;display:flex;align-items:center;color:#0C0C0D}
+    .forms{display:flex;flex-direction:column;gap:42px}
+    .email-form{display:flex;flex-direction:column;gap:8px}
+    .field{width:100%;height:68px;padding:24px;border:0;border-radius:24px;background:#F4F4F6;outline:none;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;color:#000}
+    .field::placeholder{color:#000;opacity:1}
+    .field:focus{box-shadow:inset 0 0 0 1px rgba(26,26,26,.16)}
+    .field[aria-invalid=true]{box-shadow:inset 0 0 0 1px #D93025}
+    .btn{width:100%;height:64px;padding:0 48px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:8px;
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;white-space:nowrap;text-decoration:none}
+    .btn-dark{border:0;background:#000033;color:#fff}
+    .btn-dark:hover{background:#00004D}
+    .btn-line{border:1px solid rgba(26,26,26,.16);background:#fff;color:#000}
+    .btn-line:hover{background:#F7F8F8}
+    .btn:disabled{opacity:.6;cursor:default}
+    .btn:focus-visible,.field:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
+    .divider{display:block;width:100%;height:1px;margin-top:-1px}   /* linha de altura 0 no Figma, desenhada 1px acima */
+    .g-ico{position:relative;width:24px;height:24px;flex:none;overflow:hidden}
+    .g-ico img{position:absolute;left:8.33%;top:8.33%;display:block}
+    .err{font-weight:500;font-size:14px;line-height:1.4;color:#D93025;padding:0 24px}
+    .err[hidden]{display:none}
+    .legal{width:341px;max-width:100%;font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
+    .legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+
+    /* telas estreitas: sem ilustração, formulário centralizado */
+    @media (max-width:900px){
+      .login{grid-template-columns:minmax(0,1fr)}
+      .hero{display:none}
+      .side{padding:40px 24px;justify-content:center}
+      .col{min-height:calc(100vh - 80px)}
+    }
+  </style>
+</head>
+<body>
+  <main class="login">
+    <div class="hero" aria-hidden="true">
+      <div class="hero-img"><img src="assets/login/hero.png" alt=""></div>
+    </div>
+    <div class="side">
+      <div class="col">
+        <img class="logo" src="assets/login/logo.svg" width="24" height="24" alt="OpenDoctor">
+        <div class="main">
+          <h1 class="title">Bem vindo a OpenDoctor</h1>
+          <div class="forms">
+            <form class="email-form" id="emailForm" novalidate>
+              <input class="field" id="email" type="email" name="email" placeholder="Email" autocomplete="email"
+                     inputmode="email" autocapitalize="off" spellcheck="false" aria-label="Email" aria-describedby="err">
+              <div class="err" id="err" role="alert" hidden></div>
+              <button class="btn btn-dark" id="go" type="submit">Continuar</button>
+            </form>
+            <img class="divider" src="assets/login/divider.svg" width="447" height="1" alt="">
+            <a class="btn btn-line" id="google" href="/auth/google/login">
+              <span class="g-ico"><img src="assets/login/google.svg" width="19.5455" height="20" alt=""></span>
+              Continuar com o Google
+            </a>
+          </div>
+        </div>
+        <p class="legal">Ao acessar este app e/ou criar uma conta de usuario, você concorda com os <a href="terms.html">Termos de Serviço</a> da OpenDoctor.</p>
+      </div>
+    </div>
+  </main>
+  <script>
+    (function () {
+      var form = document.getElementById('emailForm'), input = document.getElementById('email'),
+          err = document.getElementById('err'), go = document.getElementById('go');
+      var RE = /^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s.]{2,63}$/;
+
+      function showErr(msg) {
+        err.textContent = msg || ''; err.hidden = !msg;
+        input.setAttribute('aria-invalid', msg ? 'true' : 'false');
+      }
+
+      // quem já entrou vai direto para a agenda
+      fetch('/me', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j && j.logged_in) location.replace('/opendoctor-agenda.html'); }).catch(function () {});
+
+      // volta do Google com erro (cancelado / falhou)
+      var q = new URLSearchParams(location.search).get('erro');
+      if (q) {
+        showErr(q === 'access_denied' ? 'Login cancelado. Tente de novo quando quiser.' : 'Não foi possível entrar. Tente de novo.');
+        history.replaceState(null, '', location.pathname);
+      }
+
+      input.addEventListener('input', function () { if (!err.hidden) showErr(''); });
+
+      // e-mail → login do Google já nessa conta (o e-mail vai no corpo do POST, não na URL)
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var email = input.value.trim();
+        if (!email) { showErr('Digite seu e-mail.'); input.focus(); return; }
+        if (!RE.test(email)) { showErr('Confira o e-mail digitado.'); input.focus(); return; }
+        go.disabled = true; showErr('');
+        fetch('/auth/google/start', { method: 'POST', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (res.ok && res.j.url) { location.href = res.j.url; return; }
+            go.disabled = false;
+            showErr(res.j && res.j.error === 'e-mail inválido' ? 'Confira o e-mail digitado.' : 'Não foi possível entrar agora. Tente de novo.');
+          })
+          .catch(function () { go.disabled = false; showErr('Sem conexão. Tente de novo.'); });
+      });
+    })();
+  </script>
+</body>
+</html>
