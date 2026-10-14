@@ -73,13 +73,16 @@
     .alert{display:flex;gap:8px;align-items:flex-start;font-weight:500;font-size:14px;line-height:1.4;color:#D93025}
     .alert.info{color:#3C3C40}
     .alert svg{flex:none;margin-top:1px}
-    /* tela de código (Figma 1046-44660): bloco centrado na altura; título → texto 8px; texto → caixas 64px;
+    /* tela de código (Figma 1046-44660): título → texto 8px; texto → caixas 64px;
        6 caixas 84px com 8px entre elas; botão 16px abaixo; "Reenviar código" 34px abaixo */
-    .col.centered{gap:48px}
-    .col.centered .main{margin:auto 0;gap:64px}
-    .col.centered .legal{margin-top:0;padding-top:0}
-    .col.centered .head{gap:8px}
-    .col.centered .sub{line-height:19px}
+    /* posição do bloco medida no Figma (frame 1440×780) e fixa: não pula quando aparece um erro */
+    .col.at-code .main{margin-top:123.5px;gap:64px}             /* código (1046-44660): título em y=207.5 */
+    .col.at-code .head{gap:8px}
+    .col.at-code .sub{line-height:19px}
+    .col.at-password .main{margin-top:166px;gap:56px}           /* senha (1047-44780): título em y=250 */
+    .col.at-password .fl-label{color:#666}
+    .pw-form{position:relative}
+    .forgot-link{position:absolute;left:0;top:calc(100% + 34px)}
     .code-form{display:flex;flex-direction:column;align-items:flex-start;gap:34px}
     .code-main{width:100%;display:flex;flex-direction:column;gap:16px}
     .otp{display:flex;gap:8px}
@@ -151,18 +154,14 @@
             </a>
           </div>
 
-          <!-- 2. senha (conta com senha) -->
-          <form class="email-form" data-step="password" id="pwForm" novalidate hidden>
+          <!-- 2. senha (conta com senha) — Figma 1047-44780 -->
+          <form class="email-form pw-form" data-step="password" id="pwForm" novalidate hidden>
             <input class="sr-user" type="email" autocomplete="username" tabindex="-1" aria-hidden="true" data-user>
-            <div class="fl pw"><input class="fl-input" id="pw" type="password" placeholder=" " autocomplete="current-password" enterkeyhint="go" aria-describedby="pwErr"><label class="fl-label" for="pw">Senha</label>
-              <button class="eye" type="button" aria-label="Mostrar senha" aria-pressed="false" data-eye="pw">
-                <svg class="on" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M1.8 11s3.4-6.2 9.2-6.2 9.2 6.2 9.2 6.2-3.4 6.2-9.2 6.2S1.8 11 1.8 11z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="11" cy="11" r="2.9" stroke="currentColor" stroke-width="1.6"/></svg>
-                <svg class="off" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M1.8 11s3.4-6.2 9.2-6.2c1.6 0 3 .5 4.2 1.1M20.2 11s-3.4 6.2-9.2 6.2c-1.6 0-3-.5-4.2-1.1M8.9 13.1a2.9 2.9 0 0 1 4.1-4.1M3.5 18.5l15-15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              </button>
-            </div>
+            <div class="fl"><input class="fl-input" id="pw" type="password" placeholder=" " autocomplete="current-password" enterkeyhint="go" aria-describedby="pwErr"><label class="fl-label" for="pw">Senha</label></div>
             <div class="err" id="pwErr" role="alert" hidden></div>
-            <button class="link forgot" id="forgotBtn" type="button">Esqueci minha senha</button>
-            <button class="btn btn-dark" id="pwGo" type="submit">Entrar</button>
+            <button class="btn btn-dark" id="pwGo" type="submit">Continuar</button>
+            <!-- fora do Figma: necessário para recuperar a conta; fica abaixo sem deslocar o layout -->
+            <button class="resend-link forgot-link" id="forgotBtn" type="button">Esqueci minha senha</button>
           </form>
 
           <!-- 3. criar conta (e-mail sem conta) -->
@@ -292,13 +291,14 @@
       }
       function show(step, push) {
         [].forEach.call(document.querySelectorAll('[data-step]'), function (s) { s.hidden = s.getAttribute('data-step') !== step; });
-        document.querySelector('.col').classList.toggle('centered', step === 'code');
+        var col = document.querySelector('.col');
+        col.classList.toggle('at-code', step === 'code');
+        col.classList.toggle('at-password', step === 'password');
         $('title').textContent = step === 'reset' && st.firstPw ? 'Crie uma senha' : TITLES[step];
         alertMsg('');
         [].forEach.call(document.querySelectorAll('[data-user]'), function (u) { u.value = st.email; });
         var e = st.email;
         if (step === 'email') sub(null);
-        if (step === 'password') sub(['Entrando como ', e, '.', true]);
         if (step === 'signup') sub(['Não encontramos uma conta com ', e, '. Crie a sua.', true]);
         if (step === 'code') sub(['Enviamos um código para seu e-mail ', e]);
         if (step === 'reset') sub(['Para a conta ', e, '.']);
