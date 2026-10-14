@@ -84,6 +84,15 @@ def root(request: Request):
     return RedirectResponse("/opendoctor-agenda.html" if auth.current_user(request) else "/opendoctor-login.html")
 
 
+@app.get("/_diag/ip")
+def _diag_ip(request: Request):
+    """TEMPORÁRIO (remover): como o IP do visitante chega até aqui. Só cabeçalhos de rede do próprio chamador."""
+    h = request.headers
+    return {"cf": h.get("cf-connecting-ip"), "xff": h.get("x-forwarded-for"), "xrip": h.get("x-real-ip"),
+            "true_client": h.get("true-client-ip"), "client": request.client.host if request.client else None,
+            "host": h.get("host")}
+
+
 @app.get("/health")
 def health():
     return {"ok": True, "model": llm.config.OPENAI_MODEL}
