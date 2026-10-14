@@ -279,7 +279,7 @@ def _clean_history(raw):
 
 # ===== limite de uso por IP (sem login por enquanto) =====
 RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em s)
-               "login_code": (10, 600), "login_verify": (30, 600)}
+               "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600)}
 MAX_QUERY_CHARS = 2000
 _RL = {}
 _RL_LOCK = threading.Lock()
@@ -554,9 +554,10 @@ async def google_start(request: Request):
     return {"url": auth.login_url(email, nxt)}
 
 
-# ----- login por e-mail: código de 6 dígitos (sem senha) -----
-# A resposta do envio é a mesma para e-mail com ou sem conta (não revela quem usa o app);
-# só depois de provar que o e-mail é dele a pessoa vê se vai entrar ou criar a conta.
+# ----- login por e-mail e senha -----
+# Tela inicial: e-mail → (tem conta com senha) senha | (conta só Google) Google | (sem conta) cadastro.
+# O cadastro e a redefinição de senha exigem um código de 6 dígitos enviado ao e-mail: ninguém cria
+# conta (nem troca a senha) de um e-mail que não é seu.
 
 async def _body(request):
     try:
@@ -570,85 +571,215 @@ def _err(code, status=400, **extra):
     return JSONResponse(dict({"error": code}, **extra), status_code=status)
 
 
-@app.post("/auth/email/start")
-async def email_start(request: Request):
-    b = await _body(request)
+def _email_of(b):
     email = str(b.get("email") or "").strip().lower()
-    if not _EMAIL.fullmatch(email):
-        return _err("email_invalido")
-    if not mailer.configured():
-        return _err("email_indisponivel", 503)
-    if _rate_limited(request, "login_code"):
-        return _err("muitas_tentativas", 429)
+    return email if _EMAIL.fullmatch(email) else None
+
+
+def _logged(user, nxt, welcome=False):
+    """Resposta de login concluído: cookie de sessão + para onde ir."""
+    dest = auth.safe_next(nxt)
+    resp = JSONResponse({"ok": True, "redirect": auth.with_welcome(dest) if welcome else dest})
+    auth.set_session(resp, user["id"], user.get("sv", 0))
+    return resp
+
+
+def _send_code(email, purpose):
+    """Cria e envia um código. Devolve (resposta de erro ou None, segundos até poder reenviar —
+    negativo quando não enviou agora porque o código de menos de 30s atrás continua valendo)."""
     code = auth.new_code()
     try:
-        status, wait = db.new_login_code(email, auth.code_hash(email, code))
+        status, wait = db.new_login_code(email, auth.code_hash(email, code, purpose))
     except Exception as e:
         print("[login] código falhou:", str(e)[:200], flush=True)
-        return _err("erro", 500)
+        return _err("erro", 500), 0
     if status == "aguarde":
-        return _err("aguarde", 429, wait=wait)
+        return None, -wait                         # negativo = não enviou agora (o anterior ainda vale)
     if status == "limite":
-        return _err("limite", 429)
+        return _err("limite", 429), 0
     try:
-        mailer.send_login_code(email, code)
+        mailer.send_code(email, code, purpose)
     except Exception as e:
         print("[login] envio falhou:", str(e)[:200], flush=True)
         try:
             db.discard_login_code(email)          # sem e-mail enviado, não conta reenvio nem limite
         except Exception:
             pass
-        return _err("envio_falhou", 502)
-    return {"ok": True, "resend_in": db.CODE_RESEND_S}
+        return _err("envio_falhou", 502), 0
+    return None, db.CODE_RESEND_S
 
 
-@app.post("/auth/email/verify")
-async def email_verify(request: Request):
-    b = await _body(request)
-    email = str(b.get("email") or "").strip().lower()
-    code = re.sub(r"\D", "", str(b.get("code") or ""))
-    if not _EMAIL.fullmatch(email) or len(code) != 6:
+def _check_code(email, code, purpose):
+    """None se o código confere; senão a resposta de erro (incorreto / expirado / tentativas)."""
+    code = re.sub(r"\D", "", str(code or ""))
+    if len(code) != 6:
         return _err("codigo_invalido")
-    if _rate_limited(request, "login_verify"):
-        return _err("limite_ip", 429)            # limite por IP (o do código é "muitas_tentativas")
+    status, left = db.check_login_code(email, auth.code_hash(email, code, purpose))
+    if status == "ok":
+        return None
+    return _err({"errado": "codigo_incorreto", "expirado": "codigo_expirado", "bloqueado": "muitas_tentativas"}[status],
+                429 if status == "bloqueado" else 400, left=left)
+
+
+@app.post("/auth/email/check")
+async def email_check(request: Request):
+    email = _email_of(await _body(request))
+    if not email:
+        return _err("email_invalido")
+    if _rate_limited(request, "login_check"):
+        return _err("limite_ip", 429)
     try:
-        status, left = db.check_login_code(email, auth.code_hash(email, code))
-        if status != "ok":
-            return _err({"errado": "codigo_incorreto", "expirado": "codigo_expirado",
-                         "bloqueado": "muitas_tentativas"}[status],
-                        429 if status == "bloqueado" else 400, left=left)
-        user = db.user_by_email(email)
-        if not user:
-            # e-mail confirmado e sem conta: o cadastro vem a seguir (vale 30 min)
-            return {"ok": True, "signup": True, "ticket": auth.sign({"k": "signup", "email": email})}
-        db.touch_login(user["id"])
+        acc = db.account(email)
     except Exception as e:
-        print("[login] verificação falhou:", str(e)[:200], flush=True)
+        print("[login] check falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
-    resp = JSONResponse({"ok": True, "redirect": auth.safe_next(b.get("next"))})
-    auth.set_session(resp, user["id"])
-    return resp
+    return {"exists": acc is not None, "password": bool(acc and acc["password"]), "email_ok": mailer.configured()}
 
 
-@app.post("/auth/email/signup")
-async def email_signup(request: Request):
+@app.post("/auth/password/login")
+async def password_login(request: Request):
     b = await _body(request)
-    ticket = auth.unsign(str(b.get("ticket") or ""), 30 * 60)
-    if not ticket or ticket.get("k") != "signup" or not ticket.get("email"):
-        return _err("sessao_expirada")
-    name = " ".join(str(b.get("name") or "").split())
-    if not (2 <= len(name) <= 120):
-        return _err("nome")
-    if b.get("terms") is not True:
-        return _err("termos")
+    email, pw = _email_of(b), b.get("password")
+    if not email:
+        return _err("email_invalido")
+    if not isinstance(pw, str) or not pw:
+        return _err("senha_vazia")
+    if _rate_limited(request, "login_pw"):
+        return _err("limite_ip", 429)
     try:
-        user = db.create_email_user(ticket["email"], name)
+        info = db.password_login_info(email)
+        if not info:
+            return _err("sem_conta", 404)
+        if not info["hash"]:
+            return _err("sem_senha")                        # conta criada pelo Google
+        if info["locked_s"] > 0:
+            return _err("bloqueado", 429, minutes=-(-info["locked_s"] // 60))
+        if not auth.check_password(pw, info["hash"]):
+            left, locked = db.login_failed(info["id"])
+            if locked:
+                return _err("bloqueado", 429, minutes=locked // 60)
+            return _err("senha_incorreta", 401, left=left)
+        db.login_succeeded(info["id"])
+    except Exception as e:
+        print("[login] senha falhou:", str(e)[:200], flush=True)
+        return _err("erro", 500)
+    return _logged({"id": info["id"], "sv": info["sv"]}, b.get("next"))
+
+
+def _valid_name(raw):
+    name = " ".join(str(raw or "").split())
+    return name if 2 <= len(name) <= 120 else None
+
+
+@app.post("/auth/signup/start")
+async def signup_start(request: Request):
+    """Dados do cadastro → envia o código de confirmação. A conta só é criada no /verify."""
+    b = await _body(request)
+    email, name, pw = _email_of(b), _valid_name(b.get("name")), b.get("password")
+    if not email:
+        return _err("email_invalido")
+    if not name:
+        return _err("nome")
+    if auth.password_problems(pw):
+        return _err("senha_fraca", rules=auth.password_problems(pw))
+    if not mailer.configured():
+        return _err("email_indisponivel", 503)
+    if _rate_limited(request, "login_code"):
+        return _err("limite_ip", 429)
+    try:
+        if db.account(email) is not None:
+            return _err("conta_existe", 409)
     except Exception as e:
         print("[login] cadastro falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
-    resp = JSONResponse({"ok": True, "redirect": auth.with_welcome(auth.safe_next(b.get("next")))})
-    auth.set_session(resp, user["id"])
-    return resp
+    fail, wait = _send_code(email, "signup")
+    if fail:
+        return fail
+    # os dados esperam a confirmação num tíquete assinado (30 min), não no banco
+    ticket = auth.sign({"k": "signup", "email": email, "name": name, "ph": auth.hash_password(pw)})
+    return {"ok": True, "ticket": ticket, "resend_in": abs(wait), "sent": wait > 0}
+
+
+def _signup_ticket(b):
+    t = auth.unsign(str(b.get("ticket") or ""), 30 * 60)
+    return t if t and t.get("k") == "signup" and t.get("email") and t.get("ph") else None
+
+
+@app.post("/auth/signup/resend")
+async def signup_resend(request: Request):
+    t = _signup_ticket(await _body(request))
+    if not t:
+        return _err("sessao_expirada")
+    if _rate_limited(request, "login_code"):
+        return _err("limite_ip", 429)
+    fail, wait = _send_code(t["email"], "signup")
+    return fail or {"ok": True, "resend_in": abs(wait), "sent": wait > 0}
+
+
+@app.post("/auth/signup/verify")
+async def signup_verify(request: Request):
+    b = await _body(request)
+    t = _signup_ticket(b)
+    if not t:
+        return _err("sessao_expirada")
+    if _rate_limited(request, "login_verify"):
+        return _err("limite_ip", 429)
+    try:
+        bad = _check_code(t["email"], b.get("code"), "signup")
+        if bad:
+            return bad
+        user = db.create_email_user(t["email"], t.get("name"), t["ph"])
+    except Exception as e:
+        print("[login] confirmação falhou:", str(e)[:200], flush=True)
+        return _err("erro", 500)
+    return _logged(user, b.get("next"), welcome=True)
+
+
+@app.post("/auth/password/forgot")
+async def password_forgot(request: Request):
+    """Envia o código para criar uma nova senha (também serve para conta só Google criar uma senha)."""
+    email = _email_of(await _body(request))
+    if not email:
+        return _err("email_invalido")
+    if not mailer.configured():
+        return _err("email_indisponivel", 503)
+    if _rate_limited(request, "login_code"):
+        return _err("limite_ip", 429)
+    try:
+        exists = db.account(email) is not None
+    except Exception as e:
+        print("[login] esqueci falhou:", str(e)[:200], flush=True)
+        return _err("erro", 500)
+    wait = db.CODE_RESEND_S
+    if exists:
+        fail, wait = _send_code(email, "reset")
+        if fail:
+            return fail
+    return {"ok": True, "resend_in": abs(wait), "sent": wait > 0}
+
+
+@app.post("/auth/password/reset")
+async def password_reset(request: Request):
+    b = await _body(request)
+    email, pw = _email_of(b), b.get("password")
+    if not email:
+        return _err("email_invalido")
+    if auth.password_problems(pw):
+        return _err("senha_fraca", rules=auth.password_problems(pw))
+    if _rate_limited(request, "login_verify"):
+        return _err("limite_ip", 429)
+    try:
+        bad = _check_code(email, b.get("code"), "reset")
+        if bad:
+            return bad
+        acc = db.user_by_email(email)
+        if not acc:
+            return _err("codigo_expirado")
+        user = db.set_password(acc["id"], auth.hash_password(pw))
+    except Exception as e:
+        print("[login] redefinição falhou:", str(e)[:200], flush=True)
+        return _err("erro", 500)
+    return _logged(user, b.get("next"))
 
 
 @app.get("/auth/logout")
@@ -663,6 +794,8 @@ def logout():
 @app.get("/me")
 def me(request: Request):
     u = auth.current_user(request)
+    if u:
+        u = {k: v for k, v in u.items() if k != "sv"}
     return {"logged_in": bool(u), "user": u}
 
 
@@ -708,7 +841,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
                                   info.get("picture"), info.get("sub"))
             dest = auth.safe_next(payload.get("nx"))
             resp = RedirectResponse(auth.with_welcome(dest) if novo else dest)
-            auth.set_session(resp, user["id"])
+            auth.set_session(resp, user["id"], user.get("sv", 0))
             return resp
         except Exception as e:
             print("[auth] login falhou:", str(e)[:200])

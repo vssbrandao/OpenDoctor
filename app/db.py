@@ -119,10 +119,15 @@ def counts(conn):
 
 # ===== usuários + tokens de calendário (Fase B, multiusuário) =====
 
+_USER_COLS = "id, email, name, picture, session_version"
+
+
 def _row_to_user(row):
+    """sv = versão da sessão (muda ao trocar a senha; o cookie guarda a versão com que foi criado)."""
     if not row:
         return None
-    return {"id": str(row[0]), "email": row[1], "name": row[2], "picture": row[3]}
+    return {"id": str(row[0]), "email": row[1], "name": row[2], "picture": row[3],
+            "sv": row[4] if len(row) > 4 else 0}
 
 
 def upsert_user(email, name=None, picture=None, google_sub=None):
@@ -140,7 +145,7 @@ def upsert_user(email, name=None, picture=None, google_sub=None):
                   picture = coalesce(excluded.picture, users.picture),
                   google_sub = coalesce(excluded.google_sub, users.google_sub),
                   last_login = now()
-                returning id, email, name, picture
+                returning id, email, name, picture, session_version
                 """,
                 (email, name, picture, google_sub),
             )
@@ -152,11 +157,11 @@ def upsert_user(email, name=None, picture=None, google_sub=None):
 def get_user(user_id):
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("select id, email, name, picture from users where id = %s", (user_id,))
+            cur.execute(f"select {_USER_COLS} from users where id = %s", (user_id,))
             return _row_to_user(cur.fetchone())
 
 
-# ===== login por e-mail (código de 6 dígitos, sem senha) =====
+# ===== login por e-mail: senha + código de confirmação (cadastro / redefinir senha) =====
 
 CODE_TTL_S = 10 * 60          # o código vale 10 min
 CODE_MAX_ATTEMPTS = 5         # tentativas por código
@@ -167,34 +172,95 @@ CODE_MAX_PER_HOUR = 5         # envios por e-mail por hora
 def user_by_email(email):
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("select id, email, name, picture from users where lower(email) = lower(%s)", (email,))
+            cur.execute(f"select {_USER_COLS} from users where lower(email) = lower(%s)", (email,))
             return _row_to_user(cur.fetchone())
 
 
-def touch_login(user_id):
-    with connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("update users set last_login = now() where id = %s", (user_id,))
-        conn.commit()
+LOCK_AFTER = 5                # senhas erradas seguidas até bloquear
+LOCK_MINUTES = 15
 
 
-def create_email_user(email, name):
-    """Cadastro por e-mail (após confirmar o código): grava o aceite dos termos. Se o e-mail já
-    existir (ex.: entrou pelo Google entre um passo e outro), só atualiza o login."""
+def create_email_user(email, name, password_hash):
+    """Cadastro por e-mail, depois de confirmar o código: grava a senha e o aceite dos termos.
+    Se o e-mail passou a existir no meio do caminho (entrou pelo Google), o dono do e-mail acabou de
+    prová-lo com o código: só define a senha se a conta ainda não tinha uma."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                insert into users (email, name, terms_accepted_at, last_login)
-                values (%s, %s, now(), now())
+                f"""
+                insert into users (email, name, password_hash, terms_accepted_at, last_login)
+                values (%s, %s, %s, now(), now())
                 on conflict (email) do update set
                   name = coalesce(users.name, excluded.name),
+                  password_hash = coalesce(users.password_hash, excluded.password_hash),
                   terms_accepted_at = coalesce(users.terms_accepted_at, excluded.terms_accepted_at),
                   last_login = now()
-                returning id, email, name, picture
+                returning {_USER_COLS}
                 """,
-                (email, name),
+                (email, name, password_hash),
             )
+            row = cur.fetchone()
+        conn.commit()
+    return _row_to_user(row)
+
+
+def account(email):
+    """O que a tela inicial precisa saber: a conta existe? tem senha? (None = não existe)"""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("select password_hash is not null from users where lower(email) = lower(%s)", (email,))
+            row = cur.fetchone()
+    return None if row is None else {"password": bool(row[0])}
+
+
+def password_login_info(email):
+    """Dados para conferir a senha: dict com id, hash, sv e segundos restantes de bloqueio (ou None)."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """select id, password_hash, session_version,
+                          greatest(0, ceil(extract(epoch from locked_until - now())))::int
+                   from users where lower(email) = lower(%s)""", (email,))
+            row = cur.fetchone()
+    if not row:
+        return None
+    return {"id": str(row[0]), "hash": row[1], "sv": row[2], "locked_s": row[3] or 0}
+
+
+def login_failed(user_id):
+    """Senha errada: conta o erro e bloqueia por LOCK_MINUTES após LOCK_AFTER seguidos.
+    Devolve (tentativas restantes, segundos de bloqueio)."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """update users set
+                     failed_logins = case when failed_logins + 1 >= %s then 0 else failed_logins + 1 end,
+                     locked_until  = case when failed_logins + 1 >= %s
+                                          then now() + %s * interval '1 minute' else locked_until end
+                   where id = %s returning failed_logins, locked_until > now()""",
+                (LOCK_AFTER, LOCK_AFTER, LOCK_MINUTES, user_id))
+            failed, locked = cur.fetchone()
+        conn.commit()
+    return (0, LOCK_MINUTES * 60) if locked else (LOCK_AFTER - failed, 0)
+
+
+def login_succeeded(user_id):
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("update users set failed_logins = 0, locked_until = null, last_login = now() where id = %s",
+                        (user_id,))
+        conn.commit()
+
+
+def set_password(user_id, password_hash):
+    """Nova senha (redefinição): zera bloqueio e muda a versão da sessão — as sessões abertas em
+    outros aparelhos deixam de valer. Devolve o usuário atualizado."""
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""update users set password_hash = %s, session_version = session_version + 1,
+                                     failed_logins = 0, locked_until = null, last_login = now()
+                    where id = %s returning {_USER_COLS}""", (password_hash, user_id))
             row = cur.fetchone()
         conn.commit()
     return _row_to_user(row)

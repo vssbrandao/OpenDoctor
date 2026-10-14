@@ -62,10 +62,11 @@ def unsign(token: str, max_age: int = None):
 
 # ----- sessão (cookie) -----
 
-def set_session(response, user_id: str):
+def set_session(response, user_id: str, sv: int = 0):
+    """`sv` = versão da sessão do usuário; ao trocar a senha ela muda e os cookies antigos param de valer."""
     secure = integrations.REDIRECT_BASE.startswith("https://")
     response.set_cookie(
-        COOKIE_NAME, sign({"uid": user_id}),
+        COOKIE_NAME, sign({"uid": user_id, "sv": int(sv or 0)}),
         max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
         secure=secure, path="/")
 
@@ -84,9 +85,12 @@ def current_user(request):
     if not payload or "uid" not in payload:
         return None
     try:
-        return db.get_user(payload["uid"])
+        user = db.get_user(payload["uid"])
     except Exception:
         return None
+    if not user or int(payload.get("sv", 0)) != int(user.get("sv") or 0):
+        return None                      # senha trocada depois deste login: sessão encerrada
+    return user
 
 
 # ----- login com Google (escopos básicos) -----
@@ -119,15 +123,61 @@ def with_welcome(url: str) -> str:
     return base + ("#" + frag if frag else "")
 
 
-# ----- login por e-mail: código de 6 dígitos -----
+# ----- código de 6 dígitos por e-mail (confirmar cadastro / redefinir senha) -----
+
+CODE_PURPOSES = ("signup", "reset")
+
 
 def new_code() -> str:
     return f"{secrets.randbelow(10 ** 6):06d}"
 
 
-def code_hash(email: str, code: str) -> str:
-    """O código não é guardado: só este HMAC (vale para um e-mail só)."""
-    return hmac.new(_SECRET, f"login-code:{email}:{code}".encode(), hashlib.sha256).hexdigest()
+def code_hash(email: str, code: str, purpose: str) -> str:
+    """O código não é guardado: só este HMAC. Vale para um e-mail e uma finalidade (o código de
+    cadastro não serve para redefinir senha e vice-versa)."""
+    return hmac.new(_SECRET, f"code:{purpose}:{email}:{code}".encode(), hashlib.sha256).hexdigest()
+
+
+# ----- senha -----
+
+PW_ITER = 600_000          # PBKDF2-SHA256, recomendação OWASP
+
+PW_RULES = {
+    "tamanho": "Mínimo de 8 caracteres",
+    "letras": "Letras maiúsculas e minúsculas e 2 números",
+    "especial": "Pelo menos 1 caractere especial (ex.: ! $ @ %)",
+}
+
+
+def password_problems(pw) -> list:
+    """Regras não cumpridas (chaves de PW_RULES); lista vazia = senha aceita."""
+    if not isinstance(pw, str):
+        return list(PW_RULES)
+    out = []
+    if not (8 <= len(pw) <= 128):
+        out.append("tamanho")
+    if not (any(c.islower() for c in pw) and any(c.isupper() for c in pw) and sum(c.isdigit() for c in pw) >= 2):
+        out.append("letras")
+    if not any(not c.isalnum() and not c.isspace() for c in pw):
+        out.append("especial")
+    return out
+
+
+def hash_password(pw: str) -> str:
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt, PW_ITER)
+    return f"pbkdf2_sha256${PW_ITER}${_b64e(salt)}${_b64e(dk)}"
+
+
+def check_password(pw, stored) -> bool:
+    try:
+        algo, it, salt, want = (stored or "").split("$")
+        if algo != "pbkdf2_sha256" or not isinstance(pw, str):
+            return False
+        dk = hashlib.pbkdf2_hmac("sha256", pw.encode(), _b64d(salt), int(it))
+        return hmac.compare_digest(_b64e(dk), want)
+    except Exception:
+        return False
 
 
 def login_url(hint: str = "", nxt: str = "") -> str:

@@ -37,9 +37,10 @@
     <h2>Dados que acessamos</h2>
     <ul>
       <li><strong>Identificação:</strong> nome e e-mail da conta usada para entrar.</li>
-      <li><strong>Login por e-mail:</strong> se você entrar com um código, guardamos apenas uma assinatura
-        criptográfica do código (nunca o código), apagada em até 24 horas, e a data em que você aceitou
-        estes termos ao criar a conta.</li>
+      <li><strong>Login com e-mail e senha:</strong> guardamos a senha apenas de forma irreversível (hash
+        PBKDF2-SHA256), nunca a senha em si. Para confirmar seu e-mail ao criar a conta e para redefinir a senha,
+        enviamos um código de 6 dígitos, do qual guardamos só uma assinatura criptográfica, apagada em até 24 horas.
+        Também registramos a data em que você aceitou estes termos ao criar a conta.</li>
       <li><strong>Calendário (somente leitura):</strong> seus eventos, para exibi-los na agenda.
         Não criamos, editamos nem excluímos eventos.</li>
       <li><strong>Tokens de acesso:</strong> credenciais emitidas pelo provedor para manter a conexão.</li>
