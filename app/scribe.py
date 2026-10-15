@@ -13,7 +13,7 @@ import unicodedata
 
 from . import cid10, config, llm
 
-PROMPT_VERSION = "2026-10-15.5"
+PROMPT_VERSION = "2026-10-15.6"
 MASK = "[PACIENTE]"
 FIELDS = ("s", "o", "a", "p")
 VITALS = ("pa_s", "pa_d", "fc", "fr", "temp", "spo2", "peso", "altura", "glicemia")
@@ -392,7 +392,8 @@ Regras (obrigatórias):
 1. Documente SOMENTE o que foi dito na consulta. Não invente sintoma, exame, valor, dose, diagnóstico ou conduta.
    O que não foi dito fica de fora (campo vazio = lista vazia). Sem exame físico na consulta, sem exame físico no texto.
 2. Não sugira diagnóstico, exame ou tratamento que o médico não disse. Você documenta; não decide.
-3. Mantenha as negativas ditas ("nega dor torácica", "sem febre"). Pergunta do médico sem resposta clara na
+3. Mantenha TODAS as negativas ditas ("nega dor torácica", "sem febre"), inclusive de hábitos e antecedentes, e
+   também quando são a resposta do paciente a uma pergunta ("Fuma?" "Não fumo." → "nega tabagismo"). Pergunta do médico sem resposta clara na
    transcrição (trecho truncado ou ininteligível) NÃO vira negativa nem afirmativa: fica de fora e vai em
    "pendencias" (ex.: "resposta sobre desmaio não ficou clara na gravação").
 4. Cada frase traz "src": os números dos trechos que a sustentam (pelo menos um). "tipo": "dito" quando está
@@ -402,7 +403,9 @@ Regras (obrigatórias):
    a última medida dita.
 6. "meds" só tem remédio com ação decidida na consulta: iniciado, mantido, suspenso ou ajustado. Remédio só
    citado (pergunta do paciente, recusado pelo médico, exemplo) fica fora de "meds"; se importar, vai no texto.
-7. Remédio novo ou ajustado sem dose ou posologia dita: deixe a dose/posologia em branco e registre em
+7. Remédio ajustado: escreva no texto a dose anterior e a nova quando as duas foram ditas ("varfarina: de 35 para
+   30 mg por semana"); isso não é correção (regra 5), as duas são verdadeiras.
+   Remédio novo ou ajustado sem dose ou posologia dita: deixe a dose/posologia em branco e registre em
    "pendencias". Remédio que o médico mandou manter sem dizer a dose: use a dose do cadastro.
 8. Os remédios e alergias do cadastro servem para escrever o nome certo e notar continuidade; não diga que um
    remédio foi mantido se isso não foi dito ou claramente combinado na consulta.
@@ -737,13 +740,20 @@ def generate(segments, mode, patient=None, profile="", last_note="", patient_nam
     return finish(ask_model(msgs, model), segments, mode, patient, patient_name)
 
 
-def keywords(patient):
+# termos de exame físico que o transcritor costuma errar ("abaulado" → "abalado", "crepitações" sumindo)
+EXAME_KW = ["abaulado", "hiperemiado", "otoscopia", "membrana timpânica", "crepitações", "estertores", "sibilos",
+            "roncos", "murmúrio vesicular", "bulhas rítmicas", "sopro sistólico", "cacifo", "turgência jugular",
+            "hepatomegalia", "Blumberg", "Giordano", "punho-percussão", "Lasègue", "linfonodomegalia", "orofaringe",
+            "exsudato", "monofilamento", "glicemia capilar", "hemoglobina glicada"]
+
+
+def keywords(patient, exame=True):
     """Palavras que ajudam o transcritor a acertar: remédios, problemas e alergias do cadastro, sem dose
-    (o nome do paciente não entra)."""
+    (o nome do paciente não entra), e termos comuns de exame físico (EXAME_KW)."""
     p, out = patient or {}, []
     for k in ("medications", "problems", "allergies"):
         for line in re.split(r"[\n;,]+", p.get(k) or ""):
             w = re.split(r"\s+\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|g|ml|ui|%|gotas?|comp)\b|\s+\(", line.strip(), flags=re.I)[0].strip(" -•*.")
             if 3 <= len(w) <= 40:
                 out.append(w)
-    return out[:50]
+    return (out[:26] + (EXAME_KW if exame else []))[:50]

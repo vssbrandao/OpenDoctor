@@ -309,8 +309,13 @@ def freq(pos):
     return None
 
 
+def _txt(t):
+    """Texto para comparar com o gabarito: sem acento, minúsculo, hífen como espaço ("raio-X" = "raio X")."""
+    return re.sub(r"\s+", " ", scribe.norm(t).replace("-", " "))
+
+
 def _has(alts, text):
-    return any(scribe.norm(a) in text for a in alts.split("|"))
+    return any(_txt(a) in text for a in alts.split("|"))
 
 
 def _is(alts, nome):
@@ -321,8 +326,8 @@ def score(caso, res, flags):
     g = caso.get("gabarito") or {}
     script = " ".join(f for _, f in caso["falas"])
     script_nums = scribe.numbers(script)
-    full = scribe.norm(" ".join(scribe.render_text(res).values()) + " " +
-                       " ".join(f"{m['nome']} {m['dose']} {m['posologia']}" for m in res["meds"]))
+    full = _txt(" ".join(scribe.render_text(res).values()) + " " +
+                " ".join(f"{m['nome']} {m['dose']} {m['posologia']}" for m in res["meds"]))
     s = {"rem_certo": 0, "rem_aviso": 0, "rem_sem_aviso": 0, "rem_falta": 0, "rem_inventado": 0, "detalhe": []}
     usados = set()
     for gm in g.get("remedios") or []:
@@ -408,13 +413,18 @@ def run_case(caso, stt_model, llm_model):
     pac = caso.get("paciente") or {}
     kw = [x.split(" ")[0] for x in re.split(r"[\n,;]+", pac.get("medicacoes", "")) if x.strip()]
     kw += [x.strip() for x in re.split(r"[\n,;]+", pac.get("problemas", "")) if x.strip()]
+    kwtag = ""
+    if FONTE.get("kw") == "app":              # as mesmas palavras-chave da produção (cadastro + exame físico)
+        kw = scribe.keywords({"medications": pac.get("medicacoes", ""), "problems": pac.get("problemas", ""),
+                              "allergies": pac.get("alergias", "")})
+        kwtag = "|kw:" + hashlib.sha1("|".join(kw).encode()).hexdigest()[:8]
     segs, prev, t0 = [], "", time.time()
     akey = hashlib.sha1(a.tobytes()).hexdigest()[:16]
     silent, floor = 0, noise_floor(a)
     for i, (s0, s1) in enumerate(cuts(a), 1):
         if speech_ratio(a[s0:s1], floor) < 0.02:       # só silêncio: não transcreve (nem cobra)
             silent += 1; segs.append({"seq": i, "at": s0 / SR, "text": ""}); continue
-        r, hit = _cache("stt", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}",
+        r, hit = _cache("stt", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}",
                         lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
         if not hit:
             _add_cost((s1 - s0) / SR / 60 * STT_MIN.get(stt_model, 0.006))
@@ -476,8 +486,11 @@ def main():
     ap.add_argument("--teto-usd", type=float, default=1.75, help="para de começar casos novos ao atingir este gasto")
     ap.add_argument("--voz", choices=("openai", "mac"), default="openai", help="voz sintética: natural (OpenAI) ou do Mac")
     ap.add_argument("--comparar", action="store_true", help="só junta os relatórios do dia numa tabela comparativa")
+    ap.add_argument("--kw", choices=("cadastro", "app"), default="cadastro",
+                    help="palavras-chave da transcrição: só do cadastro (como antes) ou as da produção (+ exame físico)")
     a = ap.parse_args()
     FONTE["voz"] = a.voz
+    FONTE["kw"] = a.kw
     if a.comparar:
         return compare()
     cases = load_cases([x.strip() for x in a.casos.split(",") if x.strip()])
@@ -531,7 +544,7 @@ def main():
               "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit, "erros": erros,
               "gasto_usd_nesta_rodada": round(SPENT["usd"], 3)}
     os.makedirs(REL, exist_ok=True)
-    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}"
+    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}" + ("-kw-app" if a.kw == "app" else "") + f"-p{scribe.PROMPT_VERSION.split('.')[-1]}"
     json.dump({"resumo": resumo, "casos": rows}, open(os.path.join(REL, name + ".json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
     md = [f"# Avaliação da gravação — {resumo['data']} · {a.stt} + {a.modelo} · prompt {scribe.PROMPT_VERSION}", "",
