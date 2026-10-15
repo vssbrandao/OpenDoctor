@@ -106,3 +106,15 @@ def test_conta_nova_ganha_paciente_de_exemplo_que_pode_ser_excluida(novo_usuario
     assert len(db.list_files(uid, pid)) == 1
     assert db.delete_patient(uid, pid) == "ok"                            # fictícia: sai com tudo
     assert db.list_notes(uid, pid, p["key"]) == [] and db.list_files(uid, pid) == []
+
+
+def test_finalizar_guarda_o_tempo_de_documentacao_uma_vez(novo_usuario):
+    uid = novo_usuario()["id"]
+    p = db.create_patient(uid, "Paciente do Tempo")
+    nid = db.upsert_note(uid, p["id"], p["key"], p["name"], None, None, None, "Evolução de teste.",
+                         data={"mode": "free", "vitals": {}, "cid": []})
+    nid = nid["id"] if isinstance(nid, dict) else nid
+    assert db.finalize_note(uid, nid, {"active_s": 300, "wall_s": 420, "edits": 12})
+    assert db.get_note(uid, nid)["data"]["timing"] == {"active_s": 300, "wall_s": 420, "edits": 12}
+    db.finalize_note(uid, nid, {"active_s": 1, "wall_s": 1, "edits": 1})          # já finalizada: não muda
+    assert db.get_note(uid, nid)["data"]["timing"]["active_s"] == 300

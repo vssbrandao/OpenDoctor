@@ -123,3 +123,11 @@ def test_paciente_de_exemplo_no_formato_da_tela():
     assert all(c["signed_at"] > c["start"] for c in cons)
     pdf = exemplo.laudo_pdf(datetime.date(2026, 9, 20), exemplo.EXAMES[0.5])
     assert _sniff(pdf[:16]) == "application/pdf" and b"20/09/2026" in pdf and b"%%EOF" in pdf
+
+
+def test_tempo_de_documentacao_so_numeros_limitados():
+    """Linha de base da gravação: o tempo que vai ao finalizar só aceita números dentro dos limites."""
+    from app.server import _timing
+    assert _timing({"active_s": 312, "wall_s": 900.4, "edits": 41}) == {"active_s": 312, "wall_s": 900, "edits": 41}
+    assert _timing({"active_s": -1, "wall_s": 10 ** 9, "edits": True, "texto": "dor"}) is None
+    assert _timing({"active_s": "300"}) is None and _timing(None) is None and _timing([1]) is None

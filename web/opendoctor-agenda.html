@@ -3997,6 +3997,7 @@
       }
       function changed() {
         if (!ready || locked()) return;
+        tmTouch(true);
         var x = compose(), s = snap(x);
         updCount(x.content.length);
         setStatus(s === saved ? '' : 'Alterações não salvas');
@@ -4299,6 +4300,29 @@
         if (isOpen() && ready && !locked() && snap() !== saved) { e.preventDefault(); e.returnValue = ''; }
       });
 
+      // ===== tempo de documentação (linha de base para comparar com a gravação): só números, nenhum conteúdo =====
+      // Conta os segundos com a aba Consulta à vista e em uso (mexeu no último minuto), a partir da 1ª edição.
+      // Fica na sessionStorage (sobrevive a recarregar) e vai junto ao finalizar (data.timing).
+      var tmLast = 0;
+      function tmGet() { try { return JSON.parse(sessionStorage.getItem('od_tm_' + ctx._tk) || 'null') || { a: 0, e: 0, f: 0 }; } catch (_) { return { a: 0, e: 0, f: 0 }; } }
+      function tmSet(t) { try { sessionStorage.setItem('od_tm_' + ctx._tk, JSON.stringify(t)); } catch (_) {} }
+      function tmTouch(edit) {
+        tmLast = Date.now();
+        if (!edit || !ctx || !ready || locked()) return;
+        if (!ctx._tk) { ctx._tk = ctx.event_id ? 'e' + ctx.event_id : 't' + Date.now(); persistCtx(); }   // mesma consulta reaberta: soma
+        var t = tmGet(); t.e++; if (!t.f) t.f = Date.now(); tmSet(t);
+      }
+      ['keydown', 'mousedown', 'wheel'].forEach(function (ev) { $('prView').addEventListener(ev, function () { tmTouch(false); }, { passive: true }); });
+      setInterval(function () {
+        if (!ctx || !ctx._tk || !ready || locked() || !isOpen() || document.hidden || Date.now() - tmLast > 60000) return;
+        var p = document.querySelector('.pr-panel[data-panel=atual]'); if (!p || p.hidden) return;
+        var t = tmGet(); t.a++; tmSet(t);
+      }, 1000);
+      function tmFinal() {
+        if (!ctx || !ctx._tk) return null;
+        var t = tmGet(); return { active_s: t.a, wall_s: t.f ? Math.round((Date.now() - t.f) / 1000) : 0, edits: t.e };
+      }
+
       // ===== finalizar e adendos =====
       $('prFinalize').addEventListener('click', function () {
         var x = compose();
@@ -4310,12 +4334,12 @@
         whenSaved(function (ok) {
           if (ctx !== my) return;
           if (!ok) { btn.disabled = false; setStatus('Não foi possível salvar antes de finalizar. Tente de novo.', true); return; }
-          api('POST', '/prontuario/notes/' + cur.id + '/finalize').then(function (res) {
+          api('POST', '/prontuario/notes/' + cur.id + '/finalize', { timing: tmFinal() }).then(function (res) {
             btn.disabled = false;
             if (ctx !== my) return;
             if (!(res.ok && res.j.ok)) { setStatus('Não foi possível finalizar.', true); return; }
             cur.signed_at = res.j.signed_at; cur.addenda = cur.addenda || [];
-            try { localStorage.removeItem(dkey()); } catch (_) {}
+            try { localStorage.removeItem(dkey()); if (ctx._tk) sessionStorage.removeItem('od_tm_' + ctx._tk); } catch (_) {}
             renderEvo(); renderHist(); renderKpis(); loadVisits(my);
             setStatus('');
           }).catch(function () { btn.disabled = false; setStatus('Falha de conexão ao finalizar.', true); });

@@ -707,12 +707,18 @@ def update_note(user_id, note_id, content, data=None):
     return True
 
 
-def finalize_note(user_id, note_id):
-    """Finaliza (assina) a evolução: a partir daí só adendos. Devolve signed_at (ISO) ou None."""
+def finalize_note(user_id, note_id, timing=None):
+    """Finaliza (assina) a evolução: a partir daí só adendos. Devolve signed_at (ISO) ou None.
+    timing: só números do tempo de documentação (sem conteúdo), gravados na primeira finalização."""
+    from psycopg.types.json import Jsonb
     with connection() as conn:
-        r = conn.execute("""update clinical_notes set signed_at = coalesce(signed_at, now())
+        r = conn.execute("""update clinical_notes set signed_at = coalesce(signed_at, now()),
+                                   data = case when signed_at is null and %s::jsonb is not null
+                                               then coalesce(data, '{}'::jsonb) || jsonb_build_object('timing', %s::jsonb)
+                                               else data end
                             where user_id = %s and id = %s and (content ~ '\\S' or signed_at is not null)   -- algo visível (não só espaços/quebras)
-                            returning signed_at""", (user_id, note_id)).fetchone()
+                            returning signed_at""",
+                         (Jsonb(timing) if timing else None, Jsonb(timing) if timing else None, user_id, note_id)).fetchone()
         conn.commit()
     return r[0].isoformat() if r else None
 

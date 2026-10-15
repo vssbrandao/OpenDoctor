@@ -1402,8 +1402,21 @@ async def prontuario_note_update(note_id: int, request: Request):
     return {"ok": True, "id": note_id}
 
 
+def _timing(v):
+    """Tempo de documentação da evolução (linha de base da gravação): só números, limitados. None se vazio."""
+    if not isinstance(v, dict):
+        return None
+    lim = {"active_s": 86400, "wall_s": 30 * 86400, "edits": 100000}
+    out = {}
+    for k, top in lim.items():
+        x = v.get(k)
+        if isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= top:
+            out[k] = int(x)
+    return out or None
+
+
 @app.post("/prontuario/notes/{note_id}/finalize")
-def prontuario_note_finalize(note_id: int, request: Request):
+async def prontuario_note_finalize(note_id: int, request: Request):
     """Finaliza a evolução (registro imutável; correções só por adendo)."""
     u, err = _auth_or_401(request)
     if err:
@@ -1411,7 +1424,7 @@ def prontuario_note_finalize(note_id: int, request: Request):
     n = db.get_note(u["id"], note_id)
     if not n:
         return JSONResponse({"error": "evolução não encontrada"}, status_code=404)
-    signed = db.finalize_note(u["id"], note_id)
+    signed = db.finalize_note(u["id"], note_id, _timing((await _json(request)).get("timing")))
     if not signed:
         return JSONResponse({"error": "evolução vazia não pode ser finalizada"}, status_code=400)
     db.log_access(u["id"], "note_finalize", n["patient_id"], note_id)
