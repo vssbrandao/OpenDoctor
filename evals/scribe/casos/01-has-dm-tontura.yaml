@@ -17,6 +17,9 @@ paciente:
 
     Atorvastatina 20 mg à noite'
   alergias: Dipirona, Penicilina
+evolucao_anterior: 'S: Retorno. Refere adesão parcial à metformina. O: PA 152x94 mmHg, FC 80 bpm, peso 89,4 kg,
+  glicemia capilar 142 mg/dL. A: HAS não controlada. DM2 fora da meta (HbA1c 7,8%). P: Losartana ajustada para 50 mg
+  12/12h. Retorno em 3 meses.'
 falas:
 - - m
   - Bom dia, dona Maria. Como a senhora passou desde a última consulta?
@@ -77,5 +80,9 @@ gabarito:
   - acido urico
   - monofilamento|sensibilidade
   proibidos:
+  - '152'
+  - '89,4'
+  - '142'
+  - '7,8'
   - dipirona
   avisos: []

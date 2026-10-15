@@ -95,3 +95,29 @@ def test_posologia_por_frequencia_e_dose_incomum():
     assert s.dose_incomum("ciprofloxacino", "5 mg") and s.dose_incomum("levotiroxina", "75 mg")    # troca de remédio / unidade
     assert not s.dose_incomum("levotiroxina", "75 mcg") and not s.dose_incomum("amoxicilina", "8 ml")
     assert not s.dose_incomum("dipirona", "1 g") and not s.dose_incomum("insulina nph", "20 UI")
+
+
+def test_cortes_iguais_aos_da_pagina():
+    """Blocos de 100 ms; corte depois de 15 s no silêncio de 300 ms (o bloco silencioso fica para o próximo trecho);
+    aos 30 s, no bloco mais baixo; silêncio puro não vai para a transcrição; nenhuma amostra se perde."""
+    import numpy as np
+    rng = np.random.default_rng(2)
+    fala = lambda sec: (rng.normal(0, 0.08, int(e.SR * sec))).astype(np.float32)
+    pausa = lambda sec: np.zeros(int(e.SR * sec), np.float32)
+    a = np.concatenate([fala(18), pausa(0.5), fala(40), pausa(25), fala(10)])
+    cs = e.cortes_navegador(a)
+    assert cs[0][0] == 0 and cs[-1][1] == len(a) and all(cs[i][1] == cs[i + 1][0] for i in range(len(cs) - 1))
+    assert all((y - x) / e.SR <= 30.0001 for x, y, _ in cs) and all((y - x) / e.SR >= 14.9 for x, y, _ in cs[:-1])   # 150 blocos, menos o silencioso
+    assert abs(cs[0][1] / e.SR - 18.2) < 0.15                           # 18 s de fala + 2 blocos de pausa
+    assert any(m for _, _, m in cs) and not cs[0][2]                     # o trecho só de pausa é silêncio; o primeiro não
+    e.FONTE["cortes"] = "antigo"
+    try:
+        assert all(len(t) == 3 for t in e.trechos(a)[0]) and e.trechos(a)[1] is False
+    finally:
+        e.FONTE["cortes"] = "navegador"
+
+
+def test_vazamento_confere_o_nome_inteiro_e_apelidos():
+    assert e.vazamentos("Luiz Carlos Pinto", "O [PACIENTE] e o Carlinhos vieram. Pinto relata dor.") == ["Carlinhos", "Pinto"]
+    assert e.vazamentos("Ana Clara Ribeiro", "[PACIENTE], a urina está clara?") == []
+    assert e.vazamentos("Ana Clara Ribeiro", "Clara veio sozinha.") == ["Clara"]

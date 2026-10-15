@@ -914,6 +914,18 @@ def rec_delete(user_id, rec_id):
     return r[0] if r else None
 
 
+def last_note_content(user_id, patient_id, exclude_note_id=None, exclude_event_id=None):
+    """Texto da evolução mais recente do paciente (para a continuidade da evolução gerada), fora a da consulta atual
+    e os registros só de exames."""
+    with connection() as conn:
+        r = conn.execute("""select content from clinical_notes
+                            where user_id = %s and patient_id = %s and content ~ '\\S' and coalesce(data->>'kind', '') <> 'labs'
+                              and id is distinct from %s and (%s::text is null or event_id is distinct from %s)
+                            order by coalesce(event_start, created_at) desc limit 1""",
+                         (user_id, patient_id, exclude_note_id, exclude_event_id, exclude_event_id)).fetchone()
+    return r[0] if r else ""
+
+
 def recent_notes(user_id, limit=30):
     """Últimas evoluções do médico (para o perfil de escrita, calculado aqui no servidor: nenhum texto sai)."""
     with connection() as conn:

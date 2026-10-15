@@ -173,6 +173,8 @@ def _rec_open(uid, pid, rid, eid=None, nid=None, consent=None):
 
 
 def _rec_add(uid, rid, seq, at, dur, text, duvidas):
+    if rid not in REC:                       # o /_preview/reset limpou no meio de um envio: descarta
+        return
     if (rid, seq) not in SEG:
         SEG[(rid, seq)] = dict({"seq": seq, "at": at, "dur": dur, "text": text, "duvidas": list(duvidas)}, **_LAST.pop("x", {}))
     REC[rid].update(seconds=max(REC[rid]["seconds"], at + dur), status="gravando", updated_at=dt.datetime.now().astimezone().isoformat())
@@ -210,10 +212,13 @@ db.rec_link_note = lambda uid, pid, rids, nid: [REC[r].update(note_id=nid) for r
 db.rec_delete = lambda uid, rid: (REC.pop(rid)["pid"] if rid in REC else None)
 db.recent_notes = lambda uid, limit=30: [{"content": n["content"], "data": n["data"]} for n in NOTES.values()][:limit]
 db.list_notes = lambda uid, pid, key: [_note_out(n) for n in NOTES.values() if n["pid"] == pid]
+db.last_note_content = lambda uid, pid, nid=None, eid=None: next(
+    (n["content"] for n in sorted(NOTES.values(), key=lambda n: n["updated_at"], reverse=True)
+     if n["pid"] == pid and n["content"].strip() and n["id"] != nid and (eid is None or n["event_id"] != eid)), "")
 db.log_access = lambda *a, **k: None
 
 # ----- transcritor e modelo simulados: consulta FICTÍCIA -----
-SIM = {"rede": False, "ia": False, "lento": 1.2}
+SIM = {"rede": False, "ia": False, "lento": 1.2, "erro_seq": set(), "recusar_seq": set()}
 FALAS = [("Bom dia. Como passou desde a última consulta? Bem, graças a Deus. Estou tomando os remédios certinho: a losartana, a metformina e o do colesterol. E a caminhada, conseguiu manter?", []),
          ("Quatro vezes por semana, uns trinta minutos. Só que essa semana, duas vezes, eu levantei da cama e fiquei tonta. Essa tontura passa rápido? Chegou a desmaiar, teve falta de ar ou dor no peito?", []),
          ("Passa em menos de um minuto, sentada. Não desmaiei e não tive dor nem falta de ar. E as glicemias em casa, como estão? Em jejum, entre 110 e 130. Não tive nenhuma baixa de açúcar.", ["110"]),
@@ -274,6 +279,12 @@ class _Rede(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
         if SIM["rede"] and request.url.path.startswith(("/prontuario/transcribe", "/prontuario/recordings", "/prontuario/scribe")):
             return JSONResponse({"error": "internet simulada fora"}, status_code=503)
+        if request.url.path == "/prontuario/transcribe":            # para o teste: um trecho que o servidor sempre erra / recusa
+            seq = str(request.headers.get("x-seq") or "")
+            if seq in SIM["erro_seq"]:
+                return JSONResponse({"error": "falha simulada do servidor"}, status_code=500)
+            if seq in SIM["recusar_seq"]:
+                return JSONResponse({"error": "trecho recusado (simulado)"}, status_code=400)
         return await call_next(request)
 
 
@@ -281,14 +292,19 @@ server.app.add_middleware(_Rede)
 
 
 @mock.get("/_preview/sim")
-def _sim(rede: str = "", ia: str = "", lento: str = ""):
+def _sim(rede: str = "", ia: str = "", lento: str = "", erro_seq: str = None, recusar_seq: str = None):
     if rede:
         SIM["rede"] = rede == "off"
     if ia:
         SIM["ia"] = ia == "off"
     if lento:
         SIM["lento"] = float(lento)
-    return {"rede": "off" if SIM["rede"] else "on", "ia": "off" if SIM["ia"] else "on", "lento": SIM["lento"]}
+    if erro_seq is not None:
+        SIM["erro_seq"] = {x for x in erro_seq.split(",") if x}
+    if recusar_seq is not None:
+        SIM["recusar_seq"] = {x for x in recusar_seq.split(",") if x}
+    return {"rede": "off" if SIM["rede"] else "on", "ia": "off" if SIM["ia"] else "on", "lento": SIM["lento"],
+            "erro_seq": sorted(SIM["erro_seq"]), "recusar_seq": sorted(SIM["recusar_seq"])}
 
 
 @mock.get("/_preview/estado")
@@ -303,7 +319,7 @@ def _estado():
 
 @mock.get("/_preview/reset")
 def _reset():
-    REC.clear(); SEG.clear(); NOTES.clear(); SIM.update(rede=False, ia=False, lento=1.2)
+    REC.clear(); SEG.clear(); NOTES.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
     return {"ok": True}
 
 

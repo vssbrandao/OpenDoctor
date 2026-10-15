@@ -1455,13 +1455,14 @@ async def prontuario_note_finalize(note_id: int, request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    n = db.get_note(u["id"], note_id)
+    timing = _timing((await _json(request)).get("timing"))
+    n = await run_in_threadpool(db.get_note, u["id"], note_id)
     if not n:
         return JSONResponse({"error": "evolução não encontrada"}, status_code=404)
-    signed = db.finalize_note(u["id"], note_id, _timing((await _json(request)).get("timing")))
+    signed = await run_in_threadpool(db.finalize_note, u["id"], note_id, timing)
     if not signed:
         return JSONResponse({"error": "evolução vazia não pode ser finalizada"}, status_code=400)
-    db.log_access(u["id"], "note_finalize", n["patient_id"], note_id)
+    await run_in_threadpool(db.log_access, u["id"], "note_finalize", n["patient_id"], note_id)
     return {"ok": True, "signed_at": signed}
 
 
@@ -1690,11 +1691,11 @@ async def prontuario_transcribe(request: Request):
     consent = _iso_or_none(h.get("x-consent"))
     if not consent:
         return JSONResponse({"error": "autorização do paciente obrigatória"}, status_code=400)
-    p = db.get_patient(u["id"], int(pid))
+    # o servidor tem um processo só: o banco (no Canadá) roda fora do laço de eventos, para um trecho não segurar os outros
+    seq = int(seq)
+    p, done = await run_in_threadpool(lambda: (lambda pt: (pt, pt and db.rec_segment(u["id"], rid, seq)))(db.get_patient(u["id"], int(pid))))
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
-    seq = int(seq)
-    done = db.rec_segment(u["id"], rid, seq)
     if done:
         return {"ok": True, "text": done["text"], "duvidas": done["duvidas"], "repetido": True}
     if _rate_limited(request, "transcribe"):
@@ -1712,21 +1713,30 @@ async def prontuario_transcribe(request: Request):
         return JSONResponse({"error": "formato não aceito: WAV 16 kHz mono"}, status_code=415)
     if dur > MAX_SEG_S:
         return JSONResponse({"error": "trecho longo demais"}, status_code=413)
-    if db.rec_seconds_today(u["id"]) + dur > SCRIBE_DAY_S:
-        return JSONResponse({"error": "limite de 6 horas de gravação em 24 horas"}, status_code=429)
     nid = str(h.get("x-note-id") or "")
-    if not db.rec_open(u["id"], p["id"], rid, str(h.get("x-event-id") or "")[:300] or None,
-                       int(nid) if nid.isdigit() else None, consent):
+
+    def prepare():
+        if db.rec_seconds_today(u["id"]) + dur > SCRIBE_DAY_S:
+            return "teto", None
+        if not db.rec_open(u["id"], p["id"], rid, str(h.get("x-event-id") or "")[:300] or None,
+                           int(nid) if nid.isdigit() else None, consent):
+            return "outra", None
+        return None, db.rec_prev_text(u["id"], rid, seq)
+    why, prev = await run_in_threadpool(prepare)
+    if why == "teto":
+        return JSONResponse({"error": "limite de 6 horas de gravação em 24 horas"}, status_code=429)
+    if why == "outra":
         return JSONResponse({"error": "gravação não encontrada"}, status_code=404)
     t0 = time.time()
     try:
-        r = await stt.atranscribe(bytes(body), "audio/wav", prompt=db.rec_prev_text(u["id"], rid, seq),
-                                  keywords=scribe.keywords(p))
+        r = await stt.atranscribe(bytes(body), "audio/wav", prompt=prev, keywords=scribe.keywords(p))
     except Exception as e:                                  # o log nunca leva conteúdo
         print("[gravacao] transcrição falhou:", type(e).__name__, flush=True)
         return JSONResponse({"error": "a transcrição falhou; o trecho fica guardado e é enviado de novo"}, status_code=502)
-    db.rec_add_segment(u["id"], rid, seq, _num_or_none(h.get("x-at"), 0, 24 * 3600) or 0.0, dur, r["text"], r["duvidas"])
-    db.log_access(u["id"], "recording", p["id"], dedupe_minutes=180)
+    def save():
+        db.rec_add_segment(u["id"], rid, seq, _num_or_none(h.get("x-at"), 0, 24 * 3600) or 0.0, dur, r["text"], r["duvidas"])
+        db.log_access(u["id"], "recording", p["id"], dedupe_minutes=180)
+    await run_in_threadpool(save)
     print(f"[gravacao] trecho {seq}: {dur:.1f} s transcritos em {time.time() - t0:.1f} s", flush=True)
     return {"ok": True, "text": r["text"], "duvidas": r["duvidas"]}
 
@@ -1750,10 +1760,10 @@ async def prontuario_recordings_state(request: Request):
     if err:
         return err
     b = await _json(request)
-    p = _rec_patient(u, b)
+    p = await run_in_threadpool(_rec_patient, u, b)
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
-    recs = db.rec_list(u["id"], p["id"], *_rec_where(b))
+    recs = await run_in_threadpool(db.rec_list, u["id"], p["id"], *_rec_where(b))
     return {"recordings": [{k: r[k] for k in ("rec_id", "status", "consent_at", "seconds", "updated_at", "segments", "scribe")}
                            for r in recs]}
 
@@ -1775,13 +1785,13 @@ async def prontuario_scribe(request: Request):
     if gate:
         return gate
     b = await _json(request)
-    p = _rec_patient(u, b)
+    p = await run_in_threadpool(_rec_patient, u, b)
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     if _rate_limited(request, "scribe"):
         return JSONResponse({"error": "muitos pedidos em pouco tempo"}, status_code=429)
     eid, nid, rids, _ = _rec_where(b)
-    recs = db.rec_list(u["id"], p["id"], eid, nid, rids)
+    recs = await run_in_threadpool(db.rec_list, u["id"], p["id"], eid, nid, rids)
     segs, table = [], []                     # numeração única para o modelo, mesmo com mais de uma gravação
     for r in recs:
         for s in r["segments"]:
@@ -1793,10 +1803,8 @@ async def prontuario_scribe(request: Request):
     mode = "soap" if b.get("mode") == "soap" else "free"
     cad = {"age": _years(p.get("birth_date")), "sex": p.get("sex") or "", "problems": p["problems"],
            "medications": p["medications"], "allergies": p["allergies"]}
-    profile = scribe.writing_profile(db.recent_notes(u["id"]))
-    last = next((n["content"] for n in db.list_notes(u["id"], p["id"], p["key"])
-                 if (n["content"] or "").strip() and n["id"] != nid and (eid is None or n["event_id"] != eid)
-                 and (n.get("data") or {}).get("kind") != "labs"), "")
+    profile, last = await run_in_threadpool(lambda: (scribe.writing_profile(db.recent_notes(u["id"])),
+                                                     db.last_note_content(u["id"], p["id"], nid, eid)))
     msgs = scribe.build_messages(segs, mode, cad, profile, last, p["name"])
 
     async def run():
@@ -1824,8 +1832,11 @@ async def prontuario_scribe(request: Request):
                 "consent_at": recs[0]["consent_at"], "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")}}
         result = dict(res, fields=fields)
-        db.rec_generated(u["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table}), nid)
-        db.log_access(u["id"], "scribe", p["id"], nid)
+
+        def save():
+            db.rec_generated(u["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table}), nid)
+            db.log_access(u["id"], "scribe", p["id"], nid)
+        await run_in_threadpool(save)
         yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta})
     return StreamingResponse(run(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
 

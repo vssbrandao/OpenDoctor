@@ -13,6 +13,7 @@ paciente:
   problemas: ''
   medicacoes: ''
   alergias: Nega alergias
+nomes_terceiros: [Gabriel, Cláudia]
 falas:
 - - m
   - Pedro Henrique, antes de começar, confirma seu CPF para o cadastro?

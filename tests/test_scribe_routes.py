@@ -28,7 +28,8 @@ class FakeDB:
 
     def install(self, mp):
         for name in ("get_patient", "rec_open", "rec_segment", "rec_prev_text", "rec_add_segment", "rec_seconds_today",
-                     "rec_list", "rec_generated", "rec_link_note", "rec_delete", "recent_notes", "list_notes", "log_access"):
+                     "rec_list", "rec_generated", "rec_link_note", "rec_delete", "recent_notes", "list_notes", "log_access",
+                     "last_note_content"):
             mp.setattr(db, name, getattr(self, name))
 
     def get_patient(self, uid, pid):
@@ -84,6 +85,9 @@ class FakeDB:
 
     def list_notes(self, uid, pid, key):
         return [{"id": 1, "event_id": "ev0", "content": "Maria Silva refere boa adesão. Losartana 50 mg.", "data": {"mode": "free"}}]
+
+    def last_note_content(self, uid, pid, nid=None, eid=None):
+        return next((n["content"] for n in self.list_notes(uid, pid, None) if n["id"] != nid and n["event_id"] != eid), "")
 
     def log_access(self, uid, action, pid=None, nid=None, dedupe_minutes=0):
         self.log.append((action, pid, nid))

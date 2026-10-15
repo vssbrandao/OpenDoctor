@@ -281,7 +281,6 @@ mebendazol
 ivermectina
 nitazoxanida
 praziquantel
-secnidazol
 permetrina
 benzoato de benzila
 
@@ -514,7 +513,6 @@ calcipotriol
 pimecrolimo
 clobetasol
 desonida
-mometasona
 triancinolona
 
 # --- olhos ---
@@ -538,8 +536,6 @@ atropina
 ácido tranexâmico
 fitomenadiona
 vitamina k
-alopurinol
-paracetamol
 
 # --- marcas comuns no Brasil ---
 aradois
@@ -770,3 +766,89 @@ revia
 antabuse
 xenical
 neosaldina
+fenazopiridina
+lisador
+anador
+magnopyrol
+toragesic
+rocefin
+zinnat
+histamin
+celestamine
+prelone
+olcadil
+velija
+patz
+amytril
+addera
+depura
+neutrofer
+levoid
+amlo
+naprix
+gaviscon
+mylanta
+eno
+lacto-purga
+tamarine
+hipoglos
+fibrase
+kollagenase
+trok-n
+omcilon
+diprogenta
+quadriderm
+canesten
+gino-canesten
+pyridium
+postinor
+diane
+yasmin
+selene
+elani
+qlaira
+mirena
+implanon
+depo-provera
+cerazette
+microvlar
+ciclo 21
+utrogestan
+duphaston
+femara
+clomid
+cefaliv
+cefalium
+migraliv
+avamys
+nasonex
+flixonase
+rinosoro
+sorine
+neosoro
+maresis
+expec
+melagiao
+torsilax
+tandrilax
+benegrip
+apracur
+resfenol
+cimegripe
+coristina
+multigrip
+buscofem
+flanax
+paco
+musculare
+reuquinol
+condroflex
+caltrate
+os-cal
+citoneurin
+dexacitoneurin
+rubranova
+endofolin
+sonrisal
+estomazil
+epocler

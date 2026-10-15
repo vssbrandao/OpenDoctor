@@ -5229,7 +5229,7 @@
         var row = rrRow(r, seg.seq, seg.at, pcm), pk = r.recId + ':parte';
         // o trecho entra e o "em andamento" sai na mesma transação (nunca ficam os dois, nem nenhum)
         idbTx('readwrite', function (st) { if (seg.st !== 'silent') st.put(row); st.delete(pk); })
-          .then(qKick, function () { seg.st = 'err'; seg.err = 'não foi possível guardar o trecho neste computador'; rrRender(r); });
+          .then(qKick, function () { if (seg.st !== 'silent') { RR.mem.push(row); rrRender(r); } qKick(); });   // não coube: sobe da memória
         rrRender(r);
       }
       function wav(pcm) {
@@ -5253,7 +5253,8 @@
       function idbTx(mode, fn) {
         return idb().then(function (db) { return new Promise(function (ok, no) {
           var t = db.transaction('seg', mode), st = t.objectStore('seg'), out = fn(st);
-          t.oncomplete = function () { ok(out && out.result !== undefined ? out.result : out); }; t.onerror = function () { no(t.error); };
+          t.oncomplete = function () { ok(out && out.result !== undefined ? out.result : out); };
+          t.onerror = function () { no(t.error); }; t.onabort = function () { no(t.error || new Error('transação abortada')); };
         }); });
       }
       function idbPut(rec) { return idbTx('readwrite', function (st) { st.put(rec); }); }
@@ -5264,13 +5265,31 @@
       }
 
       // ----- fila de envio: um trecho por vez, do mais antigo; espera crescente; volta sozinha com a internet -----
-      var Q = { busy: false, fails: 0, timer: null, down: false };
+      // Erro de rede (fetch falhou): espera crescente para todos. Erro do servidor (5xx/429) num trecho: tenta de novo e,
+      // depois de 3 falhas, deixa esse trecho para depois (até 10 min) e segue com os outros — um trecho com problema
+      // não trava a fila. Trecho que o navegador não conseguiu guardar (disco cheio, cota) fica na memória (RR.mem) e
+      // sobe igual; nesse caso a aba não pode fechar antes de tudo subir.
+      var Q = { busy: false, fails: 0, timer: null, down: false, erro: 0 };
+      RR.mem = [];
+      function qRows() { return idbAll().catch(function () { return []; }).then(function (rows) { return rows.concat(RR.mem); }); }
+      function qSave(row) { return RR.mem.indexOf(row) >= 0 ? Promise.resolve() : idbPut(row).catch(function () {}); }
+      function qDrop(row) {
+        var i = RR.mem.indexOf(row); if (i >= 0) { RR.mem.splice(i, 1); return Promise.resolve(); }
+        return idbDel(row.k).catch(function () {});
+      }
       function qKick() {
         if (Q.busy || !RR.on) return;
         clearTimeout(Q.timer); Q.busy = true;
-        idbAll().then(function (rows) {
-          var next = rows.filter(function (x) { return !x.dead && !x.part; }).sort(function (a, b) { return a.created - b.created; })[0];
-          if (!next) { Q.busy = false; Q.fails = 0; qState(false); return; }
+        qRows().then(function (rows) {
+          var now = Date.now(), live = rows.filter(function (x) { return !x.dead && !x.part; });
+          Q.erro = live.filter(function (x) { return x.falhas; }).length;      // trechos que o servidor já recusou com erro
+          var next = live.filter(function (x) { return !x.depois || x.depois <= now; }).sort(function (a, b) { return a.created - b.created; })[0];
+          if (!next) {
+            Q.busy = false; Q.fails = 0;
+            var wait = live.reduce(function (m, x) { return Math.min(m, x.depois || Infinity); }, Infinity);
+            if (wait < Infinity) Q.timer = setTimeout(qKick, Math.max(1000, wait - now));
+            qState(false); return;
+          }
           var r = RR.by[next.rk], seg = r && r.segs.filter(function (s) { return s.seq === next.seq && r.recId === next.recId; })[0];
           if (seg) { seg.st = 'sending'; }
           return fetch('/prontuario/transcribe', { method: 'POST', credentials: 'same-origin', body: next.wav,
@@ -5278,20 +5297,29 @@
                        'X-At': String(Math.round(next.at * 10) / 10), 'X-Event-Id': next.eid, 'X-Note-Id': String(next.nid || ''), 'X-Consent': next.consentAt } })
             .then(function (resp) {
               return resp.json().catch(function () { return {}; }).then(function (j) {
+                Q.down = false;
                 if (resp.ok && j.ok) {
                   if (seg) { seg.st = 'ok'; seg.text = j.text || ''; seg.duvidas = j.duvidas || []; }
                   Q.fails = 0; Q.auth = false;
-                  return idbDel(next.k).then(function () { Q.busy = false; qState(false); qKick(); });
+                  if (next.falhas) Q.erro = Math.max(0, Q.erro - 1);
+                  return qDrop(next).then(function () { Q.busy = false; qState(false); qKick(); });
                 }
-                if (resp.status === 401) { Q.busy = false; Q.auth = true; if (seg) seg.st = 'local'; qState(false); return; }   // sessão venceu: sobe ao entrar de novo
-                if ([400, 403, 404, 413, 415].indexOf(resp.status) >= 0) {                                       // não adianta tentar de novo
+                if (seg) seg.st = 'local';
+                if (resp.status === 401) { Q.busy = false; Q.auth = true; qState(false); return; }   // sessão venceu: sobe ao entrar de novo
+                if ([400, 403, 404, 413, 415].indexOf(resp.status) >= 0) {                        // não adianta tentar de novo
                   next.dead = resp.status; if (seg) { seg.st = 'err'; seg.err = j.error || ('erro ' + resp.status); }
-                  return idbPut(next).then(function () { Q.busy = false; qKick(); });
+                  return qSave(next).then(function () { Q.busy = false; qKick(); });
                 }
-                throw new Error('http ' + resp.status);
+                if (!next.falhas) Q.erro++;                                                        // 5xx, 429: o servidor falhou
+                next.falhas = (next.falhas || 0) + 1;
+                if (next.falhas >= 3) next.depois = Date.now() + Math.min(600000, 30000 * Math.pow(2, next.falhas - 3));
+                return qSave(next).then(function () {
+                  Q.busy = false; qState(false);
+                  Q.timer = setTimeout(qKick, next.falhas >= 3 ? 1000 : 2000 * next.falhas);
+                });
               });
             });
-        }).catch(function () {
+        }).catch(function () {                         // sem rede (o fetch nem chegou ao servidor)
           Q.busy = false; Q.fails++;
           RR.by && Object.keys(RR.by).forEach(function (k) { RR.by[k].segs.forEach(function (s) { if (s.st === 'sending') s.st = 'local'; }); });
           qState(true);
@@ -5458,14 +5486,24 @@
             !confirm('Desfazer tira o texto que veio da gravação e também o que você escreveu depois dele.\n\nContinuar?')) return;
         fillEditor(r.undo); r.applied = false; r.undone = true; changed(); rrRender(r);
       }
-      // finalizar com pontos ainda não conferidos pede confirmação (uma vez)
+      // trechos gravados que não entraram na evolução (falharam ou ainda não tinham subido quando ela foi gerada)
+      function rrFaltam(r) {
+        if (!r.segTable) return [];
+        return r.segs.filter(function (s) {
+          return s.st !== 'silent' && !(s.st === 'ok' && !(s.text || '').trim()) &&
+                 !r.segTable.some(function (t) { return t.rec_id === r.recId && t.seq === s.seq; });
+        });
+      }
+      // finalizar com pontos ainda não conferidos (ou trechos fora da evolução) pede confirmação (uma vez)
       function rrHoldFinalize() {
         var r = rrActive() && rrCur(); if (!r || r.st !== 'done' || r.finalOk) return false;
-        var open = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; });
-        if (!open.length) return false;
+        var open = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; }), falta = rrFaltam(r).length;
+        if (!open.length && !falta) return false;
         var hi = open.filter(function (f) { return f.nivel === 'alto'; }).length, box = $('rcFinal'); box.innerHTML = ''; box.hidden = false;
-        box.appendChild(el('span', 't')).innerHTML = '<b>Ainda há ' + open.length + (open.length === 1 ? ' ponto' : ' pontos') + ' para conferir</b>' +
-          (hi ? ', ' + hi + (hi === 1 ? ' importante' : ' importantes') : '') + '. Finalizar mesmo assim?';
+        box.appendChild(el('span', 't')).innerHTML = (open.length ? '<b>Ainda há ' + open.length + (open.length === 1 ? ' ponto' : ' pontos') + ' para conferir</b>' +
+          (hi ? ', ' + hi + (hi === 1 ? ' importante' : ' importantes') : '') : '') +
+          (falta ? (open.length ? ' e ' : '<b>') + falta + (falta === 1 ? ' trecho da gravação não entrou' : ' trechos da gravação não entraram') +
+                   ' na evolução' + (open.length ? '' : '</b>') : '') + '. Finalizar mesmo assim?';
         var b1 = el('button', 'pr-ghost', 'Voltar e conferir'), b2 = el('button', 'pr-save', 'Finalizar mesmo assim'); b1.type = b2.type = 'button';
         b1.addEventListener('click', function () { box.hidden = true; $('rcReview').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
         b2.addEventListener('click', function () { box.hidden = true; r.finalOk = true; $('prFinalize').click(); });
@@ -5520,7 +5558,7 @@
         }).catch(function () {}).then(function () { my.loading = false; });
       }
       window.addEventListener('beforeunload', function (e) {
-        var busy = Object.keys(RR.by).some(function (k) { var r = RR.by[k]; return r.st === 'live' || rrPending(r); });
+        var busy = RR.mem.length || Object.keys(RR.by).some(function (k) { var r = RR.by[k]; return r.st === 'live' || rrPending(r); });
         if (RR.on && busy) { e.preventDefault(); e.returnValue = ''; }
       });
       document.addEventListener('keydown', function (e) {               // ⌘/Ctrl + Shift + Espaço: pausa/continua
@@ -5549,7 +5587,8 @@
             });
             t.innerHTML = html;
           } else {
-            t.textContent = sg.st === 'err' ? 'Trecho com erro: ' + (sg.err || 'não foi transcrito') : Q.down || Q.auth ? 'Guardado neste computador: é transcrito quando a conexão voltar' : 'Transcrevendo…';
+            t.textContent = sg.st === 'err' ? 'Trecho com erro: ' + (sg.err || 'não foi transcrito') : Q.down || Q.auth ? 'Guardado neste computador: é transcrito quando a conexão voltar'
+              : Q.erro ? 'Guardado neste computador: o servidor falhou e ele é enviado de novo' : 'Transcrevendo…';
             t.style.color = sg.st === 'err' ? '#C0151D' : '#80868B';
           }
           d.appendChild(t); tx.appendChild(d);
@@ -5625,7 +5664,7 @@
             S.textContent = 'Aparece aqui, ao vivo, enquanto você grava';
           }
         } else if (r.st === 'live') {
-          rcmPlayer('live', { t: t, amps: r.amps }, r.warn === 'silencio' ? '<span class="low">Sem som há 20 s</span>' : (Q.down || Q.auth) && pend ? sendTxt
+          rcmPlayer('live', { t: t, amps: r.amps }, r.warn === 'silencio' ? '<span class="low">Sem som há 20 s</span>' : (Q.down || Q.auth || Q.erro) && pend ? sendTxt
                     : 'Transcrevendo ao vivo' + (pend ? '' : ' · tudo enviado'), [pauseB, stopB]);
           txLive('<span class="rc-dot"></span>Ao vivo · ' + rrSummary(r));
         } else if (r.st === 'paused' || r.st === 'interrupted') {
@@ -5681,6 +5720,24 @@
         } else if (r.warn === 'silencio' && r.st === 'live') { rcmAlert('warn', 'warn', '<b>Não estamos ouvindo nada há 20 segundos.</b> Confira se o microfone certo está ligado e perto de vocês.', [['Trocar microfone']]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); }); }
         else if (r.warn === 'longa' && r.st === 'live') rcmAlert('warn', 'warn', '<b>A gravação passou de 80 minutos.</b> Ela para sozinha aos 90 e gera a evolução com o que foi gravado.');
+        else if (RR.mem.length && ['live', 'paused', 'ending', 'interrupted'].indexOf(r.st) >= 0)
+          rcmAlert('bad', 'err', '<b>Este navegador não está conseguindo guardar a gravação no computador.</b> Os trechos estão só na memória ' +
+            'e são enviados direto: não feche esta aba até aparecer "tudo enviado".');
+        else if (r.st === 'done' && rrFaltam(r).length) {
+          var fl = rrFaltam(r), prontos = fl.every(function (x) { return x.st === 'ok'; });
+          rcmAlert('bad', 'err', '<b>' + fl.length + (fl.length === 1 ? ' trecho da gravação não entrou' : ' trechos da gravação não entraram') +
+            ' na evolução</b> (' + fl.map(function (x) { return mmss(x.at); }).join(', ') + '). ' +
+            (prontos ? (fl.length === 1 ? 'Ele já foi transcrito' : 'Eles já foram transcritos') + ': gere de novo para incluir.'
+                     : 'Confira se falta algo na evolução.'), prontos && !lk ? [['Gerar de novo']] : null);
+          if (prontos && !lk) $('rcAlert').querySelector('button').addEventListener('click', function () { r.st = 'ending'; rrGenerate(r); });
+        }
+        else if (Q.erro && pend && ['live', 'paused', 'ending', 'interrupted'].indexOf(r.st) >= 0) {
+          var ne = Q.erro;
+          rcmAlert('warn', 'warn', '<b>O servidor não conseguiu transcrever ' + (ne === 1 ? '1 trecho' : ne + ' trechos') + ' agora.</b> ' +
+            (ne === 1 ? 'Ele está guardado' : 'Eles estão guardados') + ' neste computador e ' + (ne === 1 ? 'é enviado' : 'são enviados') +
+            ' de novo sozinho' + (ne === 1 ? '' : 's') + '.', r.st === 'ending' ? [['Gerar com o que já foi transcrito']] : null);
+          if (r.st === 'ending') $('rcAlert').querySelector('button').addEventListener('click', function () { rrGenerate(r); });
+        }
         else if (Q.auth && pend && ['live', 'paused', 'ending', 'interrupted'].indexOf(r.st) >= 0)
           rcmAlert('bad', 'err', '<b>Sua sessão expirou.</b> ' + pend + (pend === 1 ? ' trecho está guardado' : ' trechos estão guardados') +
             ' neste computador e ' + (pend === 1 ? 'é enviado' : 'são enviados') + ' assim que você entrar de novo. Não feche esta aba.');

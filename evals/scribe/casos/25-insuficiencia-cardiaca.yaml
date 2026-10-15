@@ -19,6 +19,8 @@ paciente:
 
     Enalapril 10 mg 2x/dia'
   alergias: Nega alergias
+evolucao_anterior: 'S: Estável, sem dispneia. O: Peso 76,1 kg. PA 112x70 mmHg. Edema 1+/4+. A: IC compensada.
+  P: Mantidos carvedilol, espironolactona, enalapril e furosemida. Retorno em 2 meses.'
 falas:
 - - p
   - Doutor, as pernas incharam de novo e estou dormindo com dois travesseiros.
@@ -67,6 +69,8 @@ gabarito:
   - potassio + creatinina
   - pes|pesar
   proibidos:
+  - '76,1'
+  - '112x70'
   - internacao
   - digoxina
   avisos: []

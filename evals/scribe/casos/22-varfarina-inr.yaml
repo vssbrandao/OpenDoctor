@@ -13,6 +13,8 @@ paciente:
   problemas: Fibrilação atrial
   medicacoes: Varfarina 5 mg 1x/dia
   alergias: Nega alergias
+evolucao_anterior: 'S: Sem sangramentos. O: INR 2,4. PA 132x80 mmHg. A: Anticoagulação na meta. P: Mantida varfarina
+  35 mg por semana. Novo INR em 4 semanas.'
 falas:
 - - m
   - Seu Luiz, o INR veio 3,8. A meta é entre 2 e 3.
@@ -46,6 +48,8 @@ gabarito:
   - gengiva
   - 1 semana|uma semana
   proibidos:
+  - '2,4'
+  - '132x80'
   - suspensa a varfarina
   - vitamina k
   avisos: []

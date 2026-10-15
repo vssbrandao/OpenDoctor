@@ -55,12 +55,16 @@ _TRATAMENTO = {"dona", "seu", "senhor", "senhora", "sr", "sra", "dr", "dra", "do
 _COMUNS = {"dias", "campos", "leite", "rosa", "clara", "luz", "paz", "cruz", "costa", "lima", "rocha", "reis",
            "santos", "ramos", "flores", "branco", "branca", "franco", "fontes", "neves", "prado", "vale", "serra",
            "sales", "pinto", "sol", "mar", "gloria", "vitoria", "graca", "aparecida", "esperanca", "bispo", "nunes",
-           "jesus", "barros", "mendes", "machado", "ferreira", "pereira", "oliveira", "moreira", "salgado", "rios"}
+           "jesus", "barros", "mendes", "machado", "ferreira", "pereira", "oliveira", "moreira", "salgado", "rios",
+           "marcos", "domingos", "jardim", "monte", "coelho", "cordeiro", "carneiro", "pinheiro", "matos", "estrela", "flor",
+           "amor", "mel", "lago", "aurora", "celeste", "bela", "linda", "nogueira", "figueira", "porto", "leal", "fortuna"}
 _WORD = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ']+")
-_CPF = re.compile(r"\b\d{3}[.\s]?\d{3}[.\s]?\d{3}[-\s]?\d{2}\b")
+# CPF e CNS: com pontuação ou dígitos juntos sempre; separados só por espaço, apenas logo depois de "CPF"/"CNS"/
+# "cartão do SUS" — senão "glicemias de 100 120 130 14" viraria um CPF e o modelo perderia os valores
+_CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b|\b\d{11}\b|(?<=cpf)[^\d\n]{0,15}\b\d{3}\s?\d{3}\s?\d{3}[-\s]?\d{2}\b", re.I)
 _FONE = re.compile(r"(?:\(?\b\d{2}\)?\s?)?\b9?\d{4}[-\s]\d{4}\b|\b\d{10,11}\b")
 _EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
-_CNS = re.compile(r"\b\d{3}\s?\d{4}\s?\d{4}\s?\d{4}\b")
+_CNS = re.compile(r"\b\d{15}\b|(?<=cns|sus)[^\d\n]{0,15}\b\d{3}\s?\d{4}\s?\d{4}\s?\d{4}\b", re.I)
 _PLACEHOLDERS = ("[CPF]", "[TELEFONE]", "[E-MAIL]", "[CNS]")
 
 
@@ -69,13 +73,17 @@ def mask(text, patient_name=""):
     e-mail. Nome que também é palavra comum ("Rosa", "Dias", "Campos") só é trocado com maiúscula no meio da
     frase, junto de outro nome, depois de "dona/seu" ou como vocativo — para não apagar palavra clínica."""
     text = _EMAIL.sub("[E-MAIL]", str(text or ""))
-    text = _CNS.sub("[CNS]", text)
-    text = _CPF.sub("[CPF]", text)
+    text = _CNS.sub(lambda m: re.sub(r"\d[\d\s]*\d", "[CNS]", m.group(0)), text)
+    text = _CPF.sub(lambda m: re.sub(r"\d[\d.\s-]*\d", "[CPF]", m.group(0)), text)
     text = _FONE.sub("[TELEFONE]", text)
     toks = [t for t in (norm(x) for x in _WORD.findall(patient_name or "")) if len(t) >= 3 and t not in _PARTICULAS]
     if not toks:
         return text
     first = toks[0]
+    # diminutivo: em português costuma cair a vogal (ou o "os") do fim: Teresa → Teresinha, Carlos → Carlinhos, Ana → Aninha
+    # (de qualquer nome do paciente: muita gente é chamada pelo segundo nome — Luiz Carlos → Carlinhos)
+    stems = {x for t in toks for x in (t, t[:-1] if t[-1:] in "aeo" else t, t[:-2] if t.endswith(("os", "as", "es")) else t)
+             if len(x) >= 2}
     words = list(_WORD.finditer(text))
 
     def is_name(i):
@@ -83,8 +91,8 @@ def mask(text, patient_name=""):
         n = norm(w)
         if n in toks:
             return w[:1].isupper() or n not in _COMUNS          # "maria" minúsculo também; "rosa" minúsculo não
-        return (w[:1].isupper() and n.startswith(first) and len(n) - len(first) in (3, 4, 5)
-                and n.endswith(("inha", "inho", "zinha", "zinho", "ita", "ito")))
+        return w[:1].isupper() and any(n.startswith(x) and 3 <= len(n) - len(x) <= 6 for x in stems) and \
+            n.endswith(("inha", "inho", "inhas", "inhos", "zinha", "zinho", "ita", "ito"))
     cand = [is_name(i) for i in range(len(words))]
     keep = []
     for i, w in enumerate(words):
@@ -307,6 +315,9 @@ def drug_lookup(nome):
     for part in re.split(r"\s*(?:\+|/|\bcom\b|\be\b)\s*", nome):
         t = _drug_tokens(part)
         if not t or " ".join(t) in names or any(x in toks for x in t):
+            continue
+        # grafia internacional do mesmo remédio ("losartan", "amlodipine", "omeprazole"): é o mesmo, não avisa
+        if any(v in glued for x in t for v in (x + "a", x + "o", x[:-1], x[:-1] + "a", x[:-1] + "o") if len(x) >= 5):
             continue
         got = next((("junto", glued[t[i] + t[i + 1]]) for i in range(len(t) - 1) if t[i] + t[i + 1] in glued), None)
         if not got:
@@ -735,7 +746,9 @@ def check(out, segments, mode, patient=None):
         if any(_NUM.match(d) and abs(_f(d) - x) < 1e-6 for d in doubts(ids)):
             flag("duvida_grave", k, f"{k} = {val}: número ouvido com dúvida", ids, valor=x)
         if not ids or not any(_same_vital(k, y, x) for y in _src_numbers(src_text)):
-            flag("numero", k, f"{k} = {val} não encontrado no trecho citado", ids, valor=x)
+            # não vai para o campo: num campo de PA ou peso o número pareceria medido. O médico digita, se foi dito.
+            flag("numero", k, f"{k} = {val} não encontrado no trecho citado (não preenchido)", ids, valor=x)
+            continue
         elif not _vital_ok(k, x, src_text):
             flag("vital_longe", k, f"{k} = {val}: o número está no trecho, mas não junto de {k.split('_')[0].upper()}", ids, valor=x)
         res["vitals"][k] = val

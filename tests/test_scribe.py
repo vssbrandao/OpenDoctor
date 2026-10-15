@@ -306,3 +306,23 @@ def test_duvida_em_numero_com_virgula_barra_e_hifen():
           (" Punho", -0.9), ("-per", -0.9), ("cussão", -0.9), (".", -0.01), (" Losartana", -0.01), (" 12", -0.9), ("/", -0.3), ("12", -0.9), ("h", -0.4)]]
     r = stt._parse(R({"text": "Glicada 6,9. Punho-percussão. Losartana 12/12h", "logprobs": lp}), "")
     assert r["duvidas"] == ["12/12h", "6,9", "Punho-percussão"]
+
+
+def test_sinal_vital_fora_da_fala_nao_vai_para_o_campo():
+    res, fl = s.check({"vitals": {"pa_s": {"v": "140", "src": [1]}, "fc": {"v": "74", "src": [1]}}},
+                      [{"seq": 1, "at": 0, "text": "Frequência 74."}], "soap", {})
+    assert res["vitals"] == {"fc": "74"} and any(f["tipo"] == "numero" and "não preenchido" in f["texto"] for f in fl)
+
+
+def test_mascara_apelidos_cpf_so_com_formato_ou_contexto():
+    assert s.mask("O Luizinho e o Carlinhos vieram. Teresinha também.", "Luiz Carlos Teresa") == \
+        "O [PACIENTE] e o [PACIENTE] vieram. [PACIENTE] também."
+    assert s.mask("Glicemias de 100 120 130 14 em jejum", "Ana") == "Glicemias de 100 120 130 14 em jejum"
+    assert s.mask("CPF 321 654 987 00 e 12345678901", "Ana") == "CPF [CPF] e [CPF]"
+    assert s.mask("Marcos de crescimento normais.", "Marcos Lima") == "Marcos de crescimento normais."
+
+
+def test_grafia_internacional_e_marcas_brasileiras():
+    for n in ("Losartan", "amlodipine", "omeprazole", "Torsilax", "Neosoro", "Apracur", "Benegrip"):
+        assert s.drug_lookup(n) == ("ok", None), n
+    assert s.drug_lookup("omeprasol") == ("parecido", "omeprazol")

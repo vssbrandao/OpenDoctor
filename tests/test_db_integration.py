@@ -169,3 +169,25 @@ def test_gravacao_liga_a_evolucao_certa_e_acha_a_avulsa(novo_usuario):
     assert r["status"] == "gerada" and r["note_id"] == nota and r["scribe"]["saida"]["flags"] == [{"tipo": "alergia"}]
     with db.connection() as c:
         c.execute("delete from clinical_notes where user_id = %s", (beto,)); c.commit()
+
+
+def test_evolucao_anterior_para_a_gravacao(novo_usuario):
+    ana = novo_usuario("Ana")["id"]
+    p = db.create_patient(ana, "Paciente C")
+    velha = db.upsert_note(ana, p["id"], p["key"], p["name"], "ev1", "Consulta", "2026-09-01T10:00:00+00:00", "S: consulta antiga")
+    db.upsert_note(ana, p["id"], p["key"], p["name"], None, None, None, "Resultado de exames", data={"mode": "free", "kind": "labs"})
+    atual = db.upsert_note(ana, p["id"], p["key"], p["name"], "ev2", "Consulta", "2026-10-15T10:00:00+00:00", "S: consulta de hoje")
+    assert db.last_note_content(ana, p["id"], atual, "ev2") == "S: consulta antiga"      # nem a de hoje, nem a de exames
+    assert db.last_note_content(ana, p["id"], velha, "ev1") == "S: consulta de hoje"
+    assert db.last_note_content(novo_usuario("Beto")["id"], p["id"]) == ""               # de outro médico: nada
+
+
+def test_evolucao_anterior_ignora_a_atual_e_os_exames(novo_usuario):
+    ana = novo_usuario("Ana")["id"]
+    p = db.create_patient(ana, "Paciente A")
+    antiga = db.upsert_note(ana, p["id"], p["key"], p["name"], "ev1", "Consulta", "2026-09-01T10:00:00Z", "S: consulta de setembro")
+    db.upsert_note(ana, p["id"], p["key"], p["name"], None, None, None, "Exames", data={"mode": "soap", "kind": "labs"})
+    atual = db.upsert_note(ana, p["id"], p["key"], p["name"], "ev2", "Consulta", "2026-10-15T10:00:00Z", "S: consulta de hoje")
+    assert db.last_note_content(ana, p["id"], atual, "ev2") == "S: consulta de setembro"
+    assert db.last_note_content(ana, p["id"], antiga, "ev1") == "S: consulta de hoje"
+    assert db.last_note_content(novo_usuario("Beto")["id"], p["id"]) == ""        # de outro médico: nada

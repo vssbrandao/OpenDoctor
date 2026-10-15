@@ -180,10 +180,53 @@ def speech_ratio(a, floor=None):
     return float(np.mean(rms > min(max(0.01, floor * 3), 0.03)))
 
 
-# ===== cortes (o mesmo critério do navegador) =====
+# ===== cortes =====
+def cortes_navegador(a):
+    """Os MESMOS cortes da página (rrBlock/rrCut em web/opendoctor-agenda.html): blocos de 100 ms; piso = 10º
+    percentil do volume dos últimos 30 s (refeito a cada 10 blocos); limiar = piso × 2,5, entre 0,004 e 0,03;
+    depois de 15 s corta quando os 3 últimos blocos estão abaixo do limiar (o último fica para o trecho seguinte);
+    aos 30 s corta logo depois do bloco mais baixo dos últimos 20. Trecho com menos de 2 blocos acima do limiar é
+    silêncio (não vai para a transcrição). Devolve [(início, fim, silêncio)] em amostras; nenhuma se perde.
+    Diferença que fica: a página recebe o áudio já tratado pelo navegador (eco, ruído e ganho automático)."""
+    b = SR // 10
+    n = len(a) // b
+    rms = np.sqrt(np.mean(a[: n * b].reshape(n, b).astype(np.float64) ** 2, axis=1)) if n else np.zeros(0)
+    out, start, cur, hist, floor = [], 0, [], [], 0.0
+    thr = lambda: min(max(0.004, floor * 2.5), 0.03)
+
+    def cut(idx):
+        nonlocal start, cur
+        blocks, cur = cur[:idx], cur[idx:]
+        out.append((start, start + idx * b, sum(1 for v in blocks if v > thr()) < 2))
+        start += idx * b
+    for v in rms:
+        cur.append(float(v)); hist.append(float(v))
+        if len(hist) > 300:
+            hist.pop(0)
+        if len(hist) % 10 == 0:
+            srt = sorted(hist); floor = srt[int(len(srt) * 0.1)]
+        if len(cur) >= 150:
+            if all(x < thr() for x in cur[-3:]):
+                cut(len(cur) - 1)
+            elif len(cur) >= 300:
+                w = cur[-20:]; cut(len(cur) - 20 + w.index(min(w)) + 1)
+    if start < len(a):                                  # o fim (ao encerrar, a página corta o que sobrou)
+        out.append((start, len(a), sum(1 for v in cur if v > thr()) < 2))
+    return out
+
+
+def trechos(a):
+    """[(início, fim, silêncio)] e a marca para o cache: os cortes do navegador (padrão) ou os antigos (--cortes
+    antigo), para refazer a pontuação das rodadas de 15/10/2026 a partir do cache."""
+    if FONTE.get("cortes") == "antigo":
+        floor = noise_floor(a)
+        return [(s0, s1, speech_ratio(a[s0:s1], floor) < 0.02) for s0, s1 in cuts(a)], False
+    return cortes_navegador(a), True
+
+
 def cuts(a, min_s=15, max_s=30, frame_ms=20, sil_ms=250):
-    """Corta entre 15 e 30 s no meio do primeiro silêncio (≥ 250 ms) depois dos 15 s; aos 30 s, no quadro mais
-    baixo dos últimos 2 s. Os cortes são posições exatas: nenhuma amostra se perde."""
+    """Cortes ANTIGOS da avaliação (até 15/10/2026): entre 15 e 30 s no meio do primeiro silêncio (≥ 250 ms) depois
+    dos 15 s; aos 30 s, no quadro mais baixo dos últimos 2 s. Não são os da página: use cortes_navegador."""
     f = int(SR * frame_ms / 1000)
     rms = np.sqrt(np.convolve(a.astype(np.float64) ** 2, np.ones(f) / f, mode="same"))[::f]
     thr = max(0.01, float(np.percentile(rms, 20)) * 1.8)
@@ -294,16 +337,15 @@ def calibrate_doubt(cases, stt_model, limites=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.
     def one(caso):
         a, _ = audio_of(caso)
         pac = caso.get("paciente") or {}
-        kw = scribe.keywords({"medications": pac.get("medicacoes", ""), "problems": pac.get("problemas", ""),
-                              "allergies": pac.get("alergias", "")}, exame=True)
-        tag = hashlib.sha1("|".join(kw).encode()).hexdigest()[:8]
-        akey, floor, prev, segs = hashlib.sha1(a.tobytes()).hexdigest()[:16], noise_floor(a), "", []
-        for i, (s0, s1) in enumerate(cuts(a), 1):
-            if speech_ratio(a[s0:s1], floor) < 0.02:
+        kw, kwtag = palavras_chave(pac)
+        akey, prev, segs = hashlib.sha1(a.tobytes()).hexdigest()[:16], "", []
+        cortes, nav = trechos(a)
+        for i, (s0, s1, mudo) in enumerate(cortes, 1):
+            if mudo:
                 continue
             if SPENT["usd"] >= TETO["usd"]:
                 raise RuntimeError("teto de gasto atingido")
-            r, hit = _cache("sttw", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}|kw:{tag}",
+            r, hit = _cache("sttw", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}" + (f"|{s0}-{s1}" if nav else ""),
                             lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
             if not hit:
                 _add_cost((s1 - s0) / SR / 60 * STT_MIN.get(stt_model, 0.006))
@@ -454,24 +496,48 @@ def load_cases(only=None):
     return out
 
 
+def palavras_chave(pac):
+    """Palavras-chave da transcrição e a marca para o cache. "producao" (padrão): as mesmas da produção
+    (scribe.keywords, com SCRIBE_KW_EXAME); "exame": cadastro + exame físico; "cadastro": as antigas."""
+    modo = FONTE.get("kw") or "producao"
+    if modo == "cadastro":
+        kw = [x.split(" ")[0] for x in re.split(r"[\n,;]+", pac.get("medicacoes", "")) if x.strip()]
+        kw += [x.strip() for x in re.split(r"[\n,;]+", pac.get("problemas", "")) if x.strip()]
+        return kw, ""
+    kw = scribe.keywords({"medications": pac.get("medicacoes", ""), "problems": pac.get("problemas", ""),
+                          "allergies": pac.get("alergias", "")}, exame=True if modo in ("exame", "app") else None)
+    return kw, "|kw:" + hashlib.sha1("|".join(kw).encode()).hexdigest()[:8]
+
+
+def vazamentos(nome, enviado):
+    """Partes do nome do paciente (e diminutivos, "Teresinha") que chegaram ao modelo. Nome que também é palavra
+    comum ("Rosa", "Clara") só conta com maiúscula."""
+    toks = [t for t in (scribe.norm(x) for x in re.findall(r"[A-Za-zÀ-ÿ']+", nome or "")) if len(t) >= 3 and t not in scribe._PARTICULAS]
+    stems = {x for t in toks for x in (t, t[:-1] if t[-1:] in "aeo" else t, t[:-2] if t.endswith(("os", "as", "es")) else t) if len(x) >= 2}
+    out = []
+    for w in re.findall(r"[A-Za-zÀ-ÿ']+", enviado or ""):
+        n = scribe.norm(w)
+        if n in toks and (w[:1].isupper() or n not in scribe._COMUNS):
+            out.append(w)
+        elif w[:1].isupper() and any(n.startswith(x) and 3 <= len(n) - len(x) <= 6 for x in stems) and \
+                n.endswith(("inha", "inho", "inhas", "inhos", "zinha", "zinho", "ita", "ito")):
+            out.append(w)
+    return sorted(set(out))
+
+
 def run_case(caso, stt_model, llm_model):
     a, origem = audio_of(caso)
     pac = caso.get("paciente") or {}
-    kw = [x.split(" ")[0] for x in re.split(r"[\n,;]+", pac.get("medicacoes", "")) if x.strip()]
-    kw += [x.strip() for x in re.split(r"[\n,;]+", pac.get("problemas", "")) if x.strip()]
-    kwtag = ""
-    if FONTE.get("kw") == "app":              # as mesmas palavras-chave da produção (cadastro + exame físico)
-        kw = scribe.keywords({"medications": pac.get("medicacoes", ""), "problems": pac.get("problemas", ""),
-                              "allergies": pac.get("alergias", "")}, exame=True)
-        kwtag = "|kw:" + hashlib.sha1("|".join(kw).encode()).hexdigest()[:8]
+    kw, kwtag = palavras_chave(pac)
     segs, prev, t0 = [], "", time.time()
     akey = hashlib.sha1(a.tobytes()).hexdigest()[:16]
-    silent, floor = 0, noise_floor(a)
-    for i, (s0, s1) in enumerate(cuts(a), 1):
-        if speech_ratio(a[s0:s1], floor) < 0.02:       # só silêncio: não transcreve (nem cobra)
+    silent = 0
+    cortes, nav = trechos(a)
+    for i, (s0, s1, mudo) in enumerate(cortes, 1):
+        if mudo:                                       # só silêncio: não transcreve (nem cobra)
             silent += 1; segs.append({"seq": i, "at": s0 / SR, "text": ""}); continue
         kind = "sttw" if FONTE.get("duvida") else "stt"   # sttw: com a confiança por palavra (--calibrar-duvida)
-        r, hit = _cache(kind, f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}",
+        r, hit = _cache(kind, f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}" + (f"|{s0}-{s1}" if nav else ""),
                         lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
         if FONTE.get("duvida"):                              # dúvidas refeitas com outro limite
             present = stt.present_words(r["text"])
@@ -486,7 +552,7 @@ def run_case(caso, stt_model, llm_model):
                "age": pac.get("idade", ""), "sex": pac.get("sexo", "")}
     mode = caso.get("modo", "soap")
     t1 = time.time()
-    msgs = scribe.build_messages(segs, mode, patient, caso.get("perfil", ""), "", nome)
+    msgs = scribe.build_messages(segs, mode, patient, caso.get("perfil", ""), caso.get("evolucao_anterior", ""), nome)
     gen, cached = _cache("gen", f"{caso['id']}|{akey}|{stt_model}|{llm_model}|{scribe.PROMPT_VERSION}|{json.dumps(msgs, ensure_ascii=False)}",
                          lambda: chat_usage(msgs, llm_model))
     raw, usage = gen["raw"], gen.get("usage") or {}
@@ -501,9 +567,9 @@ def run_case(caso, stt_model, llm_model):
     ref = " ".join(f for _, f in caso["falas"])
     sc = score(caso, res, flags)
     sc.update(doubt_quality(ref_text := " ".join(f for _, f in caso["falas"]), segs))
-    sent = scribe.norm(msgs[1]["content"])
-    first = [t for t in scribe.norm(nome).split() if len(t) >= 3][:1]
-    sc["nome_vazou"] = bool(first) and re.search(r"\b" + re.escape(first[0]) + r"\b", sent) is not None
+    sc["nome_vazou"] = vazamentos(nome, msgs[1]["content"])
+    sc["terceiros_no_envio"] = [t for t in caso.get("nomes_terceiros") or []                 # informativo: a máscara não os tira
+                                if re.search(r"\b" + re.escape(scribe.norm(t)) + r"\b", scribe.norm(msgs[1]["content"]))]
     sc["dado_vazou"] = bool(scribe._CPF.search(msgs[1]["content"]) or scribe._FONE.search(msgs[1]["content"]))
     return {"id": caso["id"], "origem": origem, "segundos": round(len(a) / SR, 1), "trechos": len(segs), "silencio": silent,
             "wer": round(wer(ref, " ".join(x["text"] for x in segs)), 3), "t_stt": round(t_stt, 1), "t_gen": t_gen,
@@ -540,14 +606,17 @@ def main():
                     help="transcreve guardando a confiança por palavra e mede o limite de dúvida (só transcrição)")
     ap.add_argument("--duvida", type=float, default=None,
                     help="limite de dúvida (usa as transcrições com confiança por palavra; exige --kw app)")
-    ap.add_argument("--kw", choices=("cadastro", "app"), default="cadastro",
-                    help="palavras-chave da transcrição: só do cadastro (como antes) ou as da produção (+ exame físico)")
+    ap.add_argument("--kw", choices=("producao", "exame", "cadastro", "app"), default="producao",
+                    help="palavras-chave da transcrição: as da produção (padrão), + exame físico, ou só do cadastro (antigas)")
+    ap.add_argument("--cortes", choices=("navegador", "antigo"), default="navegador",
+                    help="cortes dos trechos: os da página (padrão) ou os antigos (para refazer rodadas antigas do cache)")
     a = ap.parse_args()
     FONTE["voz"] = a.voz
     FONTE["kw"] = a.kw
     FONTE["duvida"] = a.duvida
-    if a.duvida and a.kw != "app":
-        sys.exit("--duvida exige --kw app")
+    FONTE["cortes"] = a.cortes
+    if a.duvida and a.kw not in ("app", "exame"):
+        sys.exit("--duvida exige --kw exame")
     if a.comparar:
         return compare()
     cases = load_cases([x.strip() for x in a.casos.split(",") if x.strip()])
@@ -599,7 +668,7 @@ def main():
             "3_nada_inventado": tot("rem_inventado") + tot("proibidos") + tot("vit_inventado") == 0,
             "4_cobertura_95": tot("fatos_ok") >= 0.95 * max(1, tot("fatos_total")),
             "avisos_esperados": tot("avisos_faltando") == 0,
-            "nome_e_documentos_nao_vazaram": not any(r["nome_vazou"] or r["dado_vazou"] for r in rows),
+            "nome_e_documentos_nao_vazaram": not any(r["nome_vazou"] or r["dado_vazou"] for r in rows),   # terceiros: só informativo
             "todos_os_casos_rodaram": not erros}
     resumo = {"data": datetime.date.today().isoformat(), "stt": a.stt, "modelo": a.modelo, "prompt": scribe.PROMPT_VERSION,
               "voz": a.voz, "duvida_cobre_erros": round(tot("duvida_pega_erro") / max(1, tot("tok_errados")), 3),
@@ -612,7 +681,8 @@ def main():
               "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit, "erros": erros,
               "gasto_usd_nesta_rodada": round(SPENT["usd"], 3)}
     os.makedirs(REL, exist_ok=True)
-    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}" + ("-kw-app" if a.kw == "app" else "") + (f"-d{a.duvida}" if a.duvida else "") + f"-p{scribe.PROMPT_VERSION.split('.')[-1]}"
+    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}" + {"app": "-kw-app", "exame": "-kw-app", "cadastro": "-kw-cad"}.get(a.kw, "") \
+        + ("-cortes-antigos" if a.cortes == "antigo" else "") + (f"-d{a.duvida}" if a.duvida else "") + f"-p{scribe.PROMPT_VERSION.split('.')[-1]}"
     json.dump({"resumo": resumo, "casos": rows}, open(os.path.join(REL, name + ".json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
     md = [f"# Avaliação da gravação — {resumo['data']} · {a.stt} + {a.modelo} · prompt {scribe.PROMPT_VERSION}", "",

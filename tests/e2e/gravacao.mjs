@@ -178,6 +178,38 @@ const cenarios = [
     if ((await ev(`document.getElementById('prNote').value`)) !== 'Texto da médica antes.') throw new Error('Desfazer confirmado não voltou ao texto anterior');
     return 'perguntou; cancelando, nada mudou; confirmando, voltou ao texto anterior';
   }],
+  ['um trecho que o servidor sempre erra não trava os outros', async () => {
+    await srv('/_preview/sim?erro_seq=1');
+    await grava('/_preview/pr?pid=9003&ev=evE', 48);
+    const seqs = () => estado().then((e) => (Object.values(e.gravacoes)[0] || { trechos: [] }).trechos.map((t) => t.seq));
+    const antes = await seqs(), alerta = (await ev(UI)).alerta;
+    if (!antes.includes(2) || antes.includes(1)) throw new Error('a fila travou no trecho com erro: ' + JSON.stringify(antes));
+    if (!/servidor não conseguiu/.test(alerta) || /Sem internet/.test(alerta)) throw new Error('aviso errado: ' + alerta);
+    await srv('/_preview/sim?erro_seq=');
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes)[0].trechos.some((t) => t.seq === 1))`, 70000, 'o trecho 1 subir depois');
+    await encerra();
+    return `trechos ${JSON.stringify(antes)} subiram antes; o 1 subiu quando o servidor voltou`;
+  }],
+  ['sem armazenamento no navegador, os trechos sobem da memória', async () => {
+    await abre('/_preview/pr?pid=9003&ev=evF');
+    await ev(`sessionStorage.setItem('e2e_sem_idb', '1')`); await send('Page.reload', { ignoreCache: true }); await sleep(500);
+    await ate(`[...document.querySelectorAll('#prRec .rc-go')].some((b) => b.offsetParent !== null)`, 20000, 'gravador');
+    if (!(await ev(`!!window.__semIdb`))) throw new Error('o armazenamento não foi desligado');
+    await grava('', 20);
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes).some((g) => g.trechos.length))`, 20000, 'trecho subir da memória');
+    await encerra();
+    return 'trechos enviados sem o IndexedDB';
+  }],
+  ['trecho recusado aparece como fora da evolução e o Finalizar avisa', async () => {
+    await srv('/_preview/sim?recusar_seq=1');
+    await grava('/_preview/pr?pid=9003&ev=evG', 34); await encerra();
+    const a = (await ev(UI)).alerta;
+    if (!/trecho da gravação não entrou/.test(a)) throw new Error('sem aviso do trecho que ficou de fora: ' + a);
+    await clica('#prFinalize'); await sleep(600);
+    const f = await ev(`(document.getElementById('rcFinal')||{}).textContent || ''`);
+    if (!/não entrou na evolução/.test(f)) throw new Error('o Finalizar não avisou: ' + f);
+    return a.slice(0, 70) + '…';
+  }],
   ['a paciente de exemplo continua com a demonstração', async () => {
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });
     await ate(`[...document.querySelectorAll('#prRec .rc-go')].some((b) => b.offsetParent !== null)`, 20000, 'gravador');
@@ -209,6 +241,10 @@ async function main() {
       const t = dst.stream.getAudioTracks()[0]; window.__mic.tracks.push(t); return dst.stream;
     };
     navigator.mediaDevices.enumerateDevices = async () => [{ kind: 'audioinput', deviceId: 'teste1', label: 'Microfone de teste', groupId: 'g' }];
+    try { if (sessionStorage.getItem('e2e_sem_idb')) {                      // simula disco cheio: o IndexedDB não abre
+      window.__semIdb = true;
+      indexedDB.open = function () { const r = {}; setTimeout(() => { r.error = new Error('cota'); r.onerror && r.onerror(); }, 0); return r; };
+    } } catch (_) {}
   })();` });
   let falhas = 0;
   const so = (process.env.SO || '').split(',').filter(Boolean).map(Number);
