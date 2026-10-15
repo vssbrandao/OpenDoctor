@@ -208,6 +208,7 @@ def cuts(a, min_s=15, max_s=30, frame_ms=20, sil_ms=250):
 # ===== custo de verdade (tokens que a OpenAI cobrou) e teto da rodada =====
 import threading                                   # noqa: E402
 SPENT = {"usd": 0.0}
+TETO = {"usd": 1.75}
 _LOCK = threading.Lock()
 
 
@@ -285,6 +286,45 @@ def doubt_quality(ref, segs):
     marked = [i for i, (_, d) in enumerate(hyp) if d]
     hit = len(set(err) & set(marked))
     return {"tok_errados": len(err), "tok_duvidosos": len(marked), "duvida_pega_erro": hit}
+
+
+def calibrate_doubt(cases, stt_model, limites=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 0.98)):
+    """Transcreve com as palavras-chave da produção guardando a confiança de cada palavra (cache próprio) e mede,
+    para cada limite, quanto a marcação de dúvida cobre os erros do transcritor e quanto acerta."""
+    def one(caso):
+        a, _ = audio_of(caso)
+        pac = caso.get("paciente") or {}
+        kw = scribe.keywords({"medications": pac.get("medicacoes", ""), "problems": pac.get("problemas", ""),
+                              "allergies": pac.get("alergias", "")})
+        tag = hashlib.sha1("|".join(kw).encode()).hexdigest()[:8]
+        akey, floor, prev, segs = hashlib.sha1(a.tobytes()).hexdigest()[:16], noise_floor(a), "", []
+        for i, (s0, s1) in enumerate(cuts(a), 1):
+            if speech_ratio(a[s0:s1], floor) < 0.02:
+                continue
+            if SPENT["usd"] >= TETO["usd"]:
+                raise RuntimeError("teto de gasto atingido")
+            r, hit = _cache("sttw", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}|kw:{tag}",
+                            lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
+            if not hit:
+                _add_cost((s1 - s0) / SR / 60 * STT_MIN.get(stt_model, 0.006))
+            segs.append(r); prev = r["text"] or prev
+        return " ".join(f for _, f in caso["falas"]), segs
+    with concurrent.futures.ThreadPoolExecutor(4) as ex:
+        rows = list(ex.map(one, cases))
+    out = []
+    for t in limites:
+        tot = {"tok_errados": 0, "tok_duvidosos": 0, "duvida_pega_erro": 0}
+        for ref, segs in rows:
+            ss = []
+            for r in segs:
+                present = set(re.findall(r"[\w']+", r["text"]))
+                ss.append({"text": r["text"], "duvidas": sorted({w for w, p in r.get("palavras") or [] if p < t and w in present})})
+            for k, v in doubt_quality(ref, ss).items():
+                tot[k] += v
+        out.append({"limite": t, "cobre": round(tot["duvida_pega_erro"] / max(1, tot["tok_errados"]), 3),
+                    "precisao": round(tot["duvida_pega_erro"] / tot["tok_duvidosos"], 3) if tot["tok_duvidosos"] else None,
+                    "marcadas": tot["tok_duvidosos"], "erros": tot["tok_errados"]})
+    return out
 
 
 def _nums(t):
@@ -486,6 +526,8 @@ def main():
     ap.add_argument("--teto-usd", type=float, default=1.75, help="para de começar casos novos ao atingir este gasto")
     ap.add_argument("--voz", choices=("openai", "mac"), default="openai", help="voz sintética: natural (OpenAI) ou do Mac")
     ap.add_argument("--comparar", action="store_true", help="só junta os relatórios do dia numa tabela comparativa")
+    ap.add_argument("--calibrar-duvida", action="store_true",
+                    help="transcreve guardando a confiança por palavra e mede o limite de dúvida (só transcrição)")
     ap.add_argument("--kw", choices=("cadastro", "app"), default="cadastro",
                     help="palavras-chave da transcrição: só do cadastro (como antes) ou as da produção (+ exame físico)")
     a = ap.parse_args()
@@ -500,6 +542,17 @@ def main():
         return
     if not config.OPENAI_API_KEY:
         sys.exit("OPENAI_API_KEY ausente")
+    TETO["usd"] = a.teto_usd
+    if a.calibrar_duvida:
+        curva = calibrate_doubt(cases, a.stt)
+        os.makedirs(REL, exist_ok=True)
+        md = [f"# Limite de dúvida da transcrição ({datetime.date.today().isoformat()}, {a.stt}, palavras-chave da produção)", "",
+              f"Atual: {stt.DUVIDA}. Gasto nesta rodada: US$ {SPENT['usd']:.3f}.", "",
+              "| limite | cobre os erros | precisão | palavras marcadas | erros do transcritor |", "|---|---|---|---|---|"]
+        md += [f"| {c['limite']} | {c['cobre']:.0%} | {(c['precisao'] or 0):.0%} | {c['marcadas']} | {c['erros']} |" for c in curva]
+        open(os.path.join(REL, f"duvida-{datetime.date.today().isoformat()}.md"), "w", encoding="utf-8").write("\n".join(md) + "\n")
+        print("\n".join(md))
+        return
     for c in cases:                  # áudio sintético antes (o "say" do Mac não gosta de rodar em paralelo)
         audio_of(c)
     if SPENT["usd"]:

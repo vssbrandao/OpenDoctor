@@ -107,7 +107,8 @@ def _parse(r, prompt):
     present = set(re.findall(r"[\w']+", text))
     duv = sorted({w for w, p in ws if p < DUVIDA and w in present})
     return {"text": text, "raw": raw, "usage": j.get("usage") or {}, "duvidas": duv,
-            "confianca": round(sum(p for _, p in ws) / len(ws), 3) if ws else None}
+            "confianca": round(sum(p for _, p in ws) / len(ws), 3) if ws else None,
+            "palavras": [[w, round(p, 4)] for w, p in ws]}           # para calibrar o limite DUVIDA
 
 
 def _wait(r, attempt):
