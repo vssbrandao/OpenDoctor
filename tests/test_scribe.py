@@ -227,3 +227,13 @@ def test_cid_subcodigo_inexistente_vira_a_categoria_e_aviso_nao_repete():
     assert any("usado I48" in f["texto"] for f in flags if f["tipo"] == "cid")
     textos = [f["texto"] for f in flags]
     assert len(textos) == len(set(textos))
+
+
+def test_palavras_chave_de_exame_so_com_o_interruptor(monkeypatch):
+    from app import config
+    pac = {"medications": "Losartana 50 mg 12/12h", "problems": "Diabetes tipo 2", "allergies": "Dipirona"}
+    monkeypatch.setattr(config, "SCRIBE_KW_EXAME", False)
+    assert s.keywords(pac) == ["Losartana", "Diabetes tipo 2", "Dipirona"]
+    monkeypatch.setattr(config, "SCRIBE_KW_EXAME", True)
+    assert "crepitações" in s.keywords(pac) and len(s.keywords(pac)) <= 50
+    assert "crepitações" not in s.keywords(pac, exame=False)

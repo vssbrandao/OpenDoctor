@@ -747,7 +747,7 @@ EXAME_KW = ["abaulado", "hiperemiado", "otoscopia", "membrana timpânica", "crep
             "exsudato", "monofilamento", "glicemia capilar", "hemoglobina glicada"]
 
 
-def keywords(patient, exame=True):
+def keywords(patient, exame=None):
     """Palavras que ajudam o transcritor a acertar: remédios, problemas e alergias do cadastro, sem dose
     (o nome do paciente não entra), e termos comuns de exame físico (EXAME_KW)."""
     p, out = patient or {}, []
@@ -756,4 +756,5 @@ def keywords(patient, exame=True):
             w = re.split(r"\s+\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|g|ml|ui|%|gotas?|comp)\b|\s+\(", line.strip(), flags=re.I)[0].strip(" -•*.")
             if 3 <= len(w) <= 40:
                 out.append(w)
+    exame = config.SCRIBE_KW_EXAME if exame is None else exame
     return (out[:26] + (EXAME_KW if exame else []))[:50]

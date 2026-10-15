@@ -295,7 +295,7 @@ def calibrate_doubt(cases, stt_model, limites=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.
         a, _ = audio_of(caso)
         pac = caso.get("paciente") or {}
         kw = scribe.keywords({"medications": pac.get("medicacoes", ""), "problems": pac.get("problemas", ""),
-                              "allergies": pac.get("alergias", "")})
+                              "allergies": pac.get("alergias", "")}, exame=True)
         tag = hashlib.sha1("|".join(kw).encode()).hexdigest()[:8]
         akey, floor, prev, segs = hashlib.sha1(a.tobytes()).hexdigest()[:16], noise_floor(a), "", []
         for i, (s0, s1) in enumerate(cuts(a), 1):
@@ -456,7 +456,7 @@ def run_case(caso, stt_model, llm_model):
     kwtag = ""
     if FONTE.get("kw") == "app":              # as mesmas palavras-chave da produção (cadastro + exame físico)
         kw = scribe.keywords({"medications": pac.get("medicacoes", ""), "problems": pac.get("problemas", ""),
-                              "allergies": pac.get("alergias", "")})
+                              "allergies": pac.get("alergias", "")}, exame=True)
         kwtag = "|kw:" + hashlib.sha1("|".join(kw).encode()).hexdigest()[:8]
     segs, prev, t0 = [], "", time.time()
     akey = hashlib.sha1(a.tobytes()).hexdigest()[:16]
@@ -464,8 +464,12 @@ def run_case(caso, stt_model, llm_model):
     for i, (s0, s1) in enumerate(cuts(a), 1):
         if speech_ratio(a[s0:s1], floor) < 0.02:       # só silêncio: não transcreve (nem cobra)
             silent += 1; segs.append({"seq": i, "at": s0 / SR, "text": ""}); continue
-        r, hit = _cache("stt", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}",
+        kind = "sttw" if FONTE.get("duvida") else "stt"   # sttw: com a confiança por palavra (--calibrar-duvida)
+        r, hit = _cache(kind, f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}",
                         lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
+        if FONTE.get("duvida"):                              # dúvidas refeitas com outro limite
+            present = set(re.findall(r"[\w']+", r["text"]))
+            r = dict(r, duvidas=sorted({w for w, p in r.get("palavras") or [] if p < FONTE["duvida"] and w in present}))
         if not hit:
             _add_cost((s1 - s0) / SR / 60 * STT_MIN.get(stt_model, 0.006))
         segs.append({"seq": i, "at": s0 / SR, "text": r["text"], "duvidas": r.get("duvidas") or []}); prev = r["text"] or prev
@@ -528,11 +532,16 @@ def main():
     ap.add_argument("--comparar", action="store_true", help="só junta os relatórios do dia numa tabela comparativa")
     ap.add_argument("--calibrar-duvida", action="store_true",
                     help="transcreve guardando a confiança por palavra e mede o limite de dúvida (só transcrição)")
+    ap.add_argument("--duvida", type=float, default=None,
+                    help="limite de dúvida (usa as transcrições com confiança por palavra; exige --kw app)")
     ap.add_argument("--kw", choices=("cadastro", "app"), default="cadastro",
                     help="palavras-chave da transcrição: só do cadastro (como antes) ou as da produção (+ exame físico)")
     a = ap.parse_args()
     FONTE["voz"] = a.voz
     FONTE["kw"] = a.kw
+    FONTE["duvida"] = a.duvida
+    if a.duvida and a.kw != "app":
+        sys.exit("--duvida exige --kw app")
     if a.comparar:
         return compare()
     cases = load_cases([x.strip() for x in a.casos.split(",") if x.strip()])
@@ -597,7 +606,7 @@ def main():
               "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit, "erros": erros,
               "gasto_usd_nesta_rodada": round(SPENT["usd"], 3)}
     os.makedirs(REL, exist_ok=True)
-    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}" + ("-kw-app" if a.kw == "app" else "") + f"-p{scribe.PROMPT_VERSION.split('.')[-1]}"
+    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}" + ("-kw-app" if a.kw == "app" else "") + (f"-d{a.duvida}" if a.duvida else "") + f"-p{scribe.PROMPT_VERSION.split('.')[-1]}"
     json.dump({"resumo": resumo, "casos": rows}, open(os.path.join(REL, name + ".json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
     md = [f"# Avaliação da gravação — {resumo['data']} · {a.stt} + {a.modelo} · prompt {scribe.PROMPT_VERSION}", "",

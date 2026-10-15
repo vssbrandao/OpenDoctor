@@ -39,6 +39,10 @@ OPENAI_SCRIBE_MODEL = os.environ.get("OPENAI_SCRIBE_MODEL", "gpt-5.4").strip()
 SCRIBE_EMAILS = {e.strip().lower() for e in os.environ.get("SCRIBE_EMAILS", "").split(",") if e.strip()}
 SCRIBE_ALL = os.environ.get("SCRIBE_ALL", "").strip() == "1"
 SCRIBE_OFF = os.environ.get("SCRIBE_OFF", "").strip() == "1"
+# termos de exame físico como palavras-chave da transcrição: acertam termos ("abaulado"), mas a transcrição fica
+# confiante demais e a marcação de dúvida cai de 20% para 6% dos erros (avaliação de 15/10/2026). Desligado até
+# testar com gravações de voz real.
+SCRIBE_KW_EXAME = os.environ.get("SCRIBE_KW_EXAME", "").strip() == "1"
 # modelos de raciocínio (gpt-5.x): esforço e orçamento extra p/ o raciocínio
 REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "low").strip()
 REASONING_TOKEN_BUDGET = int(os.environ.get("OPENAI_REASONING_TOKEN_BUDGET", "4000"))
