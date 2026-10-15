@@ -991,45 +991,6 @@
     .pr-labrev input[type=checkbox]{width:16px;height:16px;margin:0;accent-color:#0B57D0;cursor:pointer}
     .pr-labrev-foot{display:flex;flex-wrap:wrap;gap:8px 12px;justify-content:flex-end}
     .pr-labrev-w{padding:10px 12px;border-radius:10px;background:#FFF4D6;font-family:var(--disp);font-size:13px;line-height:18px;color:#5C3B00}
-    /* ===== cabeçalho do paciente = topo da cotação do Finance (NVDA), medida por medida =====
-       aviso 48px (#F7F8FA r12) · linha do identificador 40px (14/24 #56595E) · logo 32px r12 #F0F2F5 + nome 20/26
-       · botão "Add to list" 36px (#E5EDFF r18, ícone 18px #0B57D0 + 8px, texto 14/500) · linha secundária 14/16 */
-    .pr > .gb{margin:0 0 8px}
-    .pr-top{min-height:40px;padding:8px 0;margin:0;gap:12px}
-    .pr-crumb{gap:6px;min-width:0}
-    .pr-crumb-t{min-width:0;font-size:14px;line-height:24px;color:#56595E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .pr-exb{color:#0B57D0;font-weight:500}
-    .pr-exb[hidden]{display:none}
-    .pr-exb::after{content:'·';margin:0 6px;color:#56595E;font-weight:400}
-    .pr-head{display:grid;grid-template-columns:32px minmax(0,1fr) auto;column-gap:8px;row-gap:0;align-items:center}
-    .pr-head .pr-id{display:contents}
-    .pr-head .pr-avatar{grid-column:1;grid-row:1;width:32px;height:32px;border-radius:12px;background:#F0F2F5;color:#36373A;font-size:12px;font-weight:500}
-    .pr-head .pr-name{grid-column:2;grid-row:1;font-size:20px;line-height:26px;font-weight:400;color:#0A0A0A;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
-    .pr-head .pr-tools{grid-column:3;grid-row:1;display:flex;align-items:center;gap:8px;margin:0}
-    .pr-tools[hidden]{display:none}
-    .pr-tools .pr-addlab,.pr-tools .pr-visit .pr-save{display:inline-flex;align-items:center;height:36px;padding:0 16px;border:0;border-radius:18px;
-      background:#E5EDFF;color:#0A0A0A;font-family:var(--disp);font-weight:500;font-size:14px;line-height:18px;box-shadow:none}
-    .pr-tools .pr-addlab:hover,.pr-tools .pr-visit .pr-save:hover{background:#D3E3FD}
-    .pr-tools .pr-addlab svg,.pr-tools .pr-visit .pr-save svg{width:18px;height:18px;margin-right:8px;color:#0B57D0;flex:none}
-    .pr-tools .pr-visit{gap:8px}
-    .pr-tools .pr-visit .pr-save.live{background:#fff;box-shadow:inset 0 0 0 1px #CCCFD9}
-    .pr-tools .pr-visit .pr-save.live svg{display:none}
-    .pr-morebtn{position:relative;flex:none;width:36px;height:36px;border:0;border-radius:18px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
-    .pr-morebtn:hover,.pr-morebtn[aria-expanded=true]{background:#F0F2F5}
-    .pr-morebtn svg{width:20px;height:20px}
-    .pr-morebtn.warn::after{content:'';position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:4px;background:#E37400;box-shadow:0 0 0 2px #fff}
-    .pr-more .gq-menu{left:auto;right:0;min-width:200px}
-    .pr-more .gq-mi.warn{color:#B05A00;font-weight:500}
-    /* linha secundária (como "Closed: Oct 14 · USD"): alergias em vermelho e problemas em texto */
-    .pr-head .pr-tags{grid-column:1 / -1;grid-row:2;display:block;margin-top:8px;font-family:var(--disp);font-size:14px;line-height:20px;color:#56595E}
-    .pr-head .pr-tag,.pr-head .pr-allergy{display:inline;height:auto;padding:0;border:0;border-radius:0;background:none;font-weight:400;font-size:14px;line-height:20px}
-    .pr-head .pr-tag{color:#56595E}
-    .pr-head .pr-tag + .pr-tag::before,.pr-head .pr-allergy:not([hidden]) ~ #prProbTags .pr-tag:first-child::before{content:'·';margin:0 6px}
-    .pr-head .pr-allergy{color:#C0151D;font-weight:500}
-    .pr-head .pr-allergy[hidden]{display:none}
-    .pr-head .pr-allergy img{display:inline-block;vertical-align:-1px;width:13px;height:12px;margin:0 5px 0 0}
-    #prProbTags{display:inline}
-    @container pr (max-width:520px){ .pr-head .pr-tools{grid-column:1 / -1;grid-row:3;margin-top:12px} }
     /* ===== componentes das outras abas do Finance (NVDA): aviso, panorama, análise, em resumo, barras ===== */
     .gb{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;width:100%;min-height:48px;padding:0;border:0;border-radius:12px;
       background:#F7F8FA;cursor:pointer;text-align:left;font-family:var(--disp);color:#36373A}
@@ -1692,13 +1653,12 @@
       </div>
       <div class="pr-view" id="prView">
         <div class="pr">
-          <!-- "Why is NVDA down 3.16%? · Dive deeper": só preenche a pergunta no assistente -->
-          <button class="gb" type="button" id="gqWhy" hidden>
-            <span class="gb-l"><span class="gb-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg></span><span class="gb-t" id="gqWhyT"></span></span>
-            <span class="gb-r">Perguntar ao assistente<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="#0A0A0A"/></svg></span>
-          </button>
           <div class="pr-top">
-            <div class="pr-crumb"><button class="pr-back" type="button" id="prBack">Agenda</button><span class="pr-crumb-sep" aria-hidden="true"></span><span class="pr-crumb-t"><span class="pr-exb" id="prExTag" hidden title="Paciente criada automaticamente para mostrar o prontuário preenchido (dados fictícios). Pode ser excluída em Pacientes.">Paciente de exemplo</span><span id="prSub">Prontuário</span></span></div>
+            <div class="pr-crumb"><button class="pr-back" type="button" id="prBack">Agenda</button><span class="pr-crumb-sep" aria-hidden="true"></span><span class="pr-crumb-t">Prontuário</span></div>
+            <div class="pr-tools">
+              <button class="pr-ghost" type="button" id="prEditBtn" hidden>Editar cadastro</button>
+              <button class="pr-ghost" type="button" id="prExport" hidden>Exportar PDF</button>
+            </div>
           </div>
           <div class="pr-msg" id="prMsg" hidden></div>
 
@@ -1708,24 +1668,19 @@
               <div class="pr-avatar" id="prAvatar"></div>
               <div class="pr-id">
                 <div class="pr-name" id="prName"></div>
+                <div class="pr-sub" id="prSub"></div>
                 <div class="pr-tags" id="prTags">
+                  <span class="pr-tag ex" id="prExTag" hidden title="Paciente criada automaticamente para mostrar o prontuário preenchido. Pode ser excluída em Pacientes.">Paciente de exemplo · dados fictícios</span>
                   <span class="pr-allergy" id="prAllergyBar" hidden><img src="assets/icons/sf-warning.svg?v=2" width="13" height="12" alt=""><span id="prAllergyTxt"></span></span>
                   <span id="prProbTags"></span>
                 </div>
               </div>
-              <div class="pr-tools" id="prTools" hidden>
+              <div class="pr-hacts">
                 <button class="pr-addlab" type="button" id="prAttach" data-attach><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6z" fill="currentColor"/></svg>Anexar exame</button>
                 <input type="file" id="prAttFile" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp" multiple hidden>
                 <div class="pr-visit" id="prVisitBox">
                   <span class="pr-timer" id="prTimer" hidden></span>
-                  <button class="pr-save" id="prVisit" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.14v13.72a1 1 0 0 0 1.53.85l10.6-6.86a1 1 0 0 0 0-1.7L9.53 4.29A1 1 0 0 0 8 5.14" fill="currentColor"/></svg><span id="prVisitT">Iniciar consulta</span></button>
-                </div>
-                <div class="gq-dd pr-more">
-                  <button class="pr-morebtn" type="button" id="prMore" aria-haspopup="menu" aria-expanded="false" aria-label="Mais ações" title="Mais ações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4m0 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4m0 6a2 2 0 1 0 0 4 2 2 0 0 0 0-4" fill="#36373A"/></svg></button>
-                  <div class="gq-menu" id="prMoreM" role="menu" hidden>
-                    <button class="gq-mi" type="button" role="menuitem" id="prEditBtn" hidden>Editar cadastro</button>
-                    <button class="gq-mi" type="button" role="menuitem" id="prExport" hidden>Exportar PDF</button>
-                  </div>
+                  <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
                 </div>
               </div>
             </div>
@@ -1748,6 +1703,11 @@
                  cartão do gráfico (barra com Comparar, chips das séries, gráfico, períodos)
                  e tabela de comparação. Fica acima das abas, como no Finance. ===== -->
             <section class="gq" id="ovTop" hidden>
+              <!-- "Why is NVDA down 3.16%? · Dive deeper": só preenche a pergunta no assistente -->
+              <button class="gb" type="button" id="gqWhy" hidden>
+                <span class="gb-l"><span class="gb-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg></span><span class="gb-t" id="gqWhyT"></span></span>
+                <span class="gb-r">Perguntar ao assistente<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="#0A0A0A"/></svg></span>
+              </button>
               <div class="gq-quote" id="gqQuote">
                 <div class="gq-price"><span class="gq-val" id="ovVal">—</span><span class="gq-unit" id="ovUnit"></span><span class="gq-chg" id="ovDelta"></span></div>
                 <div class="gq-date" id="ovWhen"></div>
@@ -4310,8 +4270,6 @@
         $('prEditBtn').textContent = miss ? 'Completar cadastro' : 'Editar cadastro';
         $('prEditBtn').classList.toggle('warn', !!miss);
         $('prEditBtn').hidden = !patient;
-        $('prTools').hidden = !patient; $('prMore').classList.toggle('warn', !!miss);
-        $('prMore').title = miss ? 'Mais ações · cadastro incompleto' : 'Mais ações';
       }
       $('prEditBtn').addEventListener('click', function () {
         if (!patient) return;
@@ -4652,7 +4610,7 @@
       // ----- menu Comparar da barra do gráfico -----
       var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#0B57D0"/></svg>';
       function closeMenus() {
-        [['gqCmp', 'gqCmpM'], ['csMetric', 'csMetricM'], ['prMore', 'prMoreM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
+        [['gqCmp', 'gqCmpM'], ['csMetric', 'csMetricM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
       }
       function mi(label, on, fn, opts) {
         var b = el('button', 'gq-mi'); b.type = 'button'; b.setAttribute('role', opts && opts.radio ? 'menuitemradio' : 'menuitemcheckbox'); b.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -5544,13 +5502,6 @@
           var lb = svgEl('text', { x: cx, y: base + 20, 'text-anchor': 'middle', fill: '#36373A' }); lb.textContent = dayMon(p.t); svg.appendChild(lb);
         });
       }
-      $('prMore').addEventListener('click', function (e) {
-        e.stopPropagation();
-        var M = $('prMoreM'), open = M.hidden; closeMenus(); if (!open) return;
-        M.hidden = false; this.setAttribute('aria-expanded', 'true');
-        var f = M.querySelector('button:not([hidden])'); if (f) f.focus();
-      });
-      $('prMoreM').addEventListener('click', function () { closeMenus(); });
       $('csMetric').addEventListener('click', function (e) {
         e.stopPropagation();
         var M = $('csMetricM'), open = M.hidden; closeMenus(); if (!open) return;
@@ -5744,7 +5695,7 @@
       function renderVisit() {
         clearInterval(tick); renderStrip();
         var t0 = visitStart();
-        $('prVisitT').textContent = t0 ? 'Encerrar consulta' : 'Iniciar consulta';
+        visitBtn.textContent = t0 ? 'Encerrar consulta' : 'Iniciar consulta';
         visitBtn.classList.toggle('live', !!t0);
         timerEl.hidden = !t0;
         if (!t0) return;
@@ -5862,7 +5813,7 @@
         patient = null; notes = []; cur = null; saved = ''; ready = false;
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
-        $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prProbTags').innerHTML = ''; $('prExport').hidden = true; $('gqWhy').hidden = true;
+        $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prProbTags').innerHTML = ''; $('prExport').hidden = true;
         visits = null; calOn = null; setTab(c && c.event_id ? 'atual' : 'geral');
         if (!ctx || (!ctx.patient && !ctx.patient_id)) {
           msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return;
