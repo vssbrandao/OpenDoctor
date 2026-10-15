@@ -11,7 +11,7 @@ create table if not exists recordings (
   status      text not null default 'gravando' check (status in ('gravando', 'gerada')),
   consent_at  timestamptz not null,                   -- quando o médico marcou "o paciente autorizou a gravação"
   seconds     real not null default 0,                -- até onde já foi transcrito (s)
-  scribe      jsonb,                                  -- última geração: versão do prompt, modelo, contagem dos pontos (sem texto)
+  scribe      jsonb,                                  -- última geração: versão do prompt, modelo, pontos e (saida) o rascunho gerado com os pontos para conferir
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );

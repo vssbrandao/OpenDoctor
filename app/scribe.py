@@ -57,25 +57,41 @@ _COMUNS = {"dias", "campos", "leite", "rosa", "clara", "luz", "paz", "cruz", "co
            "sales", "pinto", "sol", "mar", "gloria", "vitoria", "graca", "aparecida", "esperanca", "bispo", "nunes",
            "jesus", "barros", "mendes", "machado", "ferreira", "pereira", "oliveira", "moreira", "salgado", "rios",
            "marcos", "domingos", "jardim", "monte", "coelho", "cordeiro", "carneiro", "pinheiro", "matos", "estrela", "flor",
-           "amor", "mel", "lago", "aurora", "celeste", "bela", "linda", "nogueira", "figueira", "porto", "leal", "fortuna"}
+           "amor", "mel", "lago", "aurora", "celeste", "bela", "linda", "nogueira", "figueira", "porto", "leal", "fortuna",
+           # nomes marianos e sobrenomes que são palavras da consulta: "Maria das Dores" não pode apagar "dores no peito"
+           "dores", "remedios", "chagas", "angustias", "gracas", "socorro", "prazeres", "anjos", "milagres", "penha",
+           "passos", "pimenta", "canela", "cravo", "guerra", "alegria"}
+# doença, sinal ou síndrome com nome de pessoa ("doença de Chagas", "doença de Wilson"): nunca é o paciente
+_EPONIMO = {"doenca", "sindrome", "mal", "sinal", "teste", "manobra", "escala", "paralisia", "linfoma", "tireoidite",
+            "molestia", "reacao", "fenomeno", "criterios", "classificacao"}
 _WORD = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ']+")
 # CPF e CNS: com pontuação ou dígitos juntos sempre; separados só por espaço, apenas logo depois de "CPF"/"CNS"/
 # "cartão do SUS" — senão "glicemias de 100 120 130 14" viraria um CPF e o modelo perderia os valores
 _CPF = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b|\b\d{11}\b|(?<=cpf)[^\d\n]{0,15}\b\d{3}\s?\d{3}\s?\d{3}[-\s]?\d{2}\b", re.I)
-_FONE = re.compile(r"(?:\(?\b\d{2}\)?\s?)?\b9?\d{4}[-\s]\d{4}\b|\b\d{10,11}\b")
+# telefone: celular (9 + 4 + 4, com ou sem DDD), fixo com hífen ou com DDD entre parênteses, ou qualquer 8 dígitos logo
+# depois de "telefone/celular/zap". Dois números de 4 dígitos soltos ("leucócitos 8500 9200", "2019 2020") não são telefone.
+_FONE = re.compile(r"(?:\(?\b\d{2}\)?\s?)?\b9\d{4}[-\s]?\d{4}\b|\(\d{2}\)\s?\d{4}[-\s]?\d{4}\b"
+                   r"|\b(?!(?:19|20)\d\d-(?:19|20)\d\d\b)\d{4}-\d{4}\b"
+                   r"|(?:fone|celular|zap|whatsapp|contato)[^\d\n]{0,12}\b\d{4}\s\d{4}\b|\b\d{10,11}\b", re.I)
 _EMAIL = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
 _CNS = re.compile(r"\b\d{15}\b|(?<=cns|sus)[^\d\n]{0,15}\b\d{3}\s?\d{4}\s?\d{4}\s?\d{4}\b", re.I)
 _PLACEHOLDERS = ("[CPF]", "[TELEFONE]", "[E-MAIL]", "[CNS]")
 
 
-def mask(text, patient_name=""):
-    """Troca o nome do paciente (e diminutivos do primeiro nome) por [PACIENTE] e tira CPF, CNS, telefone e
-    e-mail. Nome que também é palavra comum ("Rosa", "Dias", "Campos") só é trocado com maiúscula no meio da
-    frase, junto de outro nome, depois de "dona/seu" ou como vocativo — para não apagar palavra clínica."""
+def mask_docs(text):
+    """Tira CPF, CNS, telefone e e-mail (sem mexer em nomes)."""
     text = _EMAIL.sub("[E-MAIL]", str(text or ""))
     text = _CNS.sub(lambda m: re.sub(r"\d[\d\s]*\d", "[CNS]", m.group(0)), text)
     text = _CPF.sub(lambda m: re.sub(r"\d[\d.\s-]*\d", "[CPF]", m.group(0)), text)
-    text = _FONE.sub("[TELEFONE]", text)
+    return _FONE.sub(lambda m: re.sub(r"[(\d][\d\s()-]*\d", "[TELEFONE]", m.group(0)), text)
+
+
+def mask(text, patient_name=""):
+    """Troca o nome do paciente (e diminutivos do primeiro nome) por [PACIENTE] e tira CPF, CNS, telefone e
+    e-mail. Nome que também é palavra comum ("Rosa", "Dias", "Dores", "Remédios") só é trocado com maiúscula no meio
+    da frase, junto de outro nome, depois de "dona/seu" ou como vocativo — para não apagar palavra clínica; e nunca
+    num epônimo ("doença de Chagas")."""
+    text = mask_docs(text)
     toks = [t for t in (norm(x) for x in _WORD.findall(patient_name or "")) if len(t) >= 3 and t not in _PARTICULAS]
     if not toks:
         return text
@@ -95,14 +111,23 @@ def mask(text, patient_name=""):
             n.endswith(("inha", "inho", "inhas", "inhos", "zinha", "zinho", "ita", "ito"))
     cand = [is_name(i) for i in range(len(words))]
     keep = []
+    ws = [norm(w.group(0)) for w in words]
+
+    def nb(i, d):                                        # vizinho, pulando "de/da/dos": "Maria das Dores"
+        j = i + d
+        while 0 <= j < len(words) and ws[j] in _PARTICULAS:
+            j += d
+        return j if 0 <= j < len(words) else None
     for i, w in enumerate(words):
         if not cand[i]:
             continue
-        if norm(w.group(0)) in _COMUNS:
+        if i >= 2 and ws[i - 1] in ("de", "do", "da") and ws[i - 2] in _EPONIMO:
+            continue                                     # "doença de Chagas", "doença de Wilson"
+        if ws[i] in _COMUNS:
             before = text[:w.start()].rstrip()
             mid = bool(before) and before[-1] not in '.!?:"“(\n'
-            prev = norm(words[i - 1].group(0)) if i else ""
-            near = (i and cand[i - 1]) or (i + 1 < len(words) and cand[i + 1]) or prev in _TRATAMENTO
+            a, b = nb(i, -1), nb(i, 1)
+            near = (a is not None and cand[a]) or (b is not None and cand[b]) or (i and ws[i - 1] in _TRATAMENTO)
             voc = text[w.end():w.end() + 1] == ","            # vocativo: "Rosa, como vai?"
             if not (near or mid or voc):
                 continue

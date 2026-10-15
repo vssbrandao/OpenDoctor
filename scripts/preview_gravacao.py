@@ -93,6 +93,7 @@ async def _save(request: Request):
              data=server._note_data(b.get("data")) if b.get("data") is not None else None)
     if n["data"] and n["data"].get("scribe"):
         db.rec_link_note(UID, pid, n["data"]["scribe"]["rec_ids"], n["id"])
+    db.rec_link_orphans(UID, pid, server._rec_ids({"rec_ids": b.get("rec_ids")}), n["id"])
     return {"ok": True, "id": n["id"]}
 
 
@@ -210,6 +211,8 @@ db.rec_seconds_today = lambda uid: sum(s["dur"] for s in SEG.values())
 db.rec_list = _rec_list
 db.rec_generated = _rec_generated
 db.rec_link_note = lambda uid, pid, rids, nid: [REC[r].update(note_id=nid) for r in rids if r in REC and REC[r]["pid"] == pid]
+db.rec_link_orphans = lambda uid, pid, rids, nid: [REC[r].update(note_id=nid) for r in rids
+                                                   if r in REC and REC[r]["pid"] == pid and REC[r]["note_id"] is None]
 db.rec_delete = lambda uid, rid: (REC.pop(rid)["pid"] if rid in REC else None)
 db.recent_notes = lambda uid, limit=30: [{"content": n["content"], "data": n["data"]} for n in NOTES.values()][:limit]
 db.list_notes = lambda uid, pid, key: [_note_out(n) for n in NOTES.values() if n["pid"] == pid]

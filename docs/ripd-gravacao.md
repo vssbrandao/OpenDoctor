@@ -20,6 +20,7 @@ não sugere diagnóstico, exame nem conduta (ver item 8).
 |---|---|---|---|
 | Áudio da consulta (voz do médico, do paciente e de acompanhantes) | microfone do computador do médico | trechos no navegador (IndexedDB) até o servidor confirmar; memória do servidor durante a transcrição | navegador: até a confirmação, no máximo 48 h, apagado ao sair da conta; servidor: não é gravado |
 | Texto de cada trecho (transcrição), com o minuto e as palavras ouvidas com dúvida | transcrição (OpenAI) | banco do OpenDoctor (`recording_segments`) | junto do prontuário: mínimo 20 anos (Lei 13.787/2018) |
+| Último rascunho gerado (texto da evolução) e os pontos para conferir, para a revisão continuar depois de recarregar ou noutro dia | servidor | `recordings.scribe` (`saida`) | junto da transcrição; sai com "Apagar transcrição" |
 | Data e hora da autorização do paciente, duração, situação | página | `recordings` | idem |
 | Rastreio da evolução gerada (versão do prompt, modelo, contagem de pontos conferidos) — sem texto | servidor | `clinical_notes.data.scribe` | idem |
 | Métricas da revisão (segundos, %, contagens) — sem texto | página, ao finalizar | `clinical_notes.data.timing` | idem |
@@ -33,6 +34,9 @@ falem na consulta; voz (dado biométrico em potencial — o OpenDoctor não extr
    → WAV 16 kHz → IndexedDB (banco por médico) → fila de envio.
 2. `POST /prontuario/transcribe` (login, dono do paciente, autorização obrigatória, formato conferido) →
    `stt.atranscribe` → OpenAI `/v1/audio/transcriptions` → só o **texto** é gravado; o navegador apaga o trecho.
+   Junto do áudio vão, como contexto, o fim do texto do trecho anterior — sem CPF, CNS, telefone e e-mail
+   (`scribe.mask_docs`), mas com o nome falado, que o próprio áudio já contém — e os nomes de remédios, problemas
+   e alergias do cadastro (palavras-chave). O mesmo trecho chegando duas vezes ao mesmo tempo é transcrito uma vez.
 3. `POST /prontuario/scribe` → texto de todos os trechos da consulta, **mascarado** (`scribe.mask`: nome →
    `[PACIENTE]`, CPF, CNS, telefone, e-mail), + cadastro (problemas, remédios, alergias, idade, sexo) + evolução
    anterior do mesmo paciente (mascarada) + perfil de escrita do médico (só estatísticas e siglas de uma lista
@@ -75,7 +79,7 @@ falem na consulta; voz (dado biométrico em potencial — o OpenDoctor não extr
 | Risco | Medidas | Risco residual |
 |---|---|---|
 | Acesso indevido à transcrição | login obrigatório em todas as rotas; toda consulta ao banco filtra pelo médico; RLS ligado nas tabelas novas (só o servidor acessa); teste automático percorre as rotas | baixo |
-| Reidentificação pelo texto enviado ao modelo | máscara de nome, apelidos comuns do primeiro nome, CPF, CNS, telefone, e-mail | **médio**: a máscara não pega nomes de parentes, apelidos incomuns, endereço falado; o áudio enviado à transcrição contém tudo |
+| Reidentificação pelo texto enviado ao modelo | máscara de nome, apelidos comuns do primeiro nome, CPF, CNS, telefone, e-mail; nome que também é palavra da consulta ("Maria das Dores", "dos Remédios", "doença de Chagas") só sai quando é nome | **médio**: a máscara não pega nomes de parentes, apelidos incomuns, endereço falado; o áudio enviado à transcrição contém tudo, e o contexto da transcrição leva o nome falado |
 | Retenção na OpenAI | transcrição sem retenção; rascunho até 30 dias (monitoramento de abuso), sem uso para treino | médio até o ZDR **[pendente]** |
 | Áudio esquecido no computador (consultório compartilhado) | banco do navegador por médico; apagado quando o servidor confirma; apagado após 48 h; "sair da conta" limpa o navegador | baixo. Se o médico sair da conta sem internet, trechos ainda não enviados se perdem (o aviso ao fechar a aba alerta) |
 | Perda de parte da consulta | captura contínua sem buracos entre trechos; cada trecho fica no navegador até a confirmação; o trecho em andamento é salvo a cada 2 s; fila com novas tentativas; recuperação ao reabrir | baixo (no máximo ~2 s se o computador desligar) |

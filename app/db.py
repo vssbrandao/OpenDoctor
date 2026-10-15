@@ -906,6 +906,17 @@ def rec_link_note(user_id, patient_id, rec_ids, note_id):
         conn.commit()
 
 
+def rec_link_orphans(user_id, patient_id, rec_ids, note_id):
+    """A evolução avulsa acabou de ser salva: a gravação desta consulta que ainda não tinha evolução passa a ter
+    (sem tirar de outra evolução a que já estiver ligada)."""
+    if not rec_ids:
+        return
+    with connection() as conn:
+        conn.execute("""update recordings set note_id = %s where user_id = %s and patient_id = %s and note_id is null
+                        and id::text = any(%s::text[])""", (note_id, user_id, patient_id, [str(x) for x in rec_ids][:20]))
+        conn.commit()
+
+
 def rec_delete(user_id, rec_id):
     """Apaga a transcrição (gravação + trechos). Devolve o patient_id ou None."""
     with connection() as conn:

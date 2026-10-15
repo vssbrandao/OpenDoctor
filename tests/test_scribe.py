@@ -178,6 +178,11 @@ def test_transcricao_tira_frases_fantasma_do_silencio():
     assert stt.clean("Obrigado por assistir!") == "" and stt.clean("Tchau, tchau.") == ""
     assert stt.clean("A pressão está 128 por 82. Legendas pela comunidade Amara.org") == "A pressão está 128 por 82."
     assert stt.clean("Tchau, dona Maria, até a próxima.") == "Tchau, dona Maria, até a próxima."
+    # fala de verdade que lembra legenda de vídeo continua
+    assert stt.clean("Inscreva-se no grupo de tabagismo do posto. Legenda da receita: tomar à noite.") == \
+        "Inscreva-se no grupo de tabagismo do posto. Legenda da receita: tomar à noite."
+    assert stt.clean("Inscreva-se no canal e ative o sininho.") == "" and stt.clean("Inscreva-se!") == ""
+    assert stt.clean("Legendas por Fulano.") == "" and stt.clean("Legenda da comunidade Amara") == ""
 
 
 def test_transcricao_descarta_copia_do_contexto():
@@ -329,6 +334,27 @@ def test_mascara_apelidos_cpf_so_com_formato_ou_contexto():
     assert s.mask("Glicemias de 100 120 130 14 em jejum", "Ana") == "Glicemias de 100 120 130 14 em jejum"
     assert s.mask("CPF 321 654 987 00 e 12345678901", "Ana") == "CPF [CPF] e [CPF]"
     assert s.mask("Marcos de crescimento normais.", "Marcos Lima") == "Marcos de crescimento normais."
+
+
+def test_mascara_nao_apaga_palavra_da_consulta_que_tambem_e_nome():
+    """Maria das Dores, dos Remédios, das Chagas…: o nome some, a queixa e o diagnóstico ficam."""
+    assert s.mask("Refere dores no peito. Dona Dores, sente aqui. Maria das Dores, tudo bem?", "Maria das Dores Silva") == \
+        "Refere dores no peito. Dona [PACIENTE], sente aqui. [PACIENTE], tudo bem?"
+    assert s.mask("Estou tomando os remédios certinho.", "Maria dos Remédios Souza") == "Estou tomando os remédios certinho."
+    assert s.mask("Sorologia para doença de Chagas. Bom dia, dona Chagas.", "Maria das Chagas Lima") == \
+        "Sorologia para doença de Chagas. Bom dia, dona [PACIENTE]."
+    assert s.mask("Descartada doença de Wilson. Wilson, pode deitar.", "Wilson Pereira") == \
+        "Descartada doença de Wilson. [PACIENTE], pode deitar."
+    assert s.mask("Anda poucos passos. Evitar pimenta. Chamou socorro.", "José Passos Pimenta do Socorro") == \
+        "Anda poucos passos. Evitar pimenta. Chamou socorro."
+
+
+def test_telefone_so_com_formato_de_telefone():
+    assert s.mask("Leucócitos 8500 9200. Internou em 2019 2020 e de 2019-2020.", "Ana") == \
+        "Leucócitos 8500 9200. Internou em 2019 2020 e de 2019-2020."
+    assert s.mask("Meu telefone é 3333 4444, celular 98877 6655, fixo (11) 3333-4444 e 3333-4445.", "Ana") == \
+        "Meu telefone é [TELEFONE], celular [TELEFONE], fixo [TELEFONE] e [TELEFONE]."
+    assert s.mask_docs("Maria, CPF 123.456.789-09, maria@x.com") == "Maria, CPF [CPF], [E-MAIL]"
 
 
 def test_grafia_internacional_e_marcas_brasileiras():

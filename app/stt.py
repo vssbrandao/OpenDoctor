@@ -27,8 +27,11 @@ DUVIDA = 0.8
 
 # Frases que os transcritores da família Whisper "ouvem" em silêncio ou ruído (vêm de legendas de vídeo do
 # treino). Em português aparecem muito; numa consulta, nunca são fala de verdade.
-_ALUCINA = [r"amara\.?\s?org", r"legendas?\s+(pela|por|da|de)\b.*", r"legendad[oa]\s+por\b.*", r"obrigad[oa]s?\s+por\s+assistir",
-            r"inscreva-?\s?se\b.*", r"ative\s+o\s+sininho", r"deixe\s+(seu|o)\s+like", r"(sous|sub)-?titres?\b.*",
+# Só a frase inteira, e no formato de legenda/vídeo: "Legenda da receita: …" e "Inscreva-se no grupo de tabagismo" são fala.
+_ALUCINA = [r"amara\.?\s?org", r"legendas?\s+(pela|por)\b.*", r"legendas?\s+(da|de)\s+(comunidade|amara)\b.*",
+            r"legendad[oa]\s+por\b.*", r"obrigad[oa]s?\s+por\s+assistir",
+            r"inscreva-?\s?se(\s+no\s+(nosso\s+|meu\s+)?canal\b.*|\s+e\s+ative\b.*)?", r"ative\s+o\s+sininho",
+            r"deixe\s+(seu|o)\s+like", r"(sous|sub)-?titres?\b.*",
             r"transcri[çc][ãa]o\s+(e\s+legendas?\s+)?por\b.*", r"legenda\s+adriana\s+zanotto", r"\bcc\s+por\b.*"]
 _ALUCINA_RE = re.compile(r"(?i)^\s*(?:" + "|".join(_ALUCINA) + r")\s*[.!]*\s*$")
 _SO_TCHAU = re.compile(r"(?i)^\s*(tchau[,!. ]*)+$")

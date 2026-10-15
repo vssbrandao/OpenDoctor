@@ -290,3 +290,65 @@ def test_consulta_avulsa_acha_a_gravacao_sem_consulta_nem_evolucao(fake):
     assert [r["rec_id"] for r in achou] == [REC]
     # numa consulta da agenda, a gravação avulsa não aparece
     assert c.post("/prontuario/recordings/state", json={"patient_id": 7, "event_id": "ev9", "orfas": True}).json()["recordings"] == []
+
+
+def test_mesmo_trecho_ao_mesmo_tempo_e_transcrito_uma_vez(fake, monkeypatch):
+    """Duas abas abertas, ou o reenvio depois de o Cloudflare cortar em 100 s: um pedido espera o outro (não cobra 2x)."""
+    import asyncio
+    import httpx
+    calls = []
+
+    async def lento(audio, mime="audio/wav", prompt="", keywords=None, model=None, confidence=True):
+        calls.append(1); await asyncio.sleep(0.3)
+        return {"text": "Pressão 128 por 82.", "raw": "", "usage": {}, "duvidas": ["82"], "confianca": 0.9}
+    monkeypatch.setattr(stt, "atranscribe", lento)
+
+    async def dois():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://t") as c:
+            return await asyncio.gather(*[c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1)) for _ in range(2)])
+    rs = asyncio.run(dois())
+    assert len(calls) == 1 and [r.status_code for r in rs] == [200, 200]
+    assert {r.json()["text"] for r in rs} == {"Pressão 128 por 82."} and not server._EM_ANDAMENTO
+
+    async def falha(audio, *a, **kw):
+        calls.append(1); await asyncio.sleep(0.3); raise RuntimeError("fora do ar")
+    calls.clear()
+    monkeypatch.setattr(stt, "atranscribe", falha)
+    async def dois_falham():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://t") as c:
+            return await asyncio.gather(*[c.post("/prontuario/transcribe", content=wav(20), headers=hdr(2)) for _ in range(2)])
+    assert [r.status_code for r in asyncio.run(dois_falham())] == [502, 502] and len(calls) == 1 and not server._EM_ANDAMENTO
+
+
+def test_contexto_da_transcricao_vai_sem_documentos(fake, monkeypatch):
+    sent = []
+
+    async def atr(audio, mime="audio/wav", prompt="", keywords=None, model=None, confidence=True):
+        sent.append(prompt)
+        return {"text": "Bom dia, dona Maria Silva. CPF 123.456.789-09, celular 98877-6655.", "raw": "", "usage": {},
+                "duvidas": [], "confianca": 0.9}
+    monkeypatch.setattr(stt, "atranscribe", atr)
+    c = TestClient(server.app)
+    for seq in (1, 2):
+        assert c.post("/prontuario/transcribe", content=wav(20), headers=hdr(seq)).status_code == 200
+    assert sent[1] == "Bom dia, dona Maria Silva. CPF [CPF], celular [TELEFONE]."     # o nome fica: o áudio já o tem
+    assert fake.segs[(REC, 1)]["text"].endswith("98877-6655.")                       # o prontuário guarda o texto inteiro
+
+
+def test_orfas_so_em_consulta_sem_agenda_e_sem_evolucao():
+    assert server._rec_where({"orfas": True})[3] is True
+    assert server._rec_where({"orfas": True, "note_id": 12})[3] is False                 # já tem evolução: acha por ela
+    assert server._rec_where({"orfas": True, "event_id": "ev1"})[3] is False
+
+
+def test_salvar_a_evolucao_liga_a_gravacao_da_consulta(fake, monkeypatch):
+    ligou = []
+    monkeypatch.setattr(db, "upsert_note", lambda *a, **k: 55)
+    monkeypatch.setattr(db, "touch_patient", lambda *a, **k: None)
+    monkeypatch.setattr(db, "rec_link_orphans", lambda uid, pid, rids, nid: ligou.append((pid, tuple(rids), nid)))
+    c = TestClient(server.app)
+    r = c.post("/prontuario/notes", json={"patient_id": 7, "content": "S: dor lombar", "data": {"mode": "free"},
+                                          "rec_ids": [REC, "nao-e-uuid"]})
+    assert r.json() == {"ok": True, "id": 55} and ligou == [(7, (REC,), 55)]
+    c.post("/prontuario/notes", json={"patient_id": 7, "content": "S: x", "data": {"mode": "free"}})
+    assert len(ligou) == 1                                                               # sem gravação: nada a ligar

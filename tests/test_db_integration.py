@@ -171,6 +171,23 @@ def test_gravacao_liga_a_evolucao_certa_e_acha_a_avulsa(novo_usuario):
         c.execute("delete from clinical_notes where user_id = %s", (beto,)); c.commit()
 
 
+def test_salvar_a_evolucao_avulsa_liga_a_gravacao_sem_tirar_de_outra(novo_usuario):
+    ana = novo_usuario("Ana")["id"]
+    p, outro = db.create_patient(ana, "Paciente A"), db.create_patient(ana, "Paciente B")
+    solta, ligada = str(uuid.uuid4()), str(uuid.uuid4())
+    n1 = db.upsert_note(ana, p["id"], p["key"], p["name"], None, None, None, "S: manhã")
+    for rid, nid in ((solta, None), (ligada, n1)):
+        assert db.rec_open(ana, p["id"], rid, None, nid, "2026-10-15T10:00:00Z")
+        db.rec_add_segment(ana, rid, 1, 0.0, 20.0, "Dor lombar.", [])
+    n2 = db.upsert_note(ana, p["id"], p["key"], p["name"], None, None, None, "S: tarde")
+    db.rec_link_orphans(ana, outro["id"], [solta], n2)                                  # paciente errado: nada
+    assert [r["rec_id"] for r in db.rec_list(ana, p["id"], orphans=True)] == [solta]
+    db.rec_link_orphans(ana, p["id"], [solta, ligada], n2)
+    assert [r["rec_id"] for r in db.rec_list(ana, p["id"], note_id=n2)] == [solta]      # a solta ganhou a evolução
+    assert [r["rec_id"] for r in db.rec_list(ana, p["id"], note_id=n1)] == [ligada]     # a ligada não mudou de evolução
+    assert db.rec_list(ana, p["id"], orphans=True) == []
+
+
 def test_evolucao_anterior_para_a_gravacao(novo_usuario):
     ana = novo_usuario("Ana")["id"]
     p = db.create_patient(ana, "Paciente C")

@@ -67,7 +67,9 @@
         só até o servidor confirmar que o recebeu (no máximo 48 horas; é apagado ao sair da conta). No servidor, o
         áudio não é gravado: fica na memória enquanto é transcrito e é descartado.</li>
       <li><strong>Transcrição:</strong> feita pela <strong>OpenAI</strong> (OpenAI, L.L.C., Estados Unidos), que
-        recebe o áudio de cada trecho. Segundo a documentação da OpenAI, esse serviço não guarda o áudio nem o texto.</li>
+        recebe o áudio de cada trecho e, para entender melhor, o fim do texto do trecho anterior (sem CPF, telefone e
+        e-mail; o nome falado continua, como no próprio áudio) e os nomes dos remédios, problemas e alergias do cadastro.
+        Segundo a documentação da OpenAI, esse serviço não guarda o áudio nem o texto.</li>
       <li><strong>Rascunho da evolução:</strong> também pela OpenAI. Vão o texto da transcrição e a evolução anterior
         do mesmo paciente, com nome, CPF, telefone e e-mail trocados por marcas; os problemas, remédios e alergias do
         cadastro; e um resumo estatístico do jeito de escrever do médico (sem texto de outros pacientes). A troca é
@@ -75,9 +77,10 @@
         guardar esse texto por até 30 dias só para monitorar abuso e não o usa para treinar modelos.</li>
       <li><strong>O que fica guardado:</strong> o texto de cada trecho, com o minuto, faz parte do prontuário e fica
         com ele pelo prazo legal (no mínimo 20 anos, Lei 13.787/2018), no banco de dados do OpenDoctor (Supabase,
-        servidores no Canadá). A evolução registra que veio de transcrição automática (IA), com a versão do modelo e
-        quantos pontos o médico conferiu.</li>
-      <li><strong>Apagar:</strong> o médico pode apagar a transcrição de uma consulta; a exclusão fica no registro de
+        servidores no Canadá). Junto da gravação fica também o último rascunho gerado e os pontos para conferir, para o
+        médico continuar a revisão depois. A evolução registra que veio de transcrição automática (IA), com a versão do
+        modelo e quantos pontos o médico conferiu.</li>
+      <li><strong>Apagar:</strong> o médico pode apagar a transcrição de uma consulta (com o rascunho guardado junto); a exclusão fica no registro de
         acessos do prontuário.</li>
       <li><strong>Papéis e base legal:</strong> o médico (ou a clínica) é o controlador dos dados do paciente; o
         OpenDoctor trata esses dados em nome dele (operador), e a OpenAI, em nome do OpenDoctor. A base legal é a

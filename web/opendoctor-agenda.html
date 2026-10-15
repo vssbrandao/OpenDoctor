@@ -856,7 +856,7 @@
     .rc-mockbar button{height:28px;padding:0 10px;border:0;border-radius:8px;background:none;color:#E8EAED;font-family:var(--disp);font-size:12px;cursor:pointer}
     .rc-mockbar button:hover{background:#3C4043}
     .rc-mockbar button.on{background:#E8EAED;color:#1F1F1F}
-    @media (prefers-reduced-motion:reduce){.rc-live::after,.rc-u.typing .rc-t::after,.rc-step.rc-now i{animation:none}.hc-played.rc-run{transition:none}}
+    @media (prefers-reduced-motion:reduce){.rc-pill i,.rc-live::after,.rc-u.typing .rc-t::after,.rc-step.rc-now i{animation:none}.hc-played.rc-run{transition:none}}
     .gcard{padding:16px;border-radius:16px;background:#F7F8FA}
     .gcard .pr-h2{font-size:16px;line-height:24px}
     .gcard .pr-cardsub{font-size:12px;line-height:16px}
@@ -4329,7 +4329,7 @@
         api('POST', '/prontuario/notes', {
           patient_id: c.patient_id, patient: c.patient, event_id: c.event_id || null, event_title: c.title || null,
           note_id: c.note_id || null, event_start: c.start && c.start.length > 10 ? c.start : null,
-          content: x.content, data: x.data
+          content: x.content, data: x.data, rec_ids: rrIdsOf(c)
         }).then(function (res) {
           saving = false;
           if (res.ok && res.j.ok) {
@@ -4360,6 +4360,8 @@
           retryLater(c); flush();
         });
       }
+      // gravação desta consulta (consulta avulsa ainda sem evolução): o servidor a liga à evolução assim que ela é salva
+      function rrIdsOf(c) { var r = c && c._rk && RR.by[c._rk]; return r && r.recId ? [r.recId] : []; }
       function retryLater(c) {
         if (c !== ctx) return;
         clearTimeout(retryTimer);
@@ -5108,9 +5110,14 @@
       }
       function aeStart(onBlock, onLost) {
         aeStop();
-        var want = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
-        if (RR.dev) want.deviceId = { exact: RR.dev };
-        return navigator.mediaDevices.getUserMedia({ audio: want }).then(function (stream) {
+        var want = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true }, dev = RR.dev;
+        if (dev) want.deviceId = { exact: dev };
+        return navigator.mediaDevices.getUserMedia({ audio: want }).catch(function (e) {
+          // o microfone usado antes não está mais ligado (fone Bluetooth no estojo, USB desconectado): usa o padrão do computador
+          if (!dev || !e || (e.name !== 'OverconstrainedError' && e.name !== 'NotFoundError')) throw e;
+          RR.dev = ''; delete want.deviceId;
+          return navigator.mediaDevices.getUserMedia({ audio: want });
+        }).then(function (stream) {
           var actx = new (window.AudioContext || window.webkitAudioContext)();
           return actx.audioWorklet.addModule('/rec-worklet.js').then(function () {
             var src = actx.createMediaStreamSource(stream), mute = actx.createGain(),
@@ -5191,8 +5198,8 @@
         var show = !!(r && r.st === 'live' && !(isOpen() && r === rrCur() && pane && !pane.hidden));
         if (!show) { if (p) p.hidden = true; return; }
         if (!p) {
-          p = el('button', 'rc-pill'); p.id = 'rcPill'; p.type = 'button'; p.setAttribute('aria-live', 'polite');
-          p.innerHTML = '<i></i><b>Gravando</b><span class="t"></span><span class="go">Voltar à consulta</span>';
+          p = el('button', 'rc-pill'); p.id = 'rcPill'; p.type = 'button'; p.setAttribute('aria-label', 'Gravando a consulta. Voltar à consulta');
+          p.innerHTML = '<i></i><b>Gravando</b><span class="t" aria-hidden="true"></span><span class="go">Voltar à consulta</span>';
           p.addEventListener('click', function () { setTab('atual'); setTimeout(function () { $('prRec').scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50); });
           document.body.appendChild(p);
         }
@@ -5306,11 +5313,11 @@
                 }
                 if (seg) seg.st = 'local';
                 if (resp.status === 401) { Q.busy = false; Q.auth = true; qState(false); return; }   // sessão venceu: sobe ao entrar de novo
-                if ([400, 403, 404, 413, 415].indexOf(resp.status) >= 0) {                        // não adianta tentar de novo
+                if ([400, 404, 413, 415].indexOf(resp.status) >= 0) {                             // não adianta tentar de novo
                   next.dead = resp.status; if (seg) { seg.st = 'err'; seg.err = j.error || ('erro ' + resp.status); }
                   return qSave(next).then(function () { Q.busy = false; qKick(); });
                 }
-                if (!next.falhas) Q.erro++;                                                        // 5xx, 429: o servidor falhou
+                if (!next.falhas) Q.erro++;                // 5xx, 429 e 403 (gravação desligada na conta): guarda e tenta depois
                 next.falhas = (next.falhas || 0) + 1;
                 if (next.falhas >= 3) next.depois = Date.now() + Math.min(600000, 30000 * Math.pow(2, next.falhas - 3));
                 return qSave(next).then(function () {
@@ -5343,14 +5350,19 @@
         aeStart(function (p, v) { rrBlock(r, p, v); }, function () { rrMicLost(r); }).then(function () {
           if (!r.recId) { r.recId = uuid(); r.consentAt = new Date().toISOString(); }
           r.st = 'live'; RR.live = r; r.cur = []; r.curRms = [];
-          try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (l) { RR.lock = l; }, function () {}); } catch (_) {}
-          rrRender(r);
+          rrWake(); rrRender(r);
         }, function (e) {
           r.err = (e && e.name) || '';
           if (r.recId) { r.st = r.st === 'interrupted' ? 'interrupted' : 'paused'; r.warn = 'micoff'; } else r.st = 'nomic';
           rrRender(r);
         });
       }
+      // a tela fica acordada enquanto grava. O navegador solta o pedido quando a aba some; ao voltar, pede de novo
+      function rrWake() {
+        if (!navigator.wakeLock || (RR.lock && !RR.lock.released) || document.visibilityState !== 'visible') return;
+        try { navigator.wakeLock.request('screen').then(function (l) { RR.lock = l; }, function () {}); } catch (_) {}
+      }
+      document.addEventListener('visibilitychange', function () { if (RR.live && RR.live.st === 'live') rrWake(); });
       function rrMore(r) { if (locked()) return; r.st = 'paused'; r.finalOk = false; rrStart(r); }   // "Gravar mais um trecho"
       function rrPause(r) {
         if (r.st !== 'live') return;
@@ -5451,34 +5463,66 @@
       // Gerou de novo (gravou mais um trecho): troca o texto gerado antes só se ninguém mexeu nele.
       var SOAPK = ['s', 'o', 'a', 'p'], VITN = { spo2: ['SpO2', '%'], pa_s: ['PAS', 'mmHg'], pa_d: ['PAD', 'mmHg'], fc: ['FC', 'bpm'], fr: ['FR', 'irpm'],
         temp: ['Temperatura', '°C'], peso: ['Peso', 'kg'], altura: ['Altura', 'cm'], glicemia: ['Glicemia capilar', 'mg/dL'] };
-      function rrApply(r) {
-        if (locked() || !r.result) return;
-        // gerou de novo: troca o texto gerado antes só se ninguém mexeu nele (depois de recarregar, sem como saber: não troca)
-        if (r.applied) { if (r.undo && rrTextSnap() === r.appliedSnap) fillEditor(r.undo); else { r.applied = false; rrRender(r); return; } }
-        var x = compose(); r.undo = { content: x.content, data: x.data };
-        var f = r.result.fields || {}, isSoap = SOAPK.some(function (k) { return f[k]; });
-        r.genWords = rrGenWords(r.result);
-        function put(t, txt) { if (!txt) return false; t.value = t.value.trim() ? t.value.replace(/\s+$/, '') + '\n\n' + txt : txt; return true; }
+      // o texto que a gravação põe em cada campo: o mesmo cálculo ao preencher e ao trocar por uma geração nova
+      function rrVit(k) { return vitEls.filter(function (e) { return e.getAttribute('data-v') === k; })[0]; }
+      function rrField(k) { return k === 'livre' ? note : soapEls.filter(function (e) { return e.getAttribute('data-f') === k; })[0]; }
+      function rrPut(t, txt) { if (!txt) return false; t.value = t.value.trim() ? t.value.replace(/\s+$/, '') + '\n\n' + txt : txt; return true; }
+      function rrIns(res) {
+        var f = res.fields || {}, isSoap = SOAPK.some(function (k) { return f[k]; }), out = {};
         if (mode === 'soap') {
-          var parts = isSoap ? f : { s: f.livre }, extra = [], marks = {};
-          Object.keys(r.result.vitals || {}).forEach(function (k) {
-            var v = String(r.result.vitals[k]).replace('.', ','), inp = vitEls.filter(function (e) { return e.getAttribute('data-v') === k; })[0];
-            if (inp) { if (!inp.value.trim()) { inp.value = v; checkVital(inp); marks.o = 1; } else if (num(inp.value) !== num(v)) extra.push(((VITN[k] || [k])[0] + ' na gravação: ' + v + ' ' + ((VITN[k] || [])[1] || '')).trim()); }
-            else extra.push((VITN[k] || [k])[0] + ' ' + v + ' ' + ((VITN[k] || [])[1] || ''));
+          var parts = isSoap ? f : { s: f.livre }, extra = [];
+          Object.keys(res.vitals || {}).forEach(function (k) {     // campo vazio recebe o valor (rrFill); diferente vai no O
+            var v = String(res.vitals[k]).replace('.', ','), inp = rrVit(k);
+            if (!inp) extra.push((VITN[k] || [k])[0] + ' ' + v + ' ' + ((VITN[k] || [])[1] || ''));
+            else if (inp.value.trim() && num(inp.value) !== num(v)) extra.push(((VITN[k] || [k])[0] + ' na gravação: ' + v + ' ' + ((VITN[k] || [])[1] || '')).trim());
           });
-          soapEls.forEach(function (t) { var k = t.getAttribute('data-f'), txt = parts[k] || '';
-            if (k === 'o' && extra.length) txt = (extra.join(' · ').trim() + (txt ? '\n' + txt : ''));
-            if (put(t, txt)) marks[k] = 1; });
-          updImc();
-          (r.result.cid || []).forEach(function (c) { if (!cids.some(function (y) { return y.code === c.code; })) { cids.push({ code: c.code, desc: c.desc }); marks.a = 1; } });
-          renderCids();
-          [].forEach.call($('prSoap').querySelectorAll('.pr-soapf'), function (b) {
-            var t = b.querySelector('textarea[data-f]'); if (t && marks[t.getAttribute('data-f')]) b.classList.add('rc-from'); });
+          SOAPK.forEach(function (k) {
+            var txt = parts[k] || '';
+            if (k === 'o' && extra.length) txt = extra.join(' · ').trim() + (txt ? '\n' + txt : '');
+            if (txt) out[k] = txt;
+          });
         } else {
           var txt = isSoap ? SOAPK.filter(function (k) { return f[k]; }).map(function (k) { return k.toUpperCase() + ': ' + f[k]; }).join('\n\n') : (f.livre || '');
-          var cidT = (r.result.cid || []).map(function (c) { return (c.code + ' ' + (c.desc || '')).trim(); }).join('; ');
-          put(note, txt + (cidT ? '\n\nCID-10: ' + cidT : ''));
+          var cidT = (res.cid || []).map(function (c) { return (c.code + ' ' + (c.desc || '')).trim(); }).join('; ');
+          txt += cidT ? '\n\nCID-10: ' + cidT : '';
+          if (txt) out.livre = txt;
         }
+        return out;
+      }
+      function rrFill(res, marks) {            // sinais vitais nos campos vazios e o CID que ainda não está na lista
+        if (mode !== 'soap') return;
+        Object.keys(res.vitals || {}).forEach(function (k) {
+          var inp = rrVit(k); if (inp && !inp.value.trim()) { inp.value = String(res.vitals[k]).replace('.', ','); checkVital(inp); marks.o = 1; }
+        });
+        updImc();
+        (res.cid || []).forEach(function (c) { if (!cids.some(function (y) { return y.code === c.code; })) { cids.push({ code: c.code, desc: c.desc }); marks.a = 1; } });
+        renderCids();
+      }
+      function rrApply(r) {
+        if (locked() || !r.result) return;
+        var marks = {}, kept = 0, swap = false;
+        // gerou de novo e ninguém mexeu no texto desde então: volta ao texto de antes e preenche do zero (o Desfazer vale)
+        if (r.applied && r.undo && rrTextSnap() === r.appliedSnap) { fillEditor(r.undo); r.applied = false; }
+        var x = compose(), before = { content: x.content, data: x.data }, nw = rrIns(r.result);
+        if (r.applied) {
+          // o texto gerado antes está na evolução e foi mexido (ou veio de outra sessão): troca, campo por campo, o que
+          // continua igual ao gerado; o campo que o médico editou fica como ele deixou. O texto nunca entra duas vezes.
+          var old = r.ins || {};
+          Object.keys(old).concat(Object.keys(nw)).filter(function (k, i, a) { return a.indexOf(k) === i; }).forEach(function (k) {
+            var t = rrField(k), o = old[k] || '', n = nw[k] || ''; if (!t) return;
+            if (o && t.value.indexOf(o) >= 0) {
+              t.value = t.value.replace(o, function () { return n; }).replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '');
+              if (n) marks[k] = 1;
+            } else if (!o) { if (rrPut(t, n)) marks[k] = 1; }
+            else if (o !== n) kept++;
+          });
+          swap = true;
+        } else Object.keys(nw).forEach(function (k) { var t = rrField(k); if (t && rrPut(t, nw[k])) marks[k] = 1; });
+        rrFill(r.result, marks);
+        r.genWords = rrGenWords(r.result); r.ins = nw; r.kept = kept;
+        r.undo = swap ? null : before;                     // depois de trocar, o "antes" já tinha texto gerado: sem Desfazer
+        if (mode === 'soap') [].forEach.call($('prSoap').querySelectorAll('.pr-soapf'), function (b) {
+          var t = b.querySelector('textarea[data-f]'); if (t && marks[t.getAttribute('data-f')]) b.classList.add('rc-from'); });
         r.applied = true; r.undone = false; changed(); r.appliedSnap = rrTextSnap();
       }
       function rrUndo(r) {
@@ -5516,12 +5560,13 @@
         if (r.loaded || r.loading || !ready) return;          // espera a evolução carregar (o selo e os conferidos vêm dela)
         var my = r, cx = r.cx; r.loading = true;
         // consulta avulsa: a gravação feita antes de a evolução ser salva não tem consulta nem evolução; acha pelo paciente
-        var orfa = function (x) { return !cx.event_id && x.pid === my.pid && !x.eid && !x.nid; };
+        // (consulta que já tem evolução acha as suas por ela: nunca pega a gravação de outra consulta avulsa)
+        var orfa = function (x) { return !cx.event_id && !cx.note_id && x.pid === my.pid && !x.eid && !x.nid; };
         idbAll().catch(function () { return []; }).then(function (rows) {
           var ids = rows.filter(function (x) { return x.rk === my.k || orfa(x); }).map(function (x) { return x.recId; })
                         .filter(function (x, i, a) { return a.indexOf(x) === i; });
           return api('POST', '/prontuario/recordings/state', { patient_id: my.pid, event_id: cx.event_id || null,
-                                                               note_id: cx.note_id || null, rec_ids: ids, orfas: !cx.event_id }).then(function (res) {
+                                                               note_id: cx.note_id || null, rec_ids: ids, orfas: !cx.event_id && !cx.note_id }).then(function (res) {
             if (!(res.ok && res.j)) throw new Error('estado ' + res.status);      // sem internet: tenta de novo na próxima vez
             my.loaded = true;
             var recs = res.j.recordings || [], last = recs[recs.length - 1];
@@ -5544,16 +5589,16 @@
               var end = my.segs.reduce(function (m, s) { return Math.max(m, s.at + (s.dur || 0)); }, 0);
               my.samples = Math.round(Math.max((last && last.seconds) || 0, end) * SR16);
               var sc = last && last.scribe, sa = sc && sc.saida, nd = cur && cur.data && cur.data.scribe;
-              if (last && last.status === 'gerada' && sa) {      // revisão que continua: a evolução gerada e os pontos para conferir
+              if (sa) {      // a última geração (também quando gravou mais depois dela): evolução, pontos e o que já está no texto
                 my.result = sa.result; my.flags = sa.flags || []; my.segTable = sa.segs || [];
                 my.meta = Object.assign({}, sc); delete my.meta.saida;
                 my.applied = !!(nd && nd.generated_at === my.meta.generated_at); my.undo = null; my.appliedSnap = null;
                 my.checked = {}; ((my.applied && nd.conf_idx) || []).forEach(function (i) { my.checked[i] = true; });
                 my.doneAt = Date.parse(my.meta.generated_at) || Date.now();
                 my.genS = my.meta.gen_s || 0; my.endAt = my.doneAt - my.genS * 1000;     // números da revisão (vão ao finalizar)
-                if (my.applied) my.genWords = rrGenWords(my.result);
-                my.st = 'done';
-              } else my.st = last && last.status === 'gerada' ? 'saved' : 'interrupted';
+                if (my.applied) { my.genWords = rrGenWords(my.result); my.ins = rrIns(my.result); }   // gerar de novo troca, não duplica
+              }
+              my.st = sa && last.status === 'gerada' ? 'done' : last && last.status === 'gerada' ? 'saved' : 'interrupted';
               my.stoppedAt = last && last.updated_at;
               rrRender(my); qKick();
             }
@@ -5606,7 +5651,7 @@
         var box = $('rcReview'); box.innerHTML = '';
         if (!r.flags.length) { box.hidden = true; return; }
         box.hidden = false;
-        var h = el('div', 'rc-rv-h'), left = r.flags.filter(function (f, i) { return !r.checked[i]; }).length;
+        var h = el('div', 'rc-rv-h'), left = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; }).length;
         h.appendChild(document.createTextNode('Para conferir antes de finalizar')); h.appendChild(el('span', null, String(left)));
         h.appendChild(el('small', null, 'os mais importantes primeiro')); box.appendChild(h);
         r.flags.forEach(function (f, i) {
@@ -5710,7 +5755,8 @@
           box.appendChild(sm);
           txLive(rrSummary(r));
           if (r.st === 'done' && !lk) {
-            $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise antes de finalizar.' : 'A evolução gerada pela gravação não está no texto.';
+            $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise antes de finalizar.' +
+              (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') : 'A evolução gerada pela gravação não está no texto.';
             $('rcNoteBtn').textContent = r.applied ? 'Desfazer' : 'Preencher a evolução'; $('rcNote').hidden = false;
             $('rcNoteBtn').hidden = !!(r.applied && !r.undo);           // revisão noutra sessão: o texto anterior já não existe
             rrReview(r);

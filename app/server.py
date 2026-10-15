@@ -1365,8 +1365,13 @@ async def prontuario_list(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
+    # o banco roda fora do laço de eventos: o servidor tem um processo só e a gravação de outra consulta não espera
+    return await run_in_threadpool(_prontuario_list, u, await _json(request))
+
+
+def _prontuario_list(u, payload):
     try:
-        p = _note_patient(u, await _json(request))
+        p = _note_patient(u, payload)
     except db.AmbiguousPatient:
         return _ambiguous()
     if not p:
@@ -1382,7 +1387,11 @@ async def prontuario_save(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    payload = await _json(request)
+    # salvamento automático a cada pausa na digitação: o banco roda fora do laço de eventos (um processo só)
+    return await run_in_threadpool(_prontuario_save, u, await _json(request))
+
+
+def _prontuario_save(u, payload):
     try:
         p = _note_patient(u, payload)
     except db.AmbiguousPatient:
@@ -1406,6 +1415,9 @@ async def prontuario_save(request: Request):
     db.touch_patient(u["id"], p["id"])
     if data and data.get("scribe") and data["scribe"]["rec_ids"]:
         db.rec_link_note(u["id"], p["id"], data["scribe"]["rec_ids"], nid)
+    rids = _rec_ids({"rec_ids": payload.get("rec_ids")})
+    if rids:              # gravação desta consulta que ainda não tinha evolução (avulsa): fica ligada a ela desde já
+        db.rec_link_orphans(u["id"], p["id"], rids, nid)
     db.log_access(u["id"], "note_edit", p["id"], nid, dedupe_minutes=10)
     return {"ok": True, "id": nid}
 
@@ -1416,7 +1428,10 @@ async def prontuario_note_update(note_id: int, request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    payload = await _json(request)
+    return await run_in_threadpool(_prontuario_note_update, u, note_id, await _json(request))
+
+
+def _prontuario_note_update(u, note_id, payload):
     content = str(payload.get("content") or "")
     if len(content) > MAX_NOTE_CHARS:
         return JSONResponse({"error": f"evolução maior que {MAX_NOTE_CHARS} caracteres"}, status_code=413)
@@ -1626,6 +1641,7 @@ def prontuario_file_delete(file_id: int, request: Request):
 # --- gravação da consulta (só contas liberadas: SCRIBE_EMAILS / SCRIBE_ALL; SCRIBE_OFF desliga) ---
 # O áudio vem em trechos WAV, fica só na memória durante a transcrição e some; guarda-se o texto.
 MAX_SEG_BYTES = 5 * 1024 * 1024
+_EM_ANDAMENTO = {}                      # (médico, gravação, trecho) → transcrição em curso (um processo só no Render)
 MAX_SEG_S = 60                          # trecho normal: 15–30 s
 SCRIBE_DAY_S = 6 * 3600                 # teto por médico em 24 h
 
@@ -1728,16 +1744,30 @@ async def prontuario_transcribe(request: Request):
         return JSONResponse({"error": "limite de 6 horas de gravação em 24 horas"}, status_code=429)
     if why == "outra":
         return JSONResponse({"error": "gravação não encontrada"}, status_code=404)
+    key = (u["id"], rid, seq)
+    if key in _EM_ANDAMENTO:      # o mesmo trecho já está sendo transcrito (outra aba, reenvio depois do corte de 100 s)
+        r = await asyncio.shield(_EM_ANDAMENTO[key])
+        if not r:
+            return JSONResponse({"error": "a transcrição falhou; o trecho fica guardado e é enviado de novo"}, status_code=502)
+        return {"ok": True, "text": r["text"], "duvidas": r["duvidas"], "repetido": True}
+    fut = _EM_ANDAMENTO[key] = asyncio.get_running_loop().create_future()
     t0 = time.time()
     try:
-        r = await stt.atranscribe(bytes(body), "audio/wav", prompt=prev, keywords=scribe.keywords(p))
+        # contexto: o fim do trecho anterior, sem CPF, telefone e e-mail; o nome falado fica (o áudio já o tem)
+        r = await stt.atranscribe(bytes(body), "audio/wav", prompt=scribe.mask_docs(prev), keywords=scribe.keywords(p))
+
+        def save():
+            db.rec_add_segment(u["id"], rid, seq, _num_or_none(h.get("x-at"), 0, 24 * 3600) or 0.0, dur, r["text"], r["duvidas"])
+            db.log_access(u["id"], "recording", p["id"], dedupe_minutes=180)
+        await run_in_threadpool(save)
+        fut.set_result(r)
     except Exception as e:                                  # o log nunca leva conteúdo
         print("[gravacao] transcrição falhou:", type(e).__name__, flush=True)
         return JSONResponse({"error": "a transcrição falhou; o trecho fica guardado e é enviado de novo"}, status_code=502)
-    def save():
-        db.rec_add_segment(u["id"], rid, seq, _num_or_none(h.get("x-at"), 0, 24 * 3600) or 0.0, dur, r["text"], r["duvidas"])
-        db.log_access(u["id"], "recording", p["id"], dedupe_minutes=180)
-    await run_in_threadpool(save)
+    finally:
+        if not fut.done():
+            fut.set_result(None)
+        _EM_ANDAMENTO.pop(key, None)
     print(f"[gravacao] trecho {seq}: {dur:.1f} s transcritos em {time.time() - t0:.1f} s", flush=True)
     return {"ok": True, "text": r["text"], "duvidas": r["duvidas"]}
 
@@ -1748,10 +1778,11 @@ def _rec_patient(u, b):
 
 
 def _rec_where(b):
-    nid = b.get("note_id")
+    nid = int(b["note_id"]) if str(b.get("note_id") or "").isdigit() else None
     eid = str(b.get("event_id") or "")[:300] or None
-    # consulta avulsa (sem agenda): a gravação feita antes de a evolução ser salva não tem consulta nem evolução
-    return eid, int(nid) if str(nid or "").isdigit() else None, _rec_ids(b), bool(b.get("orfas")) and not eid
+    # consulta avulsa ainda sem evolução: a gravação feita até aqui não tem consulta nem evolução. Consulta que já tem
+    # evolução acha as gravações por ela (salvar a evolução liga a gravação): nunca pega a de outra consulta avulsa
+    return eid, nid, _rec_ids(b), bool(b.get("orfas")) and not eid and nid is None
 
 
 @app.post("/prontuario/recordings/state")

@@ -174,6 +174,51 @@ const cenarios = [
     if (!(m.gen_s > 0 && m.fim_s >= m.review_s + m.gen_s - 1 && m.mantido_pct > 90 && m.rec_s > 0)) throw new Error('métricas perdidas ao recarregar: ' + JSON.stringify(m));
     return `geração ${m.gen_s} s, do Encerrar ao Finalizar ${m.fim_s} s, mantido ${m.mantido_pct}%`;
   }],
+  ['gravar mais, recarregar antes de encerrar e gerar de novo: o texto não entra duas vezes', async () => {
+    const nota = () => estado().then((e) => Object.values(e.evolucoes).find((n) => n.event_id === 'evK'));
+    await grava('/_preview/pr?pid=9003&ev=evK', 20); await encerra(); await sleep(3000);
+    const antes = (await nota()).content;
+    await clica('#prRec button', 'Gravar mais um trecho'); await ate(chip('Gravando'), 10000, 'gravar mais'); await sleep(17000);
+    await clica('#prRec button[aria-label^="Pausar"]');
+    await ate(`${IDB}.then((l) => l.filter((x) => !x.part).length === 0)`, 30000, 'trechos subirem'); await sleep(1500);
+    await send('Page.reload', { ignoreCache: true });
+    await ate(chip('Interrompida'), 20000, 'recuperar como interrompida');
+    await clica('#rcAlert button', 'Gerar evolução agora');
+    await ate(`!!document.querySelector('#prRec .rc-sum')`, 30000, 'evolução pronta'); await sleep(3500);
+    const n = await nota(), vezes = (n.content.match(/Refere boa adesão/g) || []).length;
+    if (vezes !== 1) throw new Error('texto gerado aparece ' + vezes + ' vezes');
+    if (n.content === antes) throw new Error('a geração nova não entrou no texto');
+    return 'a geração nova trocou a anterior, uma vez só';
+  }],
+  ['fone desconectado entre consultas: a seguinte grava com o microfone do computador', async () => {
+    await grava('/_preview/pr?pid=9003&ev=evA', 3);
+    await clica('#prRec button[aria-label^="Pausar"]'); await sleep(1500);
+    await ev(`window.__foneDesligado = true`);                                    // AirPods de volta no estojo
+    await ev(`window.__openProntuario({ patient_id: 9004, patient: 'x', from: 'pacientes', event_id: 'evB', title: 'Retorno' })`);
+    await ate(`[...document.querySelectorAll('#prRec .rc-go')].some((b) => b.offsetParent !== null)`, 20000, 'gravador da consulta 2');
+    await grava('', 2);                                                            // mesma página: o fone escolhido continua lembrado
+    const s = await ev(UI);
+    if (s.chip !== 'Gravando') throw new Error('não gravou: ' + JSON.stringify(s));
+    await clica('#prRec button[aria-label^="Pausar"]');
+    return 'gravou com o microfone do computador';
+  }],
+  ['consulta avulsa: a gravação fica na evolução dela e não aparece em outra consulta avulsa', async () => {
+    await grava('/_preview/pr?pid=9003', 20);
+    await clica('#prRec button[aria-label^="Pausar"]'); await sleep(2500);
+    const da9003 = (e) => Object.keys(e.gravacoes).find((k) => e.gravacoes[k].pid === 9003);    // (um envio atrasado do cenário anterior pode criar outra)
+    const rec = da9003(await estado());
+    await ev(`(() => { const t = document.getElementById('prNote'); t.value = 'Dor lombar há 3 dias.'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => e.gravacoes[${JSON.stringify(rec)}].note_id)`, 15000, 'gravação ligada à evolução');
+    const e = await estado(), nid = e.gravacoes[rec].note_id;
+    const outra = await fetch(BASE + '/prontuario/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: 9003, content: 'Outra consulta avulsa.', data: { mode: 'free' } }) }).then((r) => r.json());
+    await ev(`window.__openProntuario({ patient_id: 9003, patient: 'x', from: 'pacientes', note_id: ${outra.id} })`);
+    await sleep(4000);
+    if ((await ev(UI)).chip === 'Interrompida') throw new Error('a gravação de outra consulta apareceu aqui');
+    await ev(`window.__openProntuario({ patient_id: 9003, patient: 'x', from: 'pacientes', note_id: ${nid} })`);
+    await ate(chip('Interrompida'), 15000, 'achar a gravação pela evolução dela');
+    return 'ficou na evolução dela e só aparece nela';
+  }],
   ['Desfazer pergunta antes de apagar o que o médico escreveu depois', async () => {
     await abre('/_preview/pr?pid=9003&ev=evD');
     await ev(`(() => { const t = document.getElementById('prNote'); t.value = 'Texto da médica antes.'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
@@ -244,12 +289,15 @@ async function main() {
   await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable');
   await send('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
     window.__mic = { tracks: [], mode: 'voz' };
-    navigator.mediaDevices.getUserMedia = async () => {                     // fala sintética: 3,2 s de som e 0,8 s de pausa
+    navigator.mediaDevices.getUserMedia = async (c) => {                    // fala sintética: 3,2 s de som e 0,8 s de pausa
+      const ex = c && c.audio && c.audio.deviceId && c.audio.deviceId.exact;
+      if (window.__foneDesligado && ex === 'fone-bt') throw new DOMException('Requested device not found', 'OverconstrainedError');
       const ac = new AudioContext(), dst = ac.createMediaStreamDestination(), sr = ac.sampleRate, len = Math.round(sr * 4);
       const buf = ac.createBuffer(1, len, sr), d = buf.getChannelData(0); let s = 7;
       for (let i = 0; i < len; i++) { s = (s * 16807) % 2147483647; d[i] = i < sr * 3.2 ? (s / 2147483647 - 0.5) * 0.5 * (0.6 + 0.4 * Math.sin(i / sr * 25)) : 0; }
       const src = ac.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(dst); src.start();
-      const t = dst.stream.getAudioTracks()[0]; window.__mic.tracks.push(t); return dst.stream;
+      const t = dst.stream.getAudioTracks()[0]; t.getSettings = () => ({ deviceId: window.__foneDesligado ? 'embutido' : 'fone-bt' });
+      window.__mic.tracks.push(t); return dst.stream;
     };
     navigator.mediaDevices.enumerateDevices = async () => [{ kind: 'audioinput', deviceId: 'teste1', label: 'Microfone de teste', groupId: 'g' }];
     try { if (sessionStorage.getItem('e2e_sem_idb')) {                      // simula disco cheio: o IndexedDB não abre
