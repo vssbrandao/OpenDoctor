@@ -19,6 +19,7 @@ import threading
 import collections
 import secrets
 import concurrent.futures
+import mimetypes
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse
@@ -26,6 +27,8 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer
+
+mimetypes.add_type("text/javascript", ".mjs")   # pdf.js (web/vendor) é módulo: o navegador exige esse tipo
 
 app = FastAPI(title="OpenDoctor Assistant")
 WEB_DIR = os.path.join(config.ROOT, "web")

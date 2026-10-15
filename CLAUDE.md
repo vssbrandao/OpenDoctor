@@ -27,6 +27,8 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
 6. **Login:** POST de auth só aceita JSON (`_body`); destino pós-login passa por `auth.safe_next`;
    limite por IP usa `_client_ip` (só `CF-Connecting-IP` — o `X-Forwarded-For` é forjável).
 7. **Arquivos em `web/assets/`** são públicos: só imagem/fonte, nunca dado.
+   Bibliotecas de terceiros ficam em `web/vendor/<nome>-<versão>/` (só com login), copiadas do pacote
+   oficial com o hash conferido e a LICENSE junto — nunca carregadas de fora em tempo de execução.
 8. **Retenção** (`db.RETENTION`, limpeza diária no servidor): códigos de e-mail 1 dia, registro de
    acessos 1 ano. Prontuário, pacientes e `access_log` nunca entram na limpeza.
 
