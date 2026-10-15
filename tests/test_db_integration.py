@@ -148,3 +148,24 @@ def test_gravacao_da_consulta(novo_usuario):
     assert r["status"] == "gerada" and r["note_id"] == nid
     assert db.rec_delete(beto, rid) is None and db.rec_delete(ana, rid) == p["id"]
     assert db.rec_segment(ana, rid, 1) is None
+
+
+def test_gravacao_liga_a_evolucao_certa_e_acha_a_avulsa(novo_usuario):
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p, outro = db.create_patient(ana, "Paciente A"), db.create_patient(ana, "Paciente B")
+    nota_beto = db.upsert_note(beto, db.create_patient(beto, "Paciente do Beto")["id"], "x", "x", "evx", "Consulta", None, "S: x")
+    rid = str(uuid.uuid4())
+    assert db.rec_open(ana, p["id"], rid, None, 999999999, "2026-10-15T10:00:00Z")      # evolução que não existe: não derruba
+    assert db.rec_open(ana, p["id"], rid, None, nota_beto)                              # evolução de outro médico: ignorada
+    db.rec_add_segment(ana, rid, 1, 0.0, 20.0, "Dor lombar há 3 dias.", [])
+    assert db.rec_list(ana, p["id"])[0:1] == [] and [r["rec_id"] for r in db.rec_list(ana, p["id"], orphans=True)] == [rid]
+    assert db.rec_list(ana, outro["id"], orphans=True) == []                            # só do mesmo paciente
+    nota = db.upsert_note(ana, p["id"], p["key"], p["name"], None, None, None, "S: lombalgia")
+    assert db.rec_open(ana, p["id"], rid, None, nota)                                   # a evolução salva entra na gravação
+    r = db.rec_list(ana, p["id"], note_id=nota)[0]
+    assert r["rec_id"] == rid and r["note_id"] == nota and db.rec_list(ana, p["id"], orphans=True) == []
+    db.rec_generated(ana, [rid], {"prompt": "x", "saida": {"flags": [{"tipo": "alergia"}]}}, nota_beto)   # nota de outro: não liga
+    r = db.rec_list(ana, p["id"], note_id=nota)[0]
+    assert r["status"] == "gerada" and r["note_id"] == nota and r["scribe"]["saida"]["flags"] == [{"tipo": "alergia"}]
+    with db.connection() as c:
+        c.execute("delete from clinical_notes where user_id = %s", (beto,)); c.commit()

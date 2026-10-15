@@ -1288,7 +1288,9 @@ def _note_data(v):
                          "consent_at": _iso_or_none(sc.get("consent_at")), "generated_at": _iso_or_none(sc.get("generated_at")),
                          "pontos": {k: pts[k] for k in ("alto", "medio", "info") if isinstance(pts.get(k), int) and 0 <= pts[k] < 1000},
                          "segundos": sc["segundos"] if isinstance(sc.get("segundos"), int) and 0 <= sc["segundos"] <= 6 * 3600 else 0,
-                         "conferidos": sc["conferidos"] if isinstance(sc.get("conferidos"), int) and 0 <= sc["conferidos"] < 1000 else 0}
+                         "conferidos": sc["conferidos"] if isinstance(sc.get("conferidos"), int) and 0 <= sc["conferidos"] < 1000 else 0,
+                         "conf_idx": sorted({i for i in (sc.get("conf_idx") or [])[:300]
+                                             if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < 1000})}
     return out if len(json.dumps(out)) <= MAX_DATA_CHARS else None
 
 
@@ -1736,7 +1738,9 @@ def _rec_patient(u, b):
 
 def _rec_where(b):
     nid = b.get("note_id")
-    return str(b.get("event_id") or "")[:300] or None, int(nid) if str(nid or "").isdigit() else None, _rec_ids(b)
+    eid = str(b.get("event_id") or "")[:300] or None
+    # consulta avulsa (sem agenda): a gravação feita antes de a evolução ser salva não tem consulta nem evolução
+    return eid, int(nid) if str(nid or "").isdigit() else None, _rec_ids(b), bool(b.get("orfas")) and not eid
 
 
 @app.post("/prontuario/recordings/state")
@@ -1750,7 +1754,8 @@ async def prontuario_recordings_state(request: Request):
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     recs = db.rec_list(u["id"], p["id"], *_rec_where(b))
-    return {"recordings": [{k: r[k] for k in ("rec_id", "status", "consent_at", "seconds", "updated_at", "segments")} for r in recs]}
+    return {"recordings": [{k: r[k] for k in ("rec_id", "status", "consent_at", "seconds", "updated_at", "segments", "scribe")}
+                           for r in recs]}
 
 
 def _line(obj):
@@ -1775,7 +1780,7 @@ async def prontuario_scribe(request: Request):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     if _rate_limited(request, "scribe"):
         return JSONResponse({"error": "muitos pedidos em pouco tempo"}, status_code=429)
-    eid, nid, rids = _rec_where(b)
+    eid, nid, rids, _ = _rec_where(b)
     recs = db.rec_list(u["id"], p["id"], eid, nid, rids)
     segs, table = [], []                     # numeração única para o modelo, mesmo com mais de uma gravação
     for r in recs:
@@ -1818,9 +1823,10 @@ async def prontuario_scribe(request: Request):
                 "segundos": int(sum(r["seconds"] or 0 for r in recs)),
                 "consent_at": recs[0]["consent_at"], "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")}}
-        db.rec_generated(u["id"], meta["rec_ids"], meta, nid)
+        result = dict(res, fields=fields)
+        db.rec_generated(u["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table}), nid)
         db.log_access(u["id"], "scribe", p["id"], nid)
-        yield _line({"ok": True, "result": dict(res, fields=fields), "flags": flags, "segs": table, "meta": meta})
+        yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta})
     return StreamingResponse(run(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
 
 

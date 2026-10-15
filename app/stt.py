@@ -97,6 +97,15 @@ def words(logprobs):
     return [(re.sub(r"^\W+|\W+$", "", w), p) for w, p in out if re.sub(r"^\W+|\W+$", "", w)]
 
 
+_PALAVRA = re.compile(r"\w[\w'.,/-]*\w|\w")
+
+
+def present_words(text):
+    """Palavras do texto como o transcritor as devolve, inclusive com vírgula, ponto, barra ou hífen no meio
+    ("6,9", "38,2", "12/12h", "punho-percussão"): é com elas que se cruza a confiança por palavra."""
+    return set(_PALAVRA.findall(text or ""))
+
+
 def _parse(r, prompt):
     if r.status_code != 200:
         raise RuntimeError(f"transcrição {r.status_code}: {r.text[:200]}")
@@ -104,7 +113,7 @@ def _parse(r, prompt):
     raw = (j.get("text") or "").strip()
     text = clean(raw, prompt)
     ws = words(j.get("logprobs"))
-    present = set(re.findall(r"[\w']+", text))
+    present = present_words(text)
     duv = sorted({w for w, p in ws if p < DUVIDA and w in present})
     return {"text": text, "raw": raw, "usage": j.get("usage") or {}, "duvidas": duv,
             "confianca": round(sum(p for _, p in ws) / len(ws), 3) if ws else None,

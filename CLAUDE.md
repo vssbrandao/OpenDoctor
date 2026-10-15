@@ -47,6 +47,9 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
   (`tests/test_db_integration.py`). **Nunca** gravar em produção para testar; migração nova é aplicada
   primeiro no banco de testes.
 - Mudou rota, página ou login: conferir em produção sem login (`curl` deve dar 401/302) e logado.
+- Mudou a gravação da consulta (gravador na página, rotas `/prontuario/transcribe|scribe|recordings`, `app/stt.py`,
+  `app/scribe.py`): rodar o teste ponta a ponta `node tests/e2e/gravacao.mjs` contra o preview local
+  (`.venv/bin/uvicorn scripts.preview_gravacao:app --port 8770`; `PREVIEW=` se a porta for outra).
 - O CI (`.github/workflows/ci.yml`) roda os testes a cada push; `tests/test_security.py` percorre
   todas as rotas, páginas, migrações e arquivos sozinho. Se ele falhar, **não ajuste o teste para
   passar**: entenda o que abriu.

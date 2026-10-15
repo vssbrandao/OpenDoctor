@@ -802,11 +802,19 @@ def delete_file(user_id, file_id):
 # --- gravação da consulta: só o texto de cada trecho (o áudio nunca chega aqui) ---
 def rec_open(user_id, patient_id, rec_id, event_id=None, note_id=None, consent_at=None):
     """Garante a gravação rec_id deste médico e paciente. Devolve False se o id já é de outro médico ou
-    paciente (não mistura), True se existe ou foi criada."""
+    paciente (não mistura), True se existe ou foi criada. A evolução só é ligada se for deste médico e paciente
+    (id inexistente ou de outro não derruba o envio), e uma gravação ainda sem evolução ganha a que chegar."""
     with connection() as conn:
+        if note_id is not None and not conn.execute(
+                "select 1 from clinical_notes where id = %s and user_id = %s and patient_id = %s",
+                (note_id, user_id, patient_id)).fetchone():
+            note_id = None
         conn.execute("""insert into recordings (id, user_id, patient_id, event_id, note_id, consent_at)
                         values (%s,%s,%s,%s,%s,coalesce(%s::timestamptz, now())) on conflict (id) do nothing""",
                      (rec_id, user_id, patient_id, event_id, note_id, consent_at))
+        if note_id is not None:
+            conn.execute("""update recordings set note_id = %s where id = %s and user_id = %s and patient_id = %s
+                            and note_id is null""", (note_id, rec_id, user_id, patient_id))
         r = conn.execute("select user_id::text, patient_id from recordings where id = %s", (rec_id,)).fetchone()
         conn.commit()
     return bool(r) and r[0] == str(user_id) and r[1] == patient_id
@@ -850,33 +858,40 @@ def rec_seconds_today(user_id):
     return float(r[0] or 0)
 
 
-def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=()):
+def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=(), orphans=False):
     """Gravações de uma consulta (pela consulta da agenda, pela evolução ou pelos ids que a página conhece),
-    da mais antiga para a mais nova, com os trechos."""
+    da mais antiga para a mais nova, com os trechos. orphans: também as gravações sem consulta e sem evolução
+    deste paciente das últimas 12 h (consulta avulsa que ainda não foi salva)."""
     ids = [str(x) for x in rec_ids or ()][:20]
-    if not (event_id or note_id or ids):
+    if not (event_id or note_id or ids or orphans):
         return []
     with connection() as conn:
         rows = conn.execute(
-            """select r.id::text, r.status, r.consent_at, r.seconds, r.updated_at, r.event_id, r.note_id,
+            """select r.id::text, r.status, r.consent_at, r.seconds, r.updated_at, r.event_id, r.note_id, r.scribe,
                       coalesce((select json_agg(json_build_object('seq', s.seq, 'at', s.at_s, 'dur', s.dur_s, 'text', s.text,
                                                                   'duvidas', s.duvidas) order by s.seq)
                                 from recording_segments s where s.rec_id = r.id), '[]'::json)
                from recordings r
                where r.user_id = %s and r.patient_id = %s
                  and ((%s::text is not null and r.event_id = %s) or (%s::bigint is not null and r.note_id = %s)
-                      or r.id::text = any(%s::text[]))
+                      or r.id::text = any(%s::text[])
+                      or (%s and r.event_id is null and r.note_id is null and r.updated_at > now() - interval '12 hours'))
                order by r.created_at""",
-            (user_id, patient_id, event_id, event_id, note_id, note_id, ids)).fetchall()
+            (user_id, patient_id, event_id, event_id, note_id, note_id, ids, bool(orphans))).fetchall()
     return [{"rec_id": r[0], "status": r[1], "consent_at": r[2].isoformat(), "seconds": r[3],
-             "updated_at": r[4].isoformat(), "event_id": r[5], "note_id": r[6], "segments": r[7] or []} for r in rows]
+             "updated_at": r[4].isoformat(), "event_id": r[5], "note_id": r[6], "scribe": r[7], "segments": r[8] or []}
+            for r in rows]
 
 
 def rec_generated(user_id, rec_ids, meta, note_id=None):
-    """Marca as gravações como geradas (com a versão do prompt, o modelo e a contagem dos pontos)."""
+    """Marca as gravações como geradas. meta: versão do prompt, modelo, contagem dos pontos e a saída conferida
+    ("saida": evolução e pontos para conferir), para a revisão continuar depois de recarregar ou noutro dia."""
     from psycopg.types.json import Jsonb
     with connection() as conn:
-        conn.execute("""update recordings set status = 'gerada', scribe = %s, note_id = coalesce(%s, note_id), updated_at = now()
+        if note_id is not None and not conn.execute("select 1 from clinical_notes where id = %s and user_id = %s",
+                                                    (note_id, user_id)).fetchone():
+            note_id = None
+        conn.execute("""update recordings set status = 'gerada', scribe = %s, note_id = coalesce(note_id, %s), updated_at = now()
                         where user_id = %s and id::text = any(%s::text[])""", (Jsonb(meta), note_id, user_id, [str(x) for x in rec_ids]))
         conn.commit()
 

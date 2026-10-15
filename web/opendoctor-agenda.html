@@ -837,6 +837,14 @@
     .rc-pt .pr-ghost.lk{color:#0B57D0}
     .rc-pt.ok .t{color:#80868B;text-decoration:line-through}
     .rc-pt.ok i{background:#137333}
+    .rc-pill{position:fixed;left:50%;bottom:24px;z-index:60;transform:translateX(-50%);display:flex;align-items:center;gap:8px;height:40px;
+      padding:0 16px;border:0;border-radius:20px;background:#fff;box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15);
+      font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A;cursor:pointer}
+    .rc-pill[hidden]{display:none}
+    .rc-pill i{display:block;flex:none;width:8px;height:8px;border-radius:50%;background:#C0151D;animation:rcBlink 1s steps(1) infinite}
+    .rc-pill b{font-weight:500;color:#C0151D}
+    .rc-pill .t{color:#56595E}
+    .rc-pill .go{margin-left:8px;font-weight:500;color:#0B57D0}
     .rc-final{display:flex;align-items:center;gap:12px;padding:10px 8px 10px 16px;border-radius:12px;background:#FEF7E0;font-family:var(--disp);font-size:14px;line-height:20px;color:#3D2E00}
     .rc-final[hidden]{display:none}
     .rc-final .t{flex:1;min-width:0}
@@ -2065,7 +2073,7 @@
                 <!-- gravação da consulta (peça principal da aba): player da divulgação do Finance, ao vivo -->
                 <div class="pr-rec" id="prRec"></div>
                 <label class="rc-consent" id="rcConsent" hidden><input type="checkbox" id="rcConsentIn"><span><b>O paciente autorizou a gravação desta consulta</b><small>Fica registrado no prontuário, com data e hora. O áudio não é guardado: vira texto e é descartado. Sem autorização, a evolução é escrita à mão.</small></span></label>
-                <div class="rc-alert" id="rcAlert" hidden></div>
+                <div class="rc-alert" id="rcAlert" role="status" aria-live="polite" hidden></div>
                 <div class="rc-steps" id="rcSteps" hidden></div>
                 <div class="gc-trans" id="gcTrans">
                   <span class="gc-trans-t">Transcrição da consulta</span>
@@ -4008,7 +4016,14 @@
         return rrTag({ content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v,
                  labs: old || undefined, cid: cids.slice() } });
       }
-      function rrTag(x) { var m = rrMeta(); if (m) x.data.scribe = m; return x; }   // evolução gerada pela gravação
+      function rrTag(x) {                                  // evolução gerada pela gravação: o rastreio vai junto em data.scribe
+        var m = rrMeta();
+        if (!m && cur && cur.data && cur.data.scribe) {    // revisão noutra sessão: mantém o que já estava, a não ser que tenha desfeito
+          var r = rrActive() && rrCur(); if (!(r && r.undone)) m = cur.data.scribe;
+        }
+        if (m) x.data.scribe = m;
+        return x;
+      }
       function snap(x) { return JSON.stringify(x || compose()); }
       function updImc() { var i = imcOf(vitals()); $('prImc').textContent = i ? i.toFixed(1).replace('.', ',') : '—'; }
       // faixa plausível de cada sinal vital: fora dela o campo fica vermelho (provável erro de digitação)
@@ -5070,8 +5085,11 @@
       }
       function rrCur() {
         var k = rrKey(); if (!k) return null;
-        return RR.by[k] || (RR.by[k] = { k: k, st: 'idle', recId: '', seq: 0, samples: 0, segs: [], amps: [], hist: [], cur: [], curRms: [],
-          floor: 0, quiet: 0, consent: false, consentAt: '', warn: '', flags: [], checked: {}, loaded: false, level: 0, testing: false });
+        // cx: a consulta desta gravação (o mesmo objeto: ganha o note_id quando a evolução avulsa é salva). Trecho, envio e
+        // geração usam cx e pid, nunca a consulta aberta na tela — trocar de paciente não mistura nem perde nada
+        return RR.by[k] || (RR.by[k] = { k: k, cx: ctx, pid: ctx.patient_id, st: 'idle', recId: '', seq: 0, samples: 0, segs: [], amps: [],
+          hist: [], cur: [], curRms: [], floor: 0, quiet: 0, consent: false, consentAt: '', warn: '', flags: [], checked: {}, loaded: false,
+          level: 0, testing: false });
       }
       function uuid() {
         if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -5165,6 +5183,20 @@
         if (blocks === SEG.warnAt) { r.warn = 'longa'; rrRender(r); }
         if (blocks >= SEG.stopAt) { rrEnd(r); return; }
         if (rrMine(r)) { var te = $('rcTime'); if (te) te.textContent = mmss(r.samples / SR16); recDraw({ amps: r.amps, st: 'live' }); }
+        rrPill();
+      }
+      // fora da aba Consulta, um aviso fixo mostra que a consulta está sendo gravada (e leva de volta a ela)
+      function rrPill() {
+        var r = RR.live, p = $('rcPill'), pane = document.querySelector('.pr-panel[data-panel=atual]');
+        var show = !!(r && r.st === 'live' && !(isOpen() && r === rrCur() && pane && !pane.hidden));
+        if (!show) { if (p) p.hidden = true; return; }
+        if (!p) {
+          p = el('button', 'rc-pill'); p.id = 'rcPill'; p.type = 'button'; p.setAttribute('aria-live', 'polite');
+          p.innerHTML = '<i></i><b>Gravando</b><span class="t"></span><span class="go">Voltar à consulta</span>';
+          p.addEventListener('click', function () { setTab('atual'); setTimeout(function () { $('prRec').scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50); });
+          document.body.appendChild(p);
+        }
+        p.hidden = false; p.querySelector('.t').textContent = mmss(r.samples / SR16);
       }
       function rrMine(r) { return r === rrCur() && !rcMockState(); }
       function rrCutAll(r) { if (r.cur.length) rrCut(r, r.cur.length); }
@@ -5174,8 +5206,9 @@
       }
       function rrRow(r, seq, at, pcm) {
         return { k: r.recId + ':' + seq, rk: r.k, recId: r.recId, seq: seq, at: at, dur: pcm.length / SR16, wav: wav(pcm),
-                 pid: patient && patient.id, eid: ctx && ctx.event_id || '', nid: ctx && ctx.note_id || '', consentAt: r.consentAt, created: Date.now() };
+                 pid: r.pid, eid: r.cx.event_id || '', nid: r.cx.note_id || '', consentAt: r.consentAt, created: Date.now() };
       }
+      function rrPauseLive() { if (RR && RR.live && RR.live.st === 'live') rrPause(RR.live); }   // antes de trocar ou fechar a consulta
       function rrSavePart(r) {                 // trecho em andamento (substitui o anterior; some quando o trecho é cortado)
         if (!r.cur.length || !r.recId) return;
         var pcm = rrJoin(r.cur), row = rrRow(r, r.seq + 1, (r.samples - pcm.length) / SR16, pcm);
@@ -5293,7 +5326,7 @@
       function rrMore(r) { if (locked()) return; r.st = 'paused'; r.finalOk = false; rrStart(r); }   // "Gravar mais um trecho"
       function rrPause(r) {
         if (r.st !== 'live') return;
-        rrCutAll(r); aeStop(); r.st = 'paused'; RR.live = null; r.quiet = 0; if (r.warn === 'silencio') r.warn = '';
+        rrCutAll(r); aeStop(); r.st = 'paused'; RR.live = null; r.quiet = 0; if (r.warn === 'silencio') r.warn = ''; rrPill();
         if (RR.lock) { RR.lock.release().catch(function () {}); RR.lock = null; }
         rrRender(r);
       }
@@ -5319,7 +5352,7 @@
         r.st = 'gen'; r.genStep = 'escrevendo'; rrRender(r);
         var my = r, buf = '', last = null;
         fetch('/prontuario/scribe', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ patient_id: patient && patient.id, event_id: ctx && ctx.event_id || null, note_id: ctx && ctx.note_id || null,
+          body: JSON.stringify({ patient_id: r.pid, event_id: r.cx.event_id || null, note_id: r.cx.note_id || null,
                                  rec_id: r.recId, mode: mode }) })
           .then(function (resp) {
             if (!resp.ok || !resp.body) return resp.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('http ' + resp.status)); });
@@ -5359,7 +5392,8 @@
       // rastreio na evolução (vai em data.scribe; sem texto): versão do prompt, modelo, autorização, pontos conferidos
       function rrMeta() {
         var r = rrActive() && rrCur(); if (!r || !r.meta || !r.applied) return null;
-        return Object.assign({}, r.meta, { conferidos: Object.keys(r.checked).filter(function (k) { return r.checked[k]; }).length });
+        var idx = Object.keys(r.checked).filter(function (k) { return r.checked[k]; }).map(Number);
+        return Object.assign({}, r.meta, { conferidos: idx.length, conf_idx: idx });
       }
       function rrWords(t) { return norm(t).match(/[a-z0-9]+/g) || []; }
       function rrKept(r) {                     // % das palavras geradas que ficaram, na mesma ordem, no texto final (LCS)
@@ -5390,7 +5424,8 @@
         temp: ['Temperatura', '°C'], peso: ['Peso', 'kg'], altura: ['Altura', 'cm'], glicemia: ['Glicemia capilar', 'mg/dL'] };
       function rrApply(r) {
         if (locked() || !r.result) return;
-        if (r.applied) { if (rrTextSnap() === r.appliedSnap) fillEditor(r.undo); else { r.applied = false; rrRender(r); return; } }
+        // gerou de novo: troca o texto gerado antes só se ninguém mexeu nele (depois de recarregar, sem como saber: não troca)
+        if (r.applied) { if (r.undo && rrTextSnap() === r.appliedSnap) fillEditor(r.undo); else { r.applied = false; rrRender(r); return; } }
         var x = compose(); r.undo = { content: x.content, data: x.data };
         var f = r.result.fields || {}, isSoap = SOAPK.some(function (k) { return f[k]; });
         r.genWords = rrWords(SOAPK.map(function (k) { return f[k] || ''; }).concat([f.livre || '']).join(' '));
@@ -5415,9 +5450,14 @@
           var cidT = (r.result.cid || []).map(function (c) { return (c.code + ' ' + (c.desc || '')).trim(); }).join('; ');
           put(note, txt + (cidT ? '\n\nCID-10: ' + cidT : ''));
         }
-        r.applied = true; changed(); r.appliedSnap = rrTextSnap();
+        r.applied = true; r.undone = false; changed(); r.appliedSnap = rrTextSnap();
       }
-      function rrUndo(r) { if (locked() || !r.undo) return; fillEditor(r.undo); r.applied = false; changed(); rrRender(r); }
+      function rrUndo(r) {
+        if (locked() || !r.undo) return;
+        if (r.appliedSnap && rrTextSnap() !== r.appliedSnap &&
+            !confirm('Desfazer tira o texto que veio da gravação e também o que você escreveu depois dele.\n\nContinuar?')) return;
+        fillEditor(r.undo); r.applied = false; r.undone = true; changed(); rrRender(r);
+      }
       // finalizar com pontos ainda não conferidos pede confirmação (uma vez)
       function rrHoldFinalize() {
         var r = rrActive() && rrCur(); if (!r || r.st !== 'done' || r.finalOk) return false;
@@ -5434,16 +5474,20 @@
       }
       // recuperação: ao abrir a consulta, o servidor diz o que já foi transcrito; o aparelho, o que ainda não subiu
       function rrLoad(r) {
-        if (r.loaded || !patient) return; r.loaded = true;
-        var my = r;
+        if (r.loaded || r.loading || !ready) return;          // espera a evolução carregar (o selo e os conferidos vêm dela)
+        var my = r, cx = r.cx; r.loading = true;
+        // consulta avulsa: a gravação feita antes de a evolução ser salva não tem consulta nem evolução; acha pelo paciente
+        var orfa = function (x) { return !cx.event_id && x.pid === my.pid && !x.eid && !x.nid; };
         idbAll().catch(function () { return []; }).then(function (rows) {
-          var ids = rows.filter(function (x) { return x.rk === my.k; }).map(function (x) { return x.recId; })
+          var ids = rows.filter(function (x) { return x.rk === my.k || orfa(x); }).map(function (x) { return x.recId; })
                         .filter(function (x, i, a) { return a.indexOf(x) === i; });
-          return api('POST', '/prontuario/recordings/state', { patient_id: patient.id, event_id: ctx && ctx.event_id || null,
-                                                               note_id: ctx && ctx.note_id || null, rec_ids: ids }).then(function (res) {
-            var recs = (res.ok && res.j && res.j.recordings) || [], last = recs[recs.length - 1];
+          return api('POST', '/prontuario/recordings/state', { patient_id: my.pid, event_id: cx.event_id || null,
+                                                               note_id: cx.note_id || null, rec_ids: ids, orfas: !cx.event_id }).then(function (res) {
+            if (!(res.ok && res.j)) throw new Error('estado ' + res.status);      // sem internet: tenta de novo na próxima vez
+            my.loaded = true;
+            var recs = res.j.recordings || [], last = recs[recs.length - 1];
             {
-              var mine = rows.filter(function (x) { return x.rk === my.k || (last && x.recId === last.rec_id); });
+              var mine = rows.filter(function (x) { return x.rk === my.k || orfa(x) || (last && x.recId === last.rec_id); });
               if (!last && !mine.length) return;
               if (my.st !== 'idle') return;
               var rid = last ? last.rec_id : mine[0].recId;
@@ -5460,12 +5504,20 @@
               my.seq = my.segs.reduce(function (m, s) { return Math.max(m, s.seq); }, 0);
               var end = my.segs.reduce(function (m, s) { return Math.max(m, s.at + (s.dur || 0)); }, 0);
               my.samples = Math.round(Math.max((last && last.seconds) || 0, end) * SR16);
-              my.st = last && last.status === 'gerada' ? 'saved' : 'interrupted';
+              var sc = last && last.scribe, sa = sc && sc.saida, nd = cur && cur.data && cur.data.scribe;
+              if (last && last.status === 'gerada' && sa) {      // revisão que continua: a evolução gerada e os pontos para conferir
+                my.result = sa.result; my.flags = sa.flags || []; my.segTable = sa.segs || [];
+                my.meta = Object.assign({}, sc); delete my.meta.saida;
+                my.applied = !!(nd && nd.generated_at === my.meta.generated_at); my.undo = null; my.appliedSnap = null;
+                my.checked = {}; ((my.applied && nd.conf_idx) || []).forEach(function (i) { my.checked[i] = true; });
+                my.doneAt = Date.parse(my.meta.generated_at) || Date.now();
+                my.st = 'done';
+              } else my.st = last && last.status === 'gerada' ? 'saved' : 'interrupted';
               my.stoppedAt = last && last.updated_at;
               rrRender(my); qKick();
             }
           });
-        }).catch(function () {});
+        }).catch(function () {}).then(function () { my.loading = false; });
       }
       window.addEventListener('beforeunload', function (e) {
         var busy = Object.keys(RR.by).some(function (k) { var r = RR.by[k]; return r.st === 'live' || rrPending(r); });
@@ -5618,6 +5670,7 @@
           if (r.st === 'done' && !lk) {
             $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise antes de finalizar.' : 'A evolução gerada pela gravação não está no texto.';
             $('rcNoteBtn').textContent = r.applied ? 'Desfazer' : 'Preencher a evolução'; $('rcNote').hidden = false;
+            $('rcNoteBtn').hidden = !!(r.applied && !r.undo);           // revisão noutra sessão: o texto anterior já não existe
             rrReview(r);
           }
         }
@@ -7236,6 +7289,7 @@
           }).catch(function () { if (ctx === my) setStatus('Sem conexão: não foi possível carregar o prontuário.', true); });
       }
       function open(c) {
+        rrPauseLive();                                     // a gravação não continua na consulta seguinte
         if (ctx && c !== ctx && ready) save();             // salva o que estava aberto
         clearTimeout(timer); clearTimeout(retryTimer); retry = 0;
         ctx = c || null; persistCtx();
@@ -7263,6 +7317,7 @@
       var direct = false;                                  // abriu direto pelo link/recarga: não há tela anterior no histórico
       function closePr(fromPop) {
         if (!isOpen()) return;
+        rrPauseLive();                                     // saiu do prontuário: a gravação pausa (não grava o próximo paciente)
         save();
         stage.classList.remove('prontuario');
         if (fromPop || location.hash !== '#prontuario') return;

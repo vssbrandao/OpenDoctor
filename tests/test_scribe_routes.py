@@ -54,13 +54,15 @@ class FakeDB:
     def rec_seconds_today(self, uid):
         return self.today
 
-    def rec_list(self, uid, pid, eid=None, nid=None, ids=()):
+    def rec_list(self, uid, pid, eid=None, nid=None, ids=(), orphans=False):
         out = []
         for rid, r in self.recs.items():
-            if r["uid"] == uid and r["pid"] == pid and ((eid and r["event_id"] == eid) or (nid and r["note_id"] == nid) or rid in ids):
+            if r["uid"] == uid and r["pid"] == pid and ((eid and r["event_id"] == eid) or (nid and r["note_id"] == nid) or rid in ids
+                                                       or (orphans and not r["event_id"] and not r["note_id"])):
                 segs = [s for (q, _), s in sorted(self.segs.items()) if q == rid]
                 out.append({"rec_id": rid, "status": r["status"], "consent_at": r["consent_at"], "seconds": r["seconds"],
-                            "updated_at": "2026-10-15T10:00:00+00:00", "event_id": r["event_id"], "note_id": r["note_id"], "segments": segs})
+                            "updated_at": "2026-10-15T10:00:00+00:00", "event_id": r["event_id"], "note_id": r["note_id"],
+                            "scribe": r.get("scribe"), "segments": segs})
         return out
 
     def rec_generated(self, uid, rids, meta, nid=None):
@@ -248,12 +250,36 @@ def test_evolucao_guarda_so_o_rastreio_da_gravacao():
     d = server._note_data({"mode": "soap", "s": "x", "scribe": {
         "rec_ids": [REC, "nao-e-uuid"], "prompt": "2026-10-15.5", "model": "gpt-5.4", "consent_at": "2026-10-15T10:00:00Z",
         "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3, "info": "x"}, "conferidos": 2, "segundos": 912,
+        "conf_idx": [3, 0, 3, -1, True, "2"],
         "texto": "transcrição inteira não pode entrar aqui"}})
     assert d["scribe"] == {"rec_ids": [REC], "prompt": "2026-10-15.5", "model": "gpt-5.4", "consent_at": "2026-10-15T10:00:00Z",
-                           "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3}, "segundos": 912, "conferidos": 2}
+                           "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3}, "segundos": 912, "conferidos": 2,
+                           "conf_idx": [0, 3]}
     assert "scribe" not in server._note_data({"mode": "free"})
 
 
 def test_duracao_do_wav():
     assert server._wav_seconds(wav(2)) == 2 and server._wav_seconds(wav(1, rate=8000)) is None
     assert server._wav_seconds(b"RIFF") is None and server._wav_seconds(wav(1)[:44]) is None
+
+
+def test_geracao_fica_guardada_para_revisar_depois(fake, monkeypatch):
+    """Recarregou a página ou voltou noutro dia: a evolução gerada e os pontos para conferir voltam."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    monkeypatch.setattr(scribe, "ask_model", lambda msgs, model=None: json.dumps(SAIDA))
+    out = _lines(c.post("/prontuario/scribe", json={"patient_id": 7, "event_id": "ev9", "rec_id": REC, "mode": "soap"}))[-1]
+    st = c.post("/prontuario/recordings/state", json={"patient_id": 7, "event_id": "ev9"}).json()["recordings"][0]
+    assert st["status"] == "gerada" and st["scribe"]["generated_at"] == out["meta"]["generated_at"]
+    assert st["scribe"]["saida"]["flags"] == out["flags"] and st["scribe"]["saida"]["result"]["fields"] == out["result"]["fields"]
+    assert st["scribe"]["saida"]["segs"] == out["segs"]
+
+
+def test_consulta_avulsa_acha_a_gravacao_sem_consulta_nem_evolucao(fake):
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1, **{"X-Event-Id": None}))
+    assert c.post("/prontuario/recordings/state", json={"patient_id": 7}).json()["recordings"] == []
+    achou = c.post("/prontuario/recordings/state", json={"patient_id": 7, "orfas": True}).json()["recordings"]
+    assert [r["rec_id"] for r in achou] == [REC]
+    # numa consulta da agenda, a gravação avulsa não aparece
+    assert c.post("/prontuario/recordings/state", json={"patient_id": 7, "event_id": "ev9", "orfas": True}).json()["recordings"] == []

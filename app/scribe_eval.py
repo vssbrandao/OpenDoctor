@@ -317,7 +317,7 @@ def calibrate_doubt(cases, stt_model, limites=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.
         for ref, segs in rows:
             ss = []
             for r in segs:
-                present = set(re.findall(r"[\w']+", r["text"]))
+                present = stt.present_words(r["text"])
                 ss.append({"text": r["text"], "duvidas": sorted({w for w, p in r.get("palavras") or [] if p < t and w in present})})
             for k, v in doubt_quality(ref, ss).items():
                 tot[k] += v
@@ -474,7 +474,7 @@ def run_case(caso, stt_model, llm_model):
         r, hit = _cache(kind, f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}",
                         lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
         if FONTE.get("duvida"):                              # dúvidas refeitas com outro limite
-            present = set(re.findall(r"[\w']+", r["text"]))
+            present = stt.present_words(r["text"])
             r = dict(r, duvidas=sorted({w for w, p in r.get("palavras") or [] if p < FONTE["duvida"] and w in present}))
         if not hit:
             _add_cost((s1 - s0) / SR / 60 * STT_MIN.get(stt_model, 0.006))

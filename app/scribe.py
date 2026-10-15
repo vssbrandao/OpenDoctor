@@ -14,7 +14,7 @@ import unicodedata
 
 from . import cid10, config, llm
 
-PROMPT_VERSION = "2026-10-15.6"
+PROMPT_VERSION = "2026-10-15.7"
 MASK = "[PACIENTE]"
 FIELDS = ("s", "o", "a", "p")
 VITALS = ("pa_s", "pa_d", "fc", "fr", "temp", "spo2", "peso", "altura", "glicemia")
@@ -23,7 +23,7 @@ RANGE = {"pa_s": (50, 300), "pa_d": (20, 200), "fc": (20, 250), "fr": (4, 80), "
          "peso": (0.3, 400), "altura": (0.3, 250), "glicemia": (10, 1500)}
 ACOES = ("mantido", "iniciado", "suspenso", "ajustado")
 # gravidade de cada ponto para conferir (a tela ordena por ela)
-NIVEL = {"alergia": "alto", "numero": "alto", "remedio": "alto", "remedio_nome": "alto", "remedio_desconhecido": "medio", "vital": "alto", "privacidade": "alto", "dose_incomum": "alto",
+NIVEL = {"pa_coloquial": "info", "alergia": "alto", "numero": "alto", "remedio": "alto", "remedio_nome": "alto", "remedio_desconhecido": "medio", "vital": "alto", "privacidade": "alto", "dose_incomum": "alto",
          "duvida_grave": "alto", "duvida": "medio",
          "dose_longe": "medio", "vital_longe": "medio", "sem_origem": "medio", "inferido": "medio", "cid": "medio",
          "pendencia": "medio", "cadastro": "info"}
@@ -201,6 +201,16 @@ def scan(text):
         mid = toks[ja + 1:ib]
         if mid and mid[0].startswith("quilo") and b < 1000 and jb + 1 < n and toks[jb + 1].startswith("grama"):
             extra.append((round(a + b / 1000, 3), ia, jb))
+        if a == 1 and mid and mid[0].startswith("metro") and 10 <= b < 100:          # "um metro e setenta"
+            extra += [(round(1 + b / 100, 2), ia, jb), (100 + b, ia, jb)]
+    for v, ia, ja in vals:
+        # "setenta quilos e meio", "um comprimido e meio", "dois dias e meio": o meio vem depois da unidade
+        if ja + 3 < n and re.fullmatch(r"[a-z]+", toks[ja + 1]) and toks[ja + 1] not in _UNI and toks[ja + 1] != "e" \
+                and toks[ja + 2] == "e" and toks[ja + 3] in ("meio", "meia"):
+            extra.append((v + 0.5, ia, ja + 3))
+        # altura dita "um e setenta" (1,70 m): o leitor soma 1 + 70; vale também 1,70 e 170
+        if toks[ia] == "um" and ja > ia + 1 and toks[ia + 1] == "e" and 10 <= v - 1 < 100 and v == int(v):
+            extra += [(round(1 + (v - 1) / 100, 2), ia, ja), (100 + v - 1, ia, ja)]
     return vals + extra
 
 
@@ -338,17 +348,34 @@ _ALERGIA_FAM = [
     (r"sulfa(?!to)|sulfonamid|bactrim", ["sulfametoxazol", "sulfadiazina", "sulfassalazina", "sulfadoxina", "bactrim"]),
     (r"dipiron|metamizol|novalgina", ["dipirona", "metamizol", "novalgina", "anador"]),
     (r"\baines?\b|anti.?inflamat", ["ibuprofeno", "diclofenaco", "naproxeno", "cetoprofeno", "nimesulida", "meloxicam",
-                                     "piroxicam", "indometacina", "celecoxibe", "aas", "acido acetilsalicilico"]),
+                                     "piroxicam", "tenoxicam", "indometacina", "celecoxibe", "etoricoxibe", "cetorolaco",
+                                     "aceclofenaco", "aas", "acido acetilsalicilico"]),
     (r"\baas\b|acido acetilsalicilico|aspirina", ["aas", "acido acetilsalicilico", "aspirina"]),
     (r"cefalosporin|cefalexin|ceftriax", ["cefalexina", "ceftriaxona", "cefuroxima", "cefazolina", "cefadroxila"]),
 ]
 _SEM_ALERGIA = re.compile(r"^\s*(nega|nao|sem|nenhuma|desconhec)")
+# marcas cujo nome não diz o princípio ativo da alergia ("Dorflex" leva dipirona). Conferido na bula de cada uma.
+_COMPOSICAO = {"dorflex": ["dipirona", "orfenadrina"], "neosaldina": ["dipirona", "isometepteno"],
+               "lisador": ["dipirona", "prometazina"], "buscopan composto": ["dipirona", "butilescopolamina"],
+               "anador": ["dipirona"], "magnopyrol": ["dipirona"], "benegrip": ["dipirona", "clorfeniramina"],
+               "torsilax": ["diclofenaco", "carisoprodol", "paracetamol"], "tandrilax": ["diclofenaco", "carisoprodol", "paracetamol"],
+               "cataflam": ["diclofenaco"], "voltaren": ["diclofenaco"], "profenid": ["cetoprofeno"], "nisulid": ["nimesulida"],
+               "advil": ["ibuprofeno"], "alivium": ["ibuprofeno"], "buscofem": ["ibuprofeno"], "flanax": ["naproxeno"],
+               "arcoxia": ["etoricoxibe"], "celebra": ["celecoxibe"], "toragesic": ["cetorolaco"], "aspirina": ["aas"],
+               "somalgin": ["aas"], "ecasil": ["aas"], "doril": ["aas"], "melhoral": ["aas"], "engov": ["aas"],
+               "amoxil": ["amoxicilina"], "clavulin": ["amoxicilina", "clavulanato"], "benzetacil": ["benzilpenicilina"],
+               "bactrim": ["sulfametoxazol", "trimetoprima"], "keflex": ["cefalexina"], "rocefin": ["ceftriaxona"],
+               "zinnat": ["cefuroxima"]}
 
 
 def allergy_hits(name, allergies):
     """Alergias do cadastro que batem com o remédio (inclusive da mesma família). Compara palavra inteira:
     alergia a "sulfa" não dispara em "sulfato ferroso"."""
     mt = re.findall(r"[a-z0-9]+", norm(name))
+    mn = " ".join(mt)
+    for marca, ativos in _COMPOSICAO.items():                 # "Dorflex" → também dipirona e orfenadrina
+        if f" {marca} " in f" {mn} ":
+            mt = mt + ativos
     mn = " ".join(mt)
     hits = []
     for line in [x for x in re.split(r"[\n,;]+", allergies or "") if x.strip()]:
@@ -414,6 +441,9 @@ def dose_incomum(nome, dose):
         if len(nums) != 1:
             return None
         mg = nums[0]                                    # "ciprofloxacino 5": sem unidade, lê como mg
+        lo, hi = _DOSE[key]
+        if not lo / 1.01 <= mg <= hi * 1.01 and lo / 1.01 <= mg / 1000 <= hi * 1.01:
+            return None                                 # "levotiroxina 50": sem unidade, era micrograma
     lo, hi = _DOSE[key]
     return None if lo / 1.01 <= mg <= hi * 1.01 else (mg, (lo, hi))
 
@@ -462,7 +492,7 @@ Regras (obrigatórias):
    explícito nos trechos; "inferido" quando você deduziu (um cálculo, um resumo de várias falas).
 5. Números, doses e posologias exatamente como ditos. Se alguém corrige um valor ("150... não, 140"), vale o
    corrigido e o errado não aparece. Sinal medido mais de uma vez: todas as medidas no texto; em "vitals",
-   a última medida dita.
+   a última medida dita. Pressão dita do jeito coloquial ("doze por oito") é 120x80 mmHg: escreva em mmHg.
 6. "meds" só tem remédio com ação decidida na consulta: iniciado, mantido, suspenso ou ajustado. Remédio só
    citado (pergunta do paciente, recusado pelo médico, exemplo) fica fora de "meds"; se importar, vai no texto.
 7. Remédio ajustado: escreva no texto a dose anterior e a nova quando as duas foram ditas ("varfarina: de 35 para
@@ -582,13 +612,29 @@ def _pa_pairs(text):
     return out
 
 
+def _pa_coloquial(s, d):
+    """ "Doze por oito" é 120x80: PA dita em centímetros de mercúrio."""
+    return 6 <= s <= 30 and 3 <= d <= 20 and s > d
+
+
+def _same_vital(k, v, x):
+    """O número v do trecho vale o x da evolução? Altura em metros ou centímetros (1,62 = 162)."""
+    return abs(v - x) < 1e-6 or (k == "altura" and (abs(v * 100 - x) < 1e-6 or abs(v / 100 - x) < 1e-6))
+
+
 def _vital_ok(k, x, text):
     """O valor aparece no trecho junto do rótulo certo? (pega "PA 128 por 82, FC 74" virando PA 128x74)"""
     toks = tokens(text)
     if k in ("pa_s", "pa_d"):
-        return any(abs((s if k == "pa_s" else d) - x) < 1e-6 and _near_label(k, toks, a, b)
+        return any((abs((s if k == "pa_s" else d) - x) < 1e-6 or
+                    (_pa_coloquial(s, d) and abs((s if k == "pa_s" else d) * 10 - x) < 1e-6)) and _near_label(k, toks, a, b)
                    for s, d, a, b in _pa_pairs(text))
-    return any(abs(v - x) < 1e-6 and _near_label(k, toks, a, b) for v, a, b in scan(text))
+    return any(_same_vital(k, v, x) and _near_label(k, toks, a, b) for v, a, b in scan(text))
+
+
+def _src_numbers(text):
+    """Números do trecho, mais a PA coloquial em mmHg ("doze por oito" → 120 e 80)."""
+    return numbers(text) + [y * 10 for s, d, _, _ in _pa_pairs(text) if _pa_coloquial(s, d) for y in (s, d)]
 
 
 def _clean_out(t):
@@ -644,7 +690,7 @@ def check(out, segments, mode, patient=None):
             if not ids:
                 flag("sem_origem", field, t)
                 continue
-            nums_src = numbers(pool(ids))
+            nums_src = _src_numbers(pool(ids))
             for x in numbers(t):
                 if not _has_number(x, nums_src):
                     flag("cadastro" if _has_number(x, cad_nums) else "numero", field, t, ids, valor=x)
@@ -669,13 +715,18 @@ def check(out, segments, mode, patient=None):
     for k, v in vit.items():
         if k not in VITALS or not isinstance(v, dict) or str(v.get("v") or "").strip() == "":
             continue
-        val = str(v.get("v")).strip().replace(".", ",")
+        raw = str(v.get("v")).strip()
         ids = srcs(v)
-        try:
-            x = float(val.replace(",", "."))
+        try:                                    # "86,8", "86.8" e "1.000" (milhar)
+            x = _f(raw) if re.fullmatch(r"\d+(?:[.,]\d+)*", raw) else float(raw.replace(",", "."))
         except ValueError:
-            flag("vital", k, f"{k} = {val}: formato inválido (descartado)", ids)
+            flag("vital", k, f"{k} = {raw}: formato inválido (descartado)", ids)
             continue
+        if k in ("pa_s", "pa_d") and x < 30 and any(_pa_coloquial(s, d) and abs((s if k == "pa_s" else d) - x) < 1e-6
+                                                    for s, d, _, _ in _pa_pairs(pool(ids))):
+            flag("pa_coloquial", k, f"PA dita de forma coloquial: {_fmt(x)} registrado como {_fmt(x * 10)} mmHg", ids)
+            x = x * 10
+        val = _fmt(x)
         lo, hi = RANGE[k]
         if not (lo <= x <= hi):
             flag("vital", k, f"{k} = {val} fora da faixa plausível (descartado)", ids)
@@ -683,7 +734,7 @@ def check(out, segments, mode, patient=None):
         src_text = pool(ids)
         if any(_NUM.match(d) and abs(_f(d) - x) < 1e-6 for d in doubts(ids)):
             flag("duvida_grave", k, f"{k} = {val}: número ouvido com dúvida", ids, valor=x)
-        if not ids or not _has_number(x, numbers(src_text)):
+        if not ids or not any(_same_vital(k, y, x) for y in _src_numbers(src_text)):
             flag("numero", k, f"{k} = {val} não encontrado no trecho citado", ids, valor=x)
         elif not _vital_ok(k, x, src_text):
             flag("vital_longe", k, f"{k} = {val}: o número está no trecho, mas não junto de {k.split('_')[0].upper()}", ids, valor=x)
