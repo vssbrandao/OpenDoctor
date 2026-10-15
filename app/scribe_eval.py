@@ -39,6 +39,13 @@ SR = 16000
 STT_MIN = {"gpt-transcribe": 0.0045, "gpt-4o-transcribe": 0.006, "gpt-4o-mini-transcribe": 0.003}
 LLM_M = {"gpt-5.4": (2.50, 15.00), "gpt-5.4-mini": (0.75, 4.50)}
 RUIDO = {"nenhum": 0.0, "leve": 0.004, "moderado": 0.012, "alto": 0.025}
+# voz natural da OpenAI (gpt-4o-mini-tts, ~US$ 0,015 por minuto falado) no lugar das vozes robóticas do Mac
+TTS_URL, TTS_MODEL, TTS_USD_MIN = "https://api.openai.com/v1/audio/speech", "gpt-4o-mini-tts", 0.015
+VOZ_OPENAI = {"Luciana": ("coral", "médica adulta"), "Reed": ("cedar", "médico adulto"), "Eddy": ("ash", "médico jovem"),
+              "Flo": ("shimmer", "mulher adulta"), "Sandy": ("nova", "mulher jovem"), "Shelley": ("sage", "mulher jovem"),
+              "Rocko": ("onyx", "homem adulto"), "Grandma": ("marin", "senhora idosa, fala um pouco mais devagar"),
+              "Grandpa": ("ballad", "senhor idoso, fala um pouco mais devagar")}
+PAPEL = {"m": "o médico ou a médica", "p": "o paciente", "a": "o acompanhante"}
 
 
 # ===== áudio sintético (vozes do Mac) =====
@@ -51,16 +58,53 @@ def _say(text, voice, rate):
             return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
 
 
-def synth(caso):
+def _resample_24k_16k(x):
+    """24 kHz → 16 kHz (sobe 2×, filtro passa-baixa a 7,6 kHz, desce 3×) sem scipy."""
+    up = np.zeros(len(x) * 2, np.float32); up[::2] = x * 2
+    n = 95; t = np.arange(n) - (n - 1) / 2
+    h = np.sinc(2 * (7600 / 48000) * t) * np.hamming(n); h /= h.sum()
+    return np.convolve(up, h, mode="same")[::3].astype(np.float32)
+
+
+def _tts(text, voz_mac, quem):
+    """Fala com voz natural da OpenAI; fica no cache (nunca paga duas vezes a mesma fala)."""
+    import httpx
+    voice, persona = VOZ_OPENAI.get(voz_mac, ("coral", "pessoa adulta"))
+    instr = (f"Fale em português do Brasil, com sotaque brasileiro natural (não de Portugal). Você é {persona}, "
+             f"{PAPEL.get(quem, 'uma pessoa')} numa consulta médica: fale de forma natural, em ritmo de conversa, "
+             "sem soar como locutor. Números como se fala no Brasil (128 por 82 = cento e vinte e oito por oitenta e dois).")
+    os.makedirs(CACHE, exist_ok=True)
+    p = os.path.join(CACHE, "tts-" + hashlib.sha1(f"{TTS_MODEL}|{voice}|{instr}|{text}".encode()).hexdigest()[:16] + ".pcm")
+    if not os.path.exists(p):
+        body = {"model": TTS_MODEL, "voice": voice, "input": text, "instructions": instr, "response_format": "pcm"}
+        for attempt in range(3):
+            r = httpx.post(TTS_URL, headers={"Authorization": f"Bearer {config.require_openai()}"}, json=body, timeout=120)
+            if r.status_code in (429, 500, 502, 503, 504) and attempt < 2:
+                time.sleep(2 * (attempt + 1)); continue
+            if r.status_code != 200:
+                raise RuntimeError(f"voz {r.status_code}: {r.text[:200]}")
+            break
+        open(p, "wb").write(r.content)
+        _add_cost(len(r.content) / 2 / 24000 / 60 * TTS_USD_MIN)
+    pcm = np.frombuffer(open(p, "rb").read(), dtype=np.int16).astype(np.float32) / 32768
+    return _resample_24k_16k(pcm)
+
+
+def synth(caso, fonte="openai"):
     """Monta a consulta: falas com pausas de 0,3–1,1 s, quem está longe do microfone mais baixo, ruído de fundo."""
     rng = np.random.default_rng(int(hashlib.sha1(caso["id"].encode()).hexdigest()[:8], 16))
     vozes = caso.get("vozes") or {}
     longe = set(caso.get("longe_do_microfone") or ["p", "a"])
     pausas = {int(k): float(v) for k, v in (caso.get("pausas") or {}).items()}     # {nº da fala: segundos de silêncio depois}
+    falas = [(quem, fala, vozes.get(quem) or {"m": "Luciana", "p": "Flo", "a": "Reed"}.get(quem, "Luciana"))
+             for quem, fala in caso["falas"]]
+    if fonte == "openai":
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as ex:
+            sons = list(ex.map(lambda f: _tts(f[1], f[2], f[0]), falas))
+    else:
+        sons = [_say(fala, v, int(caso.get("ritmo", 180))) for _, fala, v in falas]
     parts = [np.zeros(int(SR * 0.6), np.float32)]
-    for idx, (quem, fala) in enumerate(caso["falas"], 1):
-        v = vozes.get(quem) or {"m": "Luciana", "p": "Flo", "a": "Reed"}.get(quem, "Luciana")
-        x = _say(fala, v, int(caso.get("ritmo", 180)))
+    for idx, ((quem, fala, v), x) in enumerate(zip(falas, sons), 1):
         if quem in longe:
             x = x * 0.55
         parts += [x, np.zeros(int(SR * (pausas.get(idx) or rng.uniform(0.3, 1.1))), np.float32)]
@@ -81,18 +125,27 @@ def _read_any(path):
             return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768
 
 
-def audio_of(caso):
+FONTE = {"voz": "openai"}                       # "openai" (natural) ou "mac" (robótica, grátis)
+
+
+def _audio_path(caso, fonte):
+    return os.path.join(AUDIO, "openai", f"{caso['id']}.wav") if fonte == "openai" else os.path.join(AUDIO, f"{caso['id']}.wav")
+
+
+def audio_of(caso, fonte=None):
     """(áudio, origem). Gravação encenada tem prioridade sobre a voz sintética."""
+    fonte = fonte or FONTE["voz"]
     for ext in ("m4a", "wav", "webm", "mp3", "aiff"):
         p = os.path.join(GRAV, f"{caso['id']}.{ext}")
         if os.path.exists(p):
             return _read_any(p), "encenada"
-    os.makedirs(AUDIO, exist_ok=True)
-    p = os.path.join(AUDIO, f"{caso['id']}.wav")
+    p = _audio_path(caso, fonte)
+    os.makedirs(os.path.dirname(p), exist_ok=True)
     if not os.path.exists(p):
-        _write_wav(p, synth(caso))
+        _write_wav(p, synth(caso, fonte))
     with wave.open(p) as w:
-        return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768, "sintética"
+        return (np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768,
+                "voz natural" if fonte == "openai" else "voz do Mac")
 
 
 def _write_wav(path_or_buf, a):
@@ -213,6 +266,25 @@ def wer(ref, hyp):
             cur = min(d[j] + 1, d[j - 1] + 1, prev + (r[i - 1] != h[j - 1]))
             prev, d[j] = d[j], cur
     return d[len(h)] / max(1, len(r))
+
+
+def doubt_quality(ref, segs):
+    """Quanto as dúvidas do transcritor acertam: dos tokens errados (não batem com o roteiro), quantos foram
+    marcados (cobertura); das marcas, quantas eram erro mesmo (precisão)."""
+    import difflib
+    hyp = []
+    for x in segs:
+        dv = {t for d in x.get("duvidas") or [] for t in scribe.tokens(d)}
+        hyp += [(t, t in dv) for t in scribe.digitize(x["text"]).split()]
+    r = scribe.digitize(ref).split()
+    sm = difflib.SequenceMatcher(None, r, [t for t, _ in hyp], autojunk=False)
+    ok = set()
+    for blk in sm.get_matching_blocks():
+        ok |= set(range(blk.b, blk.b + blk.size))
+    err = [i for i in range(len(hyp)) if i not in ok]
+    marked = [i for i, (_, d) in enumerate(hyp) if d]
+    hit = len(set(err) & set(marked))
+    return {"tok_errados": len(err), "tok_duvidosos": len(marked), "duvida_pega_erro": hit}
 
 
 def _nums(t):
@@ -338,7 +410,7 @@ def run_case(caso, stt_model, llm_model):
                         lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
         if not hit:
             _add_cost((s1 - s0) / SR / 60 * STT_MIN.get(stt_model, 0.006))
-        segs.append({"seq": i, "at": s0 / SR, "text": r["text"]}); prev = r["text"] or prev
+        segs.append({"seq": i, "at": s0 / SR, "text": r["text"], "duvidas": r.get("duvidas") or []}); prev = r["text"] or prev
     t_stt = time.time() - t0
     nome = pac.get("nome", "")
     masked = [dict(x, text=scribe.mask(x["text"], nome)) for x in segs]
@@ -360,6 +432,7 @@ def run_case(caso, stt_model, llm_model):
     res, flags = scribe.check(parsed, masked, mode, patient)
     ref = " ".join(f for _, f in caso["falas"])
     sc = score(caso, res, flags)
+    sc.update(doubt_quality(ref_text := " ".join(f for _, f in caso["falas"]), segs))
     sent = scribe.norm(msgs[1]["content"])
     first = [t for t in scribe.norm(nome).split() if len(t) >= 3][:1]
     sc["nome_vazou"] = bool(first) and re.search(r"\b" + re.escape(first[0]) + r"\b", sent) is not None
@@ -373,7 +446,12 @@ def run_case(caso, stt_model, llm_model):
 
 
 def estimate(cases, stt_model, llm_model):
-    sec = sum(len(audio_of(c)[0]) / SR for c in cases)
+    def secs(c):                                  # sem gerar áudio pago só para estimar
+        p = _audio_path(c, FONTE["voz"])
+        if os.path.exists(p) or FONTE["voz"] == "mac":
+            return len(audio_of(c)[0]) / SR
+        return sum(len(f) for _, f in c["falas"]) / 14 + 0.7 * len(c["falas"]) + sum((c.get("pausas") or {}).values())
+    sec = sum(secs(c) for c in cases)
     stt_usd = sec / 60 * STT_MIN.get(stt_model, 0.006)
     pin, pout = LLM_M.get(llm_model, (2.5, 15))
     llm_usd = len(cases) * (6000 * pin + 2500 * pout) / 1e6          # ~6k tokens de entrada, ~2,5k de saída por caso
@@ -388,7 +466,12 @@ def main():
     ap.add_argument("--estimar", action="store_true", help="só gera o áudio e estima o custo (não chama a OpenAI)")
     ap.add_argument("--paralelo", type=int, default=4, help="casos ao mesmo tempo")
     ap.add_argument("--teto-usd", type=float, default=1.75, help="para de começar casos novos ao atingir este gasto")
+    ap.add_argument("--voz", choices=("openai", "mac"), default="openai", help="voz sintética: natural (OpenAI) ou do Mac")
+    ap.add_argument("--comparar", action="store_true", help="só junta os relatórios do dia numa tabela comparativa")
     a = ap.parse_args()
+    FONTE["voz"] = a.voz
+    if a.comparar:
+        return compare()
     cases = load_cases([x.strip() for x in a.casos.split(",") if x.strip()])
     sec, su, lu = estimate(cases, a.stt, a.modelo)
     print(f"{len(cases)} casos · {sec / 60:.1f} min de áudio · estimativa US$ {su:.2f} (transcrição) + US$ {lu:.2f} (evolução)")
@@ -398,6 +481,8 @@ def main():
         sys.exit("OPENAI_API_KEY ausente")
     for c in cases:                  # áudio sintético antes (o "say" do Mac não gosta de rodar em paralelo)
         audio_of(c)
+    if SPENT["usd"]:
+        print(f"voz sintética gerada: US$ {SPENT['usd']:.3f}")
     rows, erros = [], []
 
     def one(c):
@@ -428,6 +513,9 @@ def main():
             "nome_e_documentos_nao_vazaram": not any(r["nome_vazou"] or r["dado_vazou"] for r in rows),
             "todos_os_casos_rodaram": not erros}
     resumo = {"data": datetime.date.today().isoformat(), "stt": a.stt, "modelo": a.modelo, "prompt": scribe.PROMPT_VERSION,
+              "voz": a.voz, "duvida_cobre_erros": round(tot("duvida_pega_erro") / max(1, tot("tok_errados")), 3),
+              "duvida_precisao": round(tot("duvida_pega_erro") / max(1, tot("tok_duvidosos")), 3),
+              "geracao_s_media": round(statistics.mean([r["t_gen"] for r in rows if r["t_gen"]]), 1) if any(r["t_gen"] for r in rows) else None,
               "casos": len(rows), "wer_medio": round(statistics.mean(r["wer"] for r in rows), 3),
               "remedios": {k: tot(k) for k in ("rem_certo", "rem_aviso", "rem_sem_aviso", "rem_falta", "rem_inventado")},
               "sinais": f"{tot('vit_certo')}/{tot('vit_total')}", "cid": f"{tot('cid_certo')}/{tot('cid_total')}",
@@ -435,7 +523,7 @@ def main():
               "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit, "erros": erros,
               "gasto_usd_nesta_rodada": round(SPENT["usd"], 3)}
     os.makedirs(REL, exist_ok=True)
-    name = f"{resumo['data']}-{a.stt}-{a.modelo}"
+    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}"
     json.dump({"resumo": resumo, "casos": rows}, open(os.path.join(REL, name + ".json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
     md = [f"# Avaliação da gravação — {resumo['data']} · {a.stt} + {a.modelo} · prompt {scribe.PROMPT_VERSION}", "",
@@ -450,6 +538,28 @@ def main():
     md += [f"- ERRO {e}" for e in erros]
     open(os.path.join(REL, name + ".md"), "w", encoding="utf-8").write("\n".join(md))
     print(json.dumps(resumo, ensure_ascii=False, indent=1))
+
+
+def compare():
+    """Tabela das rodadas do dia (uma por transcritor × modelo) em relatorios/comparacao-<data>.md."""
+    day = datetime.date.today().isoformat()
+    rs = [json.load(open(os.path.join(REL, f), encoding="utf-8"))["resumo"] for f in sorted(os.listdir(REL))
+          if f.startswith(day) and f.endswith(".json")]
+    rs = [r for r in rs if r.get("voz")]
+    if not rs:
+        sys.exit("nenhum relatório de hoje")
+    head = ("| Voz | Transcritor | Evolução | Dose errada sem aviso | Remédio inventado | Remédio faltando | Fatos | Sinais | CID | "
+            "WER | Dúvida pega erro | Precisão da dúvida | Geração (média/máx s) | Critérios |")
+    lines = [f"# Comparação — {day}", "", head, "|" + "---|" * 14]
+    for r in sorted(rs, key=lambda r: (r["voz"], r["stt"], r["modelo"])):
+        rm = r["remedios"]; c = r["criterios"]
+        lines.append(f"| {r['voz']} | {r['stt']} | {r['modelo']} | {rm['rem_sem_aviso']} | {rm['rem_inventado']} | {rm['rem_falta']} | "
+                     f"{r['fatos']} | {r['sinais']} | {r['cid']} | {r['wer_medio']} | {r.get('duvida_cobre_erros')} | "
+                     f"{r.get('duvida_precisao')} | {r.get('geracao_s_media')}/{r.get('geracao_s_max')} | "
+                     f"{sum(bool(v) for v in c.values())}/{len(c)} |")
+    out = os.path.join(REL, f"comparacao-{day}.md")
+    open(out, "w", encoding="utf-8").write("\n".join(lines) + "\n")
+    print("\n".join(lines))
 
 
 if __name__ == "__main__":

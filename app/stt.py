@@ -20,6 +20,7 @@ MAX_BYTES = 25 * 1024 * 1024          # limite da OpenAI por arquivo
 _BAD_KW = ("<", ">", "\r", "\n")      # a API recusa o pedido inteiro se uma palavra-chave tiver isso
 _RETRY = (408, 409, 429, 500, 502, 503, 504)
 _TRIES = 3
+DUVIDA = 0.6          # palavra com confiança abaixo disto (produto dos pedaços) é marcada como duvidosa
 
 # Frases que os transcritores da família Whisper "ouvem" em silêncio ou ruído (vêm de legendas de vídeo do
 # treino). Em português aparecem muito; numa consulta, nunca são fala de verdade.
@@ -40,9 +41,11 @@ def _keywords(words):
     return out[:50]
 
 
-def _form(model, prompt, keywords):
+def _form(model, prompt, keywords, confidence=True):
     """Campos do formulário (multipart). Listas viram campos repetidos com [] (o httpx repete cada item)."""
     data = {"model": model, "response_format": "json"}
+    if confidence:                           # confiança por pedaço de palavra (gpt-transcribe e gpt-4o-*-transcribe)
+        data["include[]"] = ["logprobs"]
     if model == "gpt-transcribe":
         data["languages[]"] = ["pt"]
         kw = _keywords(keywords)
@@ -74,12 +77,37 @@ def clean(text, prompt=""):
     return out
 
 
+def words(logprobs):
+    """Palavras com a confiança (produto das probabilidades dos pedaços): [(palavra, p)]. Pontuação sozinha
+    não conta como palavra."""
+    import math
+    out, cur, lp = [], "", 0.0
+    for t in logprobs or []:
+        tok = t.get("token") or ""
+        if tok[:1].isspace() or not cur:
+            if re.search(r"\w", cur):
+                out.append((cur.strip(), math.exp(lp)))
+            cur, lp = tok, 0.0
+        else:
+            cur += tok
+        if re.search(r"\w", tok):
+            lp += float(t.get("logprob") or 0.0)
+    if re.search(r"\w", cur):
+        out.append((cur.strip(), math.exp(lp)))
+    return [(re.sub(r"^\W+|\W+$", "", w), p) for w, p in out if re.sub(r"^\W+|\W+$", "", w)]
+
+
 def _parse(r, prompt):
     if r.status_code != 200:
         raise RuntimeError(f"transcrição {r.status_code}: {r.text[:200]}")
     j = r.json()
     raw = (j.get("text") or "").strip()
-    return {"text": clean(raw, prompt), "raw": raw, "usage": j.get("usage") or {}}
+    text = clean(raw, prompt)
+    ws = words(j.get("logprobs"))
+    present = set(re.findall(r"[\w']+", text))
+    duv = sorted({w for w, p in ws if p < DUVIDA and w in present})
+    return {"text": text, "raw": raw, "usage": j.get("usage") or {}, "duvidas": duv,
+            "confianca": round(sum(p for _, p in ws) / len(ws), 3) if ws else None}
 
 
 def _wait(r, attempt):
@@ -90,7 +118,7 @@ def _wait(r, attempt):
     return min(10.0, ra if ra is not None else 1.5 * 2 ** attempt)
 
 
-def _args(audio, mime, prompt, keywords, model):
+def _args(audio, mime, prompt, keywords, model, confidence=True):
     if not audio:
         raise ValueError("trecho de áudio vazio")
     if len(audio) > MAX_BYTES:
@@ -98,12 +126,13 @@ def _args(audio, mime, prompt, keywords, model):
     model = model or config.OPENAI_STT_MODEL
     files = {"file": ("trecho." + mime.split("/")[-1].split(";")[0], audio, mime)}
     return dict(headers={"Authorization": f"Bearer {config.require_openai()}"},
-                data=_form(model, prompt, keywords), files=files)
+                data=_form(model, prompt, keywords, confidence), files=files)
 
 
-def transcribe(audio, mime="audio/wav", prompt="", keywords=None, model=None):
-    """Síncrono (scripts e avaliação). Devolve {"text" (limpo), "raw", "usage"}. Tenta de novo em 429/5xx."""
-    kw = _args(audio, mime, prompt, keywords, model)
+def transcribe(audio, mime="audio/wav", prompt="", keywords=None, model=None, confidence=True):
+    """Síncrono (scripts e avaliação). Devolve {"text" (limpo), "raw", "usage", "duvidas" (palavras ouvidas com
+    pouca certeza), "confianca"}. Tenta de novo em 429/5xx."""
+    kw = _args(audio, mime, prompt, keywords, model, confidence)
     for attempt in range(_TRIES):
         try:
             r = httpx.post(URL, timeout=120, **kw)
@@ -116,9 +145,9 @@ def transcribe(audio, mime="audio/wav", prompt="", keywords=None, model=None):
         return _parse(r, prompt)
 
 
-async def atranscribe(audio, mime="audio/wav", prompt="", keywords=None, model=None):
+async def atranscribe(audio, mime="audio/wav", prompt="", keywords=None, model=None, confidence=True):
     """Assíncrono (servidor): o Render roda um processo só; chamada síncrona travaria o app."""
-    kw = _args(audio, mime, prompt, keywords, model)
+    kw = _args(audio, mime, prompt, keywords, model, confidence)
     async with httpx.AsyncClient(timeout=120) as c:
         for attempt in range(_TRIES):
             try:

@@ -189,4 +189,29 @@ def test_transcricao_descarta_copia_do_contexto():
 def test_formulario_da_transcricao():
     f = stt._form("gpt-transcribe", "x" * 1000, ["losartana", "a<b", "Losartana", "metformina"])
     assert f["languages[]"] == ["pt"] and f["keywords[]"] == ["losartana", "metformina"] and len(f["prompt"]) == 800
-    assert stt._form("gpt-4o-transcribe", "", None) == {"model": "gpt-4o-transcribe", "response_format": "json", "language": "pt"}
+    assert stt._form("gpt-4o-transcribe", "", None) == {"model": "gpt-4o-transcribe", "response_format": "json",
+                                                       "include[]": ["logprobs"], "language": "pt"}
+    assert "include[]" not in stt._form("gpt-4o-transcribe", "", None, confidence=False)
+
+
+def test_confianca_por_palavra_marca_duvidas():
+    import math
+    lp = [{"token": "Começou", "logprob": math.log(0.3)}, {"token": " desm", "logprob": math.log(0.5)},
+          {"token": "aiando", "logprob": math.log(0.9)}, {"token": ",", "logprob": math.log(0.2)},
+          {"token": " doutora", "logprob": -0.01}]
+    assert [(w, round(p, 2)) for w, p in stt.words(lp)] == [("Começou", 0.3), ("desmaiando", 0.45), ("doutora", 0.99)]
+    assert s.annotate("Começou desmaiando, doutora. 128 por 82", ["desmaiando", "128"]) == \
+        "Começou desmaiando(?), doutora. 128(?) por 82"
+
+
+def test_evolucao_que_usa_palavra_duvidosa_e_avisada():
+    segs = [{"seq": 1, "at": 0, "text": "Começou desmaiando, faz uma semana.", "duvidas": ["desmaiando"]},
+            {"seq": 2, "at": 9, "text": "Pressão 128 por 82. Ciprofloxacino 500 miligramas de 12 em 12 horas.",
+             "duvidas": ["Ciprofloxacino", "128"]}]
+    out = {"soap": {"s": [{"t": "Relato de desmaio(?) há uma semana.", "src": [1], "tipo": "dito"}]},
+           "vitals": {"pa_s": {"v": "128", "src": [2]}},
+           "meds": [{"nome": "ciprofloxacino", "dose": "500 mg", "posologia": "12/12h", "acao": "iniciado", "src": [2]}]}
+    res, fl = s.check(out, segs, "soap", {})
+    assert s.render_text(res)["s"] == "Relato de desmaio há uma semana."            # o (?) não vai para o prontuário
+    assert sorted((f["tipo"], f["nivel"]) for f in fl) == [("duvida", "medio"), ("duvida_grave", "alto"), ("duvida_grave", "alto")]
+    assert "(?)" in s.build_messages(segs, "soap", {})[1]["content"]
