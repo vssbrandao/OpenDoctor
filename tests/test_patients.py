@@ -62,6 +62,8 @@ def test_note_data_exames():
     assert _note_data({"mode": "soap", "labs": {"date": "3000-01-01", "v": {"tsh": "2"}}})["labs"]["date"] is None
     assert "labs" not in _note_data({"mode": "soap", "labs": {"v": {"ldl": ""}}})
     assert "labs" not in _note_data({"mode": "soap", "labs": "texto"})
+    assert _note_data({"mode": "soap", "kind": "labs"})["kind"] == "labs"
+    assert "kind" not in _note_data({"mode": "soap", "kind": "outra"})
 
 
 def test_nome_do_paciente_em_evento_antigo():

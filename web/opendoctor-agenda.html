@@ -901,6 +901,42 @@
     .pr-item-head{gap:16px}
     .pr-form{column-gap:32px}
     /* ===== exames laboratoriais no SOAP (bloco que abre e fecha) ===== */
+    .pr-hacts{display:flex;align-items:center;gap:8px}
+    .pr-addlab{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px 0 12px;border:1px solid #CCCFD9;border-radius:18px;background:#fff;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A;white-space:nowrap}
+    .pr-addlab:hover{background:#F7F8FA}
+    .pr-addlab svg{width:18px;height:18px;flex:none}
+    .pr-addlab.sm{height:32px;padding:0 14px 0 10px;font-size:13px}
+    .ov-hrow{display:flex;align-items:center;justify-content:space-between;gap:16px}
+    .ov-hrow .gh-t{display:block}
+    .pr-labhint{font-family:var(--disp);font-size:13px;line-height:18px;color:#56595E}
+    .pr-link2{border:0;background:none;padding:0;cursor:pointer;font:inherit;font-weight:500;color:#0B57D0}
+    .pr-link2:hover{text-decoration:underline}
+    .lx-ov{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;background:rgba(10,10,10,.32);overflow-y:auto}
+    .lx-ov[hidden]{display:none}
+    .lx{display:flex;flex-direction:column;gap:20px;width:min(680px,100%);padding:28px;border-radius:24px;background:#fff;box-shadow:0 8px 32px rgba(10,10,10,.18)}
+    .lx-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+    .lx-t{font-family:var(--disp);font-weight:500;font-size:22px;line-height:28px;color:#0A0A0A}
+    .lx-s{margin-top:4px;font-family:var(--disp);font-size:13px;line-height:18px;color:#56595E}
+    .lx-x{flex:none;width:40px;height:40px;margin:-6px -6px 0 0;border:0;border-radius:20px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .lx-x:hover{background:#F0F2F5}
+    .lx-x svg{width:22px;height:22px}
+    .lx-drop{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px;border:1.5px dashed #CCCFD9;border-radius:16px;text-align:center;font-family:var(--disp)}
+    .lx-drop > svg{width:28px;height:28px}
+    .lx-drop-t{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 12px;font-size:15px;line-height:20px;color:#0A0A0A}
+    .lx-drop-t b{font-weight:500}
+    .lx-drop-t span{color:#56595E}
+    .lx-drop small{max-width:440px;font-size:12px;line-height:16px;color:#56595E}
+    .pr-labs.drag .lx-drop{border-color:#0B57D0;background:#F3F7FF}
+    .lx .pr-labbody{padding:24px}
+    .lx-foot{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px 12px}
+    .lx-st{margin-right:auto;font-family:var(--disp);font-size:13px;line-height:18px;color:#56595E}
+    .lx-st.err{color:#B3261E}
+    .lx .pr-save:disabled{opacity:.4;cursor:default}
+    .pr-badge.lab{background:#E5EDFF;color:#0B57D0}
+    .pr-toast{position:fixed;left:50%;bottom:32px;z-index:80;transform:translateX(-50%);padding:12px 18px;border-radius:12px;background:#1F1F1F;color:#fff;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;box-shadow:0 4px 16px rgba(0,0,0,.2);transition:opacity .3s}
+    .pr-toast.out{opacity:0}
     .pr-labs{display:flex;flex-direction:column;gap:16px;margin-top:8px}
     .pr-labtg{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;height:40px;padding:0 16px 0 10px;border:0;border-radius:20px;background:#F0F2F5;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
@@ -1622,9 +1658,12 @@
                   <span id="prProbTags"></span>
                 </div>
               </div>
-              <div class="pr-visit" id="prVisitBox">
-                <span class="pr-timer" id="prTimer" hidden></span>
-                <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+              <div class="pr-hacts">
+                <button class="pr-addlab" type="button" id="prAddLab" data-addlab><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="currentColor"/></svg>Adicionar exames</button>
+                <div class="pr-visit" id="prVisitBox">
+                  <span class="pr-timer" id="prTimer" hidden></span>
+                  <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+                </div>
               </div>
             </div>
             <div class="pr-form" id="prForm" hidden>
@@ -1728,7 +1767,8 @@
               </div>
 
               <div class="ov-sec" id="ovLabWrap" hidden>
-                <div class="ov-h" role="heading" aria-level="2">Exames</div>
+                <div class="ov-hrow"><div class="ov-h" role="heading" aria-level="2">Exames</div><button class="pr-addlab sm" type="button" data-addlab><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="currentColor"/></svg>Adicionar exames</button></div>
+                <div class="ov-nmsg" id="ovLabEmpty" hidden>Nenhum exame registrado. Adicione o resultado do laboratório — digitado ou lido do PDF.</div>
                 <div class="gr-wrap">
                   <div class="gr-row" id="ovLabTiles"></div>
                   <button class="ov-tnav prev" type="button" id="ovLPrev" aria-label="Exames anteriores" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#1F1F1F"/></svg></button>
@@ -1789,12 +1829,14 @@
               </table>
               <!-- exames de acompanhamento sugeridos pelos problemas e medicações -->
               <div class="ga-fu" id="gaFuSec" hidden>
-                <div class="gh gh-col"><span class="gh-t">Exames de acompanhamento</span><span class="gh-s">Sugestão a partir dos problemas e medicações registrados · diretrizes gerais (SBD, SBC, KDIGO) — ajuste ao caso</span></div>
+                <div class="ov-hrow"><span class="gh-t">Exames de acompanhamento</span><button class="pr-addlab sm" type="button" data-addlab><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="currentColor"/></svg>Adicionar exames</button></div>
+                <div class="gh gh-col"><span class="gh-s">Sugestão a partir dos problemas e medicações registrados · diretrizes gerais (SBD, SBC, KDIGO) — ajuste ao caso</span></div>
                 <table class="ga-table ga-futable"><thead><tr><th>Exame</th><th>Último</th><th>Frequência</th><th>Situação</th></tr></thead><tbody id="gaFuBody"></tbody></table>
               </div>
               <div class="ov-empty" id="gaEmpty" hidden>
                 <div class="ov-empty-t">Ainda não há sinais vitais nem exames para analisar</div>
-                <div class="ov-empty-s">A análise aparece quando as evoluções têm sinais vitais ou exames registrados no modo <b>SOAP</b>.</div>
+                <div class="ov-empty-s">A análise aparece quando há sinais vitais (evolução no modo <b>SOAP</b>) ou exames registrados.</div>
+                <button class="ov-pill" type="button" data-addlab>Adicionar exames</button>
               </div>
             </section>
 
@@ -1842,40 +1884,7 @@
                       <label class="pr-vital"><span>Glicemia (mg/dL)</span><input class="pr-in" data-v="glicemia" inputmode="decimal" placeholder="90" autocomplete="off"></label>
                     </div>
                     <textarea data-f="o" placeholder="Exame físico, outros resultados de exames…"></textarea>
-                    <!-- exames laboratoriais (a TFG é calculada pela creatinina, idade e sexo — CKD-EPI 2021) -->
-                    <div class="pr-labs" id="prLabs">
-                      <div class="pr-labbar">
-                        <button class="pr-labtg" type="button" id="prLabTg" aria-expanded="false" aria-controls="prLabBody"><svg class="pr-labchev" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z" fill="#0A0A0A"/></svg><span>Exames laboratoriais</span><small id="prLabN"></small></button>
-                        <button class="pr-labpdf" type="button" id="prLabPdf" title="O PDF é lido aqui no navegador: não é enviado nem guardado"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5zM8 13h8v2H8zm0 4h5v2H8z" fill="#0A0A0A"/></svg>Ler PDF do laboratório</button>
-                        <input type="file" id="prLabFile" accept="application/pdf,.pdf" hidden>
-                      </div>
-                      <div class="pr-labrev" id="prLabRev" hidden aria-live="polite"></div>
-                      <div class="pr-labbody" id="prLabBody" hidden>
-                        <label class="pr-labdate"><span>Data da coleta</span><input class="pr-in" type="date" id="prLabDate"><small>Em branco: data da consulta</small></label>
-                        <div class="pr-labgrp"><div class="pr-labgh">Controle glicêmico</div><div class="pr-vitals">
-                          <label class="pr-vital"><span>HbA1c (%)</span><input class="pr-in" data-l="hba1c" inputmode="decimal" autocomplete="off"></label>
-                        </div></div>
-                        <div class="pr-labgrp"><div class="pr-labgh">Lipídios</div><div class="pr-vitals">
-                          <label class="pr-vital"><span>Colesterol total (mg/dL)</span><input class="pr-in" data-l="ct" inputmode="decimal" autocomplete="off"></label>
-                          <label class="pr-vital"><span>LDL (mg/dL)</span><input class="pr-in" data-l="ldl" inputmode="decimal" autocomplete="off"></label>
-                          <label class="pr-vital"><span>HDL (mg/dL)</span><input class="pr-in" data-l="hdl" inputmode="decimal" autocomplete="off"></label>
-                          <label class="pr-vital"><span>Triglicerídeos (mg/dL)</span><input class="pr-in" data-l="tg" inputmode="decimal" autocomplete="off"></label>
-                        </div></div>
-                        <div class="pr-labgrp"><div class="pr-labgh">Função renal e eletrólitos</div><div class="pr-vitals">
-                          <label class="pr-vital"><span>Creatinina (mg/dL)</span><input class="pr-in" data-l="creat" inputmode="decimal" autocomplete="off"></label>
-                          <div class="pr-vital"><span>TFG (CKD-EPI)</span><div class="pr-imc" id="prTfg" title="Calculada pela creatinina, idade e sexo do cadastro">—</div></div>
-                          <label class="pr-vital"><span>Albuminúria — RAC (mg/g)</span><input class="pr-in" data-l="rac" inputmode="decimal" autocomplete="off"></label>
-                          <label class="pr-vital"><span>Potássio (mEq/L)</span><input class="pr-in" data-l="pot" inputmode="decimal" autocomplete="off"></label>
-                          <label class="pr-vital"><span>Sódio (mEq/L)</span><input class="pr-in" data-l="sod" inputmode="decimal" autocomplete="off"></label>
-                        </div></div>
-                        <div class="pr-labgrp"><div class="pr-labgh">Outros</div><div class="pr-vitals">
-                          <label class="pr-vital"><span>Ácido úrico (mg/dL)</span><input class="pr-in" data-l="au" inputmode="decimal" autocomplete="off"></label>
-                          <label class="pr-vital"><span>TSH (mUI/L)</span><input class="pr-in" data-l="tsh" inputmode="decimal" autocomplete="off"></label>
-                          <label class="pr-vital"><span>Hemoglobina (g/dL)</span><input class="pr-in" data-l="hb" inputmode="decimal" autocomplete="off"></label>
-                          <label class="pr-vital"><span>TGP / ALT (U/L)</span><input class="pr-in" data-l="alt" inputmode="decimal" autocomplete="off"></label>
-                        </div></div>
-                      </div>
-                    </div>
+                    <div class="pr-labhint">Resultados de laboratório entram pelo botão <button class="pr-link2" type="button" data-addlab>Adicionar exames</button> — digitados ou lidos do PDF.</div>
                   </div>
                   <div class="pr-soapf"><span>A — Avaliação</span>
                     <textarea data-f="a" placeholder="Hipóteses diagnósticas, raciocínio clínico…"></textarea>
@@ -1960,6 +1969,50 @@
               </div>
               <div class="pr-hist" id="prHist"></div>
             </section>
+
+
+            <!-- ===== Adicionar exames: cada laudo vira um registro com a data da coleta (com ou sem consulta) ===== -->
+            <div class="lx-ov" id="lxOv" hidden>
+              <div class="lx pr-labs" id="prLabs" role="dialog" aria-modal="true" aria-labelledby="lxT">
+                <div class="lx-hd">
+                  <div><div class="lx-t" id="lxT">Adicionar exames</div><div class="lx-s">Resultado de laboratório · fica no prontuário com a data da coleta</div></div>
+                  <button class="lx-x" type="button" id="lxClose" aria-label="Fechar"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#36373A"/></svg></button>
+                </div>
+                <div class="lx-drop" id="lxDrop">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8zm4 18H6V4h7v5h5zM8 13h8v2H8zm0 4h5v2H8z" fill="#0A0A0A"/></svg>
+                  <div class="lx-drop-t"><b>Arraste aqui o PDF do laboratório</b><span>ou</span><button class="pr-labpdf" type="button" id="prLabPdf">Escolher PDF</button></div>
+                  <small>O PDF é lido aqui no navegador: não é enviado nem guardado. PDF escaneado ou foto não tem texto — digite os valores abaixo.</small>
+                  <input type="file" id="prLabFile" accept="application/pdf,.pdf" hidden>
+                </div>
+                <div class="pr-labrev" id="prLabRev" hidden aria-live="polite"></div>
+                <div class="pr-labbody" id="prLabBody">
+                        <label class="pr-labdate"><span>Data da coleta</span><input class="pr-in" type="date" id="prLabDate" required></label>
+                        <div class="pr-labgrp"><div class="pr-labgh">Controle glicêmico</div><div class="pr-vitals">
+                          <label class="pr-vital"><span>HbA1c (%)</span><input class="pr-in" data-l="hba1c" inputmode="decimal" autocomplete="off"></label>
+                        </div></div>
+                        <div class="pr-labgrp"><div class="pr-labgh">Lipídios</div><div class="pr-vitals">
+                          <label class="pr-vital"><span>Colesterol total (mg/dL)</span><input class="pr-in" data-l="ct" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>LDL (mg/dL)</span><input class="pr-in" data-l="ldl" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>HDL (mg/dL)</span><input class="pr-in" data-l="hdl" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>Triglicerídeos (mg/dL)</span><input class="pr-in" data-l="tg" inputmode="decimal" autocomplete="off"></label>
+                        </div></div>
+                        <div class="pr-labgrp"><div class="pr-labgh">Função renal e eletrólitos</div><div class="pr-vitals">
+                          <label class="pr-vital"><span>Creatinina (mg/dL)</span><input class="pr-in" data-l="creat" inputmode="decimal" autocomplete="off"></label>
+                          <div class="pr-vital"><span>TFG (CKD-EPI)</span><div class="pr-imc" id="prTfg" title="Calculada pela creatinina, idade e sexo do cadastro">—</div></div>
+                          <label class="pr-vital"><span>Albuminúria — RAC (mg/g)</span><input class="pr-in" data-l="rac" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>Potássio (mEq/L)</span><input class="pr-in" data-l="pot" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>Sódio (mEq/L)</span><input class="pr-in" data-l="sod" inputmode="decimal" autocomplete="off"></label>
+                        </div></div>
+                        <div class="pr-labgrp"><div class="pr-labgh">Outros</div><div class="pr-vitals">
+                          <label class="pr-vital"><span>Ácido úrico (mg/dL)</span><input class="pr-in" data-l="au" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>TSH (mUI/L)</span><input class="pr-in" data-l="tsh" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>Hemoglobina (g/dL)</span><input class="pr-in" data-l="hb" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>TGP / ALT (U/L)</span><input class="pr-in" data-l="alt" inputmode="decimal" autocomplete="off"></label>
+                        </div></div>
+                      </div>
+                <div class="lx-foot"><span class="lx-st" id="lxSt"></span><button class="pr-ghost" type="button" id="lxCancel">Cancelar</button><button class="pr-save" type="button" id="lxSave" disabled>Salvar exames</button></div>
+              </div>
+            </div>
 
             <!-- Registro de acessos (LGPD) -->
             <section class="pr-panel" data-panel="acessos" id="prAccess" hidden>
@@ -3539,7 +3592,8 @@
       var vitEls = [].slice.call(document.querySelectorAll('#prSoap [data-v]'));
       function num(v) { var x = parseFloat(String(v || '').replace(',', '.')); return isNaN(x) ? null : x; }
       function vitals() { var v = {}; vitEls.forEach(function (e) { if (e.value.trim()) v[e.getAttribute('data-v')] = e.value.trim(); }); return v; }
-      var labEls = [].slice.call(document.querySelectorAll('#prSoap [data-l]')), labDate = $('prLabDate');
+      var labEls = [].slice.call(document.querySelectorAll('#prLabs [data-l]')), labDate = $('prLabDate');   // campos da janela "Adicionar exames"
+      function isLabRec(n) { return !!(n && n.data && n.data.kind === 'labs'); }          // registro só de exames (não é evolução)
       function labs() { var v = {}; labEls.forEach(function (e) { if (e.value.trim()) v[e.getAttribute('data-l')] = e.value.trim(); }); return v; }
       // TFG pela CKD-EPI 2021 (sem raça): creatinina, idade na coleta e sexo do cadastro; só adultos
       function tfgOf(scr, when) {
@@ -3562,9 +3616,7 @@
         return out.length ? 'Exames' + (d ? ' (coleta ' + d.split('-').reverse().join('/') + ')' : '') + ': ' + out.join(' · ') : '';
       }
       function updTfg() { var g = tfgOf(num(labs().creat), labWhen(labDate.value)); $('prTfg').textContent = g ? String(Math.round(g)) : '—'; }
-      function updLabN() { var n = Object.keys(labs()).length; $('prLabN').textContent = n ? n + (n === 1 ? ' preenchido' : ' preenchidos') : ''; }
-      function setLabOpen(on) { $('prLabTg').setAttribute('aria-expanded', on ? 'true' : 'false'); $('prLabBody').hidden = !on; }
-      $('prLabTg').addEventListener('click', function () { setLabOpen($('prLabBody').hidden); });
+
       // ----- leitura do laudo em PDF (pdf.js, aqui no navegador: o arquivo não sai do computador) -----
       // 1) texto do PDF em linhas (itens agrupados pela altura, colunas separadas por espaços largos)
       async function pdfLines(lib, data, onPassword) {
@@ -3667,7 +3719,7 @@
         if (err) { var f = el('div', 'pr-labrev-foot'), b = el('button', 'pr-ghost', 'Fechar'); b.type = 'button'; b.addEventListener('click', closeRev); f.appendChild(b); r.appendChild(f); }
       }
       async function readLabPdf(file) {
-        if (!file || locked()) return;
+        if (!file) return;
         if (!/\.pdf$/i.test(file.name) && file.type !== 'application/pdf') { labMsg('Escolha um arquivo PDF.', true); return; }
         if (file.size > 15 * 1024 * 1024) { labMsg('PDF grande demais (máximo 15 MB).', true); return; }
         labMsg('Lendo o PDF…');
@@ -3693,10 +3745,9 @@
         box.appendChild(el('div', 'pr-labrev-h', 'Valores encontrados no PDF'));
         box.appendChild(el('div', 'pr-labrev-s', fname + ' · Confira com o laudo antes de preencher. O PDF foi lido aqui no navegador e não foi enviado nem guardado.'));
         // cada consulta guarda UMA data de coleta: laudo de outra data não pode se misturar aos exames já preenchidos
-        var curD = labDate.value || '', other = r.date && Object.keys(labs()).length && r.date !== (curD || labWhen(''));
+        var curD = labDate.value || '', other = r.date && curD && Object.keys(labs()).length && r.date !== curD;
         if (other) box.appendChild(el('div', 'pr-labrev-w', 'Atenção: este laudo é de ' + r.date.split('-').reverse().join('/') + ' e o bloco já tem exames de ' +
-          (curD || labWhen('')).split('-').reverse().join('/') + '. Cada consulta guarda uma data de coleta — se preencher, os valores marcados ficam com a data do bloco. ' +
-          'O ideal é registrar este laudo na consulta em que ele foi trazido.'));
+          curD.split('-').reverse().join('/') + '. Cada registro guarda uma data de coleta: salve os exames já digitados primeiro e depois abra este laudo.'));
         function row(label, val, unit, src, cur, apply) {
           var tr = el('tr'), c0 = el('td'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !cur || cur === val; cb.setAttribute('aria-label', label);
           c0.appendChild(cb); tr.appendChild(c0);
@@ -3706,7 +3757,7 @@
           tr.appendChild(c2); tb.appendChild(tr); rows.push({ cb: cb, apply: apply });
         }
         // data já valendo no bloco: a digitada ou, se há exames sem data, a da consulta
-        var shownD = curD || (Object.keys(labs()).length ? labWhen('') : '');
+        var shownD = curD;
         if (r.date) row('Data da coleta', r.date.split('-').reverse().join('/'), '', '', shownD ? shownD.split('-').reverse().join('/') : '', function () { labDate.value = r.date; });
         LABTXT.forEach(function (x) {
           var it = r.v[x[0]]; if (!it) return;
@@ -3720,22 +3771,21 @@
         rows.forEach(function (x) { x.cb.addEventListener('change', cnt); }); cnt();
         no.addEventListener('click', closeRev);
         ok.addEventListener('click', function () {
-          if (locked()) return;
           rows.forEach(function (x) { if (x.cb.checked) x.apply(); });
-          labEls.forEach(checkVital); updTfg(); updLabN(); setLabOpen(true); closeRev(); changed();
+          labEls.forEach(checkVital); updTfg(); closeRev(); lxUpd();
         });
         f.appendChild(no); f.appendChild(ok); box.appendChild(f);
         ok.focus();
       }
-      $('prLabPdf').addEventListener('click', function () { if (!locked()) $('prLabFile').click(); });
+      $('prLabPdf').addEventListener('click', function () { $('prLabFile').click(); });
       $('prLabFile').addEventListener('change', function () { var fl = this.files && this.files[0]; this.value = ''; readLabPdf(fl); });
       (function () {                                     // arrastar o PDF para o bloco de exames
         var zone = $('prLabs');
         function files(e) { return e.dataTransfer && [].indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
-        ['dragenter', 'dragover'].forEach(function (ev) { zone.addEventListener(ev, function (e) { if (locked() || !files(e)) return; e.preventDefault(); zone.classList.add('drag'); }); });
+        ['dragenter', 'dragover'].forEach(function (ev) { zone.addEventListener(ev, function (e) { if (!files(e)) return; e.preventDefault(); zone.classList.add('drag'); }); });
         zone.addEventListener('dragleave', function (e) { if (!zone.contains(e.relatedTarget)) zone.classList.remove('drag'); });
         zone.addEventListener('drop', function (e) {
-          zone.classList.remove('drag'); if (locked() || !files(e)) return;
+          zone.classList.remove('drag'); if (!files(e)) return;
           e.preventDefault(); readLabPdf(e.dataTransfer.files[0]);
         });
       })();
@@ -3756,14 +3806,14 @@
       function compose() {
         if (mode === 'free') return { content: note.value, data: { mode: 'free' } };
         var f = {}; soapEls.forEach(function (e) { f[e.getAttribute('data-f')] = e.value; });
-        var v = vitals(), lb = labs(), ld = labDate.value || '', parts = [];
+        var v = vitals(), old = cur && cur.data && cur.data.labs && cur.data.labs.v ? cur.data.labs : null, parts = [];
         if (f.s.trim()) parts.push('S: ' + f.s.trim());
-        var o = [vitalsLine(v), labsLine(lb, ld), f.o.trim()].filter(Boolean).join('\n'); if (o) parts.push('O: ' + o);
+        var o = [vitalsLine(v), old ? labsLine(old.v, old.date || '') : '', f.o.trim()].filter(Boolean).join('\n'); if (o) parts.push('O: ' + o);
         var a = [f.a.trim(), cids.length ? 'CID-10: ' + cids.map(function (c) { return (c.code + ' ' + c.desc).trim(); }).join('; ') : '']
                   .filter(Boolean).join('\n'); if (a) parts.push('A: ' + a);
         if (f.p.trim()) parts.push('P: ' + f.p.trim());
         return { content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v,
-                 labs: Object.keys(lb).length ? { date: ld || null, v: lb } : undefined, cid: cids.slice() } };
+                 labs: old || undefined, cid: cids.slice() } };
       }
       function snap(x) { return JSON.stringify(x || compose()); }
       function updImc() { var i = imcOf(vitals()); $('prImc').textContent = i ? i.toFixed(1).replace('.', ',') : '—'; }
@@ -3793,16 +3843,13 @@
         note.value = soap ? '' : (n && n.content || '');
         soapEls.forEach(function (e) { e.value = soap ? (d[e.getAttribute('data-f')] || '') : ''; });
         vitEls.forEach(function (e) { e.value = soap && d.vitals ? (d.vitals[e.getAttribute('data-v')] || '') : ''; checkVital(e); });
-        var L = soap && d.labs && d.labs.v ? d.labs : null;
-        labEls.forEach(function (e) { e.value = L ? (L.v[e.getAttribute('data-l')] || '') : ''; checkVital(e); });
-        labDate.value = L && L.date ? L.date : ''; setLabOpen(!!L); closeRev();
-        cids = soap && d.cid ? d.cid.slice() : []; renderCids(); updImc(); updTfg(); updLabN();
+        cids = soap && d.cid ? d.cid.slice() : []; renderCids(); updImc();
       }
       function setMode(m, silent) {
         if (!silent && m !== mode) {
           // texto livre → SOAP: o texto vai para "S" (nada se perde); SOAP → texto livre: vira o texto composto
           if (m === 'soap' && note.value.trim() && !soapText()) { soapEls[0].value = note.value; note.value = ''; }
-          else if (m === 'free') { note.value = compose().content; soapEls.forEach(function (e) { e.value = ''; }); vitEls.concat(labEls).forEach(function (e) { e.value = ''; }); labDate.value = ''; cids = []; renderCids(); updImc(); updTfg(); updLabN(); }
+          else if (m === 'free') { note.value = compose().content; soapEls.forEach(function (e) { e.value = ''; }); vitEls.forEach(function (e) { e.value = ''; }); cids = []; renderCids(); updImc(); }
         }
         mode = m;
         $('prFree').hidden = locked() || m !== 'free'; $('prSoap').hidden = locked() || m !== 'soap';
@@ -3818,8 +3865,7 @@
         });
       });
       function setEditable(on) {
-        [note].concat(soapEls, vitEls, labEls, [labDate, $('prCidIn')]).forEach(function (e) { e.readOnly = !on; });
-        $('prLabPdf').disabled = !on; if (!on) closeRev();
+        [note].concat(soapEls, vitEls, [$('prCidIn')]).forEach(function (e) { e.readOnly = !on; });
       }
       function setStatus(t, err) { status.textContent = t; status.className = 'pr-status' + (err ? ' err' : ''); }
       function updCount(len) {
@@ -3838,8 +3884,74 @@
       note.addEventListener('input', changed);
       soapEls.forEach(function (e) { e.addEventListener('input', changed); e.addEventListener('blur', save); });
       vitEls.forEach(function (e) { e.addEventListener('input', function () { checkVital(e); updImc(); changed(); }); });
-      labEls.forEach(function (e) { e.addEventListener('input', function () { checkVital(e); updTfg(); updLabN(); changed(); }); });
-      labDate.addEventListener('change', function () { updTfg(); changed(); });
+      labEls.forEach(function (e) { e.addEventListener('input', function () { checkVital(e); updTfg(); lxUpd(); }); });
+      labDate.addEventListener('input', function () { updTfg(); lxUpd(); });
+
+      // ===== janela "Adicionar exames": cada laudo vira um registro próprio, com a data da coleta =====
+      // Funciona com ou sem consulta aberta (e depois de a evolução ser finalizada): exame costuma chegar depois.
+      var lxNote = null, lxSnap = '';
+      function lxState() { return JSON.stringify({ d: labDate.value, v: labs() }); }
+      function lxDateOk(d) { var x = d ? parseStart(d) : null; return !!x && !isNaN(x) && x.getFullYear() > 1900 && x <= new Date(); }
+      function lxUpd() {
+        var n = Object.keys(labs()).length, d = labDate.value, st = $('lxSt'), bad = labEls.some(function (e) { return e.classList.contains('bad'); });
+        st.className = 'lx-st';
+        if (bad) { st.textContent = 'Há valor fora do esperado (campo em vermelho): confira.'; st.className = 'lx-st err'; }
+        else if (n && d && !lxDateOk(d)) { st.textContent = 'Data da coleta inválida ou no futuro.'; st.className = 'lx-st err'; }
+        else st.textContent = n ? n + (n === 1 ? ' exame' : ' exames') + (d ? ' · coleta em ' + d.split('-').reverse().join('/') : ' · falta a data da coleta') : '';
+        $('lxSave').disabled = !n || !lxDateOk(d) || bad;
+      }
+      function openLabs(n) {
+        if (!patient || !ctx) return;
+        lxNote = isLabRec(n) ? n : null;
+        var L = lxNote ? lxNote.data.labs : null;
+        labEls.forEach(function (e) { e.value = L && L.v ? (L.v[e.getAttribute('data-l')] || '') : ''; checkVital(e); });
+        labDate.value = L && L.date ? L.date : '';
+        var t = new Date(); labDate.max = t.getFullYear() + '-' + pad(t.getMonth() + 1) + '-' + pad(t.getDate());
+        $('lxT').textContent = lxNote ? 'Editar exames' : 'Adicionar exames';
+        $('lxSave').textContent = lxNote ? 'Salvar alterações' : 'Salvar exames';
+        closeRev(); updTfg(); lxUpd(); lxSnap = lxState();
+        $('lxOv').hidden = false;
+        setTimeout(function () { (lxNote ? labDate : $('prLabPdf')).focus(); }, 0);
+      }
+      function closeLabs(force) {
+        if ($('lxOv').hidden) return;
+        if (!force && lxState() !== lxSnap && !confirm('Descartar os exames digitados?')) return;
+        $('lxOv').hidden = true; closeRev(); lxNote = null;
+      }
+      function toast(t) {
+        var x = el('div', 'pr-toast', t); document.body.appendChild(x);
+        setTimeout(function () { x.classList.add('out'); setTimeout(function () { x.remove(); }, 300); }, 2600);
+      }
+      function saveLabs() {
+        var v = labs(), d = labDate.value, my = ctx;
+        if (!Object.keys(v).length || !lxDateOk(d) || !my) return;
+        var data = { mode: 'soap', kind: 'labs', s: '', o: '', a: '', p: '', vitals: {}, labs: { date: d, v: v }, cid: [] };
+        var content = 'Resultado de exames' + labsLine(v, d).slice('Exames'.length), rec = lxNote;
+        $('lxSave').disabled = true; $('lxSt').className = 'lx-st'; $('lxSt').textContent = 'Salvando…';
+        api('POST', '/prontuario/notes', { patient_id: my.patient_id, patient: my.patient, event_id: null, event_title: null,
+                                            note_id: rec ? rec.id : null, event_start: null, content: content, data: data }).then(function (res) {
+          if (ctx !== my) return;
+          if (res.ok && res.j.ok) {
+            var n = rec || { event_id: null, event_title: null, event_start: null, signed_at: null, addenda: [] };
+            n.id = res.j.id; n.content = content; n.data = data; n.updated_at = new Date().toISOString();
+            if (!rec) notes.unshift(n);
+            closeLabs(true); renderHist(); renderKpis(); toast(rec ? 'Exames atualizados' : 'Exames salvos no prontuário');
+          } else {
+            $('lxSt').className = 'lx-st err';
+            $('lxSt').textContent = res.status === 401 ? 'Entre na sua conta para salvar.' : 'Não foi possível salvar. Tente de novo.';
+            $('lxSave').disabled = false;
+          }
+        }).catch(function () { $('lxSt').className = 'lx-st err'; $('lxSt').textContent = 'Falha de conexão. Tente de novo.'; $('lxSave').disabled = false; });
+      }
+      $('lxSave').addEventListener('click', saveLabs);
+      $('lxCancel').addEventListener('click', function () { closeLabs(); });
+      $('lxClose').addEventListener('click', function () { closeLabs(); });
+      $('lxOv').addEventListener('mousedown', function (e) { if (e.target === this) closeLabs(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('lxOv').hidden) { e.stopPropagation(); closeLabs(); } });
+      document.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-addlab]'); if (!b || !isOpen()) return;
+        e.preventDefault(); openLabs(null);
+      });
       note.addEventListener('blur', save);
       // CID-10: sugestões da tabela oficial (DATASUS) enquanto digita; Enter sem sugestão aceita texto livre
       var cidIn = $('prCidIn'), cidList = $('prCidList'), cidItems = [], cidAct = -1, cidSeq = 0, cidTimer = null;
@@ -4160,7 +4272,7 @@
         item('Próxima consulta', fut ? dayMon(parseStart(fut.start)) : (visits === null ? 'Carregando…' : 'Nenhuma'), fut ? untilTxt(parseStart(fut.start)) : '');
         renderGlance();
       }
-      function lastOther() { return notes.filter(function (n) { return n !== cur && (n.content || '').trim(); })[0] || null; }
+      function lastOther() { return notes.filter(function (n) { return n !== cur && !isLabRec(n) && (n.content || '').trim(); })[0] || null; }
       $('prCopyLast').addEventListener('click', function () {
         var last = lastOther(); if (!last || locked()) return;
         if (compose().content.trim() && !confirm('Substituir o texto atual pelo da última evolução?')) return;
@@ -4233,7 +4345,10 @@
         var s = svgEl('svg', { viewBox: '0 0 11 11', width: 11, height: 11, 'class': 'mk', 'aria-hidden': 'true' });
         s.appendChild(svgEl('path', { d: MK[shape], fill: color })); return s;
       }
-      function noteDate(n) { return n.event_start ? parseStart(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null); }
+      function noteDate(n) {
+        if (isLabRec(n) && n.data.labs.date) return parseStart(n.data.labs.date);
+        return n.event_start ? parseStart(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null);
+      }
       function fmtN(x, dec) { return x.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
       function fmtV(m, p) { return m.k === 'pa' ? fmtN(p.v, 0) + '/' + fmtN(p.v2, 0) : fmtN(p.v, m.dec); }
       function dist(x, r) { return !r || x == null ? 0 : x < r[0] ? r[0] - x : x > r[1] ? x - r[1] : 0; }
@@ -4299,7 +4414,7 @@
       function imcClass(x) {
         return x < 18.5 ? 'baixo peso' : x < 25 ? 'peso adequado' : x < 30 ? 'sobrepeso' : x < 35 ? 'obesidade grau I' : x < 40 ? 'obesidade grau II' : 'obesidade grau III';
       }
-      function withText() { return notes.filter(function (n) { return (n.content || '').trim() || n.signed_at; }); }
+      function withText() { return notes.filter(function (n) { return !isLabRec(n) && ((n.content || '').trim() || n.signed_at); }); }
       function ovVisible() { var p = document.querySelector('.pr-panel[data-panel=geral]'); return isOpen() && p && !p.hidden; }
       // chamado ao carregar, salvar, finalizar e ao chegar a agenda (o gráfico fica acima das abas: sempre à vista)
       function renderKpis() { ov.dirty = true; if (isOpen()) { renderOverview(); renderStrip(); if (!$('csSinais').hidden) renderCs(); } }
@@ -4311,11 +4426,13 @@
         $('ovTop').hidden = !patient;
         $('ovChart').hidden = !any; $('gqTable').hidden = !any; $('gqQuote').hidden = !any;
         var vitA = avail.filter(function (m) { return !m.g; }), labA = avail.filter(function (m) { return m.g; });
-        $('ovTilesWrap').hidden = avail.length < 2 || !vitA.length; $('ovLabWrap').hidden = avail.length < 2 || !labA.length;
+        $('ovTilesWrap').hidden = avail.length < 2 || !vitA.length; $('ovLabWrap').hidden = !patient;
+        $('ovLabEmpty').hidden = !!labA.length; $('ovLabTiles').parentElement.hidden = !labA.length;
         if (!any) { $('ovTiles').innerHTML = ''; $('ovLabTiles').innerHTML = ''; }
         $('ovEmpty').hidden = any || !patient;
         $('ovEmptyGo').textContent = ctx && ctx.event_id ? 'Abrir a consulta' : 'Nova evolução';
         if (any) { renderTiles(S, vitA, 'ovTiles'); renderTiles(S, labA, 'ovLabTiles'); drawChart(); } else $('gqWhy').hidden = true;
+        $('ovLabWrap').classList.toggle('solo', !labA.length);
         renderAcc(S); renderPan(S); renderAnalysis(S); renderStats(S); renderNext(); renderDx(); renderFeed();
       }
 
@@ -4666,6 +4783,7 @@
       // ----- abrir a evolução de um ponto / da lista -----
       function openNote(n) {
         if (!n) return;
+        if (isLabRec(n)) { openLabs(n); return; }
         if (n === cur) { setTab('atual'); $('prEvoBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
         if (!n.signed_at) { switchTo(n.event_id ? { event_id: n.event_id, title: eventTitle(n.event_title), start: n.event_start } : { note_id: n.id }); return; }
         setTab('historico'); $('prHistQ').value = ''; filterHist();
@@ -4837,7 +4955,7 @@
                    { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(reviewQ(S)); } }] });
         }
         // pendências
-        var drafts = notes.filter(function (n) { return !n.signed_at && (n.content || '').trim() && n !== cur; });
+        var drafts = notes.filter(function (n) { return !n.signed_at && !isLabRec(n) && (n.content || '').trim() && n !== cur; });
         if (drafts.length) {
           var dd = drafts.map(function (n) { return { n: n, d: noteDate(n) }; }).filter(function (x) { return x.d; }).sort(function (a, b) { return b.d - a.d; });
           c.todo++;
@@ -5210,9 +5328,14 @@
         METRICS.forEach(function (m) {
           var a = S[m.k]; if (!a.length) return;
           var i = a.length - 1;
-          if (here) { i = -1; for (var j = a.length - 1; j >= 0; j--) if (a[j].n === cur) { i = j; break; } if (i < 0) return; }
+          if (here) {
+            i = -1; for (var j = a.length - 1; j >= 0; j--) if (a[j].n === cur) { i = j; break; }
+            var ref = ctx.start ? parseStart(ctx.start) : new Date();
+            if (i < 0 && m.g && Math.abs(a[a.length - 1].t - ref) <= 60 * 864e5) i = a.length - 1;   // exame recente
+            if (i < 0) return;
+          }
           var p = a[i], prev = a[i - 1], o = !!m.ref && off(m, p), u = ' ' + m.unit;
-          var txt = fmtV(m, p) + u + (here ? ' nesta consulta' : ' em ' + dayMon(p.t));
+          var txt = fmtV(m, p) + u + (here && p.n === cur ? ' nesta consulta' : ' em ' + dayMon(p.t));
           if (prev) txt += dir(prev, p) === 'flat' ? ', igual à medida de ' + dayMon(prev.t) : '; ' + deltaTxt(m, prev, p) + u + ' desde ' + dayMon(prev.t) + ' (' + fmtV(m, prev) + ')';
           if (m.k === 'imc') txt += ', ' + imcClass(p.v);
           items.push({ lead: m.label + (m.ref ? (o ? ' ' + side(m, p) + ' da referência' : ' na referência') : '') + ': ', txt: txt + '.', r: o ? 0 : 1, k: m.k, o: o, p: p, prev: prev, side: o ? side(m, p) : '' });
@@ -5415,17 +5538,20 @@
       // ===== histórico de evoluções (busca, finalizadas com adendos, rascunhos abrem para editar) =====
       function renderHist() {
         var box = $('prHist'); box.innerHTML = '';
-        var list = notes.filter(function (n) { return n !== cur && ((n.content || '').trim() || n.signed_at); });
-        $('prHistCount').textContent = list.length ? list.length + (list.length === 1 ? ' evolução' : ' evoluções') : '';
+        var list = notes.filter(function (n) { return n !== cur && ((n.content || '').trim() || n.signed_at); })
+                        .sort(function (a, b) { return (noteDate(b) || 0) - (noteDate(a) || 0); });   // pela data (da consulta ou da coleta)
+        var nl = list.filter(isLabRec).length, ne = list.length - nl;
+        $('prHistCount').textContent = [ne ? ne + (ne === 1 ? ' evolução' : ' evoluções') : '', nl ? nl + (nl === 1 ? ' resultado de exames' : ' resultados de exames') : ''].filter(Boolean).join(' · ');
         if (!list.length) { box.innerHTML = '<div class="pr-empty">Nenhuma evolução anterior deste paciente.</div>'; return; }
         list.forEach(function (n) {
           var it = el('div', 'pr-item'); it._note = n; it._q = norm([n.content, n.event_title].concat((n.addenda || []).map(function (a) { return a.content; })).join(' '));
           var head = el('div', 'pr-item-head');
-          var d = n.event_start ? parseStart(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null);
+          var d = noteDate(n), lab = isLabRec(n);
           var wh = el('span', 'pr-item-when', d ? fmtDay(d) : '');
           if (n.event_title) wh.appendChild(el('small', null, ' · ' + eventTitle(n.event_title)));
+          if (lab) wh.appendChild(el('small', null, ' · Resultado de exames'));
           head.appendChild(wh);
-          head.appendChild(el('span', 'pr-badge ' + (n.signed_at ? 'ok' : 'draft'), n.signed_at ? 'Finalizada' : 'Rascunho'));
+          head.appendChild(el('span', 'pr-badge ' + (lab ? 'lab' : n.signed_at ? 'ok' : 'draft'), lab ? 'Exames' : n.signed_at ? 'Finalizada' : 'Rascunho'));
           var body = el('div', 'pr-item-body clamp', n.content || '');
           body.title = 'Clique para expandir'; body.style.cursor = 'pointer';
           body.addEventListener('click', function () { body.classList.toggle('clamp'); });
@@ -5435,6 +5561,10 @@
             var ab = el('button', 'pr-ghost', 'Adicionar adendo'); ab.type = 'button';
             ab.addEventListener('click', function () { ab.hidden = true; addendum(n, it, function () { ab.hidden = false; renderAdds(adds, n.addenda); }); });
             acts.appendChild(ab);
+          } else if (lab) {
+            var lb2 = el('button', 'pr-ghost', 'Editar exames'); lb2.type = 'button';
+            lb2.addEventListener('click', function () { openLabs(n); });
+            acts.appendChild(lb2);
           } else {
             var ob = el('button', 'pr-ghost', 'Abrir para editar'); ob.type = 'button';
             ob.addEventListener('click', function () {

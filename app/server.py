@@ -1246,6 +1246,8 @@ def _note_data(v):
     if not isinstance(v, dict):
         return None
     out = {"mode": "soap" if v.get("mode") == "soap" else "free"}
+    if v.get("kind") == "labs":                         # registro só de exames (botão "Adicionar exames")
+        out["kind"] = "labs"
     for k in ("s", "o", "a", "p"):
         if isinstance(v.get(k), str):
             out[k] = v[k][:MAX_NOTE_CHARS]
