@@ -237,3 +237,30 @@ def test_palavras_chave_de_exame_so_com_o_interruptor(monkeypatch):
     monkeypatch.setattr(config, "SCRIBE_KW_EXAME", True)
     assert "crepitações" in s.keywords(pac) and len(s.keywords(pac)) <= 50
     assert "crepitações" not in s.keywords(pac, exame=False)
+
+
+def test_nome_de_remedio_partido_ou_trocado_pela_transcricao():
+    assert s.drug_lookup("suma triptana") == ("junto", "sumatriptana")
+    assert s.drug_lookup("Traz Zodona") == ("parecido", "trazodona")
+    assert s.drug_lookup("omeprasol") == ("parecido", "omeprazol")
+    for ok in ("Losartana potássica 50 mg 12/12h", "losartana + hidroclorotiazida", "sulfametoxazol/trimetoprima",
+               "Puran T4", "insulina NPH", "vitamina D 400 UI", "AAS 100 mg", "Bactrim", "cetoconazol creme"):
+        assert s.drug_lookup(ok) == ("ok", None), ok
+    assert s.drug_lookup("xptozol")[0] in ("desconhecido", "parecido")
+    seg = [{"seq": 1, "at": 0, "text": "Vou começar suma triptana 50 mg na crise e manter a losartana."}]
+    out = {"meds": [{"nome": "suma triptana", "dose": "50 mg", "posologia": "na crise", "acao": "iniciado", "src": [1]},
+                    {"nome": "losartana", "dose": "", "posologia": "", "acao": "mantido", "src": [1]}]}
+    _, fl = s.check(out, seg, "soap", {"medications": "Losartana 50 mg 12/12h"})
+    nome = [f for f in fl if f["tipo"] == "remedio_nome"]
+    assert len(nome) == 1 and nome[0]["nivel"] == "alto" and nome[0]["sugestao"] == "sumatriptana"
+    assert not [f for f in fl if f["tipo"] == "remedio_desconhecido"]
+
+
+def test_todos_os_remedios_dos_casos_estao_na_lista():
+    import re as _re
+    from app import scribe_eval as ev
+    for c in ev.load_cases():
+        g = c.get("gabarito") or {}
+        nomes = [x for m in g.get("remedios") or [] for x in str(m["nome"]).split("|")]
+        nomes += [l for l in (c.get("paciente") or {}).get("medicacoes", "").split("\n") if l.strip()]
+        assert all(s.drug_lookup(n) == ("ok", None) for n in nomes), (c["id"], [n for n in nomes if s.drug_lookup(n)[0] != "ok"])

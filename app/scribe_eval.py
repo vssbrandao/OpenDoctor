@@ -372,7 +372,13 @@ def score(caso, res, flags):
     usados = set()
     for gm in g.get("remedios") or []:
         hit = next((i for i, m in enumerate(res["meds"]) if i not in usados and _is(gm["nome"], m["nome"])), None)
-        if hit is None:
+        if hit is None:          # saiu com o nome errado, mas a conferência apontou o certo: errou com aviso
+            hit = next((i for i, m in enumerate(res["meds"]) if i not in usados and any(
+                f.get("tipo") == "remedio_nome" and f.get("nome") == m["nome"] and _is(gm["nome"], f.get("sugestao") or "")
+                for f in flags)), None)
+            if hit is not None:
+                usados.add(hit); s["rem_aviso"] += 1
+                s["detalhe"].append(f"avisado: {gm['nome']} saiu como {res['meds'][hit]['nome']} (nome errado, com sugestão)"); continue
             s["rem_falta"] += 1; s["detalhe"].append(f"faltou: {gm['nome']}"); continue
         usados.add(hit); m = res["meds"][hit]
         both = f"{m['dose']} {m['posologia']}"          # o modelo às vezes põe o volume na posologia ("8 mL de 12/12h")

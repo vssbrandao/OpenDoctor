@@ -8,6 +8,7 @@ Limites assumidos (estão no RIPD): a máscara não anonimiza — apelidos e nom
 transcritor já recebeu o áudio. O modelo só documenta o que foi dito: não sugere diagnóstico nem conduta.
 """
 import json
+import os
 import re
 import unicodedata
 
@@ -22,7 +23,7 @@ RANGE = {"pa_s": (50, 300), "pa_d": (20, 200), "fc": (20, 250), "fr": (4, 80), "
          "peso": (0.3, 400), "altura": (0.3, 250), "glicemia": (10, 1500)}
 ACOES = ("mantido", "iniciado", "suspenso", "ajustado")
 # gravidade de cada ponto para conferir (a tela ordena por ela)
-NIVEL = {"alergia": "alto", "numero": "alto", "remedio": "alto", "vital": "alto", "privacidade": "alto", "dose_incomum": "alto",
+NIVEL = {"alergia": "alto", "numero": "alto", "remedio": "alto", "remedio_nome": "alto", "remedio_desconhecido": "medio", "vital": "alto", "privacidade": "alto", "dose_incomum": "alto",
          "duvida_grave": "alto", "duvida": "medio",
          "dose_longe": "medio", "vital_longe": "medio", "sem_origem": "medio", "inferido": "medio", "cid": "medio",
          "pendencia": "medio", "cadastro": "info"}
@@ -250,6 +251,67 @@ def _tok_eq(x, y):
         return True
     m = min(len(x), len(y))
     return m >= 6 and abs(len(x) - len(y)) <= 2 and _lev(x, y) <= (2 if m >= 12 else 1)
+
+
+# ===== nome do remédio: a transcrição às vezes parte ou troca ("suma triptana", "Traz Zodona") =====
+_FORMA = {"comprimido", "comprimidos", "cp", "capsula", "capsulas", "creme", "pomada", "gel", "locao", "xarope", "gotas",
+          "gota", "solucao", "suspensao", "spray", "aerossol", "colirio", "injetavel", "ampola", "adesivo", "supositorio",
+          "ovulo", "sache", "mg", "mcg", "ml", "ui", "g", "retard", "xr", "cr", "sr", "lp", "liberacao", "prolongada", "oral",
+          "topico", "topica", "vaginal", "nasal", "bombinha", "cloridrato", "maleato", "besilato", "mesilato", "succinato",
+          "tartarato", "fumarato", "sodico", "sodica", "potassico", "potassica", "dissodico", "monoidratado", "bromidrato",
+          "hiclato", "valerato", "propionato", "dipropionato", "furoato", "xinafoato", "acetato", "de", "do", "da", "dos",
+          "das", "e", "com", "mais", "a", "o"}
+_VAGO = {"acido", "sulfato", "carbonato", "cloreto", "citrato", "hidroxido", "peroxido", "oleo", "sais", "soro", "complexo",
+         "vitamina", "lagrima", "sodio", "calcio", "potassio", "magnesio", "conjugados", "estrogenios", "toxina", "benzoato",
+         "reidratacao", "artificial"}
+_LEX = None
+
+
+def _drug_tokens(s):
+    return [t for t in re.findall(r"[a-z]+[0-9]*", norm(s)) if t not in _FORMA]
+
+
+def _lexicon():
+    """(nomes, palavras específicas, {nome sem espaço: nome para mostrar}) de app/data/remedios.txt."""
+    global _LEX
+    if _LEX is None:
+        names, toks, glued = set(), set(), {}
+        with open(os.path.join(os.path.dirname(__file__), "data", "remedios.txt"), encoding="utf-8") as f:
+            for line in f:
+                line = line.split("#")[0].strip()
+                n = " ".join(_drug_tokens(line))
+                if n:
+                    names.add(n); glued.setdefault(n.replace(" ", ""), line)
+                    toks |= {t for t in n.split() if len(t) >= 4 and t not in _VAGO}
+        _LEX = (names, toks, glued)
+    return _LEX
+
+
+def drug_lookup(nome):
+    """O nome do remédio é conhecido? ("ok", None). Juntando as partes vira um conhecido: ("junto", nome).
+    Uma ou duas letras de diferença de um conhecido: ("parecido", nome). Senão ("desconhecido", None).
+    Combinações ("losartana + hidroclorotiazida") são conferidas parte por parte; vale o pior resultado."""
+    names, toks, glued = _lexicon()
+    rank, worst = {"ok": 0, "desconhecido": 1, "parecido": 2, "junto": 2}, ("ok", None)
+    nome = re.split(r"(?:^|\s)\d", norm(nome))[0]            # o nome vem antes da dose ("losartana 50 mg 12/12h")
+    for part in re.split(r"\s*(?:\+|/|\bcom\b|\be\b)\s*", nome):
+        t = _drug_tokens(part)
+        if not t or " ".join(t) in names or any(x in toks for x in t):
+            continue
+        got = next((("junto", glued[t[i] + t[i + 1]]) for i in range(len(t) - 1) if t[i] + t[i + 1] in glued), None)
+        if not got:
+            best = None
+            for w in ["".join(t)] + [x for x in t if len(x) >= 5]:
+                lim = 1 if len(w) < 9 else 2
+                for g in glued:
+                    if g[:1] == w[:1] and abs(len(g) - len(w)) <= lim:
+                        d = _lev(w, g)
+                        if d <= lim and (best is None or d < best[0]):
+                            best = (d, glued[g])
+            got = ("parecido", best[1]) if best else ("desconhecido", None)
+        if rank[got[0]] > rank[worst[0]]:
+            worst = got
+    return worst
 
 
 def same_drug(a, b):
@@ -661,6 +723,13 @@ def check(out, segments, mode, patient=None):
         for x in numbers(item["dose"] + " " + item["posologia"]):
             if any(_NUM.match(d) and abs(_f(d) - x) < 1e-6 for d in dv):
                 flag("duvida_grave", "p", f"{nome}: {_fmt(x)} ouvido com dúvida", ids, valor=x)
+        if not same_drug(nome, cad_meds):
+            st, sug = drug_lookup(nome)
+            if st in ("junto", "parecido"):
+                flag("remedio_nome", "p", f"{nome}: nome de remédio não reconhecido. Seria {sug}? Confira na transcrição.",
+                     ids, nome=nome, sugestao=sug)
+            elif st == "desconhecido":
+                flag("remedio_desconhecido", "p", f"{nome}: remédio fora da lista conhecida. Confira o nome.", ids, nome=nome)
         if not pos and not same_drug(nome, cad_meds):
             flag("remedio", "p", f"{nome}: não aparece na fala nem no cadastro", ids)
         if acao != "suspenso":
