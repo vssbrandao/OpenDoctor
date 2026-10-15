@@ -4406,10 +4406,10 @@
         var p = document.querySelector('.pr-panel[data-panel=atual]'); if (!p || p.hidden) return;
         var t = tmGet(); t.a++; tmSet(t);
       }, 1000);
-      function tmFinal() {
-        if (!ctx || !ctx._tk) return null;
-        var t = tmGet(), out = { active_s: t.a, wall_s: t.f ? Math.round((Date.now() - t.f) / 1000) : 0, edits: t.e }, sc = rrMetrics();
-        if (sc) out.scribe = sc;
+      function tmFinal() {                                 // os números da gravação vão mesmo sem o tempo de digitação (outra aba, nada editado)
+        var sc = rrMetrics(), out = null;
+        if (ctx && ctx._tk) { var t = tmGet(); out = { active_s: t.a, wall_s: t.f ? Math.round((Date.now() - t.f) / 1000) : 0, edits: t.e }; }
+        if (sc) (out = out || {}).scribe = sc;
         return out;
       }
 
@@ -5381,7 +5381,7 @@
         var my = r, buf = '', last = null;
         fetch('/prontuario/scribe', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ patient_id: r.pid, event_id: r.cx.event_id || null, note_id: r.cx.note_id || null,
-                                 rec_id: r.recId, mode: mode }) })
+                                 rec_id: r.recId, mode: mode, espera_s: r.endAt ? Math.round((Date.now() - r.endAt) / 1000) : 0 }) })
           .then(function (resp) {
             if (!resp.ok || !resp.body) return resp.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('http ' + resp.status)); });
             var rd = resp.body.getReader(), dec = new TextDecoder();
@@ -5424,6 +5424,7 @@
         return Object.assign({}, r.meta, { conferidos: idx.length, conf_idx: idx });
       }
       function rrWords(t) { return norm(t).match(/[a-z0-9]+/g) || []; }
+      function rrGenWords(res) { var f = (res && res.fields) || {}; return rrWords(SOAPK.map(function (k) { return f[k] || ''; }).concat([f.livre || '']).join(' ')); }
       function rrKept(r) {                     // % das palavras geradas que ficaram, na mesma ordem, no texto final (LCS)
         var a = r.genWords || [], b = rrWords(compose().content), prev = [], i, j;
         if (!a.length) return 0;
@@ -5456,7 +5457,7 @@
         if (r.applied) { if (r.undo && rrTextSnap() === r.appliedSnap) fillEditor(r.undo); else { r.applied = false; rrRender(r); return; } }
         var x = compose(); r.undo = { content: x.content, data: x.data };
         var f = r.result.fields || {}, isSoap = SOAPK.some(function (k) { return f[k]; });
-        r.genWords = rrWords(SOAPK.map(function (k) { return f[k] || ''; }).concat([f.livre || '']).join(' '));
+        r.genWords = rrGenWords(r.result);
         function put(t, txt) { if (!txt) return false; t.value = t.value.trim() ? t.value.replace(/\s+$/, '') + '\n\n' + txt : txt; return true; }
         if (mode === 'soap') {
           var parts = isSoap ? f : { s: f.livre }, extra = [], marks = {};
@@ -5549,6 +5550,8 @@
                 my.applied = !!(nd && nd.generated_at === my.meta.generated_at); my.undo = null; my.appliedSnap = null;
                 my.checked = {}; ((my.applied && nd.conf_idx) || []).forEach(function (i) { my.checked[i] = true; });
                 my.doneAt = Date.parse(my.meta.generated_at) || Date.now();
+                my.genS = my.meta.gen_s || 0; my.endAt = my.doneAt - my.genS * 1000;     // números da revisão (vão ao finalizar)
+                if (my.applied) my.genWords = rrGenWords(my.result);
                 my.st = 'done';
               } else my.st = last && last.status === 'gerada' ? 'saved' : 'interrupted';
               my.stoppedAt = last && last.updated_at;

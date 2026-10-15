@@ -1289,6 +1289,7 @@ def _note_data(v):
                          "pontos": {k: pts[k] for k in ("alto", "medio", "info") if isinstance(pts.get(k), int) and 0 <= pts[k] < 1000},
                          "segundos": sc["segundos"] if isinstance(sc.get("segundos"), int) and 0 <= sc["segundos"] <= 6 * 3600 else 0,
                          "conferidos": sc["conferidos"] if isinstance(sc.get("conferidos"), int) and 0 <= sc["conferidos"] < 1000 else 0,
+                         "gen_s": sc["gen_s"] if isinstance(sc.get("gen_s"), int) and not isinstance(sc["gen_s"], bool) and 0 <= sc["gen_s"] <= 3600 else 0,
                          "conf_idx": sorted({i for i in (sc.get("conf_idx") or [])[:300]
                                              if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < 1000})}
     return out if len(json.dumps(out)) <= MAX_DATA_CHARS else None
@@ -1778,6 +1779,7 @@ async def prontuario_scribe(request: Request):
     alergias, sinais vitais e CID. Responde em linhas JSON (progresso, depois o resultado): a geração leva
     uns 10–20 s e a linha de progresso mantém a conexão viva (o Cloudflare corta resposta parada em 100 s).
     Vai ao modelo só texto mascarado (nome, CPF, telefone, e-mail), o cadastro e o perfil de escrita."""
+    t0 = time.monotonic()
     u, err = _auth_or_401(request)
     if err:
         return err
@@ -1785,6 +1787,8 @@ async def prontuario_scribe(request: Request):
     if gate:
         return gate
     b = await _json(request)
+    # segundos entre o "Encerrar" e este pedido (trechos ainda subindo): entram no tempo até a evolução pronta (critério 5)
+    espera = b["espera_s"] if isinstance(b.get("espera_s"), int) and not isinstance(b["espera_s"], bool) and 0 <= b["espera_s"] <= 3600 else 0
     p = await run_in_threadpool(_rec_patient, u, b)
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
@@ -1830,7 +1834,8 @@ async def prontuario_scribe(request: Request):
         meta = {"rec_ids": [r["rec_id"] for r in recs], "prompt": scribe.PROMPT_VERSION, "model": config.OPENAI_SCRIBE_MODEL,
                 "segundos": int(sum(r["seconds"] or 0 for r in recs)),
                 "consent_at": recs[0]["consent_at"], "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")}}
+                "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")},
+                "gen_s": min(3600, espera + round(time.monotonic() - t0))}   # guardado: volta ao recarregar a página
         result = dict(res, fields=fields)
 
         def save():

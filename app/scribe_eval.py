@@ -605,7 +605,7 @@ def main():
     ap.add_argument("--calibrar-duvida", action="store_true",
                     help="transcreve guardando a confiança por palavra e mede o limite de dúvida (só transcrição)")
     ap.add_argument("--duvida", type=float, default=None,
-                    help="limite de dúvida (usa as transcrições com confiança por palavra; exige --kw app)")
+                    help="limite de dúvida (usa as transcrições com confiança por palavra do --calibrar-duvida com o mesmo --kw)")
     ap.add_argument("--kw", choices=("producao", "exame", "cadastro", "app"), default="producao",
                     help="palavras-chave da transcrição: as da produção (padrão), + exame físico, ou só do cadastro (antigas)")
     ap.add_argument("--cortes", choices=("navegador", "antigo"), default="navegador",
@@ -615,8 +615,6 @@ def main():
     FONTE["kw"] = a.kw
     FONTE["duvida"] = a.duvida
     FONTE["cortes"] = a.cortes
-    if a.duvida and a.kw not in ("app", "exame"):
-        sys.exit("--duvida exige --kw exame")
     if a.comparar:
         return compare()
     cases = load_cases([x.strip() for x in a.casos.split(",") if x.strip()])

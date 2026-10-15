@@ -254,11 +254,13 @@ def test_evolucao_guarda_so_o_rastreio_da_gravacao():
     d = server._note_data({"mode": "soap", "s": "x", "scribe": {
         "rec_ids": [REC, "nao-e-uuid"], "prompt": "2026-10-15.5", "model": "gpt-5.4", "consent_at": "2026-10-15T10:00:00Z",
         "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3, "info": "x"}, "conferidos": 2, "segundos": 912,
-        "conf_idx": [3, 0, 3, -1, True, "2"],
+        "conf_idx": [3, 0, 3, -1, True, "2"], "gen_s": 14,
         "texto": "transcrição inteira não pode entrar aqui"}})
     assert d["scribe"] == {"rec_ids": [REC], "prompt": "2026-10-15.5", "model": "gpt-5.4", "consent_at": "2026-10-15T10:00:00Z",
                            "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3}, "segundos": 912, "conferidos": 2,
-                           "conf_idx": [0, 3]}
+                           "conf_idx": [0, 3], "gen_s": 14}
+    assert server._note_data({"mode": "free", "scribe": {"gen_s": True}})["scribe"]["gen_s"] == 0
+    assert server._note_data({"mode": "free", "scribe": {"gen_s": 99999}})["scribe"]["gen_s"] == 0
     assert "scribe" not in server._note_data({"mode": "free"})
 
 
@@ -272,9 +274,10 @@ def test_geracao_fica_guardada_para_revisar_depois(fake, monkeypatch):
     c = TestClient(server.app)
     _record(fake, c)
     monkeypatch.setattr(scribe, "ask_model", lambda msgs, model=None: json.dumps(SAIDA))
-    out = _lines(c.post("/prontuario/scribe", json={"patient_id": 7, "event_id": "ev9", "rec_id": REC, "mode": "soap"}))[-1]
+    out = _lines(c.post("/prontuario/scribe", json={"patient_id": 7, "event_id": "ev9", "rec_id": REC, "mode": "soap", "espera_s": 4}))[-1]
     st = c.post("/prontuario/recordings/state", json={"patient_id": 7, "event_id": "ev9"}).json()["recordings"][0]
     assert st["status"] == "gerada" and st["scribe"]["generated_at"] == out["meta"]["generated_at"]
+    assert st["scribe"]["gen_s"] == out["meta"]["gen_s"] >= 4          # tempo até a evolução pronta volta ao recarregar
     assert st["scribe"]["saida"]["flags"] == out["flags"] and st["scribe"]["saida"]["result"]["fields"] == out["result"]["fields"]
     assert st["scribe"]["saida"]["segs"] == out["segs"]
 

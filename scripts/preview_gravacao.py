@@ -97,10 +97,11 @@ async def _save(request: Request):
 
 
 @mock.post("/prontuario/notes/{nid}/finalize")
-async def _finalize(nid: int):
+async def _finalize(nid: int, request: Request):
     at = dt.datetime.now().isoformat()
     if nid in NOTES:
         NOTES[nid]["signed_at"] = at
+        NOTES[nid]["timing"] = server._timing((await request.json()).get("timing"))
     return {"ok": True, "signed_at": at}
 
 
@@ -314,7 +315,7 @@ def _estado():
                                 "trechos": [{k: s.get(k) for k in ("seq", "at", "dur", "samples")} for (q, _), s in sorted(SEG.items()) if q == rid]}
                           for rid, r in REC.items()},
             "evolucoes": {i: {"pid": n["pid"], "event_id": n["event_id"], "content": n["content"],
-                              "scribe": (n["data"] or {}).get("scribe")} for i, n in NOTES.items()}}
+                              "scribe": (n["data"] or {}).get("scribe"), "timing": n.get("timing")} for i, n in NOTES.items()}}
 
 
 @mock.get("/_preview/reset")

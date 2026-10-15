@@ -163,6 +163,17 @@ const cenarios = [
     if (!n.scribe) throw new Error('o selo sumiu depois de gravar mais');
     return `${depois.pontos} pontos mantidos, selo mantido, texto uma vez só`;
   }],
+  ['os números da revisão chegam ao finalizar mesmo depois de recarregar', async () => {
+    await grava('/_preview/pr?pid=9003&ev=evH', 18); await encerra(); await sleep(2500);
+    await send('Page.reload', { ignoreCache: true });
+    await ate(`!!document.querySelector('#prRec .rc-sum')`, 20000, 'tela depois de recarregar'); await sleep(1500);
+    await clica('#prFinalize'); await sleep(600); await clica('#rcFinal button', 'Finalizar mesmo assim');
+    const nota = () => estado().then((e) => Object.values(e.evolucoes).find((n) => n.event_id === 'evH'));
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evH' && n.timing))`, 15000, 'finalizar');
+    const m = ((await nota()).timing || {}).scribe || {};
+    if (!(m.gen_s > 0 && m.fim_s >= m.review_s + m.gen_s - 1 && m.mantido_pct > 90 && m.rec_s > 0)) throw new Error('métricas perdidas ao recarregar: ' + JSON.stringify(m));
+    return `geração ${m.gen_s} s, do Encerrar ao Finalizar ${m.fim_s} s, mantido ${m.mantido_pct}%`;
+  }],
   ['Desfazer pergunta antes de apagar o que o médico escreveu depois', async () => {
     await abre('/_preview/pr?pid=9003&ev=evD');
     await ev(`(() => { const t = document.getElementById('prNote'); t.value = 'Texto da médica antes.'; t.dispatchEvent(new Event('input', { bubbles: true })); })()`);
