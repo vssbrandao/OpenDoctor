@@ -53,3 +53,5 @@ gabarito:
   - 7 dias|sete dias
   proibidos: []
   avisos: []
+  remedios_proibidos:
+  - diclofenaco

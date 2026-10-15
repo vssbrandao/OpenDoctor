@@ -13,6 +13,7 @@ Rodar:
 Áudio, gravações encenadas e cache ficam fora do git (.gitignore): gravação encenada tem a voz de alguém.
 """
 import argparse
+import concurrent.futures
 import datetime
 import hashlib
 import io
@@ -55,13 +56,14 @@ def synth(caso):
     rng = np.random.default_rng(int(hashlib.sha1(caso["id"].encode()).hexdigest()[:8], 16))
     vozes = caso.get("vozes") or {}
     longe = set(caso.get("longe_do_microfone") or ["p", "a"])
+    pausas = {int(k): float(v) for k, v in (caso.get("pausas") or {}).items()}     # {nº da fala: segundos de silêncio depois}
     parts = [np.zeros(int(SR * 0.6), np.float32)]
-    for quem, fala in caso["falas"]:
+    for idx, (quem, fala) in enumerate(caso["falas"], 1):
         v = vozes.get(quem) or {"m": "Luciana", "p": "Flo", "a": "Reed"}.get(quem, "Luciana")
         x = _say(fala, v, int(caso.get("ritmo", 180)))
         if quem in longe:
             x = x * 0.55
-        parts += [x, np.zeros(int(SR * rng.uniform(0.3, 1.1)), np.float32)]
+        parts += [x, np.zeros(int(SR * (pausas.get(idx) or rng.uniform(0.3, 1.1))), np.float32)]
     a = np.concatenate(parts)
     lvl = RUIDO.get(caso.get("ruido", "leve"), 0.004)
     if lvl:
@@ -102,6 +104,27 @@ def _write_wav(path_or_buf, a):
 
 def wav_bytes(a):
     b = io.BytesIO(); _write_wav(b, a); return b.getvalue()
+
+
+def _frames(a, f=int(SR * 0.02)):
+    return np.sqrt(np.mean(a[: len(a) // f * f].reshape(-1, f).astype(np.float64) ** 2, axis=1)) if len(a) >= f else np.zeros(0)
+
+
+def noise_floor(a):
+    """Piso de ruído da gravação INTEIRA (no navegador: média móvel desde o começo)."""
+    rms = _frames(a)
+    return float(np.percentile(rms, 10)) if len(rms) else 0.0
+
+
+def speech_ratio(a, floor=None):
+    """Fração de quadros de 20 ms com voz. Trecho só de silêncio não vai para a transcrição: é aí que o modelo
+    inventa "Legendas pela comunidade Amara.org". O piso vem da gravação inteira (o piso do próprio trecho
+    faria fala contínua parecer silêncio) e o limiar tem teto: na dúvida, o trecho é transcrito."""
+    rms = _frames(a)
+    if not len(rms):
+        return 0.0
+    floor = float(np.percentile(rms, 10)) if floor is None else floor
+    return float(np.mean(rms > min(max(0.01, floor * 3), 0.03)))
 
 
 # ===== cortes (o mesmo critério do navegador) =====
@@ -146,7 +169,9 @@ def _words(t):
 
 
 def wer(ref, hyp):
-    r, h = _words(ref), _words(hyp)
+    """Erro de palavra, com os números por extenso trocados por algarismos dos dois lados
+    ("cento e vinte e oito" = "128")."""
+    r, h = scribe.digitize(ref).split(), scribe.digitize(hyp).split()
     d = list(range(len(h) + 1))
     for i in range(1, len(r) + 1):
         prev, d[0] = d[0], i
@@ -164,16 +189,20 @@ def _has(alts, text):
     return any(scribe.norm(a) in text for a in alts.split("|"))
 
 
+def _is(alts, nome):
+    return any(scribe.same_drug(x, nome) or scribe.same_drug(nome, x) for x in str(alts).split("|"))
+
+
 def score(caso, res, flags):
     g = caso.get("gabarito") or {}
+    script = " ".join(f for _, f in caso["falas"])
+    script_nums = scribe.numbers(script)
     full = scribe.norm(" ".join(scribe.render_text(res).values()) + " " +
                        " ".join(f"{m['nome']} {m['dose']} {m['posologia']}" for m in res["meds"]))
     s = {"rem_certo": 0, "rem_aviso": 0, "rem_sem_aviso": 0, "rem_falta": 0, "rem_inventado": 0, "detalhe": []}
     usados = set()
     for gm in g.get("remedios") or []:
-        alts = str(gm["nome"]).split("|")                 # "vitamina d|colecalciferol": qualquer um
-        hit = next((i for i, m in enumerate(res["meds"]) if i not in usados
-                    and any(scribe._near(x, scribe.norm(m["nome"])) for x in alts)), None)
+        hit = next((i for i, m in enumerate(res["meds"]) if i not in usados and _is(gm["nome"], m["nome"])), None)
         if hit is None:
             s["rem_falta"] += 1; s["detalhe"].append(f"faltou: {gm['nome']}"); continue
         usados.add(hit); m = res["meds"][hit]
@@ -189,16 +218,28 @@ def score(caso, res, flags):
         s["rem_aviso" if avisou else "rem_sem_aviso"] += 1
         s["detalhe"].append(f"{'avisado' if avisou else 'SEM AVISO'}: {gm['nome']} esperado {gm.get('dose','')} {gm.get('posologia','')} "
                             f"{gm.get('acao','')} / saiu {m['dose']} {m['posologia']} {m['acao']}")
-    cad = scribe.norm((caso.get("paciente") or {}).get("medicacoes", ""))
-    for i, m in enumerate(res["meds"]):        # citado só para recusar/explicar (sem ação) não conta como inventado
-        if i not in usados and m["acao"] in ("iniciado", "mantido", "ajustado") and not scribe._near(m["nome"], cad):
-            s["rem_inventado"] += 1; s["detalhe"].append(f"inventado: {m['nome']}")
-    gv = {k: float(str(v).replace(",", ".")) for k, v in (g.get("sinais") or {}).items()}
+    cad = (caso.get("paciente") or {}).get("medicacoes", "")
+    s["rem_extra"] = 0
+    for i, m in enumerate(res["meds"]):        # citado só para recusar/explicar (sem ação) não conta
+        if i in usados or m["acao"] not in ("iniciado", "mantido", "ajustado"):
+            continue
+        if scribe.same_drug(m["nome"], script) or scribe.same_drug(m["nome"], cad):
+            s["rem_extra"] += 1; s["detalhe"].append(f"a mais (foi citado, não está no gabarito): {m['nome']} {m['acao']}")
+        else:
+            s["rem_inventado"] += 1; s["detalhe"].append(f"INVENTADO: {m['nome']}")
+    rp = [m["nome"] for m in res["meds"] if m["acao"] in ("iniciado", "mantido", "ajustado")
+          and any(_is(x, m["nome"]) for x in g.get("remedios_proibidos") or [])]
+    s["detalhe"] += [f"REMÉDIO PROIBIDO com ação: {x}" for x in rp]
+    alt = lambda v: [float(x.replace(",", ".")) for x in str(v).split("|")]          # "93|97": qualquer um
+    gv = {k: alt(v) for k, v in (g.get("sinais") or {}).items()}
     ov = {k: float(v.replace(",", ".")) for k, v in res["vitals"].items()}
-    s["vit_certo"] = sum(1 for k, v in gv.items() if k in ov and abs(ov[k] - v) < 1e-6)
+    ok_v = lambda k: k in ov and any(abs(ov[k] - x) < 1e-6 for x in gv[k])
+    s["vit_certo"] = sum(1 for k in gv if ok_v(k))
     s["vit_total"] = len(gv)
-    s["vit_inventado"] = sum(1 for k in ov if k not in gv)
-    s["detalhe"] += [f"sinal {k}: esperado {gv[k]} / saiu {ov.get(k)}" for k in gv if not (k in ov and abs(ov[k] - gv[k]) < 1e-6)]
+    inv = [k for k in ov if k not in gv and not scribe._has_number(ov[k], script_nums)]
+    s["vit_inventado"] = len(inv)
+    s["detalhe"] += [f"sinal {k}: esperado {'|'.join(map(str, gv[k]))} / saiu {ov.get(k)}" for k in gv if not ok_v(k)]
+    s["detalhe"] += [f"INVENTADO sinal {k} = {ov[k]}" for k in inv]
     gc = [[x.strip().upper() for x in str(c).split("|")] for c in g.get("cid") or []]     # "Z34|Z35": qualquer um
     oc = [c["code"].replace(".", "") for c in res["cid"]]
     hit = lambda o, alts: any(o.startswith(x.replace(".", "")) or x.replace(".", "").startswith(o) for x in alts)
@@ -210,7 +251,7 @@ def score(caso, res, flags):
     s["fatos_ok"], s["fatos_total"] = sum(ach), len(fatos)
     s["detalhe"] += [f"fato ausente: {f}" for f, a in zip(fatos, ach) if not a]
     proib = [p for p in g.get("proibidos") or [] if _has(p, full)]
-    s["proibidos"] = len(proib)
+    s["proibidos"] = len(proib) + len(rp)
     s["detalhe"] += [f"INVENTADO (proibido): {p}" for p in proib]
     tipos = {f["tipo"] for f in flags}
     falt = [a for a in g.get("avisos") or [] if a not in tipos]
@@ -237,16 +278,21 @@ def run_case(caso, stt_model, llm_model):
     kw += [x.strip() for x in re.split(r"[\n,;]+", pac.get("problemas", "")) if x.strip()]
     segs, prev, t0 = [], "", time.time()
     akey = hashlib.sha1(a.tobytes()).hexdigest()[:16]
+    silent, floor = 0, noise_floor(a)
     for i, (s0, s1) in enumerate(cuts(a), 1):
+        if speech_ratio(a[s0:s1], floor) < 0.02:       # só silêncio: não transcreve (nem cobra)
+            silent += 1; segs.append({"seq": i, "at": s0 / SR, "text": ""}); continue
         r, _ = _cache("stt", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}",
                       lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
-        segs.append({"seq": i, "at": s0 / SR, "text": r["text"]}); prev = r["text"]
+        segs.append({"seq": i, "at": s0 / SR, "text": r["text"]}); prev = r["text"] or prev
     t_stt = time.time() - t0
-    masked = [dict(x, text=scribe.mask(x["text"], pac.get("nome", ""))) for x in segs]
-    patient = {"problems": pac.get("problemas", ""), "medications": pac.get("medicacoes", ""), "allergies": pac.get("alergias", "")}
+    nome = pac.get("nome", "")
+    masked = [dict(x, text=scribe.mask(x["text"], nome)) for x in segs]
+    patient = {"problems": pac.get("problemas", ""), "medications": pac.get("medicacoes", ""), "allergies": pac.get("alergias", ""),
+               "age": pac.get("idade", ""), "sex": pac.get("sexo", "")}
     mode = caso.get("modo", "soap")
     t1 = time.time()
-    msgs = scribe.build_messages(masked, mode, patient, caso.get("perfil", ""), "")
+    msgs = scribe.build_messages(segs, mode, patient, caso.get("perfil", ""), "", nome)
     raw, cached = _cache("gen", f"{caso['id']}|{akey}|{stt_model}|{llm_model}|{scribe.PROMPT_VERSION}|{json.dumps(msgs, ensure_ascii=False)}",
                          lambda: scribe.llm.chat(msgs, temperature=0, max_tokens=6000, model=llm_model, json_mode=True,
                                                  reasoning=config.REASONING_EFFORT))
@@ -254,9 +300,11 @@ def run_case(caso, stt_model, llm_model):
     res, flags = scribe.check(json.loads(raw), masked, mode, patient)
     ref = " ".join(f for _, f in caso["falas"])
     sc = score(caso, res, flags)
-    leak = scribe.norm(pac.get("nome", "")).split()[:1]
-    sc["nome_vazou"] = bool(leak) and any(leak[0] in scribe.norm(m["content"]) for m in msgs[1:])
-    return {"id": caso["id"], "origem": origem, "segundos": round(len(a) / SR, 1), "trechos": len(segs),
+    sent = scribe.norm(msgs[1]["content"])
+    first = [t for t in scribe.norm(nome).split() if len(t) >= 3][:1]
+    sc["nome_vazou"] = bool(first) and re.search(r"\b" + re.escape(first[0]) + r"\b", sent) is not None
+    sc["dado_vazou"] = bool(scribe._CPF.search(msgs[1]["content"]) or scribe._FONE.search(msgs[1]["content"]))
+    return {"id": caso["id"], "origem": origem, "segundos": round(len(a) / SR, 1), "trechos": len(segs), "silencio": silent,
             "wer": round(wer(ref, " ".join(x["text"] for x in segs)), 3), "t_stt": round(t_stt, 1), "t_gen": t_gen,
             "in_chars": sum(len(m["content"]) for m in msgs), "out_chars": len(raw), **sc,
             "texto": scribe.render_text(res), "pontos": flags}
@@ -276,6 +324,7 @@ def main():
     ap.add_argument("--modelo", default=config.OPENAI_SCRIBE_MODEL)
     ap.add_argument("--casos", default="")
     ap.add_argument("--estimar", action="store_true", help="só gera o áudio e estima o custo (não chama a OpenAI)")
+    ap.add_argument("--paralelo", type=int, default=4, help="casos ao mesmo tempo")
     a = ap.parse_args()
     cases = load_cases([x.strip() for x in a.casos.split(",") if x.strip()])
     sec, su, lu = estimate(cases, a.stt, a.modelo)
@@ -284,28 +333,55 @@ def main():
         return
     if not config.OPENAI_API_KEY:
         sys.exit("OPENAI_API_KEY ausente")
-    rows = []
-    for c in cases:
-        r = run_case(c, a.stt, a.modelo); rows.append(r)
-        print(f"{r['id']:34s} {r['origem']:9s} WER {r['wer']:.2f} · remédios {r['rem_certo']}✓ {r['rem_aviso']}⚠ "
-              f"{r['rem_sem_aviso']}✗ falta {r['rem_falta']} inv {r['rem_inventado']} · sinais {r['vit_certo']}/{r['vit_total']} · "
-              f"fatos {r['fatos_ok']}/{r['fatos_total']} · proibidos {r['proibidos']}")
+    for c in cases:                  # áudio sintético antes (o "say" do Mac não gosta de rodar em paralelo)
+        audio_of(c)
+    rows, erros = [], []
+
+    def one(c):
+        try:
+            return run_case(c, a.stt, a.modelo)
+        except Exception as e:  # noqa: BLE001 — um caso com erro não derruba a rodada
+            erros.append(f"{c['id']}: {str(e)[:200]}")
+            return None
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, a.paralelo)) as ex:
+        for r in ex.map(one, cases):
+            if not r:
+                continue
+            rows.append(r)
+            print(f"{r['id']:34s} {r['origem']:9s} WER {r['wer']:.2f} · remédios {r['rem_certo']}✓ {r['rem_aviso']}⚠ "
+                  f"{r['rem_sem_aviso']}✗ falta {r['rem_falta']} inv {r['rem_inventado']} · sinais {r['vit_certo']}/{r['vit_total']} · "
+                  f"fatos {r['fatos_ok']}/{r['fatos_total']} · proibidos {r['proibidos']} · avisos faltando {r['avisos_faltando']}")
+    if not rows:
+        sys.exit("nenhum caso rodou: " + "; ".join(erros))
     tot = lambda k: sum(r[k] for r in rows)
     gens = [r["t_gen"] for r in rows if r["t_gen"] is not None]
     crit = {"2_dose_errada_sem_aviso": tot("rem_sem_aviso") == 0,
             "3_nada_inventado": tot("rem_inventado") + tot("proibidos") + tot("vit_inventado") == 0,
             "4_cobertura_95": tot("fatos_ok") >= 0.95 * max(1, tot("fatos_total")),
-            "nome_nao_vazou": not any(r["nome_vazou"] for r in rows)}
+            "avisos_esperados": tot("avisos_faltando") == 0,
+            "nome_e_documentos_nao_vazaram": not any(r["nome_vazou"] or r["dado_vazou"] for r in rows),
+            "todos_os_casos_rodaram": not erros}
     resumo = {"data": datetime.date.today().isoformat(), "stt": a.stt, "modelo": a.modelo, "prompt": scribe.PROMPT_VERSION,
               "casos": len(rows), "wer_medio": round(statistics.mean(r["wer"] for r in rows), 3),
               "remedios": {k: tot(k) for k in ("rem_certo", "rem_aviso", "rem_sem_aviso", "rem_falta", "rem_inventado")},
               "sinais": f"{tot('vit_certo')}/{tot('vit_total')}", "cid": f"{tot('cid_certo')}/{tot('cid_total')}",
               "fatos": f"{tot('fatos_ok')}/{tot('fatos_total')}", "proibidos": tot("proibidos"),
-              "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit}
+              "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit, "erros": erros}
     os.makedirs(REL, exist_ok=True)
     name = f"{resumo['data']}-{a.stt}-{a.modelo}"
     json.dump({"resumo": resumo, "casos": rows}, open(os.path.join(REL, name + ".json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
+    md = [f"# Avaliação da gravação — {resumo['data']} · {a.stt} + {a.modelo} · prompt {scribe.PROMPT_VERSION}", "",
+          "| Critério | Passou? |", "|---|---|"] + [f"| {k} | {'sim' if v else '**não**'} |" for k, v in crit.items()]
+    md += ["", f"WER médio {resumo['wer_medio']} · remédios {resumo['remedios']} · sinais {resumo['sinais']} · CID {resumo['cid']} · "
+               f"fatos {resumo['fatos']} · proibidos {resumo['proibidos']}", ""]
+    for r in sorted(rows, key=lambda r: r["id"]):
+        md += [f"## {r['id']} ({r['origem']}, {r['segundos']} s, WER {r['wer']})", ""]
+        md += [f"- {d}" for d in r["detalhe"]] or ["- sem divergências"]
+        md += [f"- ponto para conferir [{p['nivel']}] {p['tipo']}: {p['texto']}" for p in r["pontos"]]
+        md += ["", "```", *[f"{k.upper()}: {v}" for k, v in r["texto"].items()], "```", ""]
+    md += [f"- ERRO {e}" for e in erros]
+    open(os.path.join(REL, name + ".md"), "w", encoding="utf-8").write("\n".join(md))
     print(json.dumps(resumo, ensure_ascii=False, indent=1))
 
 

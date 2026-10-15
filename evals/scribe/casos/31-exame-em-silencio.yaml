@@ -1,0 +1,54 @@
+id: 31-exame-em-silencio
+titulo: Exame físico com 35 segundos de silêncio (o sistema não pode inventar fala)
+categoria: silêncio
+modo: soap
+ruido: moderado
+vozes:
+  m: Reed
+  p: Flo
+pausas:
+  3: 35
+paciente:
+  nome: Lúcia Helena Prado
+  sexo: F
+  idade: 49
+  problemas: ''
+  medicacoes: ''
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, estou com uma tosse seca há três semanas, sem febre.
+- - m
+  - Fuma? Tem azia, nariz escorrendo?
+- - p
+  - Não fumo. Azia às vezes, à noite. Nariz escorrendo não. Vou deitar ali para o senhor me examinar.
+- - m
+  - Pronto. Pulmões limpos, sem sibilos. Garganta sem alterações. Saturação 98 por cento.
+- - m
+  - Pode ser refluxo. Vamos tentar omeprazol 20 miligramas em jejum por quatro semanas e elevar a cabeceira da cama.
+- - m
+  - Se não melhorar, fazemos um raio X do tórax. Retorno em quatro semanas.
+gabarito:
+  remedios:
+  - nome: omeprazol
+    dose: 20 mg
+    posologia: '*'
+    acao: iniciado
+  sinais:
+    spo2: 98
+  cid:
+  - R05|K21
+  fatos:
+  - tosse seca
+  - 3 semanas|tres semanas
+  - nega + febre
+  - nega + tabag|fuma
+  - pulmoes limpos|sem sibilos|murmurio
+  - cabeceira
+  - raio x|radiografia
+  proibidos:
+  - amara
+  - legenda
+  - assistir
+  - inscreva
+  avisos: []

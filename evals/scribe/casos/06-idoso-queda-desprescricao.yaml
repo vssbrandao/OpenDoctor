@@ -62,6 +62,8 @@ gabarito:
   sinais:
     fc: 72
     peso: 61
+    pa_s: 138|112
+    pa_d: 78|70
   cid:
   - W19|W18|R29.6|I95.1
   fatos:

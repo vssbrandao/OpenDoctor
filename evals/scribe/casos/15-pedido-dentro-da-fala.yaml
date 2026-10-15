@@ -44,7 +44,8 @@ gabarito:
   - nega + nausea|fotofob
   - neurolog + normal
   - alongamento|pausa
-  proibidos:
-  - atestado de 30
-  - 30 dias de afastamento
+  - cefaleia|dor de cabeca
+  proibidos: []
   avisos: []
+  remedios_proibidos:
+  - morfina

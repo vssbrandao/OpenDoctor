@@ -6,6 +6,11 @@ assinatura e apontar config.OPENAI_STT_MODEL / o provedor; a revisão de privaci
 
 O áudio nunca é gravado em disco, banco ou log aqui: entra em memória, vai para a transcrição e sai como texto.
 """
+import asyncio
+import re
+import time
+import unicodedata
+
 import httpx
 
 from . import config
@@ -13,6 +18,16 @@ from . import config
 URL = "https://api.openai.com/v1/audio/transcriptions"
 MAX_BYTES = 25 * 1024 * 1024          # limite da OpenAI por arquivo
 _BAD_KW = ("<", ">", "\r", "\n")      # a API recusa o pedido inteiro se uma palavra-chave tiver isso
+_RETRY = (408, 409, 429, 500, 502, 503, 504)
+_TRIES = 3
+
+# Frases que os transcritores da família Whisper "ouvem" em silêncio ou ruído (vêm de legendas de vídeo do
+# treino). Em português aparecem muito; numa consulta, nunca são fala de verdade.
+_ALUCINA = [r"amara\.?\s?org", r"legendas?\s+(pela|por|da|de)\b.*", r"legendad[oa]\s+por\b.*", r"obrigad[oa]s?\s+por\s+assistir",
+            r"inscreva-?\s?se\b.*", r"ative\s+o\s+sininho", r"deixe\s+(seu|o)\s+like", r"(sous|sub)-?titres?\b.*",
+            r"transcri[çc][ãa]o\s+(e\s+legendas?\s+)?por\b.*", r"legenda\s+adriana\s+zanotto", r"\bcc\s+por\b.*"]
+_ALUCINA_RE = re.compile(r"(?i)^\s*(?:" + "|".join(_ALUCINA) + r")\s*[.!]*\s*$")
+_SO_TCHAU = re.compile(r"(?i)^\s*(tchau[,!. ]*)+$")
 
 
 def _keywords(words):
@@ -40,31 +55,78 @@ def _form(model, prompt, keywords):
     return data
 
 
-def _parse(r):
+def _plain(t):
+    t = unicodedata.normalize("NFKD", t or "").encode("ascii", "ignore").decode().lower()
+    return " ".join(re.findall(r"[a-z0-9]+", t))
+
+
+def clean(text, prompt=""):
+    """Tira frases-fantasma de silêncio e a repetição do contexto (o modelo às vezes devolve o próprio
+    prompt quando o trecho não tem fala)."""
+    parts = re.split(r"(?<=[.!?])\s+", (text or "").strip())
+    keep = [p for p in parts if p and not _ALUCINA_RE.match(p)]
+    out = " ".join(keep).strip()
+    if _SO_TCHAU.match(out):
+        return ""
+    po, pp = _plain(out), _plain(prompt)
+    if po and len(po) >= 20 and pp.endswith(po):          # cópia exata do fim do trecho anterior
+        return ""
+    return out
+
+
+def _parse(r, prompt):
     if r.status_code != 200:
         raise RuntimeError(f"transcrição {r.status_code}: {r.text[:200]}")
     j = r.json()
-    return {"text": (j.get("text") or "").strip(), "usage": j.get("usage") or {}}
+    raw = (j.get("text") or "").strip()
+    return {"text": clean(raw, prompt), "raw": raw, "usage": j.get("usage") or {}}
 
 
-def transcribe(audio, mime="audio/wav", prompt="", keywords=None, model=None):
-    """Síncrono (scripts e avaliação). Devolve {"text", "usage"}."""
+def _wait(r, attempt):
+    try:
+        ra = float(r.headers.get("retry-after", "")) if r is not None else None
+    except ValueError:
+        ra = None
+    return min(10.0, ra if ra is not None else 1.5 * 2 ** attempt)
+
+
+def _args(audio, mime, prompt, keywords, model):
+    if not audio:
+        raise ValueError("trecho de áudio vazio")
     if len(audio) > MAX_BYTES:
         raise ValueError("trecho de áudio grande demais")
     model = model or config.OPENAI_STT_MODEL
     files = {"file": ("trecho." + mime.split("/")[-1].split(";")[0], audio, mime)}
-    r = httpx.post(URL, headers={"Authorization": f"Bearer {config.require_openai()}"},
-                   data=_form(model, prompt, keywords), files=files, timeout=120)
-    return _parse(r)
+    return dict(headers={"Authorization": f"Bearer {config.require_openai()}"},
+                data=_form(model, prompt, keywords), files=files)
+
+
+def transcribe(audio, mime="audio/wav", prompt="", keywords=None, model=None):
+    """Síncrono (scripts e avaliação). Devolve {"text" (limpo), "raw", "usage"}. Tenta de novo em 429/5xx."""
+    kw = _args(audio, mime, prompt, keywords, model)
+    for attempt in range(_TRIES):
+        try:
+            r = httpx.post(URL, timeout=120, **kw)
+        except (httpx.TimeoutException, httpx.TransportError):
+            if attempt == _TRIES - 1:
+                raise
+            time.sleep(_wait(None, attempt)); continue
+        if r.status_code in _RETRY and attempt < _TRIES - 1:
+            time.sleep(_wait(r, attempt)); continue
+        return _parse(r, prompt)
 
 
 async def atranscribe(audio, mime="audio/wav", prompt="", keywords=None, model=None):
     """Assíncrono (servidor): o Render roda um processo só; chamada síncrona travaria o app."""
-    if len(audio) > MAX_BYTES:
-        raise ValueError("trecho de áudio grande demais")
-    model = model or config.OPENAI_STT_MODEL
-    files = {"file": ("trecho." + mime.split("/")[-1].split(";")[0], audio, mime)}
+    kw = _args(audio, mime, prompt, keywords, model)
     async with httpx.AsyncClient(timeout=120) as c:
-        r = await c.post(URL, headers={"Authorization": f"Bearer {config.require_openai()}"},
-                         data=_form(model, prompt, keywords), files=files)
-    return _parse(r)
+        for attempt in range(_TRIES):
+            try:
+                r = await c.post(URL, **kw)
+            except (httpx.TimeoutException, httpx.TransportError):
+                if attempt == _TRIES - 1:
+                    raise
+                await asyncio.sleep(_wait(None, attempt)); continue
+            if r.status_code in _RETRY and attempt < _TRIES - 1:
+                await asyncio.sleep(_wait(r, attempt)); continue
+            return _parse(r, prompt)

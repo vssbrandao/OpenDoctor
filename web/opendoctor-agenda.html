@@ -4554,6 +4554,7 @@
         var box = $('prRec'), r = recCur(), lk = locked();
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);      // trocou de consulta gravando: pausa
         if (recPb && recPb.r !== r) recStopPb();
+        if (lk && r && r.st === 'live') recPause(r);                  // finalizou gravando: para o relógio
         box.innerHTML = ''; box._pl = null;
         var show = !!r && (!lk || r.st === 'done');
         box.hidden = !show; $('gcTrans').hidden = !show;

@@ -49,3 +49,6 @@ gabarito:
   - punho|giordano
   proibidos: []
   avisos: []
+  remedios_proibidos:
+  - bactrim
+  - sulfametoxazol

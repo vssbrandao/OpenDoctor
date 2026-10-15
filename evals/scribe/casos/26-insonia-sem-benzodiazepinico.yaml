@@ -46,3 +46,5 @@ gabarito:
   proibidos:
   - zolpidem
   avisos: []
+  remedios_proibidos:
+  - clonazepam

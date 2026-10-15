@@ -45,7 +45,7 @@ gabarito:
     posologia: '*'
     acao: '*'
   sinais:
-    spo2: 97
+    spo2: 93|97
     fr: 24
     fc: 104
   cid:
