@@ -4628,7 +4628,8 @@
       // player: parado → gravando/pausado (ondas) → gerando (barra azul) → gravação pronta (trilha com S, O, A, P)
       function recRender() {
         if (rcMockState() && ready && !locked()) { rcMock(rcMockState()); return; }      // preview das telas (etapa 2)
-        if (RR && RR.on) { rrShow(); return; }                                         // gravação real (contas liberadas)
+        if (RR && RR.on && recDemo() && RR.live && RR.live.st === 'live') rrPause(RR.live); // abriu a de exemplo gravando outra
+        if (rrActive()) { rrShow(); return; }                                        // gravação real (contas liberadas)
         var box = $('prRec'), r = recCur(), lk = locked();
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);      // trocou de consulta gravando: pausa
         if (recPb && recPb.r !== r) recStopPb();
@@ -4779,7 +4780,7 @@
         $('rcNoteBtn').textContent = r.applied ? 'Desfazer' : 'Preencher a evolução';
       }
       $('rcNoteBtn').addEventListener('click', function () {
-        if (RR && RR.on) { var q = rrCur(); if (q) { if (q.applied) rrUndo(q); else rrApply(q); rrRender(q); } return; }
+        if (rrActive()) { var q = rrCur(); if (q) { if (q.applied) rrUndo(q); else rrApply(q); rrRender(q); } return; }
         var r = recCur(); if (!r) return; if (r.applied) recUndo(r); else recApply(r);
       });
       $('prSoap').addEventListener('input', function (e) { var f = e.target.closest && e.target.closest('.pr-soapf'); if (f) f.classList.remove('rc-from'); });
@@ -4825,7 +4826,7 @@
         $('gcTransBtn').setAttribute('aria-label', can && r.open ? 'Esconder a transcrição' : 'Mostrar a transcrição');
       }
       $('gcTrans').addEventListener('click', function () {
-        if (RR && RR.on) {
+        if (rrActive()) {
           var q = rrCur(); if (!q || q.st === 'gen' || !$('rcTx').children.length) return;
           var o = $('rcTx').hidden; $('rcTx').hidden = !o; $('gcTransBtn').setAttribute('aria-expanded', o ? 'true' : 'false'); return;
         }
@@ -5060,6 +5061,8 @@
         RR.on = !!(res.ok && res.j && res.j.scribe); RR.uid = (res.j && res.j.user && res.j.user.id) || '';
         if (RR.on) { idbPurge(); qKick(); if (isOpen() && ready) recRender(); }
       }).catch(function () {});
+      // a paciente de exemplo (Maria Silva, fictícia) fica sempre com a demonstração, mesmo em conta liberada
+      function rrActive() { return !!(RR && RR.on) && !recDemo(); }
       function rrKey() {
         if (!ctx) return '';
         if (!ctx._rk) { ctx._rk = ctx.event_id ? 'e' + ctx.event_id : 'a' + Date.now().toString(36); persistCtx(); }
@@ -5355,7 +5358,7 @@
       }
       // rastreio na evolução (vai em data.scribe; sem texto): versão do prompt, modelo, autorização, pontos conferidos
       function rrMeta() {
-        var r = RR && RR.on && rrCur(); if (!r || !r.meta || !r.applied) return null;
+        var r = rrActive() && rrCur(); if (!r || !r.meta || !r.applied) return null;
         return Object.assign({}, r.meta, { conferidos: Object.keys(r.checked).filter(function (k) { return r.checked[k]; }).length });
       }
       function rrWords(t) { return norm(t).match(/[a-z0-9]+/g) || []; }
@@ -5372,7 +5375,7 @@
       }
       // números da revisão (vão com o tempo de documentação ao finalizar; nenhum texto): critérios 5 e 6 do plano
       function rrMetrics() {
-        var r = RR && RR.on && rrCur(); if (!r || !r.result || !r.doneAt) return null;
+        var r = rrActive() && rrCur(); if (!r || !r.result || !r.doneAt) return null;
         var now = Date.now(), n = function (lv) { return r.flags.filter(function (f) { return f.nivel === lv; }).length; };
         return { rec_s: Math.round(r.samples / SR16), gen_s: r.genS || 0, review_s: Math.round((now - r.doneAt) / 1000),
                  fim_s: r.endAt ? Math.round((now - r.endAt) / 1000) : 0, mantido_pct: r.applied ? rrKept(r) : 0,
@@ -5417,7 +5420,7 @@
       function rrUndo(r) { if (locked() || !r.undo) return; fillEditor(r.undo); r.applied = false; changed(); rrRender(r); }
       // finalizar com pontos ainda não conferidos pede confirmação (uma vez)
       function rrHoldFinalize() {
-        var r = RR && RR.on && rrCur(); if (!r || r.st !== 'done' || r.finalOk) return false;
+        var r = rrActive() && rrCur(); if (!r || r.st !== 'done' || r.finalOk) return false;
         var open = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; });
         if (!open.length) return false;
         var hi = open.filter(function (f) { return f.nivel === 'alto'; }).length, box = $('rcFinal'); box.innerHTML = ''; box.hidden = false;
@@ -5469,7 +5472,7 @@
         if (RR.on && busy) { e.preventDefault(); e.returnValue = ''; }
       });
       document.addEventListener('keydown', function (e) {               // ⌘/Ctrl + Shift + Espaço: pausa/continua
-        if (!(RR.on && (e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'Space')) return;
+        if (!(rrActive() && (e.metaKey || e.ctrlKey) && e.shiftKey && e.code === 'Space')) return;
         var r = rrCur(); if (!r) return;
         if (r.st === 'live') { e.preventDefault(); rrPause(r); } else if (r.st === 'paused' || r.st === 'interrupted') { e.preventDefault(); rrStart(r); }
       });
@@ -5533,7 +5536,7 @@
         });
       }
       function rrRender(r) {
-        if (!r || r !== rrCur() || rcMockState()) return;
+        if (!r || r !== rrCur() || rcMockState() || recDemo()) return;
         ['rcConsent', 'rcAlert', 'rcSteps', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
         var lk = locked(), S = $('gcTransS'), txOpen = !$('rcTx').hidden;
         $('gcTrans').hidden = false; $('gcTransBtn').hidden = true; $('gcTrans').classList.remove('can');
