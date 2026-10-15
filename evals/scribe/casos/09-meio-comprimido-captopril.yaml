@@ -1,0 +1,54 @@
+id: 09-meio-comprimido-captopril
+titulo: 'Idosa hipertensa: meio comprimido de captopril e hidroclorotiazida'
+categoria: números por extenso
+modo: soap
+ruido: leve
+vozes:
+  m: Reed
+  p: Grandma
+paciente:
+  nome: Benedita Alves
+  sexo: F
+  idade: 71
+  problemas: Hipertensão arterial
+  medicacoes: Captopril 25 mg 2x/dia
+  alergias: Nega alergias
+falas:
+- - m
+  - Dona Benedita, a pressão em casa como está?
+- - p
+  - Sempre alta, doutor. Dá cento e sessenta, cento e cinquenta.
+- - m
+  - A senhora está tomando o captopril de vinte e cinco duas vezes ao dia?
+- - p
+  - Estou tomando meio comprimido, porque me falaram que era forte.
+- - m
+  - Hoje a pressão está cento e cinquenta e seis por noventa e dois. Frequência setenta e oito.
+- - m
+  - 'Então vamos acertar: um comprimido inteiro de captopril de 25, duas vezes ao dia. E vamos começar a hidroclorotiazida 25 miligramas, um comprimido de manhã.'
+- - m
+  - Medir a pressão em casa e anotar. Retorno em quatro semanas com as medidas.
+gabarito:
+  remedios:
+  - nome: captopril
+    dose: 25 mg
+    posologia: 2x/dia
+    acao: ajustado
+  - nome: hidroclorotiazida
+    dose: 25 mg
+    posologia: 1x/dia
+    acao: iniciado
+  sinais:
+    pa_s: 156
+    pa_d: 92
+    fc: 78
+  cid:
+  - I10
+  fatos:
+  - meio comprimido|metade|12,5
+  - 160|150
+  - anot|medir
+  - 4 semanas|quatro semanas
+  proibidos:
+  - enalapril
+  avisos: []

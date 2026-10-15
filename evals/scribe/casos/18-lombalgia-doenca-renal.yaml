@@ -1,0 +1,55 @@
+id: 18-lombalgia-doenca-renal
+titulo: 'Dor lombar em doente renal crônico: evita anti-inflamatório'
+categoria: crônico
+modo: soap
+ruido: leve
+vozes:
+  m: Reed
+  p: Grandpa
+paciente:
+  nome: José Ribamar Costa
+  sexo: M
+  idade: 66
+  problemas: Doença renal crônica estágio 3, Hipertensão arterial
+  medicacoes: Losartana 50 mg 2x/dia
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, dor nas costas depois que carreguei umas caixas. Posso tomar o diclofenaco que eu tenho em casa?
+- - m
+  - Não. O senhor tem doença nos rins, a última filtração foi 42. Anti-inflamatório pode piorar.
+- - m
+  - A dor desce para a perna? Febre?
+- - p
+  - Não desce. Febre não.
+- - m
+  - Pressão 134 por 84. Dor à palpação da musculatura lombar, sem déficit.
+- - m
+  - Paracetamol 750 miligramas de 6 em 6 horas se dor, no máximo quatro comprimidos por dia, e ciclobenzaprina 5 miligramas à noite por sete dias. Losartana continua.
+gabarito:
+  remedios:
+  - nome: paracetamol
+    dose: 750 mg
+    posologia: 6/6h
+    acao: iniciado
+  - nome: ciclobenzaprina
+    dose: 5 mg
+    posologia: '*'
+    acao: iniciado
+  - nome: losartana
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  sinais:
+    pa_s: 134
+    pa_d: 84
+  cid:
+  - M54
+  fatos:
+  - diclofenaco|anti-inflamatorio|aine
+  - '42'
+  - nega + febre|irradia
+  - 4 comprimidos|quatro comprimidos
+  - 7 dias|sete dias
+  proibidos: []
+  avisos: []

@@ -1,0 +1,51 @@
+id: 19-dislipidemia-atorvastatina
+titulo: 'LDL alto: atorvastatina de 20 para 40 mg, nega dor muscular'
+categoria: troca de dose
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Sandy
+paciente:
+  nome: Ana Paula Barbosa
+  sexo: F
+  idade: 55
+  problemas: Dislipidemia
+  medicacoes: Atorvastatina 20 mg à noite
+  alergias: Nega alergias
+falas:
+- - m
+  - Ana Paula, o LDL veio 142, colesterol total 228, triglicérides 160.
+- - p
+  - Mesmo tomando o remédio?
+- - m
+  - Sim. Tem sentido dor muscular, fraqueza?
+- - p
+  - Nenhuma dor.
+- - m
+  - Pressão 118 por 76. Peso 63 quilos.
+- - m
+  - Vamos aumentar a atorvastatina para 40 miligramas à noite. Repetimos o perfil lipídico e as enzimas do fígado em três meses.
+gabarito:
+  remedios:
+  - nome: atorvastatina
+    dose: 40 mg
+    posologia: '*'
+    acao: ajustado
+  sinais:
+    pa_s: 118
+    pa_d: 76
+    peso: 63
+  cid:
+  - E78
+  fatos:
+  - '142'
+  - '228'
+  - '160'
+  - nega + dor muscular|mialgia
+  - 3 meses|tres meses
+  - figado|transaminase|tgp|enzima
+  proibidos:
+  - rosuvastatina
+  - ezetimiba
+  avisos: []

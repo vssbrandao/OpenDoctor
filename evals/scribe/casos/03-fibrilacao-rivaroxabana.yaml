@@ -1,0 +1,75 @@
+id: 03-fibrilacao-rivaroxabana
+titulo: 'Fibrilação atrial nova: rivaroxabana e metoprolol, suspende AAS'
+categoria: nome difícil
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Grandpa
+paciente:
+  nome: Antônio Carlos Pereira
+  sexo: M
+  idade: 74
+  problemas: Hipertensão arterial
+  medicacoes: 'AAS 100 mg 1x/dia
+
+    Anlodipino 5 mg 1x/dia'
+  alergias: Nega alergias
+falas:
+- - m
+  - Seu Antônio, o que trouxe o senhor aqui hoje?
+- - p
+  - Coração disparando, doutora, faz uma semana. Umas palpitações, e canso mais para subir escada.
+- - m
+  - Teve desmaio, dor no peito ou falta de ar deitado?
+- - p
+  - Não, nada disso.
+- - m
+  - O pulso está irregular, frequência 112. Pressão 138 por 86. O eletro mostra fibrilação atrial.
+- - m
+  - Vou começar a rivaroxabana 20 miligramas, uma vez ao dia, junto com o jantar, para prevenir derrame.
+- - m
+  - Com ela, o senhor para o AAS. E vou começar o metoprolol succinato 50 miligramas uma vez ao dia para controlar o coração.
+- - m
+  - O anlodipino continua. Vou pedir ecocardiograma, TSH e função dos rins.
+- - p
+  - Esse remédio de afinar o sangue pode dar sangramento?
+- - m
+  - Pode. Se tiver sangramento que não para, fezes pretas ou urina com sangue, procure o pronto-socorro. Retorno em quatro semanas.
+gabarito:
+  remedios:
+  - nome: rivaroxabana
+    dose: 20 mg
+    posologia: 1x/dia
+    acao: iniciado
+  - nome: aas
+    dose: '*'
+    posologia: '*'
+    acao: suspenso
+  - nome: metoprolol
+    dose: 50 mg
+    posologia: 1x/dia
+    acao: iniciado
+  - nome: anlodipino
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  sinais:
+    pa_s: 138
+    pa_d: 86
+    fc: 112
+  cid:
+  - I48
+  fatos:
+  - palpita
+  - nega + sincope|desmai
+  - irregular
+  - ecocardiograma
+  - tsh
+  - jantar
+  - sangramento|fezes
+  - 4 semanas|quatro semanas
+  proibidos:
+  - varfarina
+  - warfarina
+  avisos: []

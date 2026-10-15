@@ -1,0 +1,45 @@
+id: 30-valor-corrigido
+titulo: Médico corrige a pressão no meio da fala (vale o valor corrigido)
+categoria: números
+modo: soap
+ruido: leve
+vozes:
+  m: Eddy
+  p: Grandma
+paciente:
+  nome: Elza Moreira
+  sexo: F
+  idade: 77
+  problemas: Hipertensão arterial
+  medicacoes: Hidroclorotiazida 25 mg 1x/dia
+  alergias: Nega alergias
+falas:
+- - m
+  - 'Dona Elza, vamos ver a pressão. Deu 150 por 90... não, perdão, li errado: 140 por 90.'
+- - p
+  - Em casa está parecida.
+- - m
+  - Frequência 76. Está um pouco acima da meta.
+- - m
+  - Vamos manter a hidroclorotiazida 25 miligramas e reduzir o sal. Medir em casa duas vezes por semana.
+- - m
+  - Retorno em dois meses com as medidas.
+gabarito:
+  remedios:
+  - nome: hidroclorotiazida
+    dose: 25 mg
+    posologia: '*'
+    acao: mantido
+  sinais:
+    pa_s: 140
+    pa_d: 90
+    fc: 76
+  cid:
+  - I10
+  fatos:
+  - sal
+  - 2 vezes por semana|duas vezes por semana
+  - 2 meses|dois meses
+  proibidos:
+  - '150'
+  avisos: []

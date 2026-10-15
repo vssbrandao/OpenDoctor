@@ -1,0 +1,48 @@
+id: 17-hipotireoidismo-levotiroxina
+titulo: 'Hipotireoidismo: TSH alto, levotiroxina de 50 para 75 mcg'
+categoria: troca de dose
+modo: livre
+ruido: leve
+vozes:
+  m: Luciana
+  p: Flo
+paciente:
+  nome: Cláudia Regina Moura
+  sexo: F
+  idade: 45
+  problemas: Hipotireoidismo
+  medicacoes: Levotiroxina 50 mcg em jejum
+  alergias: Nega alergias
+falas:
+- - m
+  - Cláudia, o TSH veio 8,2 e o T4 livre 0,8.
+- - p
+  - Ando cansada e com mais frio.
+- - m
+  - Você toma a levotiroxina em jejum, meia hora antes do café?
+- - p
+  - Tomo, todo dia.
+- - m
+  - Frequência 62, peso 70 quilos e 500 gramas. Tireoide sem nódulos à palpação.
+- - m
+  - Vamos subir a levotiroxina para 75 microgramas, em jejum. Repetimos o TSH em seis semanas.
+gabarito:
+  remedios:
+  - nome: levotiroxina
+    dose: 75 mcg
+    posologia: '*'
+    acao: ajustado
+  sinais:
+    fc: 62
+    peso: 70.5
+  cid:
+  - E03
+  fatos:
+  - 8,2|8.2
+  - 0,8|0.8
+  - cansa|frio
+  - jejum
+  - 6 semanas|seis semanas
+  proibidos:
+  - 100 mcg
+  avisos: []

@@ -1,0 +1,51 @@
+id: 22-varfarina-inr
+titulo: 'Anticoagulado com INR alto: ajuste semanal da varfarina'
+categoria: números
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Grandpa
+paciente:
+  nome: Luiz Fernando Araújo
+  sexo: M
+  idade: 70
+  problemas: Fibrilação atrial
+  medicacoes: Varfarina 5 mg 1x/dia
+  alergias: Nega alergias
+falas:
+- - m
+  - Seu Luiz, o INR veio 3,8. A meta é entre 2 e 3.
+- - p
+  - Tive um sangramento na gengiva ao escovar, mas parou.
+- - m
+  - Algum sangue na urina, nas fezes, manchas roxas?
+- - p
+  - Não.
+- - m
+  - 'Hoje o senhor toma 5 miligramas todo dia, 35 por semana. Vamos para 30 por semana: 5 miligramas todos os dias, menos segunda e quinta, que o senhor toma meio comprimido.'
+- - m
+  - Pressão 128 por 76, frequência 70 irregular. Repetimos o INR em uma semana.
+gabarito:
+  remedios:
+  - nome: varfarina
+    dose: '*'
+    posologia: '*'
+    acao: ajustado
+  sinais:
+    pa_s: 128
+    pa_d: 76
+    fc: 70
+  cid:
+  - I48|Z79
+  fatos:
+  - 3,8|3.8
+  - 35 + 30
+  - meio comprimido|2,5
+  - segunda + quinta
+  - gengiva
+  - 1 semana|uma semana
+  proibidos:
+  - suspensa a varfarina
+  - vitamina k
+  avisos: []

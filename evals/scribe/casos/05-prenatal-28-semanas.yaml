@@ -1,0 +1,60 @@
+id: 05-prenatal-28-semanas
+titulo: 'Pré-natal de 28 semanas: ferro, TOTG e dTpa'
+categoria: gestante
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Sandy
+paciente:
+  nome: Juliana Costa Ribeiro
+  sexo: F
+  idade: 27
+  problemas: Gestação
+  medicacoes: Ácido fólico 5 mg 1x/dia
+  alergias: Nega alergias
+falas:
+- - m
+  - Juliana, vinte e oito semanas hoje. Como está o bebê mexendo?
+- - p
+  - Mexendo bastante. Só sinto um pouco de azia à noite.
+- - m
+  - Algum sangramento, perda de líquido ou contração?
+- - p
+  - Nada disso.
+- - m
+  - Pressão 110 por 70. Peso 68 quilos e 400 gramas. Altura uterina 28 centímetros. Batimentos do bebê 144.
+- - m
+  - Vamos começar o sulfato ferroso, 40 miligramas de ferro, um comprimido por dia, longe do café e do leite.
+- - m
+  - O ácido fólico pode parar. Vou pedir a curva glicêmica, o TOTG de 75 gramas, e você toma a vacina dTpa no posto.
+- - m
+  - Para a azia, faça refeições menores e evite deitar logo depois de comer. Retorno em duas semanas.
+gabarito:
+  remedios:
+  - nome: sulfato ferroso
+    dose: 40 mg
+    posologia: 1x/dia
+    acao: iniciado
+  - nome: acido folico
+    dose: '*'
+    posologia: '*'
+    acao: suspenso
+  sinais:
+    pa_s: 110
+    pa_d: 70
+    peso: 68.4
+  cid:
+  - Z34|Z35
+  fatos:
+  - 28 semanas
+  - azia
+  - nega + sangramento|perda
+  - altura uterina + 28
+  - '144'
+  - totg|curva glicemica
+  - dtpa
+  - 2 semanas|duas semanas
+  proibidos:
+  - omeprazol
+  avisos: []

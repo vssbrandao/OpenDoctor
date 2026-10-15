@@ -1,0 +1,81 @@
+id: 01-has-dm-tontura
+titulo: Retorno de hipertensão e diabetes com tontura ao levantar
+categoria: crônico
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Flo
+paciente:
+  nome: Maria Aparecida Souza
+  sexo: F
+  idade: 58
+  problemas: Hipertensão arterial, Diabetes tipo 2, Obesidade grau I
+  medicacoes: 'Losartana 50 mg 12/12h
+
+    Metformina 850 mg 2x/dia
+
+    Atorvastatina 20 mg à noite'
+  alergias: Dipirona, Penicilina
+falas:
+- - m
+  - Bom dia, dona Maria. Como a senhora passou desde a última consulta?
+- - p
+  - Bem, doutora. Estou tomando a losartana, a metformina e o do colesterol certinho.
+- - m
+  - E a caminhada, conseguiu manter?
+- - p
+  - Quatro vezes por semana, uns trinta minutos. Só que essa semana, duas vezes, eu levantei da cama e fiquei tonta.
+- - m
+  - Essa tontura passa rápido? Chegou a desmaiar, teve falta de ar ou dor no peito?
+- - p
+  - Passa em menos de um minuto, sentada. Não desmaiei e não tive dor nem falta de ar.
+- - m
+  - E as glicemias em casa?
+- - p
+  - Em jejum, entre 110 e 130. Não tive nenhuma baixa de açúcar.
+- - m
+  - Vou examinar. A pressão está 128 por 82, a frequência 74. Peso 86 quilos e 800 gramas, glicemia agora 108.
+- - m
+  - Coração e pulmões sem alterações. Os pés estão bem, pulsos presentes e sensibilidade preservada no monofilamento.
+- - m
+  - A hemoglobina glicada veio 6,9, o diabetes está na meta. Essa tontura ao levantar pode ser a pressão caindo quando a senhora fica em pé.
+- - m
+  - Vamos manter os três remédios. Levante devagar, sente na cama um minuto antes de ficar em pé.
+- - m
+  - Vou pedir o exame de urina para os rins e o ácido úrico. Retorno em três meses com os exames.
+gabarito:
+  remedios:
+  - nome: losartana
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  - nome: metformina
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  - nome: atorvastatina
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  sinais:
+    pa_s: 128
+    pa_d: 82
+    fc: 74
+    peso: 86.8
+    glicemia: 108
+  cid:
+  - I10
+  - E11
+  fatos:
+  - tontura|tonteira + levant|postur|ortost
+  - nega + sincope|desmai
+  - 110 + 130
+  - 6,9|6.9
+  - 3 meses|tres meses
+  - albumina|urina
+  - acido urico
+  - monofilamento|sensibilidade
+  proibidos:
+  - dipirona
+  avisos: []

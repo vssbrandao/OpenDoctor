@@ -1,0 +1,50 @@
+id: 24-puericultura-9-meses
+titulo: 'Puericultura de 9 meses: crescimento e vitamina D'
+categoria: pediatria com acompanhante
+modo: soap
+ruido: moderado
+vozes:
+  m: Luciana
+  a: Flo
+paciente:
+  nome: Helena Batista
+  sexo: F
+  idade: 0
+  problemas: ''
+  medicacoes: Vitamina D 400 UI 1x/dia
+  alergias: Nega alergias
+falas:
+- - m
+  - Oi, mãe. Como a Helena está comendo?
+- - a
+  - Está comendo papinha de legumes e fruta, e mama no peito ainda.
+- - m
+  - Peso 9 quilos e 200 gramas, comprimento 74 centímetros, perímetro cefálico 44. Temperatura 36,7.
+- - m
+  - Senta sem apoio e já engatinha, está ótimo para a idade.
+- - m
+  - Continua a vitamina D, 400 unidades por dia. As vacinas estão em dia; a próxima é a de 12 meses.
+- - m
+  - Ofereça água entre as refeições. Retorno com 12 meses.
+gabarito:
+  remedios:
+  - nome: vitamina d|colecalciferol
+    dose: '400'
+    posologia: '*'
+    acao: mantido
+  sinais:
+    peso: 9.2
+    temp: 36.7
+  cid:
+  - Z00
+  fatos:
+  - '74'
+  - '44'
+  - engatinh
+  - senta
+  - vacina
+  - 12 meses|doze meses
+  - peito|amament|leite materno
+  proibidos:
+  - sulfato ferroso
+  avisos: []

@@ -1,0 +1,72 @@
+id: 25-insuficiencia-cardiaca
+titulo: 'Insuficiência cardíaca congestionada: furosemida 2x/dia'
+categoria: crônico
+modo: soap
+ruido: leve
+vozes:
+  m: Reed
+  p: Grandpa
+paciente:
+  nome: Geraldo Magela Santos
+  sexo: M
+  idade: 76
+  problemas: Insuficiência cardíaca, Hipertensão arterial
+  medicacoes: 'Furosemida 40 mg pela manhã
+
+    Carvedilol 6,25 mg 2x/dia
+
+    Espironolactona 25 mg 1x/dia
+
+    Enalapril 10 mg 2x/dia'
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, as pernas incharam de novo e estou dormindo com dois travesseiros.
+- - m
+  - Ganhou peso?
+- - p
+  - Uns dois quilos na semana.
+- - m
+  - Peso 78 quilos e 400 gramas. Pressão 118 por 72, frequência 68. Edema de pernas duas cruzes em quatro. Crepitações nas bases.
+- - m
+  - A furosemida passa para 40 miligramas duas vezes ao dia, de manhã e no começo da tarde.
+- - m
+  - Carvedilol 6,25 duas vezes ao dia, espironolactona 25 e enalapril 10 duas vezes ao dia continuam.
+- - m
+  - Pese todo dia de manhã. Vou pedir potássio e creatinina em uma semana. Retorno em duas semanas.
+gabarito:
+  remedios:
+  - nome: furosemida
+    dose: 40 mg
+    posologia: 2x/dia
+    acao: ajustado
+  - nome: carvedilol
+    dose: 6,25
+    posologia: 2x/dia
+    acao: mantido
+  - nome: espironolactona
+    dose: '25'
+    posologia: '*'
+    acao: mantido
+  - nome: enalapril
+    dose: '10'
+    posologia: 2x/dia
+    acao: mantido
+  sinais:
+    peso: 78.4
+    pa_s: 118
+    pa_d: 72
+    fc: 68
+  cid:
+  - I50
+  fatos:
+  - 2 travesseiros|dois travesseiros|ortopneia
+  - 2 quilos|dois quilos|2 kg
+  - 2+|duas cruzes
+  - crepit
+  - potassio + creatinina
+  - pes|pesar
+  proibidos:
+  - internacao
+  - digoxina
+  avisos: []

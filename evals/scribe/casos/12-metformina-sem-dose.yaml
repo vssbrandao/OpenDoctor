@@ -1,0 +1,50 @@
+id: 12-metformina-sem-dose
+titulo: Aumenta a metformina sem dizer a dose (deve ficar pendente)
+categoria: dose não dita
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Grandma
+paciente:
+  nome: Rosângela Vieira
+  sexo: F
+  idade: 52
+  problemas: Diabetes tipo 2
+  medicacoes: Metformina 500 mg 2x/dia
+  alergias: Nega alergias
+falas:
+- - m
+  - Dona Rosângela, a glicada veio 7,8. Ainda acima.
+- - p
+  - Eu sei, doutora, nas festas exagerei.
+- - m
+  - Pressão 124 por 78. Peso 74 quilos.
+- - m
+  - Vamos aumentar a metformina. E reforçar a dieta, cortar refrigerante e doce.
+- - p
+  - Tomo a mais quando?
+- - m
+  - A farmácia explica na receita. Repetimos a glicada em três meses.
+gabarito:
+  remedios:
+  - nome: metformina
+    dose: ''
+    posologia: ''
+    acao: ajustado
+  sinais:
+    pa_s: 124
+    pa_d: 78
+    peso: 74
+  cid:
+  - E11
+  fatos:
+  - 7,8|7.8
+  - dieta|refrigerante|doce
+  - 3 meses|tres meses
+  proibidos:
+  - 1000 mg
+  - 850 mg
+  - 1 g
+  avisos:
+  - pendencia

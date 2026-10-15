@@ -1,0 +1,56 @@
+id: 27-renovacao-de-receita
+titulo: 'Renovação de receita: tudo mantido, ''as mesmas doses'''
+categoria: cadastro
+modo: soap
+ruido: leve
+vozes:
+  m: Eddy
+  p: Grandpa
+paciente:
+  nome: Oswaldo Pinto
+  sexo: M
+  idade: 69
+  problemas: Hipertensão arterial, Hiperplasia prostática
+  medicacoes: 'Losartana 50 mg 2x/dia
+
+    Anlodipino 5 mg 1x/dia
+
+    Tansulosina 0,4 mg à noite'
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, vim só renovar a receita. Está tudo bem.
+- - m
+  - Alguma queixa? Tontura, inchaço, dificuldade para urinar?
+- - p
+  - Nada. Urino bem com o remédio da próstata.
+- - m
+  - Pressão 132 por 80, frequência 70.
+- - m
+  - Então renovo tudo nas mesmas doses de sempre. Retorno em seis meses.
+gabarito:
+  remedios:
+  - nome: losartana
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  - nome: anlodipino
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  - nome: tansulosina
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  sinais:
+    pa_s: 132
+    pa_d: 80
+    fc: 70
+  cid:
+  - I10
+  fatos:
+  - renov
+  - nega + tontura|queixa
+  - 6 meses|seis meses
+  proibidos: []
+  avisos: []

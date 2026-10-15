@@ -1,0 +1,51 @@
+id: 10-cistite-alergia-sulfa
+titulo: 'Cistite em paciente alérgica a sulfa: nitrofurantoína'
+categoria: alergia
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Sandy
+paciente:
+  nome: Patrícia Mendes
+  sexo: F
+  idade: 29
+  problemas: ''
+  medicacoes: ''
+  alergias: Sulfa
+falas:
+- - p
+  - Doutora, estou com ardência para urinar há dois dias e vontade toda hora.
+- - m
+  - Teve febre, dor nas costas ou sangue na urina?
+- - p
+  - Febre não. Dor nas costas não. Sangue também não.
+- - p
+  - Da outra vez me deram aquele Bactrim. Posso tomar de novo?
+- - m
+  - Não, você tem alergia a sulfa, e o Bactrim tem sulfa. Vamos usar outro.
+- - m
+  - Temperatura 36,8. Abdome sem dor, punho-percussão negativa.
+- - m
+  - Nitrofurantoína 100 miligramas de 6 em 6 horas por cinco dias. Beba bastante água.
+- - m
+  - Se tiver febre ou dor nas costas, volte. Não precisa retorno se melhorar.
+gabarito:
+  remedios:
+  - nome: nitrofurantoina
+    dose: 100 mg
+    posologia: 6/6h
+    acao: iniciado
+  sinais:
+    temp: 36.8
+  cid:
+  - N30
+  fatos:
+  - ardencia|disuria
+  - 2 dias|dois dias
+  - nega + febre
+  - alergia + sulfa
+  - 5 dias|cinco dias
+  - punho|giordano
+  proibidos: []
+  avisos: []

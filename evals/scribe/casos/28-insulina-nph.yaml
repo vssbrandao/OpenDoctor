@@ -1,0 +1,59 @@
+id: 28-insulina-nph
+titulo: 'Diabético com insulina NPH: ajuste da dose da manhã'
+categoria: números
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Grandma
+paciente:
+  nome: Terezinha de Jesus Soares
+  sexo: F
+  idade: 61
+  problemas: Diabetes tipo 2
+  medicacoes: 'Insulina NPH 20 UI manhã e 10 UI noite
+
+    Metformina 850 mg 2x/dia'
+  alergias: Nega alergias
+falas:
+- - m
+  - Dona Terezinha, as glicemias em jejum estão entre 180 e 220.
+- - p
+  - Estou aplicando 20 de manhã e 10 à noite, como a senhora mandou.
+- - m
+  - Teve alguma hipoglicemia, tremor, suor frio?
+- - p
+  - Nenhuma.
+- - m
+  - A glicada veio 9,4. Pressão 136 por 82.
+- - m
+  - Vamos subir a NPH da noite para 14 unidades. A da manhã continua 20. A metformina continua.
+- - m
+  - Anote as glicemias em jejum. Retorno em um mês.
+gabarito:
+  remedios:
+  - nome: insulina nph|nph
+    dose: '*'
+    posologia: '*'
+    acao: ajustado
+  - nome: metformina
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  sinais:
+    pa_s: 136
+    pa_d: 82
+  cid:
+  - E11
+  fatos:
+  - 180 + 220
+  - nega + hipoglic
+  - 9,4|9.4
+  - '14'
+  - '20'
+  - anot
+  - 1 mes|um mes
+  proibidos:
+  - 24 unidades
+  - 24 ui
+  avisos: []

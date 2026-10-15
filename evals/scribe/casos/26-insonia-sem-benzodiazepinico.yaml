@@ -1,0 +1,48 @@
+id: 26-insonia-sem-benzodiazepinico
+titulo: 'Insônia com ansiedade: trazodona e higiene do sono, sem benzodiazepínico'
+categoria: saúde mental
+modo: livre
+ruido: leve
+vozes:
+  m: Luciana
+  p: Shelley
+paciente:
+  nome: Beatriz Carvalho Neves
+  sexo: F
+  idade: 42
+  problemas: Ansiedade
+  medicacoes: ''
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutora, não consigo dormir há três meses. Deito e fico pensando no trabalho.
+- - m
+  - Usa celular na cama? Café depois das quatro da tarde?
+- - p
+  - Celular sim, até tarde. Café umas cinco xícaras por dia.
+- - p
+  - Uma amiga toma clonazepam. Posso tomar?
+- - m
+  - Não recomendo, vicia e piora a memória. Vamos fazer outra coisa.
+- - m
+  - Trazodona 50 miligramas à noite. Celular fora do quarto, café só até o almoço, e vou te encaminhar para terapia cognitiva para insônia.
+- - m
+  - Retorno em um mês.
+gabarito:
+  remedios:
+  - nome: trazodona
+    dose: 50 mg
+    posologia: '*'
+    acao: iniciado
+  sinais: {}
+  cid:
+  - G47|F51|F41
+  fatos:
+  - 3 meses|tres meses
+  - celular
+  - cafe
+  - terapia cognitiva|tcc
+  - 1 mes|um mes
+  proibidos:
+  - zolpidem
+  avisos: []

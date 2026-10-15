@@ -1,0 +1,61 @@
+id: 04-pediatria-otite
+titulo: 'Criança de 4 anos com otite média: amoxicilina por peso'
+categoria: pediatria com acompanhante
+modo: soap
+ruido: moderado
+vozes:
+  m: Eddy
+  p: Shelley
+  a: Flo
+paciente:
+  nome: Lucas Oliveira
+  sexo: M
+  idade: 4
+  problemas: ''
+  medicacoes: ''
+  alergias: Nega alergias
+falas:
+- - m
+  - Oi, mãe. O que está acontecendo com o Lucas?
+- - a
+  - Ele está com febre desde ontem, chegou a 38 e meio, e chorando com dor no ouvido direito.
+- - m
+  - Teve vômito, diarreia ou falta de ar?
+- - a
+  - Não. Só está mais molinho e comendo pouco.
+- - m
+  - Ele pesa 16 quilos. Temperatura agora 38,2. O ouvido direito está vermelho e abaulado. O esquerdo normal. Garganta e pulmões sem alterações.
+- - m
+  - 'É uma otite média aguda. Vou passar amoxicilina 250 miligramas por 5 ml: 8 ml de 12 em 12 horas por 10 dias.'
+- - m
+  - 'Para febre ou dor, paracetamol gotas: 16 gotas até de 6 em 6 horas, se precisar.'
+- - a
+  - E se a febre não baixar?
+- - m
+  - Se continuar com febre depois de 48 horas de antibiótico, ou ficar prostrado, volte antes. Retorno em 10 dias.
+gabarito:
+  remedios:
+  - nome: amoxicilina
+    dose: 8 ml
+    posologia: 12/12h
+    acao: iniciado
+  - nome: paracetamol
+    dose: 16 gotas
+    posologia: 6/6h
+    acao: iniciado
+  sinais:
+    temp: 38.2
+    peso: 16
+  cid:
+  - H66
+  fatos:
+  - 38,5|38.5|38 e meio
+  - ouvido + direit
+  - abaulad
+  - 10 dias
+  - 48 horas
+  - nega + vomito|diarreia
+  proibidos:
+  - ceftriaxona
+  - azitromicina
+  avisos: []

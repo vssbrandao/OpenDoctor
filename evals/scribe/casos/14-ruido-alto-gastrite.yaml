@@ -1,0 +1,53 @@
+id: 14-ruido-alto-gastrite
+titulo: 'Dispepsia com muito ruído de fundo: omeprazol e pesquisa de H. pylori'
+categoria: ruído
+modo: soap
+ruido: alto
+vozes:
+  m: Reed
+  p: Rocko
+paciente:
+  nome: Gustavo Nunes Barros
+  sexo: M
+  idade: 41
+  problemas: ''
+  medicacoes: Ibuprofeno quando tem dor
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, queimação no estômago há um mês, piora quando como e à noite.
+- - m
+  - Usa anti-inflamatório? Teve vômito com sangue ou fezes pretas?
+- - p
+  - Tomo ibuprofeno quase todo dia para dor de cabeça. Sangue não.
+- - m
+  - Abdome com dor leve no epigástrio, sem outros achados. Pressão 126 por 80.
+- - m
+  - Pare o ibuprofeno. Omeprazol 20 miligramas em jejum por oito semanas.
+- - m
+  - Vou pedir a pesquisa de Helicobacter pylori nas fezes. Retorno em oito semanas.
+gabarito:
+  remedios:
+  - nome: omeprazol
+    dose: 20 mg
+    posologia: '*'
+    acao: iniciado
+  - nome: ibuprofeno
+    dose: '*'
+    posologia: '*'
+    acao: suspenso
+  sinais:
+    pa_s: 126
+    pa_d: 80
+  cid:
+  - K30|K29|R10
+  fatos:
+  - queimacao|azia|dispeps
+  - 1 mes|um mes
+  - nega + sangue|melena|hematem
+  - epigast
+  - pylori
+  - 8 semanas|oito semanas
+  proibidos:
+  - endoscopia
+  avisos: []

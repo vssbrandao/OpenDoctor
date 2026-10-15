@@ -1,0 +1,56 @@
+id: 20-enxaqueca-profilaxia
+titulo: 'Enxaqueca frequente: propranolol e sumatriptana'
+categoria: crônico
+modo: livre
+ruido: leve
+vozes:
+  m: Eddy
+  p: Shelley
+paciente:
+  nome: Camila Rocha Prado
+  sexo: F
+  idade: 31
+  problemas: Enxaqueca
+  medicacoes: ''
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, a enxaqueca está vindo umas seis vezes por mês, com enjoo e incomoda a luz.
+- - m
+  - Tem asma? Usa anticoncepcional?
+- - p
+  - Asma não. Anticoncepcional sim.
+- - m
+  - Pressão 112 por 72, frequência 76. Exame neurológico normal.
+- - m
+  - Vamos fazer prevenção com propranolol 40 miligramas duas vezes ao dia. Na crise, sumatriptana 50 miligramas, no máximo dois comprimidos por dia.
+- - m
+  - Faça um diário da dor. Retorno em dois meses.
+gabarito:
+  remedios:
+  - nome: propranolol
+    dose: 40 mg
+    posologia: 2x/dia
+    acao: iniciado
+  - nome: sumatriptana
+    dose: 50 mg
+    posologia: '*'
+    acao: iniciado
+  sinais:
+    pa_s: 112
+    pa_d: 72
+    fc: 76
+  cid:
+  - G43
+  fatos:
+  - 6 vezes|seis vezes
+  - nausea|enjoo
+  - fotofob|luz
+  - nega + asma
+  - anticoncep
+  - diario
+  - 2 meses|dois meses
+  proibidos:
+  - topiramato
+  - amitriptilina
+  avisos: []

@@ -1,0 +1,65 @@
+id: 16-dpoc-exacerbacao
+titulo: 'DPOC exacerbada: prednisona, azitromicina e ajuste do inalatório'
+categoria: crônico
+modo: soap
+ruido: moderado
+vozes:
+  m: Eddy
+  p: Grandpa
+paciente:
+  nome: Raimundo Nonato Silva
+  sexo: M
+  idade: 68
+  problemas: DPOC, Ex-tabagista
+  medicacoes: Tiotrópio 2,5 mcg 2 jatos 1x/dia
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, o cansaço piorou há quatro dias. Escarro ficou esverdeado e aumentou.
+- - m
+  - Febre? Inchaço nas pernas?
+- - p
+  - Febre não. Inchaço não.
+- - m
+  - Saturação 91 por cento, frequência respiratória 22, frequência cardíaca 96. Sibilos esparsos.
+- - m
+  - Prednisona 40 miligramas uma vez ao dia por cinco dias e azitromicina 500 miligramas uma vez ao dia por três dias.
+- - m
+  - O tiotrópio continua. Vamos acrescentar budesonida com formoterol 12 por 400, uma inalação de 12 em 12 horas.
+- - m
+  - Se a saturação em casa cair abaixo de 88 ou piorar a falta de ar, vá ao pronto-socorro. Retorno em uma semana.
+gabarito:
+  remedios:
+  - nome: prednisona
+    dose: 40 mg
+    posologia: 1x/dia
+    acao: iniciado
+  - nome: azitromicina
+    dose: 500 mg
+    posologia: 1x/dia
+    acao: iniciado
+  - nome: tiotropio
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  - nome: budesonida
+    dose: '*'
+    posologia: 12/12h
+    acao: iniciado
+  sinais:
+    spo2: 91
+    fr: 22
+    fc: 96
+  cid:
+  - J44
+  fatos:
+  - 4 dias|quatro dias
+  - escarro|expector
+  - nega + febre
+  - sibil
+  - '88'
+  - 1 semana|uma semana
+  proibidos:
+  - amoxicilina
+  - internacao
+  avisos: []

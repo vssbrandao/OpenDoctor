@@ -1,0 +1,71 @@
+id: 02-ajuste-dose-empagliflozina
+titulo: 'Diabetes fora da meta: aumenta losartana e inicia empagliflozina'
+categoria: troca de dose
+modo: soap
+ruido: leve
+vozes:
+  m: Reed
+  p: Grandpa
+paciente:
+  nome: João Batista Ferreira
+  sexo: M
+  idade: 63
+  problemas: Hipertensão arterial, Diabetes tipo 2
+  medicacoes: 'Losartana 50 mg 1x/dia
+
+    Metformina 850 mg 2x/dia'
+  alergias: Nega alergias
+falas:
+- - m
+  - Seu João, tudo bem? Trouxe os exames?
+- - p
+  - Trouxe, doutor. Mas acho que não vieram muito bons não.
+- - m
+  - A hemoglobina glicada veio 8,1. Está acima da meta. O senhor tem tomado a metformina de 850 duas vezes ao dia?
+- - p
+  - Tomo sim. Às vezes esqueço a da noite.
+- - m
+  - A pressão hoje está 152 por 94. Frequência 80. Peso 92 quilos.
+- - m
+  - Vou aumentar a losartana para 100 miligramas uma vez ao dia. E vou começar a empagliflozina 10 miligramas, um comprimido de manhã.
+- - m
+  - A metformina continua 850 duas vezes ao dia. Tente não esquecer a da noite.
+- - p
+  - Esse remédio novo tem algum cuidado?
+- - m
+  - Beba bastante água e capriche na higiene íntima, porque pode dar infecção urinária. Vou pedir creatinina e potássio daqui a 30 dias.
+- - m
+  - Retorno em dois meses.
+gabarito:
+  remedios:
+  - nome: losartana
+    dose: 100 mg
+    posologia: 1x/dia
+    acao: ajustado
+  - nome: empagliflozina
+    dose: 10 mg
+    posologia: 1x/dia
+    acao: iniciado
+  - nome: metformina
+    dose: 850 mg
+    posologia: 2x/dia
+    acao: mantido
+  sinais:
+    pa_s: 152
+    pa_d: 94
+    fc: 80
+    peso: 92
+  cid:
+  - E11
+  - I10
+  fatos:
+  - 8,1|8.1
+  - esquec
+  - creatinina + potassio
+  - 30 dias
+  - agua|hidrat
+  - infeccao urinaria|higiene
+  - 2 meses|dois meses
+  proibidos:
+  - insulina
+  avisos: []

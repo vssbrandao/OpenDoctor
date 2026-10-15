@@ -1,0 +1,43 @@
+id: 29-micose-cetoconazol
+titulo: 'Micose na virilha: cetoconazol creme'
+categoria: simples
+modo: livre
+ruido: leve
+vozes:
+  m: Reed
+  p: Eddy
+paciente:
+  nome: Vinícius Cardoso
+  sexo: M
+  idade: 26
+  problemas: ''
+  medicacoes: ''
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, apareceu uma mancha vermelha que coça na virilha, faz umas três semanas. Jogo bola e fico suado.
+- - m
+  - Placa avermelhada com borda mais viva, nas duas virilhas. É micose, tinha crural.
+- - m
+  - Cetoconazol creme duas vezes ao dia por quatro semanas, mesmo depois de sumir. Seque bem a região e use roupa de algodão.
+- - m
+  - Se não melhorar em quatro semanas, volte.
+gabarito:
+  remedios:
+  - nome: cetoconazol
+    dose: '*'
+    posologia: 2x/dia
+    acao: iniciado
+  sinais: {}
+  cid:
+  - B35
+  fatos:
+  - 3 semanas|tres semanas
+  - prurido|coca
+  - virilha|inguinal|crural
+  - 4 semanas|quatro semanas
+  - seca|secar|algodao
+  proibidos:
+  - corticoide
+  - betametasona
+  avisos: []

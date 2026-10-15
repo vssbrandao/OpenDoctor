@@ -1,0 +1,59 @@
+id: 21-gota-colchicina
+titulo: 'Crise de gota: colchicina, alopurinol só depois da crise'
+categoria: crônico
+modo: soap
+ruido: leve
+vozes:
+  m: Reed
+  p: Rocko
+paciente:
+  nome: Francisco das Chagas Lima
+  sexo: M
+  idade: 58
+  problemas: Hipertensão arterial
+  medicacoes: Hidroclorotiazida 25 mg 1x/dia
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, o dedão do pé direito inchou de madrugada, vermelho, não consigo nem encostar o lençol.
+- - m
+  - Já aconteceu antes? Bebeu ou comeu carne vermelha nos últimos dias?
+- - p
+  - Primeira vez. Teve churrasco com cerveja no fim de semana.
+- - m
+  - Temperatura 37,2. Primeira articulação do pé direito com calor, edema e vermelhidão. Ácido úrico do último exame, 9,1.
+- - m
+  - Colchicina 0,5 miligrama de 8 em 8 horas até melhorar, no máximo por uma semana. Gelo no local e repouso.
+- - m
+  - 'A hidroclorotiazida aumenta o ácido úrico: vamos trocar por anlodipino 5 miligramas uma vez ao dia.'
+- - m
+  - O alopurinol a gente pensa depois que a crise passar. Retorno em duas semanas.
+gabarito:
+  remedios:
+  - nome: colchicina
+    dose: 0,5 mg
+    posologia: 8/8h
+    acao: iniciado
+  - nome: hidroclorotiazida
+    dose: '*'
+    posologia: '*'
+    acao: suspenso
+  - nome: anlodipino
+    dose: 5 mg
+    posologia: 1x/dia
+    acao: iniciado
+  sinais:
+    temp: 37.2
+  cid:
+  - M10
+  fatos:
+  - halux|dedao|primeira articulacao|metatarsofalang
+  - 9,1|9.1
+  - churrasco|cerveja|alcool
+  - gelo
+  - alopurinol + depois|apos
+  - 2 semanas|duas semanas
+  proibidos:
+  - prednisona
+  - indometacina
+  avisos: []

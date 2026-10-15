@@ -1,0 +1,49 @@
+id: 11-alergia-penicilina-esquecida
+titulo: 'Sinusite: médico receita amoxicilina para alérgico a penicilina (o sistema deve alertar)'
+categoria: alergia
+modo: soap
+ruido: leve
+vozes:
+  m: Reed
+  p: Eddy
+paciente:
+  nome: Carlos Eduardo Ramos
+  sexo: M
+  idade: 45
+  problemas: Rinite alérgica
+  medicacoes: ''
+  alergias: Penicilina
+falas:
+- - p
+  - Doutor, estou com o nariz entupido e dor no rosto há doze dias. Começou como gripe e piorou de novo.
+- - m
+  - Teve febre?
+- - p
+  - Ontem 38.
+- - m
+  - Temperatura agora 37,6. Dor à palpação nos seios maxilares, secreção amarelada na garganta.
+- - m
+  - Vou passar amoxicilina 875 miligramas de 12 em 12 horas por sete dias. E lavagem nasal com soro três vezes ao dia.
+- - p
+  - Está bem.
+- - m
+  - Se não melhorar em três dias, volte.
+gabarito:
+  remedios:
+  - nome: amoxicilina
+    dose: 875 mg
+    posologia: 12/12h
+    acao: iniciado
+  sinais:
+    temp: 37.6
+  cid:
+  - J01|J32
+  fatos:
+  - 12 dias|doze dias
+  - maxilar
+  - soro|lavagem
+  - 7 dias|sete dias
+  - 3 dias|tres dias
+  proibidos: []
+  avisos:
+  - alergia

@@ -1,0 +1,46 @@
+id: 23-anemia-ferro-sem-exame-fisico
+titulo: 'Retorno só com exames: anemia ferropriva, sulfato ferroso (sem exame físico)'
+categoria: só exames
+modo: livre
+ruido: leve
+vozes:
+  m: Eddy
+  p: Sandy
+paciente:
+  nome: Simone Freitas
+  sexo: F
+  idade: 39
+  problemas: ''
+  medicacoes: ''
+  alergias: Nega alergias
+falas:
+- - m
+  - Simone, a hemoglobina veio 10,2 e a ferritina 8. É anemia por falta de ferro.
+- - p
+  - Minha menstruação está vindo muito forte, uns sete dias.
+- - m
+  - Vou passar sulfato ferroso, um comprimido de 40 miligramas de ferro duas vezes ao dia, longe das refeições, com suco de laranja.
+- - m
+  - E vou pedir um ultrassom transvaginal para investigar o sangramento. Pode escurecer as fezes, é normal.
+- - m
+  - Repetimos hemograma e ferritina em dois meses.
+gabarito:
+  remedios:
+  - nome: sulfato ferroso
+    dose: 40 mg
+    posologia: 2x/dia
+    acao: iniciado
+  sinais: {}
+  cid:
+  - D50
+  fatos:
+  - 10,2|10.2
+  - ferritina + 8
+  - menstrua + 7 dias|sete dias|intensa|forte
+  - transvaginal|ultrassom
+  - 2 meses|dois meses
+  - fezes
+  proibidos:
+  - pressao arterial
+  - ausculta
+  avisos: []

@@ -27,3 +27,8 @@ supabase/.temp/
 
 # estado local da ingestão em massa
 data/bulk_ingest_state.json*
+
+# avaliação da gravação: áudio gerado, gravações encenadas (voz de gente de verdade) e cache das chamadas
+evals/scribe/audio/
+evals/scribe/gravacoes/
+evals/scribe/cache/

@@ -1,0 +1,54 @@
+id: 07-depressao-sertralina
+titulo: 'Depressão moderada: aumenta sertralina, nega ideação suicida'
+categoria: saúde mental
+modo: soap
+ruido: leve
+vozes:
+  m: Luciana
+  p: Shelley
+paciente:
+  nome: Fernanda Lima Duarte
+  sexo: F
+  idade: 34
+  problemas: Episódio depressivo
+  medicacoes: Sertralina 50 mg 1x/dia
+  alergias: Nega alergias
+falas:
+- - m
+  - Fernanda, como você está desde que começamos a sertralina, há dois meses?
+- - p
+  - Um pouco melhor, mas ainda sem vontade de fazer as coisas. Durmo mal e choro fácil.
+- - m
+  - No questionário de hoje você somou 15 pontos, depressão moderada. Tem tido pensamentos de se machucar ou de morrer?
+- - p
+  - Não, isso não. Penso nos meus filhos.
+- - m
+  - Algum efeito colateral do remédio? Enjoo, problema sexual?
+- - p
+  - Um pouco de enjoo no começo, já passou.
+- - m
+  - Vamos aumentar a sertralina para 100 miligramas, de manhã. E vou te encaminhar para psicoterapia.
+- - m
+  - Se aparecer pensamento de se machucar, procure ajuda na hora, pode ligar no 188. Retorno em quatro semanas.
+gabarito:
+  remedios:
+  - nome: sertralina
+    dose: 100 mg
+    posologia: '*'
+    acao: ajustado
+  sinais: {}
+  cid:
+  - F32
+  fatos:
+  - nega + ideac|suicid|se machucar|morrer
+  - '15'
+  - psicoterap
+  - 188|ajuda
+  - 4 semanas|quatro semanas
+  - dorme mal|insonia|sono
+  - enjoo|nausea
+  proibidos:
+  - clonazepam
+  - fluoxetina
+  - ideacao suicida presente
+  avisos: []

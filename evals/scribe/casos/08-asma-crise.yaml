@@ -1,0 +1,64 @@
+id: 08-asma-crise
+titulo: 'Crise de asma no consultório: salbutamol, prednisolona e controle'
+categoria: urgência
+modo: soap
+ruido: moderado
+vozes:
+  m: Eddy
+  p: Rocko
+paciente:
+  nome: Rafael Gomes Teixeira
+  sexo: M
+  idade: 22
+  problemas: Asma
+  medicacoes: Salbutamol spray se crise
+  alergias: Nega alergias
+falas:
+- - p
+  - Doutor, estou com falta de ar desde ontem, chiando muito. O spray não está resolvendo.
+- - m
+  - Quantas vezes usou a bombinha hoje?
+- - p
+  - Umas seis vezes. Peguei uma gripe semana passada.
+- - m
+  - Saturação 93 por cento, frequência respiratória 24, frequência cardíaca 104. Sibilos nos dois pulmões.
+- - m
+  - Vamos fazer agora salbutamol, quatro jatos a cada 20 minutos, três vezes, com espaçador.
+- - m
+  - 'Depois das três séries: saturação 97 por cento, sibilos bem menores.'
+- - m
+  - 'Para casa: prednisolona 40 miligramas uma vez ao dia por cinco dias. E vamos começar budesonida com formoterol, dois jatos de 12 em 12 horas, todos os dias.'
+- - m
+  - Se piorar a falta de ar ou a boca ficar roxa, vá ao pronto-socorro. Retorno em uma semana.
+gabarito:
+  remedios:
+  - nome: prednisolona
+    dose: 40 mg
+    posologia: 1x/dia
+    acao: iniciado
+  - nome: budesonida
+    dose: 2 jatos
+    posologia: 12/12h
+    acao: iniciado
+  - nome: salbutamol
+    dose: 4 jatos
+    posologia: '*'
+    acao: '*'
+  sinais:
+    spo2: 97
+    fr: 24
+    fc: 104
+  cid:
+  - J45|J46
+  fatos:
+  - sibil
+  - '93'
+  - '97'
+  - 5 dias|cinco dias
+  - espacador
+  - gripe|resfriado|infecc
+  - 1 semana|uma semana
+  proibidos:
+  - antibiotico
+  - amoxicilina
+  avisos: []

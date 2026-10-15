@@ -1,0 +1,79 @@
+id: 06-idoso-queda-desprescricao
+titulo: 'Idoso com queda: suspende diazepam e omeprazol, hipotensão ortostática'
+categoria: idoso polifarmácia
+modo: soap
+ruido: moderado
+vozes:
+  m: Reed
+  p: Grandpa
+  a: Sandy
+paciente:
+  nome: Sebastião Rodrigues
+  sexo: M
+  idade: 84
+  problemas: Hipertensão arterial, Insônia, Gastrite
+  medicacoes: 'Anlodipino 5 mg 1x/dia
+
+    Diazepam 10 mg à noite
+
+    Omeprazol 20 mg 1x/dia
+
+    Sinvastatina 20 mg à noite'
+  alergias: Nega alergias
+falas:
+- - a
+  - Doutor, meu pai caiu no banheiro de madrugada, semana passada. Bateu o braço.
+- - m
+  - Seu Sebastião, o senhor lembra da queda? Ficou tonto antes?
+- - p
+  - Levantei para ir ao banheiro e a vista escureceu.
+- - m
+  - O senhor ainda toma o diazepam de 10 toda noite?
+- - p
+  - Tomo há uns vinte anos.
+- - m
+  - A pressão sentado é 138 por 78. Em pé caiu para 112 por 70. Frequência 72. Peso 61 quilos. O braço tem só um hematoma, sem dor para mexer.
+- - m
+  - O diazepam aumenta muito o risco de queda. Vamos reduzir para 5 miligramas por duas semanas e depois parar.
+- - m
+  - O omeprazol também vamos suspender, o senhor não tem mais sintoma de estômago. Anlodipino e sinvastatina continuam.
+- - a
+  - E para dormir, como fica?
+- - m
+  - Luz baixa à noite, evitar café à tarde e deixar uma luz acesa no caminho do banheiro. Retorno em um mês.
+gabarito:
+  remedios:
+  - nome: diazepam
+    dose: 5 mg
+    posologia: '*'
+    acao: ajustado
+  - nome: omeprazol
+    dose: '*'
+    posologia: '*'
+    acao: suspenso
+  - nome: anlodipino
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  - nome: sinvastatina
+    dose: '*'
+    posologia: '*'
+    acao: mantido
+  sinais:
+    fc: 72
+    peso: 61
+  cid:
+  - W19|W18|R29.6|I95.1
+  fatos:
+  - queda + banheiro
+  - vista escure|tontura
+  - em pe + 112
+  - sentado + 138
+  - hematoma
+  - 2 semanas|duas semanas
+  - luz
+  - 1 mes|um mes
+  proibidos:
+  - zolpidem
+  - fratura
+  avisos: []
