@@ -2,7 +2,8 @@
 
 Mostra o prontuário preenchido: 11 consultas finalizadas com sinais vitais e CID-10, resultados de exames
 e um laudo em PDF anexado. As datas acompanham o dia da criação da conta. Sem CPF e telefone (não usar
-números que possam ser de alguém). O médico pode excluí-la a qualquer momento (db.delete_patient).
+números que possam ser de alguém). Marcada pela chave db.EXAMPLE_KEY (não pelo nome) e com o selo
+"Exemplo" na tela; o médico pode excluí-la a qualquer momento (db.delete_patient).
 """
 import datetime as dt
 
@@ -131,10 +132,10 @@ def laudo_pdf(coleta, v):
 
 def seed(user_id, now=None):
     """Cria a paciente de exemplo (se a conta ainda não tem). Devolve o id ou None."""
-    if any(p["name"] == NAME for p in db.list_patients(user_id)):
+    if any(p["example"] for p in db.list_patients(user_id)):
         return None
     now = now or dt.datetime.now(dt.timezone.utc)
-    p = db.create_patient(user_id, NAME, birth_date="1968-03-14", sex="F")
+    p = db.create_patient(user_id, NAME, birth_date="1968-03-14", sex="F", key=db.EXAMPLE_KEY)
     db.update_patient(user_id, p["id"], {"allergies": ALLERGIES, "problems": PROBLEMS, "medications": MEDICATIONS})
     rows = [(c["title"], c["start"], c["content"], c["data"], c["signed_at"], c["signed_at"]) for c in consultas(now)]
     rows += [(None, None, e["content"], e["data"], None,

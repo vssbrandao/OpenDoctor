@@ -451,7 +451,7 @@ _PCOLS = "id, name, patient_key, birth_date, sex, cpf, phone, allergies, problem
 
 
 def _patient(r):
-    return {"id": r[0], "name": r[1], "key": r[2],
+    return {"id": r[0], "name": r[1], "key": r[2], "example": r[2] == EXAMPLE_KEY,
             "birth_date": r[3].isoformat() if r[3] else None, "sex": r[4], "cpf": r[5], "phone": r[6],
             "allergies": r[7] or "", "problems": r[8] or "", "medications": r[9] or ""}
 
@@ -462,7 +462,7 @@ def list_patients(user_id, limit=1000):
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """select p.id, p.name, p.birth_date, p.sex,
+                """select p.id, p.name, p.birth_date, p.sex, p.patient_key = %s,
                           count(n.id) filter (where n.content <> ''),
                           max(coalesce(n.event_start, n.created_at)) filter (where n.content <> '')
                    from patients p
@@ -470,9 +470,9 @@ def list_patients(user_id, limit=1000):
                    where p.user_id = %s
                    group by p.id
                    order by p.updated_at desc limit %s""",
-                (user_id, limit))
+                (EXAMPLE_KEY, user_id, limit))
             return [{"id": r[0], "name": r[1], "birth_date": r[2].isoformat() if r[2] else None, "sex": r[3],
-                     "notes": r[4], "last": r[5].isoformat() if r[5] else None} for r in cur.fetchall()]
+                     "example": r[4], "notes": r[5], "last": r[6].isoformat() if r[6] else None} for r in cur.fetchall()]
 
 
 def find_patients(user_id, name):
@@ -494,16 +494,19 @@ def find_by_cpf(user_id, cpf, exclude_id=None):
     return _patient(r) if r else None
 
 
-# paciente fictícia criada em toda conta nova (app/exemplo.py); pode ser excluída mesmo com prontuário
-EXAMPLE_NAME = "Maria Aparecida Souza (exemplo)"
+# paciente fictícia criada em toda conta nova (app/exemplo.py); pode ser excluída mesmo com prontuário.
+# É reconhecida pela CHAVE, nunca pelo nome ("Maria Silva" é comum): patient_key() jamais devolve texto
+# começando com espaço, então nenhum paciente real — nem consulta antiga só com o nome — cai nela.
+EXAMPLE_NAME = "Maria Silva"
+EXAMPLE_KEY = " exemplo"
 
 
-def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None):
+def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None, key=None):
     with connection() as conn:
         r = conn.execute(
             f"""insert into patients (user_id, patient_key, name, birth_date, sex, cpf, phone)
                 values (%s,%s,%s,%s,%s,%s,%s) returning {_PCOLS}""",
-            (user_id, patient_key(name), name, birth_date, sex, cpf, phone)).fetchone()
+            (user_id, key or patient_key(name), name, birth_date, sex, cpf, phone)).fetchone()
         conn.commit()
     return _patient(r)
 
@@ -537,6 +540,10 @@ _PATIENT_FIELDS = ("name", "birth_date", "sex", "cpf", "phone", "allergies", "pr
 def update_patient(user_id, patient_id, fields):
     """Atualiza campos do cadastro/resumo clínico. Mudou o nome → atualiza também as anotações.
     Retorna o paciente atualizado ou None se não existir."""
+    if "name" in fields:                                  # mesmo nome de novo (formulário inteiro): não mexe na chave
+        cur_p = get_patient(user_id, patient_id)
+        if cur_p and cur_p["name"] == fields["name"]:
+            fields = {k: v for k, v in fields.items() if k != "name"}
     sets, vals = [], []
     for k in _PATIENT_FIELDS:
         if k in fields:
@@ -570,11 +577,11 @@ def delete_patient(user_id, patient_id):
     A paciente de exemplo (fictícia) sai com tudo. Retorna 'ok', 'has_notes' ou 'not_found'."""
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("select patient_key, name from patients where user_id = %s and id = %s", (user_id, patient_id))
+            cur.execute("select patient_key from patients where user_id = %s and id = %s", (user_id, patient_id))
             r = cur.fetchone()
             if not r:
                 return "not_found"
-            if r[1] == EXAMPLE_NAME:
+            if r[0] == EXAMPLE_KEY:
                 cur.execute("delete from patient_files where user_id = %s and patient_id = %s", (user_id, patient_id))
                 cur.execute("""delete from note_addenda where note_id in
                                (select id from clinical_notes where user_id = %s and patient_id = %s)""", (user_id, patient_id))

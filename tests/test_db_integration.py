@@ -1,6 +1,7 @@
 """Testes contra um banco de verdade — o de TESTES (fixture test_db, ver conftest.py). Sem
 TEST_DATABASE_URL eles são pulados; nunca tocam produção. Cada teste cria os próprios usuários e
 apaga tudo no fim."""
+import datetime
 import uuid
 
 import pytest
@@ -94,7 +95,12 @@ def test_conta_nova_ganha_paciente_de_exemplo_que_pode_ser_excluida(novo_usuario
     pid = exemplo.seed(uid)
     assert pid and exemplo.seed(uid) is None                              # só uma vez
     p = db.get_patient(uid, pid)
-    assert p["name"] == db.EXAMPLE_NAME and not p.get("cpf") and not p.get("phone")
+    assert p["name"] == db.EXAMPLE_NAME and p["example"] and not p.get("cpf") and not p.get("phone")
+    real = db.create_patient(uid, "Maria Silva")                         # homônima real: não é exemplo
+    assert not db.get_patient(uid, real["id"])["example"]
+    db.add_example_notes(uid, real["id"], real["key"], real["name"], [("Retorno", None, "texto real", {"mode": "free"}, None, datetime.datetime.now(datetime.timezone.utc))])
+    assert db.delete_patient(uid, real["id"]) == "has_notes"             # prontuário real continua protegido
+    assert db.update_patient(uid, pid, {"name": db.EXAMPLE_NAME})["example"]   # salvar o cadastro não tira a marca
     notas = db.list_notes(uid, pid, p["key"])
     assert len(notas) == 17 and sum(1 for n in notas if n["signed_at"]) == 11
     assert len(db.list_files(uid, pid)) == 1

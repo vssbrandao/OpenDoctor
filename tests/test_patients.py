@@ -113,7 +113,11 @@ def test_paciente_de_exemplo_no_formato_da_tela():
     from app.server import _note_data, _sniff
     now = datetime.datetime(2026, 10, 1, tzinfo=datetime.timezone.utc)
     cons, labs = exemplo.consultas(now), exemplo.exames(now)
-    assert len(cons) == 11 and len(labs) == 6 and exemplo.NAME.endswith("(exemplo)")
+    assert len(cons) == 11 and len(labs) == 6 and exemplo.NAME == "Maria Silva"
+    # a marca do exemplo é a chave, que nenhum nome digitado consegue gerar
+    from app.db import EXAMPLE_KEY, patient_key
+    for nome in ("Maria Silva", " exemplo", "exemplo", "  Exemplo ", "maria silva (exemplo)"):
+        assert patient_key(nome) != EXAMPLE_KEY
     for x in cons + labs:
         assert _note_data(x["data"]) == x["data"]
     assert all(c["signed_at"] > c["start"] for c in cons)
