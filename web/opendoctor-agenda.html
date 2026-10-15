@@ -386,6 +386,12 @@
     .ov-tip-v small{font-weight:400;font-size:12px;color:var(--g-ink2)}
     .ov-tip-c{font-size:12px;line-height:16px;color:var(--g-ink2)}
     .ov-tip-c.up{color:var(--g-green)}.ov-tip-c.down{color:var(--g-red)}
+    .ov-tip-s{display:flex;align-items:center;gap:6px;font-family:var(--disp);font-size:12px;line-height:20px;color:#36373A;white-space:nowrap}
+    .ov-tip-s .mk{width:9px;height:9px;flex:none}
+    .ov-tip-s b{margin-left:auto;padding-left:12px;font-weight:500;color:#0A0A0A}
+    .ov-tip-s b.bad{color:#C0151D}
+    .ov-tip-s small{font-size:12px;color:#56595E}
+    .gq-quote[hidden]{display:none}
     .ov-tip-go{font-size:12px;line-height:16px;color:var(--g-blue);margin-top:4px}
     .ov-plotmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;
       font-family:var(--disp);font-size:14px;line-height:20px;color:var(--g-ink2);pointer-events:none}
@@ -587,68 +593,202 @@
     .ov-tnav.prev{left:-16px}.ov-tnav.next{right:-16px}
     .ov-tnav:hover{background:#F7F8FA}
     .ov-tnav svg{width:24px;height:24px}
-    /* ===== respiro: escala de espaços maior que a do Finance (a coluna aqui é mais estreita):
-       seções 48 · título → conteúdo 24 · blocos ligados 16–24 · linhas 16 · painéis 20–24 ===== */
-    .pr{gap:20px}
-    #prMain{gap:24px}
-    .pr-head .pr-sub{margin-top:12px}
-    .pr-head .pr-tags{margin-top:16px;gap:8px}
-    .pr-tabs{margin-top:8px}                               /* cabeçalho → abas: 32 */
-    .pr-panel{gap:32px}
-    .ov{gap:48px;padding-top:8px}                          /* abas → conteúdo: 32 */
-    .ov-sec{gap:24px}
-    .ov-hd{gap:4px}
-    .ov-persp{height:56px;padding:0 16px;gap:12px}
-    .ov-persp + .ov-tiles-wrap{margin-top:-24px}           /* barra → cartões: 24 */
-    .ov-tiles{gap:16px;grid-auto-columns:calc((100% - 32px) / 3)}
-    .ov-tile{height:160px;padding:16px 16px 0}
-    .ov-tile-v{margin-top:4px}
-    .ov-tile-d{margin-top:12px}
-    .ov-tile svg.sp{width:calc(100% + 32px);margin:auto -16px 0}
-    .ov-chart{gap:20px}
-    .ov-big{margin-top:10px}
-    .ov-when{margin-top:4px}
-    .ov-legend{min-height:48px;padding:0 12px}
-    .ov-plot{height:260px;padding:24px 20px 12px 12px}
-    .ov-ranges{height:48px;padding:12px 16px}
-    .ov-empty{padding:32px;gap:8px}
-    .ov-ai{padding:16px 0}
-    .ov-ai-b{padding:16px 56px 8px 20px;gap:16px}
-    .ov-stats{column-gap:32px}
-    .ov-row{height:49px;padding:0 4px}
-    .ov-nrow{padding:16px 0;gap:16px}
-    .ov .pr-sumcol{padding:16px 4px;row-gap:10px;column-gap:16px}
-    .ov .pr-chips{gap:8px}
-    .ov-dxrow{padding:16px 0;gap:16px}
-    .ov-feed{gap:24px 32px}
-    .ov-post{gap:8px}
-    /* aba Consulta */
-    .pr-bigcard{gap:32px}
-    .pr-soap{gap:32px}
-    .pr-soapf{gap:12px}
-    .pr-vitals{gap:20px 24px}
-    .pr-vital{gap:8px}
-    .pr-in,.pr-imc{height:44px}
-    .pr-note,.pr-soapf textarea{padding:14px 16px}
-    .pr-soapf textarea{min-height:112px}
-    .pr-rec{padding:16px 16px 16px 20px}
-    .pr-foot{padding-top:24px;gap:12px}
-    .pr-locked .pr-body{padding:20px 24px}
-    .pr-cid{gap:12px}
-    /* consultas, histórico, acessos, cadastro */
-    .pr-trow{padding:16px 8px;gap:16px}
-    .pr-tgroup{padding:32px 0 12px}
-    .pr-item{padding:24px 0;gap:12px}
-    .pr-item:first-child{padding-top:24px}
-    .pr-acc{min-height:49px}
-    .pr-form{padding:32px;gap:20px 24px}
-    .pr-field{gap:8px}
-    .pr-bigcard .pr-empty{padding:32px}
+    /* ===== estrutura e regras da página de cotação do Google Finance (CSS calculado dos elementos,
+       google.com/finance/quote/RUT:INDEXRUSSELL?comparison=.IXIC:INDEXNASDAQ&type=line, 1440px) ===== */
+    /* trilha: linha de 40px, padding 8/0, espaço 6; seta 16 #36373A; "|" #CCCFD9 */
+    .pr-top{min-height:40px;padding:8px 0}
+    .pr-crumb{gap:6px}
+    .pr-back{gap:6px;font-size:14px;line-height:24px;font-weight:500;color:#0A0A0A}
+    .pr-back svg{width:16px;height:16px;color:#36373A}
+    .pr-crumb-sep{width:auto;height:auto;background:none;padding:0 4px 0 2px;font-family:var(--disp);font-size:14px;line-height:24px;color:#CCCFD9}
+    .pr-crumb-sep::before{content:'|'}
+    .pr-crumb-t{font-size:14px;line-height:24px;color:#56595E}
+    .pr{gap:0}
+    #prMain{gap:16px}
+    /* botão principal = "Adicionar à lista" (36px, raio 18, #E5EDFF, 14 500) */
+    .pr-visit .pr-save{background:#E5EDFF;color:#0A0A0A;padding:0 16px}
+    .pr-visit .pr-save:hover{background:#D3E3FD}
+    .pr-visit .pr-save.live{background:#fff;color:#0A0A0A;box-shadow:inset 0 0 0 1px #CCCFD9}
+    /* número + variação + data (preço 24/32 500 · variação 20/26 com círculo de 16 · data 14/16) */
+    .gq{display:flex;flex-direction:column;gap:4px}
+    .gq[hidden]{display:none}
+    .gq-quote{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+    .gq-price{display:flex;align-items:center;flex-wrap:wrap;column-gap:12px;min-height:32px}
+    .gq-val{font-family:var(--disp);font-weight:500;font-size:24px;line-height:32px;color:#0A0A0A}
+    .gq-unit{margin-left:-8px;font-family:var(--disp);font-size:14px;line-height:20px;color:#56595E;align-self:flex-end;padding-bottom:4px}
+    .gq-chg{display:flex;align-items:center;gap:4px;font-family:var(--disp);font-weight:400;font-size:20px;line-height:26px;color:#56595E}
+    .gq-chg.up{color:#046E00}.gq-chg.down{color:#C0151D}
+    .gq-chg small{font-size:20px;line-height:26px;color:#0A0A0A;margin-left:4px}
+    .gq-date{font-family:var(--disp);font-size:14px;line-height:16px;color:#56595E}
+    .gq-ar{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;background:#56595E}
+    .gq-ar.up{background:#046E00}.gq-ar.down{background:#C0151D}
+    .gq-ar svg{width:12px;height:12px;display:block}
+    .gq-ar.s12{width:12px;height:12px}.gq-ar.s12 svg{width:10px;height:10px}
+    /* cartão do gráfico: barra 40 (raio 16 16 4 4) · gráfico (raio 4, padding 16/13/10) · períodos 39 (raio 4 4 16 16); 2px entre eles */
+    .gq-card{display:flex;flex-direction:column}
+    .gq-card[hidden]{display:none}
+    .gq-bar{display:flex;align-items:center;justify-content:space-between;height:40px;padding:0 8px;margin-bottom:2px;border-radius:16px 16px 4px 4px;background:#F7F8FA}
+    .gq-tools{display:flex;align-items:center}
+    .gq-dd{position:relative}
+    .gq-tool{display:inline-flex;align-items:center;height:32px;padding:0 8px 0 12px;margin:0 4px 0 0;border:0;border-radius:16px;background:none;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#0A0A0A;white-space:nowrap}
+    .gq-tool:hover,.gq-tool[aria-expanded=true]{background:rgba(10,10,10,.06)}
+    .gq-ico{width:18px;height:18px;margin-right:8px;flex:none}
+    .gq-caret{width:22px;height:22px;margin-left:4px;flex:none}
+    .gq-menu{position:absolute;left:0;top:calc(100% + 4px);z-index:30;min-width:220px;padding:8px 0;border-radius:8px;background:#fff;
+      box-shadow:0 1px 2px rgba(60,64,67,.3),0 2px 6px 2px rgba(60,64,67,.15)}
+    .gq-menu[hidden]{display:none}
+    .gq-mi{display:flex;align-items:center;gap:12px;width:100%;height:40px;padding:0 16px;border:0;background:none;cursor:pointer;text-align:left;
+      font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A;white-space:nowrap}
+    .gq-mi:hover{background:#F0F2F5}
+    .gq-mi:disabled{color:#9AA0A6;cursor:default;background:none}
+    .gq-mi .ck{width:18px;height:18px;flex:none;display:flex;align-items:center;justify-content:center}
+    .gq-mi .ck svg{width:18px;height:18px}
+    .gq-mi .mk{width:11px;height:11px;flex:none}
+    .gq-mh{padding:8px 16px 4px;font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .gq-plot{border-radius:4px;background:#F7F8FA;padding:16px 13px 10px}
+    .gq-chips{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:0 0 8px}
+    .gq-chips:empty{display:none}
+    .gq-chip{display:inline-flex;align-items:center;gap:6px;height:32px;padding:8px 16px;border:1px solid #CCCFD9;border-radius:100px;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:15px;color:#36373A;white-space:nowrap}
+    .gq-chip.rm{padding-right:4px}
+    .gq-chip svg.mk{width:11px;height:11px;flex:none}
+    .gq-chip button{width:28px;height:28px;margin:0 0 0 -2px;border:0;border-radius:14px;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .gq-chip button:hover{background:rgba(10,10,10,.06)}
+    .gq-chip button svg{width:18px;height:18px}
+    .gq-svgbox{position:relative;height:161px;outline:none}
+    .gq-svgbox:focus-visible{box-shadow:0 0 0 2px #0B57D0;border-radius:4px}
+    .gq-svgbox svg{display:block;width:100%;height:100%;overflow:visible}
+    .gq-svgbox text{font-family:var(--disp);font-size:11px}
+    .gq-ranges{display:flex;align-items:center;justify-content:space-between;height:39px;padding:0 16px;margin-top:2px;border-radius:4px 4px 16px 16px;background:#F7F8FA}
+    .gq-rtabs{display:flex;gap:6px}
+    .gq-rtabs button{min-width:48px;height:24px;padding:4px 10px;border:0;border-radius:8px;background:none;cursor:pointer;
+      font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:#56595E}
+    .gq-rtabs button:hover{background:#ECEEF2;color:#0A0A0A}
+    .gq-rtabs button.on{background:#E9EBF0;color:#0A0A0A;font-weight:500}
+    /* tabela de comparação (th 14/16 #56595E, padding 1/1/4; td padding 8/1 com borda superior #CCCFD9; 12/16) */
+    .gq-table{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(--disp)}
+    .gq-table[hidden]{display:none}
+    .gq-table th{padding:1px 1px 4px;font-weight:400;font-size:14px;line-height:16px;color:#56595E;text-align:right;vertical-align:bottom}
+    .gq-table th:first-child{width:12%}
+    .gq-table th.l{text-align:left;width:29%}
+    .gq-table td{padding:8px 1px;border-top:1px solid #CCCFD9;font-size:12px;line-height:16px;color:#0A0A0A;text-align:right;vertical-align:middle}
+    .gq-table td.mk{text-align:center}
+    .gq-table td.mk svg{width:11px;height:11px;display:inline-block;vertical-align:middle}
+    .gq-table td.l{text-align:left}
+    .gq-table td.l b{display:block;font-weight:500;font-size:12px;line-height:15.6px;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gq-table td.l small{display:block;font-size:11px;line-height:14.3px;color:#56595E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gq-table td .ch{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-weight:500}
+    .gq-table td .ch.up{color:#046E00}.gq-table td .ch.down{color:#C0151D}
+    .gq-table td.bad{color:#C0151D;font-weight:500}
+    .gq-table tr.cur td{background:#F7F8FA}
+    /* cartões "Ativos relacionados" (178×144, #F7F8FA, raio 12; padding 12/16/0/12; espaço 8; mini-gráfico de 32) */
+    .gr-wrap{position:relative}
+    .gr-row{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:1px;margin:-1px}
+    .gr-row::-webkit-scrollbar{display:none}
+    .gr-card{flex:0 0 178px;height:144px;display:flex;flex-direction:column;border:0;border-radius:12px;background:#F7F8FA;padding:0;cursor:pointer;text-align:left;
+      overflow:hidden;scroll-snap-align:start;font-family:var(--disp)}
+    .gr-card:hover{background:#F0F2F5}
+    .gr-card.on{box-shadow:inset 0 0 0 1px #56595E}
+    .gr-in{display:flex;flex-direction:column;gap:8px;padding:12px 16px 0 12px}
+    .gr-h{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .gr-tk{font-weight:500;font-size:12px;line-height:16px;color:#56595E}
+    .gr-nm{font-weight:500;font-size:16px;line-height:24px;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gr-pr{font-weight:500;font-size:12px;line-height:16px;color:#56595E;white-space:nowrap}
+    .gr-pr.bad{color:#C0151D}
+    .gr-ch{display:flex;align-items:center;gap:6px;height:20px;font-weight:500;font-size:16px;line-height:20px;color:#56595E}
+    .gr-ch.up{color:#046E00}.gr-ch.down{color:#C0151D}
+    .gr-card svg.sp{display:block;width:100%;height:32px;margin-top:auto;flex:none}
+    /* indicadores: divisória só entre as linhas (como no Finance) */
+    .ov-col .ov-row:last-child{border-bottom:0;height:40px}
+    /* notícias: espaço 24 × 24; fonte → título 6px */
+    .ov-feed{gap:24px}
+    .ov-post{gap:6px}
+    /* ===== abas no padrão das abas da página da NVDA (Ganhos, Finanças, Investimentos) ===== */
+    /* título de seção com subtítulo na mesma linha ("Relatórios anteriores · Todos os valores em USD") */
+    .gh{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+    .gh-t{font-family:var(--disp);font-weight:500;font-size:20px;line-height:28px;color:#0A0A0A}
+    .gh-s{margin-left:8px;font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .gh-col{flex-direction:column;gap:0}
+    .gh-col .gh-s{margin-left:0}
+    /* faixa de indicadores (Ganhos): padding 4/0/16; colunas 12/16 + 16/20 500; divisória #F0F2F5 */
+    .gk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:4px 0 16px}
+    .gk:empty{display:none}
+    .gk-i{display:flex;flex-direction:column;gap:4px;min-width:0;padding:12px 16px;border-left:1px solid #F0F2F5;font-family:var(--disp)}
+    .gk-i:first-child{padding-left:0;border-left:0}
+    .gk-l{font-size:12px;line-height:16px;color:#56595E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gk-v{font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gk-s{font-weight:500;font-size:12px;line-height:16px;color:#56595E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gk-s.up{color:#046E00}.gk-s.warn{color:#B06000}.gk-s.live{color:#E37400}
+    /* cartão da evolução ("Divulgação de lucros"): #F7F8FA raio 16 padding 16; título 16/24 500 */
+    .pr-bigcard{gap:24px}
+    .gc{display:flex;flex-direction:column;padding:16px;border-radius:16px;background:#F7F8FA}
+    .gc .pr-cardhead{align-items:center;gap:16px}
+    .gc .pr-h2{font-size:16px;line-height:24px}
+    .gc .pr-cardsub{margin-top:0;font-size:12px;line-height:16px;color:#56595E}
+    .gc .pr-seg{gap:4px}
+    .gc .pr-seg button{height:28px;padding:0 12px;border-radius:14px;box-shadow:none;font-size:12px;line-height:24px;color:#0A0A0A}
+    .gc .pr-seg button:hover{background:rgba(10,10,10,.06)}
+    .gc .pr-seg button.on{background:#E1E3E8;box-shadow:none}
+    /* gravação = player da divulgação: painel #E9EBF0 raio 12 padding 16; etiqueta 10/18; botões redondos 44 */
+    .gc .pr-rec{margin:16px 0 8px;padding:16px;border-radius:12px;background:#E9EBF0;gap:12px}
+    .gc .pr-rec-meta{gap:8px}
+    .gc .pr-rec-chip{height:18px;padding:0 8px;border-radius:8px;background:#E1E3E8;font-weight:500;font-size:10px;line-height:18px;color:#001D35}
+    .gc .pr-rec-s{font-weight:500;font-size:10px;line-height:18px;color:#56595E}
+    .gc .pr-roundbtn{width:44px;height:44px;border-radius:22px;background:#F7F8FA}
+    /* "Transcrição da divulgação": padding-top 12; espaço 16; título 16/24 500; resumo 14/20 */
+    .gc-trans{display:flex;align-items:center;gap:16px;padding-top:12px;font-family:var(--disp);min-width:0}
+    .gc-trans-t{flex:none;font-weight:500;font-size:16px;line-height:24px;color:#0A0A0A}
+    .gc-trans-i{flex:none;width:18px;height:18px;margin-right:-12px}
+    .gc-trans-s{min-width:0;font-size:14px;line-height:20px;color:#56595E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gcard{padding:16px;border-radius:16px;background:#F7F8FA}
+    .gcard .pr-h2{font-size:16px;line-height:24px}
+    .gcard .pr-cardsub{font-size:12px;line-height:16px}
+    .gcard .pr-empty{background:none!important;padding:0!important}
+    /* subabas em pílula (Finanças / Investimentos): 32px, raio 8, padding 0/16, 12/16 500 */
+    .gs-tabs{display:flex;gap:8px;padding:8px 0}
+    .gs-tabs button{height:32px;padding:0 16px;border:0;border-radius:8px;background:none;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#444746}
+    .gs-tabs button:hover{background:#F0F2F5;color:#0A0A0A}
+    .gs-tabs button.on{background:#F8FAFD;color:#0A0A0A;box-shadow:inset 0 0 0 1px #CCCFD9,0 1px 2px rgba(60,64,67,.15)}
+    .gsub[hidden]{display:none}
+    /* tabela de consultas = "Relatórios anteriores" (th 12/16 500, padding 16/8/6/0; td padding 16/8/16/0; divisória #F0F2F5) */
+    .pr-trow{gap:8px;padding:16px 0;border-bottom:1px solid #F0F2F5;font-size:12px;line-height:16px;color:#0A0A0A}
+    .pr-trow.th{padding:16px 0 6px;border-bottom:1px solid #F0F2F5;font-weight:500;font-size:12px;line-height:16px;color:#0A0A0A}
+    button.pr-trow:hover{background:#F7F8FA}
+    .pr-tdate{font-weight:500;font-size:12px;line-height:16px;color:#0A0A0A}
+    .pr-tdate small{margin-top:2px;font-weight:400;font-size:12px;line-height:16px;color:#56595E}
+    .pr-tcell{font-size:12px;line-height:16px}
+    .pr-tmuted{font-size:12px;line-height:16px;color:#56595E}
+    .pr-tgroup{padding:24px 0 0;font-weight:500;font-size:14px;line-height:20px;color:#56595E}
+    .pr-tgroup:first-of-type{padding-top:8px}
+    /* sinais por consulta = tabela de Finanças (th 14/18 500 #56595E; td 12/16; padding 4/14; borda #CCCFD9) */
+    .gf-wrap{overflow-x:auto;scrollbar-width:thin}
+    .gf-table{width:100%;border-collapse:collapse;font-family:var(--disp)}
+    .gf-table th{padding:4px 14px;border-bottom:1px solid #CCCFD9;font-weight:500;font-size:14px;line-height:18px;color:#56595E;text-align:right;white-space:nowrap;height:32px}
+    .gf-table th:first-child{padding-left:0;text-align:left;font-weight:400;font-size:12px;line-height:18px;position:sticky;left:0;background:#fff;z-index:1}
+    .gf-table td{height:41px;padding:4px 14px;border-bottom:1px solid #CCCFD9;font-size:12px;line-height:16px;color:#56595E;text-align:right;white-space:nowrap}
+    .gf-table td:first-child{padding-left:0;text-align:left;font-weight:500;color:#0A0A0A;position:sticky;left:0;background:#fff;z-index:1}
+    .gf-table td.bad{color:#C0151D;font-weight:500}
+    .gf-table td small{display:block;font-weight:400;color:#56595E}
+    /* acessos = "Transações de insider" (th padding 4/14/4/0; td padding 12/14/12/0; 41px; nome 12/16 500) */
+    .pr-acc{grid-template-columns:200px minmax(0,1fr);gap:14px;align-items:center;min-height:41px;padding:12px 0;border-bottom:1px solid #F0F2F5;
+      font-size:12px;line-height:16px;color:#56595E}
+    .pr-acc.th{min-height:0;padding:4px 0;font-weight:500;color:#0A0A0A}
+    .pr-acc b{font-weight:500;color:#0A0A0A}
+    .gp{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:16px 0 0;font-family:var(--disp);font-weight:500;font-size:12px;color:#0A0A0A}
+    .gp[hidden]{display:none}
+    .gp button{width:36px;height:36px;border:0;border-radius:50%;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .gp button:hover{background:#F0F2F5}
+    .gp button:disabled{opacity:.35;cursor:default;background:none}
+    .gp svg{width:24px;height:24px}
+    .pr-histbar{align-items:center}
+    .pr-histbar .gh{margin-bottom:0}
     .pr-item.flash{animation:prflash 1.6s ease-out}
     @keyframes prflash{0%,30%{background:#E8F0FE}100%{background:transparent}}
     /* coluna estreita (assistente aberto) */
     @container pr (max-width:720px){
-      .ov-stats{column-gap:32px}
+      .ov-stats{column-gap:20px}
       .ov-ai-b{padding-right:8px}
       .pr-sum{grid-template-columns:1fr}
       .ov .pr-sum{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -659,17 +799,17 @@
       .pr-bigcard{padding:0}
       .pr-tabs button{padding:0 12px}                      /* 6 abas cabem sem rolar */
     }
-    @container pr (min-width:700px){
-      .ov-tiles{grid-auto-columns:calc((100% - 48px) / 4)}
-    }
-    @container pr (max-width:699px){
+    @container pr (max-width:560px){
+      .gk{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .gk-i:nth-child(3){padding-left:0;border-left:0}
+      .gc-trans-s,.gc-trans-i{display:none}
       .ov-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:32px;margin-top:32px}
+      .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px;margin-top:16px}
       .ov-feed{grid-template-columns:1fr}
     }
     @container pr (max-width:560px){
       .ov .pr-sumcol{grid-template-columns:132px minmax(0,1fr)}
-      .ov-tiles{grid-auto-columns:calc((100% - 16px) / 2)}
+      .gq-table th:last-child,.gq-table td:last-child{display:none}
       .pr-vitals{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @container pr (max-width:520px){
@@ -1226,6 +1366,46 @@
               </div>
             </div>
 
+            <!-- ===== bloco do gráfico, na estrutura da página de cotação do Google Finance
+                 (google.com/finance/quote/RUT:INDEXRUSSELL?comparison=…&type=line): número + variação + data,
+                 cartão do gráfico (barra Linha · Comparar · Indicadores, chips das séries, gráfico, períodos)
+                 e tabela de comparação. Fica acima das abas, como no Finance. ===== -->
+            <section class="gq" id="ovTop" hidden>
+              <div class="gq-quote" id="gqQuote">
+                <div class="gq-price"><span class="gq-val" id="ovVal">—</span><span class="gq-unit" id="ovUnit"></span><span class="gq-chg" id="ovDelta"></span></div>
+                <div class="gq-date" id="ovWhen"></div>
+              </div>
+              <div class="gq-card" id="ovChart">
+                <div class="gq-bar">
+                  <div class="gq-tools">
+                    <div class="gq-dd"><button class="gq-tool" type="button" id="gqType" aria-haspopup="menu" aria-expanded="false"><svg class="gq-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" fill="#0A0A0A"/></svg><span id="gqTypeT">Linha</span><svg class="gq-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="gqTypeM" role="menu" hidden></div></div>
+                    <div class="gq-dd"><button class="gq-tool" type="button" id="gqCmp" aria-haspopup="menu" aria-expanded="false"><svg class="gq-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 19.99l7.5-7.51 4 4 7.09-7.97L22 9.92l-8.5 9.56-4-4-6 6.01zm1.5-4.5l6-6.01 4 4L22 3.92l-1.41-1.41-7.09 7.97-4-4L2 13.99z" fill="#0A0A0A"/></svg><span>Comparar</span><svg class="gq-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="gqCmpM" role="menu" hidden></div></div>
+                    <div class="gq-dd"><button class="gq-tool" type="button" id="gqInd" aria-haspopup="menu" aria-expanded="false"><svg class="gq-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8c-1.45 0-2.26 1.44-1.93 2.51l-3.55 3.56c-.3-.09-.74-.09-1.04 0l-2.55-2.55C12.27 10.45 11.46 9 10 9c-1.45 0-2.27 1.44-1.93 2.52l-4.56 4.55C2.44 15.74 1 16.55 1 18c0 1.1.9 2 2 2 1.45 0 2.26-1.44 1.93-2.51l4.55-4.56c.3.09.74.09 1.04 0l2.55 2.55C12.73 16.55 13.54 18 15 18c1.45 0 2.27-1.44 1.93-2.52l3.56-3.55c1.07.33 2.51-.48 2.51-1.93 0-1.1-.9-2-2-2z" fill="#0A0A0A"/></svg><span>Indicadores</span><svg class="gq-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="gqIndM" role="menu" hidden></div></div>
+                  </div>
+                </div>
+                <div class="gq-plot">
+                  <div class="gq-chips" id="gqChips"></div>
+                  <div class="gq-svgbox" id="ovPlot" tabindex="0" aria-label="Gráfico dos sinais vitais ao longo das consultas. Use as setas para percorrer as medidas e Enter para abrir a evolução.">
+                    <svg id="ovSvg" aria-hidden="true"></svg>
+                    <div class="ov-tip" id="ovTip" hidden></div>
+                    <div class="ov-plotmsg" id="ovPlotMsg" hidden></div>
+                  </div>
+                </div>
+                <div class="gq-ranges"><div class="gq-rtabs" id="ovRanges" role="tablist" aria-label="Período">
+                  <button type="button" role="tab" data-r="6">6M</button><button type="button" role="tab" data-r="12">1A</button><button type="button" role="tab" data-r="24">2A</button><button type="button" role="tab" data-r="60">5A</button><button type="button" role="tab" data-r="0" class="on">MÁX</button>
+                </div></div>
+              </div>
+              <table class="gq-table" id="gqTable">
+                <thead><tr><th></th><th class="l">Sinais</th><th>Última</th><th>Variação</th><th>% de variação</th><th>Primeira medida</th></tr></thead>
+                <tbody id="gqTBody"></tbody>
+              </table>
+              <div class="ov-empty" id="ovEmpty" hidden>
+                <div class="ov-empty-t">Ainda não há sinais vitais registrados</div>
+                <div class="ov-empty-s">Pressão, peso, glicemia e os outros sinais aparecem aqui, em gráfico, quando a evolução é feita no modo <b>SOAP</b>.</div>
+                <button class="ov-pill" type="button" id="ovEmptyGo">Abrir a consulta</button>
+              </div>
+            </section>
+
             <!-- abas (fixas no topo ao rolar) -->
             <div class="pr-tabs" id="prTabs" role="tablist">
               <button type="button" role="tab" data-tab="geral" class="on">Visão geral</button>
@@ -1236,64 +1416,43 @@
               <button type="button" role="tab" data-tab="acessos">Acessos</button>
             </div>
 
-            <!-- Visão geral (referência: novo Google Finance): destaques, gráfico dos sinais vitais,
-                 indicadores, cartões com tendência, resumo clínico, diagnósticos e evoluções recentes.
-                 Tudo calculado no navegador a partir do prontuário — nada vai para fora. -->
+            <!-- Visão geral: tudo calculado no navegador a partir do prontuário — nada vai para fora -->
             <section class="pr-panel ov" data-panel="geral">
-              <!-- "Perspectiva" do Finance: quantos sinais melhoram, quantos estão fora da faixa, pendências -->
-              <button class="ov-persp" type="button" id="ovPersp" hidden>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M2.5 14.5l4.6-4.7 3.3 3.3 7.1-7.4" stroke="#1F1F1F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M12.6 5.6h4.9v4.9" stroke="#1F1F1F" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <span class="ov-persp-t" id="ovPerspT"></span>
-                <span class="ov-persp-go">Ver resumo<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-              </button>
-
-              <!-- índices do Finance: um cartão por sinal vital (escolhe o que aparece no gráfico) -->
-              <div class="ov-tiles-wrap" id="ovTilesWrap">
-                <div class="ov-tiles" id="ovTiles" role="tablist" aria-label="Sinal vital no gráfico"></div>
-                <button class="ov-tnav prev" type="button" id="ovTPrev" aria-label="Sinais anteriores" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#1F1F1F"/></svg></button>
-                <button class="ov-tnav next" type="button" id="ovTNext" aria-label="Mais sinais" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="#1F1F1F"/></svg></button>
-              </div>
-
-              <div class="ov-chart" id="ovChart">
-                <div class="ov-chart-head">
-                  <div class="ov-mlabel" id="ovMLabel"></div>
-                  <div class="ov-big"><span class="ov-val" id="ovVal">—</span><span class="ov-unit" id="ovUnit"></span><span class="ov-delta" id="ovDelta"></span></div>
-                  <div class="ov-when" id="ovWhen"></div>
-                </div>
-                <div class="ov-frame">
-                  <div class="ov-legend" id="ovLegend"></div>
-                  <div class="ov-plot" id="ovPlot" tabindex="0" aria-label="Gráfico do sinal vital ao longo das consultas. Use as setas para percorrer as medidas e Enter para abrir a evolução.">
-                    <svg id="ovSvg" aria-hidden="true"></svg>
-                    <div class="ov-tip" id="ovTip" hidden></div>
-                    <div class="ov-plotmsg" id="ovPlotMsg" hidden></div>
-                  </div>
-                  <div class="ov-ranges" id="ovRanges" role="tablist" aria-label="Período">
-                    <button type="button" data-r="6">6M</button><button type="button" data-r="12">1A</button><button type="button" data-r="24">2A</button><button type="button" data-r="60">5A</button><button type="button" data-r="0" class="on">Tudo</button>
-                  </div>
-                </div>
-              </div>
-              <div class="ov-empty" id="ovEmpty" hidden>
-                <div class="ov-empty-t">Ainda não há sinais vitais registrados</div>
-                <div class="ov-empty-s">Pressão, peso, glicemia e os outros sinais aparecem aqui, em gráfico, quando a evolução é feita no modo <b>SOAP</b>.</div>
-                <button class="ov-pill" type="button" id="ovEmptyGo">Abrir a consulta</button>
-              </div>
-
-              <!-- "Resumo do mercado" do Finance: frases que abrem em detalhe -->
               <div class="ov-sec" id="ovSumSec" hidden>
-                <div class="ov-hd"><div class="ov-h">Resumo do paciente</div><div class="ov-hs">Calculado a partir do prontuário e da agenda · sem IA</div></div>
+                <div class="ov-hd"><div class="ov-h" role="heading" aria-level="2">Resumo do paciente</div><div class="ov-hs">Calculado a partir do prontuário e da agenda · sem IA</div></div>
                 <div class="ov-acc" id="ovAcc"></div>
               </div>
 
               <div class="ov-stats" id="ovStats"></div>
 
-              <!-- "Próximos resultados" do Finance -->
+              <!-- "Ativos relacionados" do Finance: um cartão por sinal vital -->
+              <div class="ov-sec" id="ovTilesWrap" hidden>
+                <div class="ov-h" role="heading" aria-level="2">Sinais vitais</div>
+                <div class="gr-wrap">
+                  <div class="gr-row" id="ovTiles"></div>
+                  <button class="ov-tnav prev" type="button" id="ovTPrev" aria-label="Sinais anteriores" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#1F1F1F"/></svg></button>
+                  <button class="ov-tnav next" type="button" id="ovTNext" aria-label="Mais sinais" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="#1F1F1F"/></svg></button>
+                </div>
+              </div>
+
               <div class="ov-sec" id="ovNextSec" hidden>
-                <div class="ov-hd"><div class="ov-h">Próximas consultas</div><div class="ov-hs">Da sua agenda</div></div>
+                <div class="ov-hd"><div class="ov-h" role="heading" aria-level="2">Próximas consultas</div><div class="ov-hs">Da sua agenda</div></div>
                 <div class="ov-next" id="ovNext"></div>
               </div>
 
+              <div class="ov-sec" id="ovFeedSec" hidden>
+                <div class="ov-hd"><div class="ov-h" role="heading" aria-level="2">Evoluções recentes</div><div class="ov-hs">Do prontuário deste paciente</div></div>
+                <div class="ov-feed" id="ovFeed"></div>
+                <button class="ov-link" type="button" id="ovFeedMore">Ver histórico completo<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+              </div>
+
+              <div class="ov-sec" id="ovDxSec" hidden>
+                <div class="ov-hd"><div class="ov-h" role="heading" aria-level="2">Diagnósticos</div><div class="ov-hs">CID-10 registrados nas evoluções</div></div>
+                <div class="ov-dx" id="ovDx"></div>
+              </div>
+
               <div class="ov-sec">
-                <div class="ov-h">Resumo clínico</div>
+                <div class="ov-h" role="heading" aria-level="2">Resumo clínico</div>
                 <div class="pr-sum">
                   <div class="pr-sumcol" data-k="allergies"><div class="pr-sumhead">Alergias</div><div class="pr-chips" data-empty="Nenhuma registrada"></div><input class="pr-chipin" placeholder="+ Adicionar alergia" autocomplete="off"></div>
                   <div class="pr-sumcol" data-k="problems"><div class="pr-sumhead">Problemas ativos</div><div class="pr-chips" data-empty="Nenhum registrado"></div><input class="pr-chipin" placeholder="+ Adicionar problema" autocomplete="off"></div>
@@ -1301,24 +1460,15 @@
                 </div>
               </div>
 
-              <div class="ov-sec" id="ovDxSec" hidden>
-                <div class="ov-hd"><div class="ov-h">Diagnósticos</div><div class="ov-hs">CID-10 registrados nas evoluções</div></div>
-                <div class="ov-dx" id="ovDx"></div>
-              </div>
-
-              <!-- "Mais notícias" do Finance -->
-              <div class="ov-sec" id="ovFeedSec" hidden>
-                <div class="ov-hd"><div class="ov-h">Evoluções recentes</div><div class="ov-hs">Do prontuário deste paciente</div></div>
-                <div class="ov-feed" id="ovFeed"></div>
-                <button class="ov-link" type="button" id="ovFeedMore">Ver histórico completo<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-              </div>
-
               <div class="ov-note">Faixas de referência gerais para adultos, só para orientar a leitura — não substituem o julgamento clínico.</div>
             </section>
 
             <!-- Consulta atual: evolução (texto livre ou SOAP) -->
             <section class="pr-panel" data-panel="atual" hidden>
+              <!-- faixa de indicadores (como "Último relatório | Período fiscal | …" da aba Ganhos) -->
+              <div class="gk" id="gkStrip"></div>
               <div class="pr-bigcard" id="prEvoBox">
+                <div class="gc">
                 <div class="pr-cardhead">
                   <div>
                     <div class="pr-h2" id="prEvoLabel">Evolução</div>
@@ -1333,6 +1483,12 @@
                     <div class="pr-rec-meta"><span class="pr-rec-chip">Gravação · em breve</span><span class="pr-rec-s">0:00</span><span class="pr-rec-s pr-rec-end">—:—</span></div>
                   </div>
                   <button class="pr-roundbtn" type="button" id="prRecBtn" disabled title="Gravação da consulta — em breve" aria-label="Gravar consulta (em breve)"><img src="assets/icons/sf-mic.svg?v=2" width="11" height="16.45" alt=""></button>
+                </div>
+                <div class="gc-trans" id="gcTrans">
+                  <span class="gc-trans-t">Transcrição da consulta</span>
+                  <svg class="gc-trans-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8zM16 18H8v-2h8zm0-4H8v-2h8zm-3-5V3.5L18.5 9z" fill="#0A0A0A"/></svg>
+                  <span class="gc-trans-s">Disponível quando a gravação da consulta for ativada</span>
+                </div>
                 </div>
                 <div class="pr-body pr-printcur" id="prPrintCur"></div>
                 <div id="prFree"><textarea class="pr-note" id="prNote" placeholder="Anamnese, exame físico, hipóteses, conduta…"></textarea></div>
@@ -1386,7 +1542,7 @@
             <!-- Resumo clínico (vale para todas as consultas) -->
             <!-- Prescrições: espaço reservado para o módulo próprio de prescrição (próxima etapa) -->
             <section class="pr-panel" data-panel="prescricoes" hidden>
-              <div class="pr-bigcard">
+              <div class="pr-bigcard gcard">
                 <div class="pr-cardhead">
                   <div>
                     <div class="pr-h2">Prescrições</div>
@@ -1400,13 +1556,24 @@
 
             <!-- Consultas do paciente na agenda -->
             <section class="pr-panel" data-panel="consultas" hidden>
-              <div class="pr-table" id="prVisits"></div>
+              <div class="gs-tabs" id="csTabs" role="tablist">
+                <button type="button" role="tab" data-s="agenda" class="on" aria-selected="true">Consultas</button>
+                <button type="button" role="tab" data-s="sinais" aria-selected="false">Sinais por consulta</button>
+              </div>
+              <div class="gsub" id="csAgenda">
+                <div class="gh"><span class="gh-t">Consultas</span><span class="gh-s">Da sua agenda</span></div>
+                <div class="pr-table" id="prVisits"></div>
+              </div>
+              <div class="gsub" id="csSinais" hidden>
+                <div class="gh"><span class="gh-t">Sinais por consulta</span><span class="gh-s">Medidas registradas nas evoluções (SOAP)</span></div>
+                <div class="gf-wrap"><table class="gf-table" id="csTable"></table></div>
+              </div>
             </section>
 
             <!-- Histórico de evoluções -->
             <section class="pr-panel" data-panel="historico" hidden>
               <div class="pr-histbar">
-                <div class="pr-label">Evoluções anteriores</div>
+                <div class="gh"><span class="gh-t">Evoluções anteriores</span><span class="gh-s" id="prHistCount"></span></div>
                 <input class="srch-in pr-histq" id="prHistQ" type="search" placeholder="Buscar no histórico" autocomplete="off" spellcheck="false">
               </div>
               <div class="pr-hist" id="prHist"></div>
@@ -1414,7 +1581,14 @@
 
             <!-- Registro de acessos (LGPD) -->
             <section class="pr-panel" data-panel="acessos" id="prAccess" hidden>
+              <div class="gh gh-col"><span class="gh-t">Registro de acessos</span><span class="gh-s">Quem abriu ou alterou este prontuário, com data e hora (LGPD)</span></div>
               <div class="pr-table" id="prAccessList"></div>
+              <div class="gp" id="accPager" hidden>
+                <button type="button" id="accFirst" aria-label="Primeira página"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.41 16.59 13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z" fill="#0A0A0A"/></svg></button>
+                <button type="button" id="accPrev" aria-label="Página anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#0A0A0A"/></svg></button>
+                <span id="accPage">Página 1</span>
+                <button type="button" id="accNext" aria-label="Próxima página"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="#0A0A0A"/></svg></button>
+              </div>
             </section>
           </div>
         </div>
@@ -3360,6 +3534,7 @@
         $('prEvTitle').textContent = '';
         $('prEvWhen').textContent = has ? fmtWhen(ctx.start, ctx.end, ctx.all_day) : 'Registro fora de uma consulta agendada';
         $('prEvLoc').textContent = has && ctx.location ? ' · ' + ctx.location : '';
+        renderStrip();
       }
       function renderEvo() {
         var lk = locked();
@@ -3373,6 +3548,25 @@
           renderAdds($('prLockedAdds'), cur.addenda);
         }
         $('prCopyLast').hidden = lk || !lastOther();
+        renderStrip();
+      }
+      // faixa de indicadores da aba Consulta (como "Último relatório | Período fiscal | …" da aba Ganhos)
+      function renderStrip() {
+        var box = $('gkStrip'); if (!box) return; box.innerHTML = '';
+        if (!ctx) return;
+        function item(l, v, sub, cls) {
+          var it = el('div', 'gk-i'); it.appendChild(el('div', 'gk-l', l)); it.appendChild(el('div', 'gk-v', v));
+          it.appendChild(el('div', 'gk-s' + (cls ? ' ' + cls : ''), sub || '\u00a0')); box.appendChild(it);
+        }
+        var has = !!(ctx.event_id || ctx.start), d = has ? parseStart(ctx.start) : null;
+        item('Consulta', has ? (ctx.title || 'Consulta') : 'Evolução avulsa', has ? (ctx.location || 'Na agenda') : 'Fora da agenda');
+        item('Data', d ? dayMon(d) : 'Hoje', d ? DOWS[d.getDay()] + (ctx.all_day ? ' · dia todo' : ' · ' + hm(d)) : '');
+        var t0 = 0; try { t0 = +sessionStorage.getItem('od_visit_' + (ctx.event_id || ctx.patient_id || ctx.patient)) || 0; } catch (_) {}
+        if (locked()) item('Evolução', 'Finalizada', 'em ' + fmtDT(cur.signed_at), 'up');
+        else if (cur && (cur.content || '').trim()) item('Evolução', 'Rascunho', t0 ? 'Consulta em andamento' : 'Salva automaticamente', t0 ? 'live' : 'warn');
+        else item('Evolução', 'Em branco', t0 ? 'Consulta em andamento' : 'Ainda não escrita', t0 ? 'live' : '');
+        var fut = (visits || []).filter(function (v) { return parseStart(v.start) >= Date.now() && v.id !== ctx.event_id; })[0];
+        item('Próxima consulta', fut ? dayMon(parseStart(fut.start)) : (visits === null ? 'Carregando…' : 'Nenhuma'), fut ? untilTxt(parseStart(fut.start)) : '');
       }
       function lastOther() { return notes.filter(function (n) { return n !== cur && (n.content || '').trim(); })[0] || null; }
       $('prCopyLast').addEventListener('click', function () {
@@ -3408,9 +3602,18 @@
                    ask: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 2.9 8.6l3.4 3.4" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round"/><path d="M13.4 1.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="#1F1F1F"/></svg>',
                    open: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2.5h6.5l3.5 3.5v9.5H4z" fill="none" stroke="#1F1F1F" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 9.5h5M6.5 12h3.5" stroke="#1F1F1F" stroke-width="1.5" stroke-linecap="round"/></svg>',
                    chev: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" fill="#444746"/></svg>' };
-      var ov = { metric: null, range: 0, hover: -1, pts: [], S: null, dirty: true };
-      try { ov.metric = localStorage.getItem('od_pr_metric'); ov.range = +(localStorage.getItem('od_pr_range') || 0) || 0; } catch (_) {}
-
+      var ov = { metric: null, range: 0, hover: -1, S: null, dirty: true, cmp: [], type: 'line', ind: { ref: true, cons: true }, ser: [], times: [] };
+      try {
+        ov.metric = localStorage.getItem('od_pr_metric'); ov.range = +(localStorage.getItem('od_pr_range') || 0) || 0;
+        ov.type = localStorage.getItem('od_pr_type') === 'area' ? 'area' : 'line';
+      } catch (_) {}
+      // cores dos gráficos do Finance (azul e laranja da comparação), depois verde, roxo e magenta
+      var COLORS = ['#3364F0', '#DE7300', '#1E8E3E', '#9334E6', '#D01884'];
+      var MK = { sq: 'M 2 0 h 7 a 2 2 0 0 1 2 2 v 7 a 2 2 0 0 1 -2 2 h -7 a 2 2 0 0 1 -2 -2 v -7 a 2 2 0 0 1 2 -2', ci: 'M 5.5 0.5 A 5 5 0 1 0 5.5 10.5 A 5 5 0 1 0 5.5 0.5' };
+      function marker(shape, color) {
+        var s = svgEl('svg', { viewBox: '0 0 11 11', width: 11, height: 11, 'class': 'mk', 'aria-hidden': 'true' });
+        s.appendChild(svgEl('path', { d: MK[shape], fill: color })); return s;
+      }
       function noteDate(n) { return n.event_start ? parseStart(n.event_start) : (n.updated_at ? new Date(n.updated_at) : null); }
       function fmtN(x, dec) { return x.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }); }
       function fmtV(m, p) { return m.k === 'pa' ? fmtN(p.v, 0) + '/' + fmtN(p.v2, 0) : fmtN(p.v, m.dec); }
@@ -3469,82 +3672,72 @@
       }
       function withText() { return notes.filter(function (n) { return (n.content || '').trim() || n.signed_at; }); }
       function ovVisible() { var p = document.querySelector('.pr-panel[data-panel=geral]'); return isOpen() && p && !p.hidden; }
-      // nome antigo, chamado ao carregar, salvar, finalizar e ao chegar a agenda: só redesenha se estiver à vista
-      function renderKpis() { ov.dirty = true; if (ovVisible()) renderOverview(); }
+      // chamado ao carregar, salvar, finalizar e ao chegar a agenda (o gráfico fica acima das abas: sempre à vista)
+      function renderKpis() { ov.dirty = true; if (isOpen()) { renderOverview(); renderStrip(); if (!$('csSinais').hidden) renderCs(); } }
       function renderOverview() {
         ov.dirty = false;
         var S = ov.S = series(), avail = METRICS.filter(function (m) { return S[m.k].length; }), any = avail.length > 0;
         if (!MBY[ov.metric] || !S[ov.metric].length) ov.metric = any ? avail[0].k : null;
-        $('ovChart').hidden = !any; $('ovTilesWrap').hidden = !any; if (!any) $('ovTiles').innerHTML = '';
+        ov.cmp = ov.cmp.filter(function (k) { return k !== ov.metric && S[k] && S[k].length; });
+        $('ovTop').hidden = !patient;
+        $('ovChart').hidden = !any; $('gqTable').hidden = !any; $('gqQuote').hidden = !any;
+        $('ovTilesWrap').hidden = avail.length < 2; if (!any) $('ovTiles').innerHTML = '';
         $('ovEmpty').hidden = any || !patient;
         $('ovEmptyGo').textContent = ctx && ctx.event_id ? 'Abrir a consulta' : 'Nova evolução';
         if (any) { renderTiles(S, avail); drawChart(); }
-        var c = renderAcc(S);
-        renderPersp(c, any);
-        renderStats(S); renderNext(); renderDx(); renderFeed();
+        renderAcc(S); renderStats(S); renderNext(); renderDx(); renderFeed();
       }
 
-      // ----- barra "Perspectiva" -----
-      function renderPersp(c, any) {
-        var b = $('ovPersp'), t = $('ovPerspT'); t.innerHTML = '';
-        b.hidden = !patient || (!any && !c.todo);
-        if (b.hidden) return;
-        t.appendChild(el('b', null, any ? 'Sinais vitais: ' : 'Prontuário: '));
-        var parts = [];
-        if (c.good) parts.push(el('span', 'g', c.good + ' em melhora'));
-        if (c.bad) parts.push(el('span', 'r', c.bad + (c.bad === 1 ? ' fora da referência' : ' fora da referência')));
-        if (c.worse) parts.push(el('span', 'r', c.worse + (c.worse === 1 ? ' piorou' : ' pioraram')));
-        if (any && !c.bad && !c.worse) parts.push(el('span', 'g', 'todos dentro da referência'));
-        if (c.todo) parts.push(el('span', 'n', c.todo + (c.todo === 1 ? ' pendência' : ' pendências')));
-        parts.forEach(function (p, i) { if (i) t.appendChild(document.createTextNode(' · ')); t.appendChild(p); });
+      // ----- séries do gráfico: o sinal principal (PA = sistólica + diastólica) e os comparados -----
+      function vOf(p) { return p.v; }
+      function chartSeries() {
+        var m = MBY[ov.metric], out = [];
+        if (m.k === 'pa') {
+          out.push({ m: m, name: 'Sistólica', sub: 'Pressão arterial · mmHg', get: vOf, ref: m.ref, all: ov.S.pa, shape: 'sq' });
+          out.push({ m: m, name: 'Diastólica', sub: 'Pressão arterial · mmHg', get: function (p) { return p.v2; }, ref: m.ref2, all: ov.S.pa, shape: 'ci' });
+        } else out.push({ m: m, name: m.label, sub: m.unit, get: vOf, ref: m.ref, all: ov.S[m.k], shape: 'sq' });
+        ov.cmp.forEach(function (k) {
+          var c = MBY[k];
+          out.push({ m: c, k: k, name: c.k === 'pa' ? 'PA sistólica' : c.label, sub: c.k === 'pa' ? 'Pressão arterial · mmHg' : c.unit, get: vOf, ref: c.ref, all: ov.S[k], shape: 'ci', rm: true });
+        });
+        out.forEach(function (s, i) { s.color = COLORS[i % COLORS.length]; });
+        return out;
       }
-      $('ovPersp').addEventListener('click', function () {
-        var sec = $('ovSumSec'); if (sec.hidden) return;
-        var h = sec.querySelector('.ov-ai-h'); if (h && h.getAttribute('aria-expanded') !== 'true') h.click();
-        sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
+      function pctTxt(x) { var r = Math.round(x * 100) / 100; return (r > 0 ? '+' : r < 0 ? '−' : '') + fmtN(Math.abs(r), 2) + '%'; }
+      function sgn(x, dec) { var r = Math.round(x * Math.pow(10, dec)) / Math.pow(10, dec); return (r > 0 ? '+' : r < 0 ? '−' : '') + fmtN(Math.abs(r), dec); }
 
-      // ----- cartões dos sinais vitais (escolhem o gráfico) -----
-      function spark(m, a, t) {
-        var W = 160, H = 30, s = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', 'aria-hidden': 'true', 'class': 'sp' });
+      // ----- cartões "Sinais vitais" (como "Ativos relacionados") -----
+      function spark(a, t) {
+        var W = 178, H = 32, s = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', 'aria-hidden': 'true', 'class': 'sp' });
         if (a.length < 2) return s;
-        var lo = Math.min.apply(null, a.map(function (p) { return p.v; })), hi = Math.max.apply(null, a.map(function (p) { return p.v; }));
-        if (hi - lo < m.minSpan / 2) { var mid = (hi + lo) / 2; lo = mid - m.minSpan / 4; hi = mid + m.minSpan / 4; }
+        var vals = a.map(function (p) { return p.v; }), lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
+        if (hi - lo < 1e-9) { lo -= 1; hi += 1; }
         var t0 = a[0].t.getTime(), t1 = a[a.length - 1].t.getTime() || t0 + 1;
-        function y(v) { return 3 + (hi - v) / (hi - lo || 1) * (H - 6); }
-        var col = t === 'down' ? '#B3261E' : t === 'up' ? '#137333' : '#0B57D0', gid = 'ovG' + m.k;
-        var g = svgEl('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 });
-        g.appendChild(svgEl('stop', { offset: '0%', 'stop-color': col, 'stop-opacity': '0.22' })); g.appendChild(svgEl('stop', { offset: '100%', 'stop-color': col, 'stop-opacity': '0' }));
-        var df = svgEl('defs', {}); df.appendChild(g); s.appendChild(df);
+        function y(v) { return 4 + (hi - v) / (hi - lo) * (H - 8); }
+        var col = t === 'down' ? '#C0151D' : t === 'up' ? '#046E00' : '#3364F0';
+        s.appendChild(svgEl('line', { x1: 0, x2: W, y1: y(a[0].v), y2: y(a[0].v), stroke: '#5E5E5E', 'stroke-width': 1, 'stroke-dasharray': '1 4', 'vector-effect': 'non-scaling-stroke' }));
         var d = a.map(function (p, i) { return (i ? 'L' : 'M') + ((p.t - t0) / (t1 - t0 || 1) * W).toFixed(1) + ' ' + y(p.v).toFixed(1); }).join(' ');
-        s.appendChild(svgEl('line', { x1: 0, x2: W, y1: y(a[0].v), y2: y(a[0].v), stroke: '#80868B', 'stroke-width': 1, 'stroke-dasharray': '1 3', 'vector-effect': 'non-scaling-stroke' }));
-        s.appendChild(svgEl('path', { d: d + ' L' + W + ' ' + H + ' L0 ' + H + ' Z', fill: 'url(#' + gid + ')' }));
         s.appendChild(svgEl('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 1.5, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round' }));
         return s;
       }
       function renderTiles(S, avail) {
         var box = $('ovTiles'); box.innerHTML = '';
         avail.forEach(function (m) {
-          var a = S[m.k], last = a[a.length - 1], first = a[0], o = off(m, last);
-          var b = el('button', 'ov-tile' + (m.k === ov.metric ? ' on' : '')); b.type = 'button'; b._k = m.k;
-          b.setAttribute('role', 'tab'); b.setAttribute('aria-selected', m.k === ov.metric ? 'true' : 'false');
-          b.title = m.label + (o ? ' — última medida ' + side(m, last) + ' da referência' : '');
-          b.appendChild(el('span', 'ov-tile-n', m.k === 'pa' ? 'Pressão' : m.label));
-          b.appendChild(el('span', 'ov-tile-v' + (o ? ' bad' : ''), fmtV(m, last) + ' ' + m.unit));
-          b.appendChild(el('span', 'ov-tile-s', a.length > 1 ? a.length + ' medidas' : dayMon(last.t)));
-          var t = a.length > 1 ? trend(m, first, last) : '';
-          var d = el('span', 'ov-tile-d' + (t ? ' ' + t : ''));
-          if (a.length > 1) { d.appendChild(arrow(dir(first, last))); d.appendChild(document.createTextNode(deltaTxt(m, first, last))); }
-          else d.appendChild(document.createTextNode('1 medida'));
-          b.appendChild(d); b.appendChild(spark(m, a, t));
-          b.addEventListener('click', function () { pickMetric(m.k); });
+          var a = S[m.k], last = a[a.length - 1], first = a[0], o = off(m, last), t = a.length > 1 ? trend(m, first, last) : '';
+          var b = el('button', 'gr-card' + (m.k === ov.metric ? ' on' : '')); b.type = 'button'; b._k = m.k;
+          b.title = m.label + (o ? ' — última medida ' + side(m, last) + ' da referência' : '') + ' · ver no gráfico';
+          var inn = el('span', 'gr-in'), h = el('span', 'gr-h');
+          h.appendChild(el('span', 'gr-tk', m.short)); h.appendChild(el('span', 'gr-nm', m.label));
+          h.appendChild(el('span', 'gr-pr' + (o ? ' bad' : ''), fmtV(m, last) + ' ' + m.unit)); inn.appendChild(h);
+          var ch = el('span', 'gr-ch' + (t ? ' ' + t : ''));
+          if (a.length > 1) { ch.appendChild(document.createTextNode(pctTxt((last.v / first.v - 1) * 100))); var ar = arrow(dir(first, last), t); ar.className = 'gq-ar' + (t ? ' ' + t : ''); ch.appendChild(ar); }
+          else ch.appendChild(document.createTextNode('1 medida'));
+          inn.appendChild(ch); b.appendChild(inn); b.appendChild(spark(a, t));
+          b.addEventListener('click', function () { pickMetric(m.k); $('ovTop').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
           box.appendChild(b);
         });
-        var on = box.querySelector('.ov-tile.on');
-        if (on && (on.offsetLeft < box.scrollLeft || on.offsetLeft + on.offsetWidth > box.scrollLeft + box.clientWidth)) box.scrollLeft = on.offsetLeft;
         tilesNav();
       }
-      // botões de rolar os cartões (como o carrossel de índices do Finance)
       function tilesNav() {
         var b = $('ovTiles'), more = b.scrollWidth - b.clientWidth > 2;
         $('ovTPrev').hidden = !more || b.scrollLeft < 4;
@@ -3555,10 +3748,61 @@
       $('ovTNext').addEventListener('click', function () { var b = $('ovTiles'); b.scrollBy({ left: b.clientWidth + 12, behavior: 'smooth' }); });
       if (window.ResizeObserver) new ResizeObserver(function () { tilesNav(); }).observe($('ovTiles'));
       function pickMetric(k) {
-        ov.metric = k; try { localStorage.setItem('od_pr_metric', k); } catch (_) {}
-        [].forEach.call($('ovTiles').children, function (c) { var on = c._k === k; c.classList.toggle('on', on); c.setAttribute('aria-selected', on ? 'true' : 'false'); });
+        ov.metric = k; ov.cmp = ov.cmp.filter(function (x) { return x !== k; });
+        try { localStorage.setItem('od_pr_metric', k); } catch (_) {}
+        [].forEach.call($('ovTiles').children, function (c) { c.classList.toggle('on', c._k === k); });
         drawChart();
       }
+
+      // ----- menus da barra: Linha · Comparar · Indicadores -----
+      var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#0B57D0"/></svg>';
+      function closeMenus() {
+        [['gqType', 'gqTypeM'], ['gqCmp', 'gqCmpM'], ['gqInd', 'gqIndM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
+      }
+      function mi(label, on, fn, opts) {
+        var b = el('button', 'gq-mi'); b.type = 'button'; b.setAttribute('role', opts && opts.radio ? 'menuitemradio' : 'menuitemcheckbox'); b.setAttribute('aria-checked', on ? 'true' : 'false');
+        var ck = el('span', 'ck'); if (on) ck.innerHTML = CHECK; b.appendChild(ck);
+        if (opts && opts.color) b.appendChild(marker(opts.shape || 'ci', opts.color));
+        b.appendChild(document.createTextNode(label));
+        if (opts && opts.disabled) b.disabled = true;
+        b.addEventListener('click', function (e) { e.stopPropagation(); fn(); });
+        return b;
+      }
+      function buildMenu(id) {
+        var m = $(id + 'M'); m.innerHTML = '';
+        var avail = METRICS.filter(function (x) { return ov.S && ov.S[x.k].length; });
+        if (id === 'gqType') {
+          [['line', 'Linha'], ['area', 'Área']].forEach(function (t) {
+            m.appendChild(mi(t[1], ov.type === t[0], function () { ov.type = t[0]; try { localStorage.setItem('od_pr_type', t[0]); } catch (_) {} closeMenus(); drawChart(); }, { radio: true }));
+          });
+        } else if (id === 'gqCmp') {
+          m.appendChild(el('div', 'gq-mh', 'Sinal principal'));
+          avail.forEach(function (x) { m.appendChild(mi(x.label, ov.metric === x.k, function () { closeMenus(); pickMetric(x.k); }, { radio: true })); });
+          var others = avail.filter(function (x) { return x.k !== ov.metric; });
+          if (others.length) {
+            m.appendChild(el('div', 'gq-mh', 'Comparar com (variação em %)'));
+            others.forEach(function (x) {
+              var on = ov.cmp.indexOf(x.k) >= 0;
+              m.appendChild(mi(x.label, on, function () {
+                ov.cmp = on ? ov.cmp.filter(function (k) { return k !== x.k; }) : ov.cmp.concat([x.k]);
+                closeMenus(); drawChart();
+              }, { disabled: !on && ov.cmp.length >= 3 }));
+            });
+          }
+        } else {
+          m.appendChild(mi('Faixa de referência', ov.ind.ref, function () { ov.ind.ref = !ov.ind.ref; closeMenus(); drawChart(); }));
+          m.appendChild(mi('Consultas', ov.ind.cons, function () { ov.ind.cons = !ov.ind.cons; closeMenus(); drawChart(); }));
+        }
+      }
+      ['gqType', 'gqCmp', 'gqInd'].forEach(function (id) {
+        $(id).addEventListener('click', function (e) {
+          e.stopPropagation();
+          var open = $(id + 'M').hidden; closeMenus();
+          if (open) { buildMenu(id); $(id + 'M').hidden = false; this.setAttribute('aria-expanded', 'true'); var f = $(id + 'M').querySelector('button:not(:disabled)'); if (f) f.focus(); }
+        });
+      });
+      document.addEventListener('click', function (e) { if (!e.target.closest || !e.target.closest('.gq-dd')) closeMenus(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenus(); });
 
       // ----- gráfico -----
       [].forEach.call($('ovRanges').children, function (b) {
@@ -3569,60 +3813,96 @@
         var raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
         return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
       }
-      function drawChart() {
-        var m = MBY[ov.metric]; if (!m || !ov.S) return;
-        var all = ov.S[m.k], now = new Date(), last = all[all.length - 1];
-        var from = ov.range ? new Date(now.getFullYear(), now.getMonth() - ov.range, now.getDate()) : null;
-        var pts = from ? all.filter(function (p) { return p.t >= from; }) : all.slice();
-        ov.pts = pts; ov.hover = -1;
-        [].forEach.call($('ovRanges').children, function (b) { var on = +b.getAttribute('data-r') === ov.range; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
-        // cabeçalho: valor grande = última medida; variação = no período escolhido (como o preço no Finance)
-        $('ovMLabel').textContent = m.label;
+      // número + variação + data (como preço / variação / horário do Finance)
+      function renderQuote(prim, pts) {
+        var m = prim.m, all = prim.all, last = all[all.length - 1];
         $('ovVal').textContent = fmtV(m, last); $('ovUnit').textContent = m.unit;
         var dl = $('ovDelta'), a = pts.length > 1 ? pts[0] : (all.length > 1 ? all[all.length - 2] : null);
-        dl.className = 'ov-delta'; dl.innerHTML = ''; dl.title = '';
+        dl.className = 'gq-chg'; dl.innerHTML = ''; dl.title = '';
         if (a) {
           var t = trend(m, a, last); if (t) dl.classList.add(t);
-          dl.appendChild(arrow(dir(a, last), t));
-          dl.appendChild(document.createTextNode(deltaTxt(m, a, last)));
+          var ar = arrow(dir(a, last)); ar.className = 'gq-ar' + (t ? ' ' + t : ''); dl.appendChild(ar);
+          dl.appendChild(document.createTextNode(pctTxt((last.v / a.v - 1) * 100) + ' (' + deltaTxt(m, a, last) + ')'));
           dl.appendChild(el('small', null, pts.length > 1 ? spanTxt(a.t, last.t) : 'vs. medida anterior'));
           dl.title = t === 'up' ? 'Aproximou-se da faixa de referência' : t === 'down' ? 'Afastou-se da faixa de referência' : '';
         }
         var w = $('ovWhen'); w.innerHTML = '';
-        w.appendChild(document.createTextNode('Última medida em ' + dayMon(last.t) + ' · ' + eventTitle(last.n.event_title)));
+        w.appendChild(document.createTextNode(m.label + ' · última medida em ' + dayMon(last.t) + ' · ' + eventTitle(last.n.event_title)));
         if (off(m, last)) { w.appendChild(document.createTextNode(' · ')); w.appendChild(el('span', 'ov-flag', side(m, last) === 'acima' ? 'Acima da referência' : 'Abaixo da referência')); }
-        if (all.length === 1) w.appendChild(document.createTextNode(' · a tendência aparece a partir da segunda medida'));
-        // legenda (dentro da moldura, como a barra de ferramentas do Finance)
-        var lg = $('ovLegend'); lg.innerHTML = '';
-        function leg(cls, txt) { var s2 = el('span'); s2.appendChild(el('i', cls)); s2.appendChild(document.createTextNode(txt)); lg.appendChild(s2); }
-        if (m.k === 'pa') { leg(null, 'Sistólica'); leg('lt', 'Diastólica'); leg('lim', m.refTxt); }
-        else { leg(null, m.label); if (m.ref) leg('band', m.refTxt); }
-        leg('bar', 'Consultas');
-        // desenho
+      }
+      function renderChips(ser) {
+        var box = $('gqChips'); box.innerHTML = '';
+        ser.forEach(function (s) {
+          var c = el('span', 'gq-chip' + (s.rm ? ' rm' : '')); c.appendChild(marker(s.shape, s.color)); c.appendChild(document.createTextNode(s.name));
+          if (s.rm) {
+            var x = el('button'); x.type = 'button'; x.title = 'Remover da comparação'; x.setAttribute('aria-label', 'Remover ' + s.name + ' da comparação');
+            x.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#36373A"/></svg>';
+            x.addEventListener('click', function () { ov.cmp = ov.cmp.filter(function (k) { return k !== s.k; }); drawChart(); });
+            c.appendChild(x);
+          }
+          box.appendChild(c);
+        });
+      }
+      function renderTable(ser) {
+        var tb = $('gqTBody'); tb.innerHTML = '';
+        ser.forEach(function (s) {
+          var tr = el('tr'), m = s.m, all = s.all;
+          var td0 = el('td', 'mk'); td0.appendChild(marker(s.shape, s.color)); tr.appendChild(td0);
+          var tdl = el('td', 'l'); tdl.appendChild(el('b', null, s.name)); tdl.appendChild(el('small', null, s.sub)); tr.appendChild(tdl);
+          var pts = s.pts, last = all[all.length - 1], a = pts.length ? pts[0] : null, lv = s.get(last);
+          var bad = s.ref && dist(lv, s.ref) > 0;
+          tr.appendChild(el('td', bad ? 'bad' : null, fmtN(lv, m.dec)));
+          function chg(txt, t, d) { var td = el('td'), w = el('span', 'ch' + (t ? ' ' + t : '')); w.appendChild(document.createTextNode(txt)); var ar = arrow(d, t); ar.className = 'gq-ar s12' + (t ? ' ' + t : ''); w.appendChild(ar); td.appendChild(w); return td; }
+          if (a && pts.length > 1) {
+            var av = s.get(a), d = lv > av ? 'up' : lv < av ? 'down' : 'flat';
+            var t = s.ref ? (dist(lv, s.ref) < dist(av, s.ref) - 1e-9 ? 'up' : dist(lv, s.ref) > dist(av, s.ref) + 1e-9 ? 'down' : '') : '';
+            tr.appendChild(chg(sgn(lv - av, m.dec), t, d)); tr.appendChild(chg(pctTxt((lv / av - 1) * 100), t, d));
+            tr.appendChild(el('td', null, fmtN(av, m.dec)));
+          } else { tr.appendChild(el('td', null, '—')); tr.appendChild(el('td', null, '—')); tr.appendChild(el('td', null, a ? fmtN(s.get(a), m.dec) : '—')); }
+          tb.appendChild(tr);
+        });
+      }
+      function drawChart() {
+        var m = MBY[ov.metric]; if (!m || !ov.S) return;
+        var now = new Date(), from = ov.range ? new Date(now.getFullYear(), now.getMonth() - ov.range, now.getDate()) : null;
+        var ser = ov.ser = chartSeries(), pct = ov.cmp.length > 0;
+        ser.forEach(function (s) { s.pts = from ? s.all.filter(function (p) { return p.t >= from; }) : s.all.slice(); s.base = s.pts.length ? s.get(s.pts[0]) : null; });
+        var prim = ser[0];
+        [].forEach.call($('ovRanges').children, function (b) { var on = +b.getAttribute('data-r') === ov.range; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+        $('gqTypeT').textContent = ov.type === 'area' ? 'Área' : 'Linha';
+        renderQuote(prim, prim.pts); renderChips(ser); renderTable(ser);
+        ov.hover = -1;
         var svg = $('ovSvg'); svg.innerHTML = '';
-        var W = svg.clientWidth || 600, H = svg.clientHeight || 210;
+        var W = svg.clientWidth || 600, H = svg.clientHeight || 161;
         svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);   // na impressão o desenho acompanha a largura da página
-        var L = 40, R = 12, T = 6, XB = 20, VB = 16;          // eixo x embaixo; faixa das barras de consulta acima dele
-        var pw = Math.max(10, W - L - R), ph = Math.max(10, H - T - XB - VB - 6), base = T + ph;
-        var msgEl = $('ovPlotMsg'); msgEl.hidden = pts.length > 0;
-        if (!pts.length) { msgEl.textContent = 'Nenhuma medida de ' + lower1(m.label) + ' neste período. A última foi em ' + dayMon(last.t) + '.'; return; }
-        var x1 = now.getTime(), x0 = from ? from.getTime() : pts[0].t.getTime();
+        var showCons = ov.ind.cons, L = 40, R = 12, T = 4, XB = 18, VB = showCons ? 12 : 0;
+        var pw = Math.max(10, W - L - R), ph = Math.max(10, H - T - XB - VB - (VB ? 4 : 0)), base = T + ph;
+        var msgEl = $('ovPlotMsg'), any = prim.pts.length > 0; msgEl.hidden = any;
+        if (!any) { msgEl.textContent = 'Nenhuma medida de ' + lower1(m.label) + ' neste período. A última foi em ' + dayMon(prim.all[prim.all.length - 1].t) + '.'; return; }
+        // valor de cada ponto: absoluto, ou % desde o início do período quando há comparação (como no Finance)
+        function val(s, p) { var v = s.get(p); return pct ? (v / s.base - 1) * 100 : v; }
+        var x1 = now.getTime(), x0 = from ? from.getTime() : Math.min.apply(null, ser.filter(function (s) { return s.pts.length; }).map(function (s) { return s.pts[0].t.getTime(); }));
         if (!from) x0 -= Math.max((x1 - x0) * 0.04, 864e5 * 3);
-        var vals = []; pts.forEach(function (p) { vals.push(p.v); if (p.v2 != null) vals.push(p.v2); });
-        var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals);
-        if (hi - lo < m.minSpan) { var c = (hi + lo) / 2; lo = c - m.minSpan / 2; hi = c + m.minSpan / 2; }
-        var pad = (hi - lo) * 0.12; lo -= pad; hi += pad;
-        var lims = m.k === 'pa' ? [140, 90] : m.ref ? [m.ref[0], m.ref[1]] : [];
+        var vals = []; ser.forEach(function (s) { s.pts.forEach(function (p) { vals.push(val(s, p)); }); });
+        var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals), minSpan = pct ? 4 : m.minSpan;
+        if (pct) { lo = Math.min(lo, 0); hi = Math.max(hi, 0); }
+        if (hi - lo < minSpan) { var c = (hi + lo) / 2; lo = c - minSpan / 2; hi = c + minSpan / 2; }
+        var pad = (hi - lo) * 0.1; lo -= pad; hi += pad;
+        var lims = !pct && ov.ind.ref ? (m.k === 'pa' ? [140, 90] : m.ref ? [m.ref[0], m.ref[1]] : []) : [];
         lims.forEach(function (v) { if (v >= lo - (hi - lo) * 0.6 && v <= hi + (hi - lo) * 0.6) { lo = Math.min(lo, v - pad * 0.5); hi = Math.max(hi, v + pad * 0.5); } });
-        if (m.k === 'spo2') hi = Math.min(hi, 101);
+        if (!pct && m.k === 'spo2') hi = Math.min(hi, 101);
         var step = niceStep(hi - lo, 4); lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
         function X(t) { return L + (t - x0) / (x1 - x0 || 1) * pw; }
         function Y(v) { return T + (hi - v) / (hi - lo || 1) * ph; }
-        var defs = svgEl('defs', {}), gr = svgEl('linearGradient', { id: 'ovGrad', x1: 0, y1: 0, x2: 0, y2: 1 });
-        gr.appendChild(svgEl('stop', { offset: '0%', 'stop-color': '#0B57D0', 'stop-opacity': '0.3' }));
-        gr.appendChild(svgEl('stop', { offset: '90%', 'stop-color': '#0B57D0', 'stop-opacity': '0' }));
-        defs.appendChild(gr); svg.appendChild(defs);
-        // eixo x (meses, ou dias em períodos curtos) com linhas verticais, como no Finance
+        // eixo y + linhas horizontais (como na comparação do Finance)
+        for (var v = lo; v <= hi + step / 2; v += step) {
+          var y = Y(v);
+          svg.appendChild(svgEl('line', { x1: L, x2: L + pw, y1: y, y2: y, stroke: '#CCCFD9', 'stroke-opacity': '0.5', 'stroke-width': 1 }));
+          var ty = svgEl('text', { x: L - 8, y: y + 4, 'text-anchor': 'end', fill: '#36373A' });
+          ty.textContent = pct ? (Math.abs(v) < 1e-9 ? '0%' : (v < 0 ? '−' : '') + fmtN(Math.abs(v), step < 1 ? 1 : 0) + '%') : fmtN(v, step < 1 ? 1 : 0);
+          svg.appendChild(ty);
+        }
+        // eixo x (meses, ou dias em períodos curtos) com linhas verticais
         var span = x1 - x0, ticks = [];
         if (span < 75 * 864e5) {
           var d0 = new Date(x0); d0.setHours(0, 0, 0, 0); var stepD = Math.max(1, Math.round(span / 864e5 / 5));
@@ -3636,118 +3916,111 @@
         }
         ticks.forEach(function (k) {
           var x = X(k.t); if (x < L + 4 || x > L + pw - 4) return;
-          svg.appendChild(svgEl('line', { x1: x, x2: x, y1: T, y2: base + VB + 4, stroke: '#E1E3E6', 'stroke-width': 1 }));
+          svg.appendChild(svgEl('line', { x1: x, x2: x, y1: T, y2: base + VB + (VB ? 4 : 0), stroke: '#CCCFD9', 'stroke-opacity': '0.5', 'stroke-width': 1 }));
           if (x < L + 18 || x > L + pw - 18) return;
-          var tx = svgEl('text', { x: x, y: H - 4, 'text-anchor': 'middle' }); tx.textContent = k.s; svg.appendChild(tx);
+          var tx = svgEl('text', { x: x, y: H - 3, 'text-anchor': 'middle', fill: '#56595E' }); tx.textContent = k.s; svg.appendChild(tx);
         });
-        // eixo y (só os valores, sem grade — como no Finance)
-        for (var v = lo; v <= hi + step / 2; v += step) {
-          var ty = svgEl('text', { x: L - 10, y: Y(v) + 4, 'text-anchor': 'end' }); ty.textContent = fmtN(v, step < 1 ? 1 : 0); svg.appendChild(ty);
-        }
-        // faixa / limites de referência
-        if (m.k === 'pa') {
-          [140, 90].forEach(function (lv) {
-            if (lv < lo || lv > hi) return;
-            svg.appendChild(svgEl('line', { x1: L, x2: L + pw, y1: Y(lv), y2: Y(lv), stroke: '#D93025', 'stroke-opacity': '0.5', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
+        // faixa / limites de referência (indicador; só com valores absolutos)
+        if (!pct && ov.ind.ref) {
+          if (m.k === 'pa') [140, 90].forEach(function (lv) {
+            if (lv >= lo && lv <= hi) svg.appendChild(svgEl('line', { x1: L, x2: L + pw, y1: Y(lv), y2: Y(lv), stroke: '#C0151D', 'stroke-opacity': '0.5', 'stroke-width': 1, 'stroke-dasharray': '4 4' }));
           });
-        } else if (m.ref) {
-          var ya = Y(Math.min(hi, m.ref[1])), yb = Y(Math.max(lo, m.ref[0]));
-          if (yb > ya) svg.appendChild(svgEl('rect', { x: L, y: ya, width: pw, height: yb - ya, fill: '#137333', 'fill-opacity': '0.07' }));
+          else if (m.ref) { var ya = Y(Math.min(hi, m.ref[1])), yb = Y(Math.max(lo, m.ref[0])); if (yb > ya) svg.appendChild(svgEl('rect', { x: L, y: ya, width: pw, height: yb - ya, fill: '#046E00', 'fill-opacity': '0.07' })); }
         }
-        // consultas como barras de volume (todas as evoluções e consultas passadas do período)
-        var cons = withText().map(function (n) { return { t: noteDate(n), n: n }; }).filter(function (c2) { return c2.t && c2.t.getTime() >= x0 && c2.t.getTime() <= x1; });
+        // linha pontilhada de base (0% na comparação; valor inicial com um só sinal), como "Fech. ant."
+        var baseV = pct ? 0 : (m.k !== 'pa' && prim.pts.length > 1 ? prim.get(prim.pts[0]) : null);
+        if (baseV != null) {
+          svg.appendChild(svgEl('line', { x1: L, x2: L + pw, y1: Y(baseV), y2: Y(baseV), stroke: '#5E5E5E', 'stroke-width': 1, 'stroke-dasharray': '1 6', 'stroke-linecap': 'round' }));
+          if (!pct) { var bt = svgEl('text', { x: L + pw, y: Y(baseV) - 6, 'text-anchor': 'end', fill: '#36373A' }); bt.textContent = 'Início ' + fmtV(m, prim.pts[0]); svg.appendChild(bt); }
+        }
+        // consultas como barras de volume (indicador)
         ov.bars = [];
-        cons.forEach(function (c2) {
-          var bx = X(c2.t.getTime()), hasM = pts.some(function (p) { return p.n === c2.n; });
-          var r = svgEl('rect', { x: bx - 1.5, y: base + 6 + (hasM ? 0 : 5), width: 3, height: hasM ? VB - 4 : VB - 9, rx: 1, fill: c2.n.signed_at ? '#9AA0A6' : '#E8710A' });
-          svg.appendChild(r); ov.bars.push({ n: c2.n, r: r });
-        });
-        // linha do valor inicial do período (como "Fech. ant." do Finance)
-        if (m.k !== 'pa' && pts.length > 1) {
-          var yb0 = Y(pts[0].v);
-          svg.appendChild(svgEl('line', { x1: L, x2: L + pw, y1: yb0, y2: yb0, stroke: '#5E5E5E', 'stroke-width': 1, 'stroke-dasharray': '1 5', 'stroke-linecap': 'round' }));
-          var bt = svgEl('text', { x: L + pw, y: yb0 - 6, 'text-anchor': 'end' }); bt.textContent = 'Início ' + fmtV(m, pts[0]); svg.appendChild(bt);
-        }
-        // área + linhas (PA: faixa entre sistólica e diastólica)
-        function path(key) { return pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(p[key]).toFixed(1); }).join(' '); }
-        if (pts.length > 1) {
-          var d1 = path('v');
-          if (m.k === 'pa') {
-            var back = pts.slice().reverse().map(function (p) { return 'L' + X(p.t).toFixed(1) + ' ' + Y(p.v2).toFixed(1); }).join(' ');
-            svg.appendChild(svgEl('path', { d: d1 + ' ' + back + ' Z', fill: '#0B57D0', 'fill-opacity': '0.07' }));
-            svg.appendChild(svgEl('path', { d: path('v2'), fill: 'none', stroke: '#8AB4F8', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-          } else {
-            svg.appendChild(svgEl('path', { d: d1 + ' L' + X(pts[pts.length - 1].t).toFixed(1) + ' ' + base + ' L' + X(pts[0].t).toFixed(1) + ' ' + base + ' Z', fill: 'url(#ovGrad)' }));
-          }
-          svg.appendChild(svgEl('path', { d: d1, fill: 'none', stroke: '#0B57D0', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-        }
-        // marcas só onde importa: medida fora da faixa (vermelho) e a última (como o ponto final do Finance)
-        pts.forEach(function (p, i) {
-          var isLast = i === pts.length - 1;
-          [['v', m.ref], ['v2', m.ref2]].forEach(function (kr) {
-            if (p[kr[0]] == null) return;
-            var bad = dist(p[kr[0]], kr[1]) > 0;
-            if (!bad && !isLast) return;
-            svg.appendChild(svgEl('circle', { cx: X(p.t), cy: Y(p[kr[0]]), r: isLast ? 4.5 : 3,
-              fill: bad ? '#D93025' : (kr[0] === 'v2' ? '#8AB4F8' : '#0B57D0'), stroke: '#fff', 'stroke-width': isLast ? 2 : 1.5 }));
+        if (showCons) {
+          withText().map(function (n) { return { t: noteDate(n), n: n }; }).filter(function (c2) { return c2.t && c2.t.getTime() >= x0 && c2.t.getTime() <= x1; }).forEach(function (c2) {
+            var r = svgEl('rect', { x: X(c2.t.getTime()) - 1.5, y: base + 4, width: 3, height: VB, rx: 1, fill: c2.n.signed_at ? '#9AA0A6' : '#E37400' });
+            svg.appendChild(r); ov.bars.push({ n: c2.n, r: r });
           });
+        }
+        // linhas (área: degradê com um sinal; faixa entre sistólica e diastólica na PA)
+        function path(s) { return s.pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(val(s, p)).toFixed(1); }).join(' '); }
+        if (ov.type === 'area' && !pct && prim.pts.length > 1) {
+          if (m.k === 'pa') {
+            var back = ser[1].pts.slice().reverse().map(function (p) { return 'L' + X(p.t).toFixed(1) + ' ' + Y(ser[1].get(p)).toFixed(1); }).join(' ');
+            svg.appendChild(svgEl('path', { d: path(prim) + ' ' + back + ' Z', fill: prim.color, 'fill-opacity': '0.08' }));
+          } else {
+            var defs = svgEl('defs', {}), gr = svgEl('linearGradient', { id: 'ovGrad', x1: 0, y1: 0, x2: 0, y2: 1 });
+            gr.appendChild(svgEl('stop', { offset: '0%', 'stop-color': prim.color, 'stop-opacity': '0.38' }));
+            gr.appendChild(svgEl('stop', { offset: '90%', 'stop-color': prim.color, 'stop-opacity': '0' }));
+            defs.appendChild(gr); svg.appendChild(defs);
+            svg.appendChild(svgEl('path', { d: path(prim) + ' L' + X(prim.pts[prim.pts.length - 1].t).toFixed(1) + ' ' + base + ' L' + X(prim.pts[0].t).toFixed(1) + ' ' + base + ' Z', fill: 'url(#ovGrad)' }));
+          }
+        }
+        ser.slice().reverse().forEach(function (s) {
+          if (s.pts.length > 1) svg.appendChild(svgEl('path', { d: path(s), fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
         });
-        // mira (aparece ao passar o mouse / com as setas)
-        ov.cross = svgEl('line', { x1: 0, x2: 0, y1: T, y2: base + VB + 4, stroke: '#5F6368', 'stroke-width': 1, visibility: 'hidden' });
-        ov.ring = svgEl('circle', { r: 5, fill: '#0B57D0', stroke: '#fff', 'stroke-width': 2, visibility: 'hidden' });
-        ov.ring2 = svgEl('circle', { r: 5, fill: '#8AB4F8', stroke: '#fff', 'stroke-width': 2, visibility: 'hidden' });
-        svg.appendChild(ov.cross); svg.appendChild(ov.ring2); svg.appendChild(ov.ring);
-        ov.X = X; ov.Y = Y;
+        // medidas fora da faixa (só com valores absolutos) e o ponto final de cada série
+        if (!pct && ov.ind.ref) ser.forEach(function (s) {
+          s.pts.forEach(function (p) { if (s.ref && dist(s.get(p), s.ref) > 0) svg.appendChild(svgEl('circle', { cx: X(p.t), cy: Y(val(s, p)), r: 3, fill: '#C0151D', stroke: '#F7F8FA', 'stroke-width': 1.5 })); });
+        });
+        ser.forEach(function (s) { if (!s.pts.length) return; var p = s.pts[s.pts.length - 1]; svg.appendChild(svgEl('circle', { cx: X(p.t), cy: Y(val(s, p)), r: 4, fill: s.color })); });
+        // mira
+        ov.cross = svgEl('line', { x1: 0, x2: 0, y1: T, y2: base + VB + (VB ? 4 : 0), stroke: '#5F6368', 'stroke-width': 1, visibility: 'hidden' });
+        svg.appendChild(ov.cross);
+        ov.rings = ser.map(function (s) { var c2 = svgEl('circle', { r: 5, fill: s.color, stroke: '#fff', 'stroke-width': 2, visibility: 'hidden' }); svg.appendChild(c2); return c2; });
+        // instantes com medida (união das séries), para a mira
+        var seen = {}; ov.times = [];
+        ser.forEach(function (s) { s.pts.forEach(function (p) { var k = p.t.getTime(); if (!seen[k]) { seen[k] = 1; ov.times.push({ t: p.t, n: p.n }); } }); });
+        ov.times.sort(function (a, b) { return a.t - b.t; });
+        ov.X = X; ov.Y = Y; ov.val = val; ov.pct = pct;
         $('ovTip').hidden = true;
       }
       function setHover(i) {
-        var pts = ov.pts, m = MBY[ov.metric], tip = $('ovTip');
-        ov.hover = i;
+        var tip = $('ovTip'); ov.hover = i;
         if (!ov.cross) return;
         (ov.bars || []).forEach(function (b) { b.r.setAttribute('fill-opacity', '1'); });
-        if (i < 0 || !pts[i]) { [ov.cross, ov.ring, ov.ring2].forEach(function (e) { e.setAttribute('visibility', 'hidden'); }); tip.hidden = true; return; }
-        var p = pts[i], x = ov.X(p.t), y = ov.Y(p.v);
+        if (i < 0 || !ov.times[i]) { ov.cross.setAttribute('visibility', 'hidden'); ov.rings.forEach(function (r) { r.setAttribute('visibility', 'hidden'); }); tip.hidden = true; return; }
+        var at = ov.times[i], x = ov.X(at.t);
         ov.cross.setAttribute('x1', x); ov.cross.setAttribute('x2', x); ov.cross.setAttribute('visibility', 'visible');
-        ov.ring.setAttribute('cx', x); ov.ring.setAttribute('cy', y); ov.ring.setAttribute('visibility', 'visible');
-        ov.ring.setAttribute('fill', dist(p.v, m.ref) > 0 ? '#D93025' : '#0B57D0');
-        if (p.v2 != null) { ov.ring2.setAttribute('cx', x); ov.ring2.setAttribute('cy', ov.Y(p.v2)); ov.ring2.setAttribute('visibility', 'visible'); ov.ring2.setAttribute('fill', dist(p.v2, m.ref2) > 0 ? '#D93025' : '#8AB4F8'); }
-        else ov.ring2.setAttribute('visibility', 'hidden');
-        (ov.bars || []).forEach(function (b) { b.r.setAttribute('fill-opacity', b.n === p.n ? '1' : '0.35'); });
         tip.innerHTML = '';
-        tip.appendChild(el('div', 'ov-tip-d', dayMon(p.t) + ' · ' + eventTitle(p.n.event_title)));
-        var vv = el('div', 'ov-tip-v' + (off(m, p) ? ' bad' : ''), fmtV(m, p) + ' '); vv.appendChild(el('small', null, m.unit)); tip.appendChild(vv);
-        if (m.k === 'imc') tip.appendChild(el('div', 'ov-tip-c', imcClass(p.v)));
-        var all = ov.S[m.k], j = all.indexOf(p);
-        if (j > 0) { var t = trend(m, all[j - 1], p); tip.appendChild(el('div', 'ov-tip-c' + (t ? ' ' + t : ''), deltaTxt(m, all[j - 1], p) + ' vs. medida anterior')); }
-        tip.appendChild(el('div', 'ov-tip-go', p.n === cur ? 'Clique para abrir a consulta' : p.n.signed_at ? 'Clique para ler a evolução' : 'Clique para abrir o rascunho'));
+        tip.appendChild(el('div', 'ov-tip-d', dayMon(at.t) + ' · ' + eventTitle(at.n.event_title)));
+        ov.ser.forEach(function (s, j) {
+          var p = s.pts.filter(function (q) { return q.t.getTime() === at.t.getTime(); })[0], ring = ov.rings[j];
+          if (!p) { ring.setAttribute('visibility', 'hidden'); return; }
+          ring.setAttribute('cx', x); ring.setAttribute('cy', ov.Y(ov.val(s, p))); ring.setAttribute('visibility', 'visible');
+          var row = el('div', 'ov-tip-s'), v = s.get(p), bad = !ov.pct && s.ref && dist(v, s.ref) > 0;
+          row.appendChild(marker(s.shape, s.color)); row.appendChild(el('span', null, s.name));
+          var b = el('b', bad ? 'bad' : null, fmtN(v, s.m.dec) + (ov.pct ? '' : ' ' + s.m.unit)); row.appendChild(b);
+          if (ov.pct) row.appendChild(el('small', null, pctTxt(ov.val(s, p))));
+          tip.appendChild(row);
+        });
+        tip.appendChild(el('div', 'ov-tip-go', at.n === cur ? 'Clique para abrir a consulta' : at.n.signed_at ? 'Clique para ler a evolução' : 'Clique para abrir o rascunho'));
+        (ov.bars || []).forEach(function (b) { b.r.setAttribute('fill-opacity', b.n === at.n ? '1' : '0.35'); });
         tip.hidden = false;
-        // posição da dica: SVG não tem offsetLeft/Top — mede pela tela (e pela escala do viewBox)
+        // posição da dica: ao lado da mira, no alto (SVG não tem offsetLeft — mede pela tela e pela escala do viewBox)
         var svg = $('ovSvg'), plot = $('ovPlot'), pr = plot.getBoundingClientRect(), sr = svg.getBoundingClientRect();
         var vbw = +(svg.getAttribute('viewBox') || '0 0 0 0').split(' ')[2] || sr.width, k = sr.width / vbw;
-        var bw = plot.clientWidth, tw = tip.offsetWidth;
-        var px = sr.left - pr.left + x * k;
-        // ao lado da mira, no alto do gráfico (como no Finance): nunca cobre o ponto
+        var bw = plot.clientWidth, tw = tip.offsetWidth, px = sr.left - pr.left + x * k;
         tip.style.left = (px + 14 + tw <= bw - 4 ? px + 14 : Math.max(4, px - 14 - tw)) + 'px';
-        tip.style.top = '8px';
+        tip.style.top = '0px';
       }
       (function () {
         var plot = $('ovPlot');
         function nearest(e) {
-          if (!ov.pts.length || !ov.X) return -1;
-          var r = $('ovSvg').getBoundingClientRect(), sx = r.width ? (+$('ovSvg').getAttribute('viewBox').split(' ')[2] || r.width) / r.width : 1;
-          var x = (e.clientX - r.left) * sx, best = -1, bd = 1e9;
-          ov.pts.forEach(function (p, i) { var d = Math.abs(ov.X(p.t) - x); if (d < bd) { bd = d; best = i; } });
+          if (!ov.times.length || !ov.X) return -1;
+          var svg = $('ovSvg'), r = svg.getBoundingClientRect(), vbw = +(svg.getAttribute('viewBox') || '0 0 0 0').split(' ')[2] || r.width;
+          var x = (e.clientX - r.left) * (vbw / (r.width || 1)), best = -1, bd = 1e9;
+          ov.times.forEach(function (p, i) { var d = Math.abs(ov.X(p.t) - x); if (d < bd) { bd = d; best = i; } });
           return best;
         }
         plot.addEventListener('mousemove', function (e) { var i = nearest(e); if (i !== ov.hover) setHover(i); });
         plot.addEventListener('mouseleave', function () { setHover(-1); });
-        plot.addEventListener('click', function (e) { var i = nearest(e); if (i >= 0) openNote(ov.pts[i].n); });
+        plot.addEventListener('click', function (e) { var i = nearest(e); if (i >= 0) openNote(ov.times[i].n); });
         plot.addEventListener('keydown', function (e) {
-          var n = ov.pts.length; if (!n) return;
+          var n = ov.times.length; if (!n) return;
           if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); setHover(ov.hover < 0 ? n - 1 : Math.max(0, Math.min(n - 1, ov.hover + (e.key === 'ArrowRight' ? 1 : -1)))); }
           else if (e.key === 'Home') { e.preventDefault(); setHover(0); }
           else if (e.key === 'End') { e.preventDefault(); setHover(n - 1); }
-          else if (e.key === 'Enter' && ov.hover >= 0) { e.preventDefault(); openNote(ov.pts[ov.hover].n); }
+          else if (e.key === 'Enter' && ov.hover >= 0) { e.preventDefault(); openNote(ov.times[ov.hover].n); }
           else if (e.key === 'Escape') setHover(-1);
         });
         plot.addEventListener('blur', function () { setHover(-1); });
@@ -3755,7 +4028,7 @@
           var raf = 0, lastW = 0;
           new ResizeObserver(function () {
             var w = plot.clientWidth; if (w === lastW) return; lastW = w;
-            cancelAnimationFrame(raf); raf = requestAnimationFrame(function () { if (ovVisible() && ov.metric) drawChart(); });
+            cancelAnimationFrame(raf); raf = requestAnimationFrame(function () { if (isOpen() && ov.metric && ov.S) drawChart(); });
           }).observe(plot);
         }
       })();
@@ -4003,11 +4276,51 @@
 
       // ===== abas =====
       var tabs = [].slice.call(document.querySelectorAll('#prTabs button'));
+      // subabas da aba Consultas (como Finanças): agenda | sinais por consulta
+      [].forEach.call($('csTabs').children, function (b) {
+        b.addEventListener('click', function () {
+          var s2 = b.getAttribute('data-s');
+          [].forEach.call($('csTabs').children, function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', on ? 'true' : 'false'); });
+          $('csAgenda').hidden = s2 !== 'agenda'; $('csSinais').hidden = s2 !== 'sinais';
+          if (s2 === 'sinais') renderCs();
+        });
+      });
+      // sinais por consulta = tabela de Finanças: consultas nas colunas (mais antiga → mais recente), sinais nas linhas
+      function renderCs() {
+        var tb = $('csTable'); tb.innerHTML = '';
+        var cols = notes.filter(function (n) { return n.data && n.data.vitals && Object.keys(n.data.vitals).length && noteDate(n); })
+                        .sort(function (a, b) { return noteDate(a) - noteDate(b); });
+        if (!cols.length) { tb.innerHTML = '<tbody><tr><td class="pr-empty" style="position:static">Nenhum sinal vital registrado nas evoluções (modo SOAP).</td></tr></tbody>'; return; }
+        var alt = lastAltura();
+        var ROWS = [['PA', 'mmHg', function (v) { var a = num(v.pa_s), b = num(v.pa_d); return a != null && b != null ? { t: fmtN(a, 0) + '/' + fmtN(b, 0), bad: dist(a, MBY.pa.ref) > 0 || dist(b, MBY.pa.ref2) > 0 } : null; }],
+          ['FC', 'bpm', 'fc'], ['FR', 'irpm', 'fr'], ['Temperatura', '°C', 'temp'], ['SpO₂', '%', 'spo2'], ['Peso', 'kg', 'peso'],
+          ['Altura', 'cm', function (v) { var h = num(v.altura); return h ? { t: fmtN(h > 3 ? h : h * 100, 0) } : null; }],
+          ['IMC', 'kg/m²', function (v) { var p2 = num(v.peso), h = num(v.altura); h = h ? (h > 3 ? h / 100 : h) : alt; return p2 && h ? (function (x) { return { t: fmtN(x, 1), bad: dist(x, MBY.imc.ref) > 0 }; })(p2 / (h * h)) : null; }],
+          ['Glicemia', 'mg/dL', 'glicemia']];
+        var thead = el('thead'), hr = el('tr'); hr.appendChild(el('th', null, 'Valores das evoluções'));
+        cols.forEach(function (n) { var th = el('th', null, dayMon(noteDate(n))); th.title = eventTitle(n.event_title); hr.appendChild(th); });
+        thead.appendChild(hr); tb.appendChild(thead);
+        var body = el('tbody');
+        ROWS.forEach(function (r) {
+          var tr = el('tr'), td0 = el('td', null, r[0]); td0.appendChild(el('small', null, r[1])); tr.appendChild(td0);
+          var anyV = false;
+          cols.forEach(function (n) {
+            var v = n.data.vitals, out;
+            if (typeof r[2] === 'function') out = r[2](v);
+            else { var x = num(v[r[2]]); out = x != null ? { t: fmtN(x, MBY[r[2]].dec), bad: dist(x, MBY[r[2]].ref) > 0 } : null; }
+            if (out) anyV = true;
+            tr.appendChild(el('td', out && out.bad ? 'bad' : null, out ? out.t : '-'));
+          });
+          if (anyV) body.appendChild(tr);
+        });
+        tb.appendChild(body);
+        var w = tb.parentElement; w.scrollLeft = w.scrollWidth;          // a mais recente fica à vista
+      }
       function setTab(t) {
         tabs.forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
         [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { p.hidden = p.getAttribute('data-panel') !== t; });
         if (t === 'acessos') loadAccess();
-        if (t === 'geral') { if (ov.dirty) renderOverview(); else if (ov.metric) drawChart(); }
+        if (t === 'geral' && ov.dirty) renderOverview();
       }
       tabs.forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
 
@@ -4068,6 +4381,7 @@
       function renderHist() {
         var box = $('prHist'); box.innerHTML = '';
         var list = notes.filter(function (n) { return n !== cur && ((n.content || '').trim() || n.signed_at); });
+        $('prHistCount').textContent = list.length ? list.length + (list.length === 1 ? ' evolução' : ' evoluções') : '';
         if (!list.length) { box.innerHTML = '<div class="pr-empty">Nenhuma evolução anterior deste paciente.</div>'; return; }
         list.forEach(function (n) {
           var it = el('div', 'pr-item'); it._note = n; it._q = norm([n.content, n.event_title].concat((n.addenda || []).map(function (a) { return a.content; })).join(' '));
@@ -4112,7 +4426,7 @@
       function vkey() { return 'od_visit_' + (ctx && (ctx.event_id || ctx.patient_id || ctx.patient) || ''); }
       function visitStart() { try { return +sessionStorage.getItem(vkey()) || 0; } catch (_) { return 0; } }
       function renderVisit() {
-        clearInterval(tick);
+        clearInterval(tick); renderStrip();
         var t0 = visitStart();
         visitBtn.textContent = t0 ? 'Encerrar consulta' : 'Iniciar consulta';
         visitBtn.classList.toggle('live', !!t0);
@@ -4152,6 +4466,20 @@
         window.print();
         document.title = t;
       });
+      var accRows = [], accPage = 0, ACC_PER = 15;
+      function renderAccPage() {
+        var list = $('prAccessList'), pages = Math.max(1, Math.ceil(accRows.length / ACC_PER));
+        accPage = Math.max(0, Math.min(pages - 1, accPage)); list.innerHTML = '';
+        var th = el('div', 'pr-acc th'); th.appendChild(el('span', null, 'Data e hora')); th.appendChild(el('span', null, 'Ação')); list.appendChild(th);
+        accRows.slice(accPage * ACC_PER, (accPage + 1) * ACC_PER).forEach(function (a) {
+          var r = el('div', 'pr-acc'); r.appendChild(el('b', null, fmtDT(a.at))); r.appendChild(el('span', null, ACTION[a.action] || a.action)); list.appendChild(r);
+        });
+        $('accPager').hidden = pages < 2; $('accPage').textContent = 'Página ' + (accPage + 1) + ' de ' + pages;
+        $('accFirst').disabled = $('accPrev').disabled = accPage === 0; $('accNext').disabled = accPage >= pages - 1;
+      }
+      $('accFirst').addEventListener('click', function () { accPage = 0; renderAccPage(); });
+      $('accPrev').addEventListener('click', function () { accPage--; renderAccPage(); });
+      $('accNext').addEventListener('click', function () { accPage++; renderAccPage(); });
       function loadAccess() {
         var list = $('prAccessList'), my = ctx;
         if (!patient) { list.innerHTML = '<div class="pr-empty">Carregando…</div>'; return; }
@@ -4159,10 +4487,9 @@
         api('POST', '/prontuario/access', { patient_id: patient.id }).then(function (res) {
           if (ctx !== my) return;
           list.innerHTML = '';
-          var rows = (res.j && res.j.access) || [];
-          if (!rows.length) { list.innerHTML = '<div class="pr-empty">Nenhum acesso registrado.</div>'; return; }
-          var th = el('div', 'pr-acc th'); th.appendChild(el('span', null, 'Data e hora')); th.appendChild(el('span', null, 'Ação')); list.appendChild(th);
-          rows.forEach(function (a) { var r = el('div', 'pr-acc'); r.appendChild(el('b', null, fmtDT(a.at))); r.appendChild(el('span', null, ACTION[a.action] || a.action)); list.appendChild(r); });
+          accRows = (res.j && res.j.access) || []; accPage = 0;
+          if (!accRows.length) { $('accPager').hidden = true; list.innerHTML = '<div class="pr-empty">Nenhum acesso registrado.</div>'; return; }
+          renderAccPage();
         }).catch(function () { if (ctx === my) list.innerHTML = '<div class="pr-empty">Não foi possível carregar os acessos.</div>'; });
       }
 
@@ -4204,6 +4531,12 @@
               if (d.s !== saved) setStatus('Havia texto não salvo neste navegador, mas a evolução foi alterada em outro lugar: mantida a versão salva.', true);
             }
             loadVisits(my);
+            // veio de uma consulta da agenda: o gráfico fica acima das abas (como no Finance) — rola até as abas
+            // para a evolução já aparecer
+            if (ctx.event_id && !document.querySelector('.pr-panel[data-panel=atual]').hidden) {
+              var pv = $('prView'), tb = $('prTabs');
+              pv.scrollTop = Math.max(0, tb.getBoundingClientRect().top - pv.getBoundingClientRect().top + pv.scrollTop - 32);
+            }
           }).catch(function () { if (ctx === my) setStatus('Sem conexão: não foi possível carregar o prontuário.', true); });
       }
       function open(c) {
