@@ -784,11 +784,127 @@
     .gp svg{width:24px;height:24px}
     .pr-histbar{align-items:center}
     .pr-histbar .gh{margin-bottom:0}
+    /* ===== respiro vertical e interno (sem mexer na largura nem nas margens laterais) ===== */
+    /* cabeçalho */
+    #prMain{gap:32px}
+    .pr-top{margin-bottom:16px}
+    .pr-head .pr-sub{margin-top:12px}
+    .pr-head .pr-tags{margin-top:16px}
+    /* número + gráfico + tabela */
+    .gq{gap:24px}
+    .gq-quote{gap:6px;margin-bottom:0}
+    .gq-bar{height:48px;padding:0 12px}
+    .gq-plot{padding:20px 20px 16px}
+    .gq-chips{padding:0 0 16px}
+    .gq-svgbox{height:200px}
+    .gq-ranges{height:48px;padding:0 20px}
+    .gq-table th{padding:8px 4px 10px}
+    .gq-table td{padding:14px 4px}
+    /* abas */
+    .pr-tabs{margin-top:8px}
+    .pr-panel{gap:32px}
+    .ov{gap:56px;padding-top:8px}
+    /* seções da Visão geral */
+    .ov-sec{gap:24px}
+    .ov-hd{gap:4px}
+    .ov-ai{padding:18px 0}
+    .ov-ai-b{padding:16px 56px 8px 20px;gap:16px}
+    .ov-stats{column-gap:28px}
+    .ov-row{height:53px;padding:0 10px}
+    .ov-col .ov-row:last-child{height:52px}
+    .gr-row{gap:16px}
+    .gr-card{height:164px;flex-basis:188px}
+    .gr-in{padding:16px 20px 0 16px;gap:10px}
+    .gr-h{gap:4px}
+    .ov-nrow{padding:18px 0;gap:16px}
+    .ov .pr-sumcol{padding:18px 10px;row-gap:10px}
+    .ov .pr-chips{gap:8px}
+    .ov-dxrow{padding:18px 0;gap:16px}
+    .ov-feed{gap:32px}
+    .ov-post{gap:8px}
+    /* aba Consulta */
+    .gk{padding:8px 0 8px}
+    .gk-i{padding:16px 20px;gap:6px}
+    .gk-i:first-child{padding-left:0}
+    .pr-bigcard{gap:40px}
+    .gc{padding:24px}
+    .gc .pr-rec{margin:24px 0 12px;padding:20px}
+    .gc-trans{padding-top:16px}
+    .pr-soap{gap:40px}
+    .pr-soapf{gap:12px}
+    .pr-vitals{gap:20px 24px}
+    .pr-vital{gap:8px}
+    .pr-in,.pr-imc{height:44px}
+    .pr-note,.pr-soapf textarea{padding:14px 16px}
+    .pr-soapf textarea{min-height:112px}
+    .pr-cid{gap:12px}
+    .pr-foot{padding-top:32px;gap:12px}
+    .pr-locked .pr-body{padding:20px 24px}
+    /* consultas, sinais por consulta, histórico, acessos, prescrições, cadastro */
+    .gs-tabs{padding:0 0 8px}
+    .gh{margin-bottom:16px}
+    .pr-trow{padding:20px 0;gap:12px}
+    .pr-trow.th{padding:8px 0 10px}
+    .pr-tgroup{padding:32px 0 4px}
+    .gf-table th{height:40px;padding:8px 16px}
+    .gf-table td{height:52px;padding:8px 16px}
+    .gf-table th:first-child,.gf-table td:first-child{padding-left:0}
+    .pr-item{padding:28px 0;gap:12px}
+    .pr-item:first-child{padding-top:28px}
+    .pr-acc{min-height:53px;padding:16px 0}
+    .pr-acc.th{padding:8px 0}
+    .gp{padding-top:24px}
+    .gcard{padding:24px}
+    .gcard .pr-cardhead{margin-bottom:8px}
+    .pr-bigcard.gcard{gap:16px}
+    .pr-form{padding:32px;gap:20px 24px}
+    .pr-field{gap:8px}
+    /* ===== respiro horizontal dentro dos componentes (margens da página e largura da coluna iguais) ===== */
+    .pr-crumb{gap:8px}
+    .pr-tools{gap:8px}
+    .pr-head{column-gap:12px}
+    .pr-head .pr-tags{gap:10px}
+    .pr-tag,.pr-allergy{padding-left:12px;padding-right:12px}
+    .gq-price{column-gap:16px}
+    .gq-tools{gap:8px}
+    .gq-tool{margin-right:0;padding:0 10px 0 14px}
+    .gq-chips{gap:12px}
+    .gq-chip{padding:8px 18px;gap:8px}
+    .gq-chip.rm{padding-right:6px}
+    .gq-rtabs{gap:10px}
+    .gq-table th{padding-left:12px;padding-right:12px}
+    .gq-table td{padding-left:12px;padding-right:12px}
+    .gq-table th:first-child,.gq-table td:first-child{padding-left:0;padding-right:0}
+    .gq-table td .ch{gap:8px}
+    .ov-stats{column-gap:40px}
+    .ov-row{padding:0 12px;gap:16px}
+    .ov-ai-h{gap:12px}
+    .gr-row{gap:20px}
+    .ov-nrow{gap:20px}
+    .ov-dxrow{gap:24px}
+    .ov .pr-sumcol{column-gap:24px;padding-left:12px;padding-right:12px}
+    .ov .pr-chips{gap:10px}
+    .ov-feed{column-gap:40px}
+    .gk-i{padding-left:24px;padding-right:24px}
+    .gk-i:first-child{padding-left:0}
+    .gc .pr-cardhead{gap:24px}
+    .gc .pr-seg{gap:8px}
+    .gc .pr-rec{gap:20px}
+    .gc-trans{gap:20px}
+    .pr-vitals{column-gap:32px}
+    .pr-foot{gap:16px}
+    .gs-tabs{gap:12px}
+    .pr-trow{gap:24px}
+    .gf-table th,.gf-table td{padding-left:20px;padding-right:20px}
+    .gf-table th:first-child,.gf-table td:first-child{padding-left:0;padding-right:24px}
+    .pr-acc{gap:32px}
+    .pr-item-head{gap:16px}
+    .pr-form{column-gap:32px}
     .pr-item.flash{animation:prflash 1.6s ease-out}
     @keyframes prflash{0%,30%{background:#E8F0FE}100%{background:transparent}}
     /* coluna estreita (assistente aberto) */
     @container pr (max-width:720px){
-      .ov-stats{column-gap:20px}
+      .ov-stats{column-gap:40px}
       .ov-ai-b{padding-right:8px}
       .pr-sum{grid-template-columns:1fr}
       .ov .pr-sum{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -796,23 +912,23 @@
       .pr-vitals{grid-template-columns:repeat(3,minmax(0,1fr))}
       .pr-trow{grid-template-columns:minmax(110px,1fr) minmax(0,1fr) 116px}
       .pr-trow .pr-tloc{display:none}
-      .pr-bigcard{padding:0}
+      .pr-bigcard:not(.gcard){padding:0}
       .pr-tabs button{padding:0 12px}                      /* 6 abas cabem sem rolar */
     }
-    @container pr (max-width:560px){
+    @container pr (max-width:640px){
       .gk{grid-template-columns:repeat(2,minmax(0,1fr))}
       .gk-i:nth-child(3){padding-left:0;border-left:0}
-      .gc-trans-s,.gc-trans-i{display:none}
       .ov-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px;margin-top:16px}
+      .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:40px;margin-top:0}
       .ov-feed{grid-template-columns:1fr}
     }
-    @container pr (max-width:560px){
+    @container pr (max-width:640px){
       .ov .pr-sumcol{grid-template-columns:132px minmax(0,1fr)}
       .gq-table th:last-child,.gq-table td:last-child{display:none}
       .pr-vitals{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @container pr (max-width:520px){
+      .gc-trans-s,.gc-trans-i{display:none}
       .ov-stats,.ov-col:nth-child(3){grid-template-columns:1fr}
       .ov-dxrow{grid-template-columns:52px minmax(0,1fr)}
       .ov-dxbar{grid-column:2}
