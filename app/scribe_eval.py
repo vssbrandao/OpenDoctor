@@ -152,6 +152,40 @@ def cuts(a, min_s=15, max_s=30, frame_ms=20, sil_ms=250):
     return out
 
 
+# ===== custo de verdade (tokens que a OpenAI cobrou) e teto da rodada =====
+import threading                                   # noqa: E402
+SPENT = {"usd": 0.0}
+_LOCK = threading.Lock()
+
+
+def _add_cost(usd):
+    with _LOCK:
+        SPENT["usd"] += usd
+
+
+def chat_usage(msgs, model):
+    """Mesma chamada do llm.chat (json), mas devolvendo também os tokens cobrados (o assistente não muda)."""
+    import httpx
+    from . import llm
+    body = llm._body(model, msgs, 0, 6000, config.REASONING_EFFORT)
+    body["response_format"] = {"type": "json_object"}
+    t0 = time.time()
+    for attempt in range(3):
+        r = httpx.post(llm.URL, headers=llm._headers(), json=body, timeout=180)
+        if r.status_code in (429, 500, 502, 503, 504) and attempt < 2:
+            time.sleep(2 * (attempt + 1)); continue
+        if r.status_code != 200:
+            raise RuntimeError(f"OpenAI {r.status_code}: {r.text[:300]}")
+        j = r.json()
+        return {"raw": j["choices"][0]["message"]["content"] or "", "usage": j.get("usage") or {}, "t": round(time.time() - t0, 1)}
+
+
+def llm_cost(model, usage):
+    pin, pout = LLM_M.get(model, (2.5, 15))
+    cached = ((usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0)
+    return ((usage.get("prompt_tokens", 0) - cached) * pin + cached * pin / 10 + usage.get("completion_tokens", 0) * pout) / 1e6
+
+
 # ===== cache (não gasta de novo o que já foi transcrito/gerado) =====
 def _cache(kind, key, fn):
     os.makedirs(CACHE, exist_ok=True)
@@ -185,6 +219,21 @@ def _nums(t):
     return sorted(round(x, 3) for x in scribe.numbers(t))
 
 
+def freq(pos):
+    """Tomadas por dia de uma posologia: "12/12h" e "de 12 em 12 horas" → 2; "2x/dia", "duas vezes ao dia" → 2;
+    "1x/dia", "de manhã", "à noite", "em jejum", "ao deitar" → 1. None se não der para saber."""
+    t = scribe.digitize(pos)
+    m = re.search(r"(\d+)\s+(?:em\s+)?(\d+)\s*h", t) or re.search(r"de\s+(\d+)\s+em\s+(\d+)\s+hora", t)
+    if m and float(m.group(2).replace(",", ".")) > 0:
+        return round(24 / float(m.group(2).replace(",", ".")))
+    m = re.search(r"(\d+)\s*(?:x|vez|vezes)\b", t)
+    if m:
+        return int(float(m.group(1).replace(",", ".")))
+    if re.search(r"\b(manha|noite|jejum|deitar|almoco|jantar|dia)\b", t):
+        return 1 + bool(re.search(r"manha.*(tarde|noite)|(tarde|noite).*manha", t))
+    return None
+
+
 def _has(alts, text):
     return any(scribe.norm(a) in text for a in alts.split("|"))
 
@@ -209,9 +258,12 @@ def score(caso, res, flags):
         def same(k):          # "*": qualquer (ex.: mantido sem dose dita); números do gabarito contidos na saída
             if str(gm.get(k, "")) == "*":
                 return True
+            if k == "posologia" and freq(str(gm.get(k, ""))) and freq(m[k]):          # "de manhã" = "1x/dia"
+                return freq(str(gm.get(k, ""))) == freq(m[k])
             want, got = _nums(str(gm.get(k, ""))), _nums(m[k])
             return all(want.count(x) <= got.count(x) for x in set(want)) and (bool(want) or not got)
-        ok = same("dose") and same("posologia") and gm.get("acao", "*") in ("*", m["acao"])
+        acoes = str(gm.get("acao", "*")).split("|")                           # "ajustado|mantido": qualquer um
+        ok = same("dose") and same("posologia") and ("*" in acoes or m["acao"] in acoes)
         if ok:
             s["rem_certo"] += 1; continue
         avisou = any(scribe.norm(m["nome"]).split()[0] in scribe.norm(f["texto"]) for f in flags)
@@ -282,8 +334,10 @@ def run_case(caso, stt_model, llm_model):
     for i, (s0, s1) in enumerate(cuts(a), 1):
         if speech_ratio(a[s0:s1], floor) < 0.02:       # só silêncio: não transcreve (nem cobra)
             silent += 1; segs.append({"seq": i, "at": s0 / SR, "text": ""}); continue
-        r, _ = _cache("stt", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}",
-                      lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
+        r, hit = _cache("stt", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}",
+                        lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
+        if not hit:
+            _add_cost((s1 - s0) / SR / 60 * STT_MIN.get(stt_model, 0.006))
         segs.append({"seq": i, "at": s0 / SR, "text": r["text"]}); prev = r["text"] or prev
     t_stt = time.time() - t0
     nome = pac.get("nome", "")
@@ -293,11 +347,17 @@ def run_case(caso, stt_model, llm_model):
     mode = caso.get("modo", "soap")
     t1 = time.time()
     msgs = scribe.build_messages(segs, mode, patient, caso.get("perfil", ""), "", nome)
-    raw, cached = _cache("gen", f"{caso['id']}|{akey}|{stt_model}|{llm_model}|{scribe.PROMPT_VERSION}|{json.dumps(msgs, ensure_ascii=False)}",
-                         lambda: scribe.llm.chat(msgs, temperature=0, max_tokens=6000, model=llm_model, json_mode=True,
-                                                 reasoning=config.REASONING_EFFORT))
-    t_gen = None if cached else time.time() - t1
-    res, flags = scribe.check(json.loads(raw), masked, mode, patient)
+    gen, cached = _cache("gen", f"{caso['id']}|{akey}|{stt_model}|{llm_model}|{scribe.PROMPT_VERSION}|{json.dumps(msgs, ensure_ascii=False)}",
+                         lambda: chat_usage(msgs, llm_model))
+    raw, usage = gen["raw"], gen.get("usage") or {}
+    if not cached:
+        _add_cost(llm_cost(llm_model, usage))
+    t_gen = gen.get("t") if cached else round(time.time() - t1, 1)          # o tempo fica no cache: reavaliar não o perde
+    try:
+        parsed = json.loads(raw)
+    except ValueError:
+        parsed = {}
+    res, flags = scribe.check(parsed, masked, mode, patient)
     ref = " ".join(f for _, f in caso["falas"])
     sc = score(caso, res, flags)
     sent = scribe.norm(msgs[1]["content"])
@@ -306,7 +366,9 @@ def run_case(caso, stt_model, llm_model):
     sc["dado_vazou"] = bool(scribe._CPF.search(msgs[1]["content"]) or scribe._FONE.search(msgs[1]["content"]))
     return {"id": caso["id"], "origem": origem, "segundos": round(len(a) / SR, 1), "trechos": len(segs), "silencio": silent,
             "wer": round(wer(ref, " ".join(x["text"] for x in segs)), 3), "t_stt": round(t_stt, 1), "t_gen": t_gen,
-            "in_chars": sum(len(m["content"]) for m in msgs), "out_chars": len(raw), **sc,
+            "in_chars": sum(len(m["content"]) for m in msgs), "out_chars": len(raw),
+            "tokens_in": usage.get("prompt_tokens"), "tokens_out": usage.get("completion_tokens"),
+            "tokens_raciocinio": (usage.get("completion_tokens_details") or {}).get("reasoning_tokens"), **sc,
             "texto": scribe.render_text(res), "pontos": flags}
 
 
@@ -325,6 +387,7 @@ def main():
     ap.add_argument("--casos", default="")
     ap.add_argument("--estimar", action="store_true", help="só gera o áudio e estima o custo (não chama a OpenAI)")
     ap.add_argument("--paralelo", type=int, default=4, help="casos ao mesmo tempo")
+    ap.add_argument("--teto-usd", type=float, default=1.75, help="para de começar casos novos ao atingir este gasto")
     a = ap.parse_args()
     cases = load_cases([x.strip() for x in a.casos.split(",") if x.strip()])
     sec, su, lu = estimate(cases, a.stt, a.modelo)
@@ -338,6 +401,9 @@ def main():
     rows, erros = [], []
 
     def one(c):
+        if SPENT["usd"] >= a.teto_usd:
+            erros.append(f"{c['id']}: não rodou (teto de US$ {a.teto_usd:.2f} atingido)")
+            return None
         try:
             return run_case(c, a.stt, a.modelo)
         except Exception as e:  # noqa: BLE001 — um caso com erro não derruba a rodada
@@ -366,7 +432,8 @@ def main():
               "remedios": {k: tot(k) for k in ("rem_certo", "rem_aviso", "rem_sem_aviso", "rem_falta", "rem_inventado")},
               "sinais": f"{tot('vit_certo')}/{tot('vit_total')}", "cid": f"{tot('cid_certo')}/{tot('cid_total')}",
               "fatos": f"{tot('fatos_ok')}/{tot('fatos_total')}", "proibidos": tot("proibidos"),
-              "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit, "erros": erros}
+              "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit, "erros": erros,
+              "gasto_usd_nesta_rodada": round(SPENT["usd"], 3)}
     os.makedirs(REL, exist_ok=True)
     name = f"{resumo['data']}-{a.stt}-{a.modelo}"
     json.dump({"resumo": resumo, "casos": rows}, open(os.path.join(REL, name + ".json"), "w", encoding="utf-8"),

@@ -21,7 +21,8 @@ def perfect(c):
         nome = str(m["nome"]).split("|")[0]
         val = lambda k: "" if str(m.get(k, "")) == "*" else str(m.get(k, ""))
         meds.append({"nome": nome, "dose": val("dose"), "posologia": val("posologia"),
-                     "acao": "iniciado" if m.get("acao", "*") == "*" else m["acao"], "src": src(lambda t: s.same_drug(nome, t))})
+                     "acao": "iniciado" if m.get("acao", "*") == "*" else m["acao"].split("|")[0],
+                     "src": src(lambda t: s.same_drug(nome, t))})
     vit = {}
     for k, v in (g.get("sinais") or {}).items():
         x = float(str(v).split("|")[0])
@@ -86,3 +87,11 @@ def test_avaliacao_reprova_dose_errada_e_remedio_inventado():
     assert sc["rem_certo"] == 2 and sc["rem_aviso"] == 1           # dose errada, mas avisada (é a do cadastro)
     assert sc["rem_inventado"] == 1 and sc["proibidos"] >= 1        # insulina: ninguém falou e é proibida no caso
     assert any(f["tipo"] == "remedio" and "insulina" in f["texto"] for f in flags2)
+
+
+def test_posologia_por_frequencia_e_dose_incomum():
+    assert e.freq("12/12h") == e.freq("duas vezes ao dia") == e.freq("de manhã e no começo da tarde") == 2
+    assert e.freq("1x/dia") == e.freq("um comprimido de manhã") == e.freq("à noite") == 1 and e.freq("se dor") is None
+    assert s.dose_incomum("ciprofloxacino", "5 mg") and s.dose_incomum("levotiroxina", "75 mg")    # troca de remédio / unidade
+    assert not s.dose_incomum("levotiroxina", "75 mcg") and not s.dose_incomum("amoxicilina", "8 ml")
+    assert not s.dose_incomum("dipirona", "1 g") and not s.dose_incomum("insulina nph", "20 UI")

@@ -13,7 +13,7 @@ import unicodedata
 
 from . import cid10, config, llm
 
-PROMPT_VERSION = "2026-10-15.2"
+PROMPT_VERSION = "2026-10-15.3"
 MASK = "[PACIENTE]"
 FIELDS = ("s", "o", "a", "p")
 VITALS = ("pa_s", "pa_d", "fc", "fr", "temp", "spo2", "peso", "altura", "glicemia")
@@ -22,7 +22,7 @@ RANGE = {"pa_s": (50, 300), "pa_d": (20, 200), "fc": (20, 250), "fr": (4, 80), "
          "peso": (0.3, 400), "altura": (0.3, 250), "glicemia": (10, 1500)}
 ACOES = ("mantido", "iniciado", "suspenso", "ajustado")
 # gravidade de cada ponto para conferir (a tela ordena por ela)
-NIVEL = {"alergia": "alto", "numero": "alto", "remedio": "alto", "vital": "alto", "privacidade": "alto",
+NIVEL = {"alergia": "alto", "numero": "alto", "remedio": "alto", "vital": "alto", "privacidade": "alto", "dose_incomum": "alto",
          "dose_longe": "medio", "vital_longe": "medio", "sem_origem": "medio", "inferido": "medio", "cid": "medio",
          "pendencia": "medio", "cadastro": "info"}
 
@@ -303,6 +303,58 @@ def allergy_hits(name, allergies):
     return hits
 
 
+# ===== dose habitual (só para AVISAR; não é recomendação de dose) =====
+# Faixa larga de UMA tomada, adulto, em mg, dos remédios mais comuns na atenção primária. Pega troca de
+# remédio pelo transcritor ("ciclobenzaprina 5 mg" ouvida como "ciprofloxacino 5 mg") e erro de unidade.
+_DOSE = {"losartana": (12.5, 100), "valsartana": (40, 320), "olmesartana": (10, 40), "telmisartana": (20, 80),
+         "enalapril": (2.5, 40), "captopril": (6.25, 50), "anlodipino": (2.5, 10), "nifedipino": (10, 60),
+         "hidroclorotiazida": (12.5, 50), "clortalidona": (12.5, 50), "furosemida": (10, 160), "espironolactona": (12.5, 100),
+         "carvedilol": (3.125, 50), "metoprolol": (12.5, 200), "atenolol": (12.5, 100), "propranolol": (10, 160),
+         "hidralazina": (12.5, 100), "metildopa": (125, 1000), "isossorbida": (5, 120), "digoxina": (0.0625, 0.25),
+         "metformina": (250, 2000), "glibenclamida": (1.25, 10), "gliclazida": (30, 120), "empagliflozina": (10, 25),
+         "dapagliflozina": (5, 10), "sitagliptina": (25, 100), "atorvastatina": (10, 80), "sinvastatina": (10, 40),
+         "rosuvastatina": (5, 40), "aas": (75, 1000), "clopidogrel": (75, 600), "rivaroxabana": (2.5, 20),
+         "apixabana": (2.5, 10), "varfarina": (0.5, 15), "omeprazol": (10, 40), "pantoprazol": (20, 40),
+         "esomeprazol": (20, 40), "dipirona": (300, 1000), "paracetamol": (200, 1000), "ibuprofeno": (200, 800),
+         "diclofenaco": (25, 75), "nimesulida": (50, 100), "naproxeno": (250, 550), "cetoprofeno": (50, 150),
+         "prednisona": (2.5, 80), "prednisolona": (2.5, 80), "dexametasona": (0.5, 20), "amoxicilina": (250, 1000),
+         "azitromicina": (250, 1000), "claritromicina": (250, 500), "cefalexina": (250, 1000), "cefuroxima": (125, 500),
+         "ciprofloxacino": (250, 750), "levofloxacino": (250, 750), "nitrofurantoina": (50, 100),
+         "sulfametoxazol": (400, 1600), "metronidazol": (250, 2000), "fluconazol": (50, 400), "secnidazol": (1000, 2000),
+         "sertralina": (25, 200), "fluoxetina": (10, 80), "escitalopram": (5, 20), "citalopram": (10, 40),
+         "paroxetina": (10, 50), "venlafaxina": (37.5, 225), "amitriptilina": (10, 100), "nortriptilina": (10, 100),
+         "trazodona": (25, 300), "bupropiona": (150, 300), "clonazepam": (0.25, 2), "diazepam": (2, 10),
+         "alprazolam": (0.25, 2), "zolpidem": (5, 10), "quetiapina": (12.5, 400), "risperidona": (0.25, 4),
+         "levotiroxina": (0.0125, 0.3), "colchicina": (0.5, 1.5), "alopurinol": (50, 600), "ciclobenzaprina": (5, 10),
+         "tramadol": (50, 100), "codeina": (15, 60), "gabapentina": (100, 1200), "pregabalina": (25, 300),
+         "sumatriptana": (25, 100), "topiramato": (25, 200), "loratadina": (10, 10), "desloratadina": (5, 5),
+         "cetirizina": (5, 10), "dimenidrinato": (25, 100), "ondansetrona": (4, 8), "bromoprida": (10, 10),
+         "domperidona": (10, 20), "metoclopramida": (10, 10), "escopolamina": (10, 20), "tansulosina": (0.4, 0.8),
+         "finasterida": (1, 5), "sildenafila": (25, 100), "alendronato": (10, 70), "hidroxicloroquina": (200, 400),
+         "ivermectina": (3, 24), "albendazol": (400, 400), "enoxaparina": (20, 160)}
+_UNIT = re.compile(r"(\d+(?:[.,]\d+)?)\s*(mg|miligramas?|g|gramas?|mcg|µg|ug|microgramas?)\b", re.I)
+_NAO_MG = re.compile(r"\b(ml|gotas?|jatos?|puffs?|ui|unidades?|comprimidos?|caps?|capsulas?|sache|ampolas?|%)\b")
+
+
+def dose_incomum(nome, dose):
+    """(dose em mg, faixa) se a dose de uma tomada estiver fora da faixa usual do remédio; senão None."""
+    key = next((k for k in _DOSE if same_drug(k, nome)), None)
+    d = norm(dose)
+    if not key or not d or _NAO_MG.search(d):
+        return None
+    m = _UNIT.search(d)
+    if m:
+        v, u = _f(m.group(1)), m.group(2).lower()
+        mg = v * 1000 if u in ("g", "grama", "gramas") else v / 1000 if u in ("mcg", "µg", "ug", "micrograma", "microgramas") else v
+    else:
+        nums = numbers(d)
+        if len(nums) != 1:
+            return None
+        mg = nums[0]                                    # "ciprofloxacino 5": sem unidade, lê como mg
+    lo, hi = _DOSE[key]
+    return None if lo / 1.01 <= mg <= hi * 1.01 else (mg, (lo, hi))
+
+
 # ===== perfil de escrita (sem IA; nenhum texto de outro paciente sai) =====
 _SIGLAS = {"HAS", "DM", "DM2", "DM1", "DPOC", "ICC", "IAM", "AVC", "AVE", "BEG", "REG", "MEG", "LOTE", "AC", "AP", "RCR",
            "2T", "BNF", "MV", "RA", "RHA", "FC", "FR", "PA", "TFG", "DRC", "IRC", "ITU", "IVAS", "EAS", "US", "USG",
@@ -339,7 +391,9 @@ Regras (obrigatórias):
 1. Documente SOMENTE o que foi dito na consulta. Não invente sintoma, exame, valor, dose, diagnóstico ou conduta.
    O que não foi dito fica de fora (campo vazio = lista vazia). Sem exame físico na consulta, sem exame físico no texto.
 2. Não sugira diagnóstico, exame ou tratamento que o médico não disse. Você documenta; não decide.
-3. Mantenha as negativas ditas ("nega dor torácica", "sem febre").
+3. Mantenha as negativas ditas ("nega dor torácica", "sem febre"). Pergunta do médico sem resposta clara na
+   transcrição (trecho truncado ou ininteligível) NÃO vira negativa nem afirmativa: fica de fora e vai em
+   "pendencias" (ex.: "resposta sobre desmaio não ficou clara na gravação").
 4. Cada frase traz "src": os números dos trechos que a sustentam (pelo menos um). "tipo": "dito" quando está
    explícito nos trechos; "inferido" quando você deduziu (um cálculo, um resumo de várias falas).
 5. Números, doses e posologias exatamente como ditos. Se alguém corrige um valor ("150... não, 140"), vale o
@@ -555,6 +609,10 @@ def check(out, segments, mode, patient=None):
         if acao != "suspenso":
             for a in allergy_hits(nome, p.get("allergies")):
                 flag("alergia", "p", f"{nome} com alergia registrada a {a}", ids)
+            odd = dose_incomum(nome, item["dose"])
+            if odd:
+                flag("dose_incomum", "p", f"{nome} {item['dose']}: fora da dose usual por tomada ({_fmt(odd[1][0])}–{_fmt(odd[1][1])} mg). "
+                     "Confira o nome e a dose: o transcritor pode ter trocado o remédio.", ids)
         # dose e posologia: o número precisa estar no trecho, de preferência logo depois do nome do remédio
         toks = tokens(text)
         others = [i for n2 in names if n2 and n2 != nome for i in _mentions(n2, text)]

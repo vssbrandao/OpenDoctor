@@ -33,7 +33,7 @@ gabarito:
   - nome: captopril
     dose: 25 mg
     posologia: 2x/dia
-    acao: ajustado
+    acao: ajustado|mantido
   - nome: hidroclorotiazida
     dose: 25 mg
     posologia: 1x/dia
