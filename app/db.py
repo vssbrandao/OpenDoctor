@@ -494,6 +494,10 @@ def find_by_cpf(user_id, cpf, exclude_id=None):
     return _patient(r) if r else None
 
 
+# paciente fictícia criada em toda conta nova (app/exemplo.py); pode ser excluída mesmo com prontuário
+EXAMPLE_NAME = "Maria Aparecida Souza (exemplo)"
+
+
 def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None):
     with connection() as conn:
         r = conn.execute(
@@ -563,13 +567,21 @@ def touch_patient(user_id, patient_id):
 
 def delete_patient(user_id, patient_id):
     """Exclui o cadastro só se não houver prontuário (anotações são registro de saúde e ficam).
-    Retorna 'ok', 'has_notes' ou 'not_found'."""
+    A paciente de exemplo (fictícia) sai com tudo. Retorna 'ok', 'has_notes' ou 'not_found'."""
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("select patient_key from patients where user_id = %s and id = %s", (user_id, patient_id))
+            cur.execute("select patient_key, name from patients where user_id = %s and id = %s", (user_id, patient_id))
             r = cur.fetchone()
             if not r:
                 return "not_found"
+            if r[1] == EXAMPLE_NAME:
+                cur.execute("delete from patient_files where user_id = %s and patient_id = %s", (user_id, patient_id))
+                cur.execute("""delete from note_addenda where note_id in
+                               (select id from clinical_notes where user_id = %s and patient_id = %s)""", (user_id, patient_id))
+                cur.execute("delete from clinical_notes where user_id = %s and patient_id = %s", (user_id, patient_id))
+                cur.execute("delete from patients where user_id = %s and id = %s", (user_id, patient_id))
+                conn.commit()
+                return "ok"
             cur.execute("""select 1 from clinical_notes where user_id = %s and (content <> '' or signed_at is not null)
                            and (patient_id = %s or (patient_id is null and patient_key = %s)) limit 1""",
                         (user_id, patient_id, r[0]))
@@ -720,6 +732,20 @@ def notes_by_event(user_id, event_ids):
                                where user_id = %s and event_id = any(%s)""", (user_id, list(event_ids))).fetchall()
     return {r[0]: {"note_id": r[1], "signed_at": r[2].isoformat() if r[2] else None, "has_content": r[3]}
             for r in rows}
+
+
+def add_example_notes(user_id, patient_id, pkey, patient_name, rows):
+    """Histórico da paciente de exemplo: rows = (título, início, texto, dados, finalizada_em, atualizada_em)."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        with conn.cursor() as cur:
+            for title, start, content, data, signed_at, updated_at in rows:
+                cur.execute("""insert into clinical_notes (user_id, patient_id, patient_key, patient_name, event_title,
+                                 event_start, content, data, signed_at, created_at, updated_at)
+                               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                            (user_id, patient_id, pkey, patient_name, title, start, content, Jsonb(data), signed_at,
+                             updated_at, updated_at))
+        conn.commit()
 
 
 # --- exames anexados (PDF/imagem), sempre filtrados pelo médico ---

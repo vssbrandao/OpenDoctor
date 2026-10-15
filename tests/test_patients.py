@@ -104,3 +104,18 @@ def test_anexo_so_pdf_e_imagem_pelo_conteudo():
     for ruim in (b"<svg onload=alert(1)>", b"<html>", b"MZ\x90\x00", b""):
         assert _sniff(ruim) is None
     assert _file_name("laudo%2F..%2Fx.pdf") == "laudo .. x.pdf" and _file_name("") == "exame"
+
+
+def test_paciente_de_exemplo_no_formato_da_tela():
+    """O histórico da Maria (fictícia) passa pelo mesmo filtro do servidor sem perder nada."""
+    import datetime
+    from app import exemplo
+    from app.server import _note_data, _sniff
+    now = datetime.datetime(2026, 10, 1, tzinfo=datetime.timezone.utc)
+    cons, labs = exemplo.consultas(now), exemplo.exames(now)
+    assert len(cons) == 11 and len(labs) == 6 and exemplo.NAME.endswith("(exemplo)")
+    for x in cons + labs:
+        assert _note_data(x["data"]) == x["data"]
+    assert all(c["signed_at"] > c["start"] for c in cons)
+    pdf = exemplo.laudo_pdf(datetime.date(2026, 9, 20), exemplo.EXAMES[0.5])
+    assert _sniff(pdf[:16]) == "application/pdf" and b"20/09/2026" in pdf and b"%%EOF" in pdf

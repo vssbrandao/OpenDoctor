@@ -26,7 +26,7 @@ from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse,
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer
+from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer, exemplo
 
 mimetypes.add_type("text/javascript", ".mjs")   # pdf.js (web/vendor) é módulo: o navegador exige esse tipo
 
@@ -889,10 +889,13 @@ async def signup_verify(request: Request):
         bad = _check_code(t["email"], b.get("code"), "signup")
         if bad:
             return bad
+        novo = db.user_by_email(t["email"]) is None
         user = db.create_email_user(t["email"], t.get("name"), t["ph"])
     except Exception as e:
         print("[login] confirmação falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
+    if novo:
+        exemplo.seed_safe(user["id"])                   # conta nova: paciente de exemplo (fictícia)
     return _logged(request, user, b.get("next"), "cadastro", welcome=True)
 
 
@@ -1029,6 +1032,8 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             novo = db.user_by_email(info["email"]) is None
             user = db.upsert_user(info["email"], info.get("name"),
                                   info.get("picture"), info.get("sub"))
+            if novo:
+                exemplo.seed_safe(user["id"])           # conta nova: paciente de exemplo (fictícia)
             dest = auth.safe_next(payload.get("nx"))
             resp = RedirectResponse(auth.with_welcome(dest) if novo else dest)
             auth.set_session(resp, user["id"], user.get("sv", 0))

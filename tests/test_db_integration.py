@@ -86,3 +86,17 @@ def test_anexo_so_do_proprio_medico(novo_usuario):
     assert db.get_file(beto, f["id"]) is None and db.delete_file(beto, f["id"]) is None
     assert db.delete_patient(ana, p["id"]) == "has_notes"     # exame anexado também é prontuário
     assert db.delete_file(ana, f["id"]) == p["id"] and db.list_files(ana, p["id"]) == []
+
+
+def test_conta_nova_ganha_paciente_de_exemplo_que_pode_ser_excluida(novo_usuario):
+    from app import exemplo
+    uid = novo_usuario()["id"]
+    pid = exemplo.seed(uid)
+    assert pid and exemplo.seed(uid) is None                              # só uma vez
+    p = db.get_patient(uid, pid)
+    assert p["name"] == db.EXAMPLE_NAME and not p.get("cpf") and not p.get("phone")
+    notas = db.list_notes(uid, pid, p["key"])
+    assert len(notas) == 17 and sum(1 for n in notas if n["signed_at"]) == 11
+    assert len(db.list_files(uid, pid)) == 1
+    assert db.delete_patient(uid, pid) == "ok"                            # fictícia: sai com tudo
+    assert db.list_notes(uid, pid, p["key"]) == [] and db.list_files(uid, pid) == []
