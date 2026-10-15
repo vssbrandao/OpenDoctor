@@ -7009,7 +7009,10 @@
         else if (n.signed_at) item('Adicionar adendo', function () { expand(true); var host = it.querySelector('.hc-body'); addendum(n, host, function (ok) { if (ok) renderHist(); }); });
         else item('Abrir para editar', function () { switchTo(n.event_id ? { event_id: n.event_id, title: eventTitle(n.event_title), start: n.event_start } : { note_id: n.id }); });
         item('Copiar texto', function () { try { navigator.clipboard.writeText(n.content || ''); toast('Texto copiado'); } catch (_) {} });
-        if (scr && (scr.rec_ids || []).length) item('Ver transcrição', function () { histTx(n, body, expand); });
+        if (scr && (scr.rec_ids || []).length) {
+          item('Ver transcrição', function () { histTx(n, body, expand); });
+          item('Apagar transcrição', function () { histTxDelete(n, body); });
+        }
         var day = d ? d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) : '';
         (files || []).filter(function (f) { var c = new Date(f.created_at); return day && c.getFullYear() + '-' + pad(c.getMonth() + 1) + '-' + pad(c.getDate()) === day; }).forEach(function (f, i) {
           if (!i) dm.appendChild(el('div', 'gq-mh', 'Anexos do dia'));
@@ -7082,6 +7085,15 @@
           }); });
           if (!box.children.length) box.appendChild(el('div', 'rc-h', 'A transcrição desta consulta foi apagada.'));
         }).catch(function () { box.innerHTML = ''; box.appendChild(el('div', 'rc-h', 'Não foi possível abrir a transcrição.')); });
+      }
+      function histTxDelete(n, body) {
+        if (!confirm('Apagar a transcrição desta consulta?\n\nA evolução continua como está. A exclusão fica no registro de acessos e não pode ser desfeita.')) return;
+        Promise.all((n.data.scribe.rec_ids || []).map(function (id) { return api('DELETE', '/prontuario/recordings/' + encodeURIComponent(id)); }))
+          .then(function (rs) {
+            if (!rs.every(function (r) { return r.ok || r.status === 404; })) throw new Error('falhou');
+            var old = body.querySelector('.hc-rtx'); if (old) old.remove();
+            toast('Transcrição apagada');
+          }).catch(function () { toast('Não foi possível apagar a transcrição. Tente de novo.'); });
       }
       function filterHist() {
         var box = $('prVisits'), q = norm($('prHistQ').value.trim()), any = false;

@@ -18,6 +18,12 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
    sem políticas — só o servidor acessa). Migração é aditiva; aplicar em produção só com teste e limpeza.
 3. **Nome de paciente** nunca vai em URL, log, nem para a OpenAI. Paciente viaja por id; o nome vai no
    corpo do POST ou no `sessionStorage`.
+   - Exceção aprovada (gravação da consulta, com autorização do paciente): o **áudio** de cada trecho vai
+     só para a transcrição (`/v1/audio/transcriptions`, que não retém conteúdo) e pode conter o nome falado.
+     Todo **texto** que vai a um modelo passa antes por `scribe.mask` (nome → `[PACIENTE]`, CPF, telefone,
+     e-mail) — inclusive a transcrição e a evolução anterior. O áudio nunca é gravado em disco, banco ou log;
+     o log da gravação só leva números. Mudar isso (outro provedor, guardar áudio) pede revisão do
+     `docs/ripd-gravacao.md` e da Política de Privacidade.
 4. **Segredos** só em variável de ambiente (Render / `.env`, que não é commitado). Nunca em código,
    comando, log ou mensagem. O usuário cola os segredos; não imprimir chaves.
 5. **Front-end:** a CSP só roda os `<script>` escritos nas páginas (hash calculado ao subir o servidor)

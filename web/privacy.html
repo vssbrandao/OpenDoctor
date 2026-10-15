@@ -28,7 +28,7 @@
 <body>
   <div class="wrap">
     <h1>Política de Privacidade</h1>
-    <div class="date">OpenDoctor · Última atualização: 14 de outubro de 2026</div>
+    <div class="date">OpenDoctor · Última atualização: 15 de outubro de 2026</div>
 
     <p>O OpenDoctor é um assistente de apoio à decisão clínica para profissionais de saúde.
     Opcionalmente, permite conectar o calendário do usuário (Google Calendar e Microsoft Outlook)
@@ -57,6 +57,33 @@
     <p>Para enviar o código de acesso por e-mail usamos o provedor <strong>Resend</strong> (Resend, Inc., Estados Unidos),
     que recebe somente o seu endereço de e-mail e o conteúdo da mensagem (o código ou o aviso de segurança), apenas para
     fazer a entrega.</p>
+
+    <h2>Gravação da consulta (transcrição automática)</h2>
+    <p>O médico pode gravar a consulta para que o OpenDoctor transforme a fala em texto e escreva um rascunho da
+    evolução, que ele revisa antes de assinar. A gravação só começa depois que o médico marca que o paciente
+    autorizou; a data e a hora dessa autorização ficam registradas. Sem autorização, a evolução é escrita à mão.</p>
+    <ul>
+      <li><strong>Áudio:</strong> é dividido em trechos de 15 a 30 segundos. Cada trecho fica no navegador do médico
+        só até o servidor confirmar que o recebeu (no máximo 48 horas; é apagado ao sair da conta). No servidor, o
+        áudio não é gravado: fica na memória enquanto é transcrito e é descartado.</li>
+      <li><strong>Transcrição:</strong> feita pela <strong>OpenAI</strong> (OpenAI, L.L.C., Estados Unidos), que
+        recebe o áudio de cada trecho. Segundo a documentação da OpenAI, esse serviço não guarda o áudio nem o texto.</li>
+      <li><strong>Rascunho da evolução:</strong> também pela OpenAI. Vão o texto da transcrição e a evolução anterior
+        do mesmo paciente, com nome, CPF, telefone e e-mail trocados por marcas; os problemas, remédios e alergias do
+        cadastro; e um resumo estatístico do jeito de escrever do médico (sem texto de outros pacientes). A troca é
+        automática e pode deixar passar apelidos, nomes de parentes ou dados ditos de forma incomum. A OpenAI pode
+        guardar esse texto por até 30 dias só para monitorar abuso e não o usa para treinar modelos.</li>
+      <li><strong>O que fica guardado:</strong> o texto de cada trecho, com o minuto, faz parte do prontuário e fica
+        com ele pelo prazo legal (no mínimo 20 anos, Lei 13.787/2018), no banco de dados do OpenDoctor (Supabase,
+        servidores no Canadá). A evolução registra que veio de transcrição automática (IA), com a versão do modelo e
+        quantos pontos o médico conferiu.</li>
+      <li><strong>Apagar:</strong> o médico pode apagar a transcrição de uma consulta; a exclusão fica no registro de
+        acessos do prontuário.</li>
+      <li><strong>Papéis e base legal:</strong> o médico (ou a clínica) é o controlador dos dados do paciente; o
+        OpenDoctor trata esses dados em nome dele (operador), e a OpenAI, em nome do OpenDoctor. A base legal é a
+        tutela da saúde (LGPD, art. 11, II, "f"). O uso da OpenAI envolve transferência internacional de dados para os
+        Estados Unidos.</li>
+    </ul>
 
     <h2>Conformidade com o Google</h2>
     <p>O uso e a transferência de informações recebidas das APIs do Google seguem a
