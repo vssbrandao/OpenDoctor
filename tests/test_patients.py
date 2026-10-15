@@ -131,3 +131,16 @@ def test_tempo_de_documentacao_so_numeros_limitados():
     assert _timing({"active_s": 312, "wall_s": 900.4, "edits": 41}) == {"active_s": 312, "wall_s": 900, "edits": 41}
     assert _timing({"active_s": -1, "wall_s": 10 ** 9, "edits": True, "texto": "dor"}) is None
     assert _timing({"active_s": "300"}) is None and _timing(None) is None and _timing([1]) is None
+
+
+def test_gravacao_real_so_para_contas_liberadas(monkeypatch):
+    from app import config
+    from app.server import scribe_on
+    u = {"id": "x", "email": "Medica@Exemplo.com"}
+    monkeypatch.setattr(config, "SCRIBE_EMAILS", {"medica@exemplo.com"})
+    monkeypatch.setattr(config, "SCRIBE_ALL", False); monkeypatch.setattr(config, "SCRIBE_OFF", False)
+    assert scribe_on(u) and not scribe_on({"email": "outra@exemplo.com"}) and not scribe_on(None)
+    monkeypatch.setattr(config, "SCRIBE_OFF", True)
+    assert not scribe_on(u)                                   # desliga na hora, para todos
+    monkeypatch.setattr(config, "SCRIBE_OFF", False); monkeypatch.setattr(config, "SCRIBE_ALL", True)
+    assert scribe_on({"email": "qualquer@exemplo.com"})

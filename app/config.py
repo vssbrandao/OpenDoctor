@@ -35,6 +35,10 @@ OPENAI_FAST_MODEL = os.environ.get("OPENAI_FAST_MODEL", "gpt-4o-mini").strip()
 # gravação da consulta: transcritor e modelo que escreve a evolução (escolhidos pela avaliação de qualidade)
 OPENAI_STT_MODEL = os.environ.get("OPENAI_STT_MODEL", "gpt-transcribe").strip()
 OPENAI_SCRIBE_MODEL = os.environ.get("OPENAI_SCRIBE_MODEL", "gpt-5.4").strip()
+# quem tem a gravação real: e-mails separados por vírgula, ou todos (SCRIBE_ALL=1); SCRIBE_OFF=1 desliga na hora
+SCRIBE_EMAILS = {e.strip().lower() for e in os.environ.get("SCRIBE_EMAILS", "").split(",") if e.strip()}
+SCRIBE_ALL = os.environ.get("SCRIBE_ALL", "").strip() == "1"
+SCRIBE_OFF = os.environ.get("SCRIBE_OFF", "").strip() == "1"
 # modelos de raciocínio (gpt-5.x): esforço e orçamento extra p/ o raciocínio
 REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "low").strip()
 REASONING_TOKEN_BUDGET = int(os.environ.get("OPENAI_REASONING_TOKEN_BUDGET", "4000"))

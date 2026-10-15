@@ -119,7 +119,8 @@ _SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",                                 # ninguém embute o app num iframe (clickjacking)
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",       # links externos não recebem o endereço completo
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+    # microfone só para o próprio site (gravação da consulta, com autorização do paciente); o resto, para ninguém
+    "Permissions-Policy": "camera=(), microphone=(self), geolocation=(), payment=(), usb=()",
     "Cross-Origin-Opener-Policy": "same-origin",
 }
 
@@ -979,12 +980,20 @@ def logout():
     return resp
 
 
+def scribe_on(user):
+    """A conta tem a gravação real da consulta? (SCRIBE_OFF desliga para todos na hora.)"""
+    if not user or config.SCRIBE_OFF:
+        return False
+    return config.SCRIBE_ALL or str(user.get("email") or "").lower() in config.SCRIBE_EMAILS
+
+
 @app.get("/me")
 def me(request: Request):
     u = auth.current_user(request)
+    on = scribe_on(u)
     if u:
         u = {k: v for k, v in u.items() if k != "sv"}
-    return {"logged_in": bool(u), "user": u}
+    return {"logged_in": bool(u), "user": u, "scribe": on}
 
 
 # ===== integrações de calendário (OAuth, por usuário) =====
