@@ -1118,6 +1118,9 @@
        · transcrição: título 16/24 500, prévia 14/20 com ícone 18 + 4, seta 24 · destaques 14 500, lista 14 com 8px
        · "Abrir destaques" 40px (14/500 #0B57D0 + ícone 18) entre linhas onduladas · falas 14/20 500 + texto 14/22 #56595E */
     .pr-tst{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+    .ga-cs{display:flex;flex-direction:column;margin-top:24px}
+    .ga-cs .gh{margin-bottom:16px}
+    .gf-grpl{position:sticky;left:0;display:inline-block}
     .pr-tchev{display:flex;width:24px;height:24px;color:#444746}
     .pr-tchev svg{width:24px;height:24px;transition:transform .15s}
     .pr-trow.open{background:#F7F8FA}
@@ -1921,6 +1924,18 @@
                 <thead><tr><th>Sinal ou exame</th><th>Situação</th><th class="ga-tr">Tendência</th><th>Última</th><th>Variação</th><th class="ga-dt">Data</th></tr></thead>
                 <tbody id="gaTBody"></tbody>
               </table>
+              <!-- sinais e exames por consulta (gráfico de barras como o da aba Finanças + tabela) -->
+              <div class="ga-cs" id="csSinais">
+                <div class="gh gh-col"><span class="gh-t">Sinais e exames por consulta</span><span class="gh-s">Medidas registradas nas evoluções e nos resultados de exames</span></div>
+                <div class="gfc" id="csChart" hidden>
+                  <div class="gfc-hd">
+                    <div class="gfc-l"><div class="gfc-t" id="csChartT"></div><div class="gfc-lg" id="csChartLg"></div></div>
+                    <div class="gq-dd"><button class="gfc-dd" type="button" id="csMetric" aria-haspopup="menu" aria-expanded="false"><span id="csMetricT"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="csMetricM" role="menu" hidden></div></div>
+                  </div>
+                  <svg class="gfc-svg" id="csSvg" aria-hidden="true"></svg>
+                </div>
+                <div class="gf-wrap"><table class="gf-table" id="csTable"></table></div>
+              </div>
               <!-- exames de acompanhamento sugeridos pelos problemas e medicações -->
               <div class="ga-fu" id="gaFuSec" hidden>
                 <div class="ov-hrow"><span class="gh-t">Exames de acompanhamento</span><button class="pr-addlab sm" type="button" data-attach><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6z" fill="currentColor"/></svg>Anexar exame</button></div>
@@ -2034,27 +2049,12 @@
 
             <!-- Consultas do paciente na agenda -->
             <section class="pr-panel" data-panel="consultas" hidden>
-              <div class="gs-tabs" id="csTabs" role="tablist">
-                <button type="button" role="tab" data-s="agenda" class="on" aria-selected="true">Consultas</button>
-                <button type="button" role="tab" data-s="sinais" aria-selected="false">Sinais e exames</button>
-              </div>
               <div class="gsub" id="csAgenda">
                 <div class="pr-histbar">
                   <div class="gh gh-col"><span class="gh-t">Consultas</span><span class="gh-s" id="prHistCount">Da agenda e do prontuário</span></div>
                   <input class="srch-in pr-histq" id="prHistQ" type="search" placeholder="Buscar nas consultas" autocomplete="off" spellcheck="false">
                 </div>
                 <div class="pr-table" id="prVisits"></div>
-              </div>
-              <div class="gsub" id="csSinais" hidden>
-                <div class="gh"><span class="gh-t">Sinais e exames por consulta</span><span class="gh-s">Medidas registradas nas evoluções (SOAP)</span></div>
-                <div class="gfc" id="csChart" hidden>
-                  <div class="gfc-hd">
-                    <div class="gfc-l"><div class="gfc-t" id="csChartT"></div><div class="gfc-lg" id="csChartLg"></div></div>
-                    <div class="gq-dd"><button class="gfc-dd" type="button" id="csMetric" aria-haspopup="menu" aria-expanded="false"><span id="csMetricT"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="csMetricM" role="menu" hidden></div></div>
-                  </div>
-                  <svg class="gfc-svg" id="csSvg" aria-hidden="true"></svg>
-                </div>
-                <div class="gf-wrap"><table class="gf-table" id="csTable"></table></div>
               </div>
             </section>
 
@@ -4589,7 +4589,8 @@
       function withText() { return notes.filter(function (n) { return !isLabRec(n) && ((n.content || '').trim() || n.signed_at); }); }
       function ovVisible() { var p = document.querySelector('.pr-panel[data-panel=geral]'); return isOpen() && p && !p.hidden; }
       // chamado ao carregar, salvar, finalizar e ao chegar a agenda (o gráfico fica acima das abas: sempre à vista)
-      function renderKpis() { ov.dirty = true; if (isOpen()) { renderOverview(); renderStrip(); if (!$('csSinais').hidden) renderCs(); } }
+      function anaVisible() { var p = document.querySelector('.pr-panel[data-panel=analise]'); return isOpen() && p && !p.hidden; }
+      function renderKpis() { ov.dirty = true; if (isOpen()) { renderOverview(); renderStrip(); if (anaVisible()) renderCs(); } }
       function renderOverview() {
         ov.dirty = false;
         var S = ov.S = series(), avail = METRICS.filter(function (m) { return S[m.k].length; }), any = avail.length > 0;
@@ -4967,7 +4968,6 @@
       }
       function openInCons(n) {
         setTab('consultas');
-        var ag = document.querySelector('#csTabs [data-s=agenda]'); if (ag && !ag.classList.contains('on')) ag.click();
         $('prHistQ').value = ''; filterHist(); showAllCons();
         var r = [].filter.call($('prVisits').querySelectorAll('.pr-trow'), function (x) { return x._note === n; })[0];
         if (!r) return;
@@ -5591,21 +5591,12 @@
         });
         M.hidden = false; this.setAttribute('aria-expanded', 'true'); var f2 = M.querySelector('button'); if (f2) f2.focus();
       });
-      if (window.ResizeObserver) new ResizeObserver(function () { if (isOpen() && !$('csSinais').hidden && !$('csChart').hidden) renderCsChart(); }).observe($('csChart'));
-      $('ovFeedMore').addEventListener('click', function () { setTab('consultas'); var ag = document.querySelector('#csTabs [data-s=agenda]'); if (ag && !ag.classList.contains('on')) ag.click(); $('prTabs').scrollIntoView({ block: 'start' }); });
+      if (window.ResizeObserver) new ResizeObserver(function () { if (anaVisible() && !$('csChart').hidden) renderCsChart(); }).observe($('csChart'));
+      $('ovFeedMore').addEventListener('click', function () { setTab('consultas'); $('prTabs').scrollIntoView({ block: 'start' }); });
       $('ovEmptyGo').addEventListener('click', function () { setTab('atual'); (mode === 'soap' ? soapEls[0] : note).focus(); });
 
       // ===== abas =====
       var tabs = [].slice.call(document.querySelectorAll('#prTabs button'));
-      // subabas da aba Consultas (como Finanças): agenda | sinais por consulta
-      [].forEach.call($('csTabs').children, function (b) {
-        b.addEventListener('click', function () {
-          var s2 = b.getAttribute('data-s');
-          [].forEach.call($('csTabs').children, function (x) { var on = x === b; x.classList.toggle('on', on); x.setAttribute('aria-selected', on ? 'true' : 'false'); });
-          $('csAgenda').hidden = s2 !== 'agenda'; $('csSinais').hidden = s2 !== 'sinais';
-          if (s2 === 'sinais') renderCs();
-        });
-      });
       // sinais por consulta = tabela de Finanças: consultas nas colunas (mais antiga → mais recente), sinais nas linhas
       function renderCs() {
         renderCsChart();
@@ -5649,7 +5640,7 @@
           return out;
         }
         var vr = rows(VR), lr = rows(LR);
-        function grp(t) { var tr = el('tr', 'gf-grp'), td = el('td', null, t); td.colSpan = cols.length + 1; tr.appendChild(td); body.appendChild(tr); }
+        function grp(t) { var tr = el('tr', 'gf-grp'), td = el('td'); td.appendChild(el('span', 'gf-grpl', t)); td.colSpan = cols.length + 1; tr.appendChild(td); body.appendChild(tr); }
         if (vr.length && lr.length) grp('Sinais vitais');
         vr.forEach(function (tr) { body.appendChild(tr); });
         if (lr.length) { grp('Exames laboratoriais'); lr.forEach(function (tr) { body.appendChild(tr); }); }
@@ -5661,6 +5652,7 @@
         [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { p.hidden = p.getAttribute('data-panel') !== t; });
         if (t === 'acessos') loadAccess();
         if ((t === 'geral' || t === 'analise') && ov.dirty) renderOverview();
+        if (t === 'analise') renderCs();                  // sinais e exames por consulta (precisa da largura visível)
       }
       tabs.forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
 
