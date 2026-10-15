@@ -404,6 +404,13 @@ def _is(alts, nome):
     return any(scribe.same_drug(x, nome) or scribe.same_drug(nome, x) for x in str(alts).split("|"))
 
 
+def _parte_do_nome(alts, nome):
+    """O nome que saiu é um pedaço ou uma variação próxima do esperado ("Zodona" de trazodona)?"""
+    n = re.sub(r"[^a-z]", "", scribe.norm(re.split(r"\s\d", nome)[0]))
+    return len(n) >= 4 and any(n in g or scribe._lev(n, g) <= 3 for g in
+                               (re.sub(r"[^a-z]", "", scribe.norm(x)) for x in str(alts).split("|")))
+
+
 def score(caso, res, flags):
     g = caso.get("gabarito") or {}
     script = " ".join(f for _, f in caso["falas"])
@@ -421,6 +428,13 @@ def score(caso, res, flags):
             if hit is not None:
                 usados.add(hit); s["rem_aviso"] += 1
                 s["detalhe"].append(f"avisado: {gm['nome']} saiu como {res['meds'][hit]['nome']} (nome errado, com sugestão)"); continue
+            # pedaço do nome certo ("Zodona" por trazodona) marcado como remédio desconhecido ou ouvido com dúvida: errou com aviso
+            hit = next((i for i, m in enumerate(res["meds"]) if i not in usados and _parte_do_nome(gm["nome"], m["nome"]) and any(
+                f.get("tipo") in ("remedio_nome", "remedio_desconhecido", "duvida_grave") and f.get("nivel") in ("alto", "medio")
+                and scribe.norm(m["nome"]) in scribe.norm(f.get("texto") or "") for f in flags)), None)
+            if hit is not None:
+                usados.add(hit); s["rem_aviso"] += 1
+                s["detalhe"].append(f"avisado: {gm['nome']} saiu como {res['meds'][hit]['nome']} (nome não reconhecido, com aviso)"); continue
             s["rem_falta"] += 1; s["detalhe"].append(f"faltou: {gm['nome']}"); continue
         usados.add(hit); m = res["meds"][hit]
         both = f"{m['dose']} {m['posologia']}"          # o modelo às vezes põe o volume na posologia ("8 mL de 12/12h")

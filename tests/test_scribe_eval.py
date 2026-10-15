@@ -121,3 +121,16 @@ def test_vazamento_confere_o_nome_inteiro_e_apelidos():
     assert e.vazamentos("Luiz Carlos Pinto", "O [PACIENTE] e o Carlinhos vieram. Pinto relata dor.") == ["Carlinhos", "Pinto"]
     assert e.vazamentos("Ana Clara Ribeiro", "[PACIENTE], a urina está clara?") == []
     assert e.vazamentos("Ana Clara Ribeiro", "Clara veio sozinha.") == ["Clara"]
+
+
+def test_nome_partido_e_avisado_conta_como_erro_com_aviso_nao_inventado():
+    """A transcrição partiu "trazodona" e saiu "Zodona", marcado como ouvido com dúvida: o médico foi avisado."""
+    caso = {"falas": [["m", "Vou começar trazodona 50 mg à noite."]], "gabarito": {"remedios": [
+        {"nome": "trazodona", "dose": "50 mg", "posologia": "à noite", "acao": "iniciado"}]}}
+    res = {"meds": [{"nome": "Zodona", "dose": "50 mg", "posologia": "à noite", "acao": "iniciado", "src": [1]}],
+           "fields": {}, "vitals": {}, "cid": []}
+    aviso = [{"tipo": "duvida_grave", "nivel": "alto", "texto": "Zodona: nome do remédio ouvido com dúvida."}]
+    assert e.score(caso, res, aviso)["rem_aviso"] == 1 and e.score(caso, res, aviso)["rem_inventado"] == 0
+    sem = e.score(caso, res, [])
+    assert sem["rem_inventado"] == 1 and sem["rem_falta"] == 1                 # sem aviso continua reprovando
+    assert not e._parte_do_nome("trazodona", "insulina glargina") and e._parte_do_nome("trazodona", "Zodona 50 mg")
