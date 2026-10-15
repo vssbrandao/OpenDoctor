@@ -298,6 +298,9 @@ def freq(pos):
     m = re.search(r"(\d+)\s+(?:em\s+)?(\d+)\s*h", t) or re.search(r"de\s+(\d+)\s+em\s+(\d+)\s+hora", t)
     if m and float(m.group(2).replace(",", ".")) > 0:
         return round(24 / float(m.group(2).replace(",", ".")))
+    m = re.search(r"(?:a\s+)?cada\s+(\d+)\s*h", t)                      # "a cada 6 horas"
+    if m and float(m.group(1).replace(",", ".")) > 0:
+        return round(24 / float(m.group(1).replace(",", ".")))
     m = re.search(r"(\d+)\s*(?:x|vez|vezes)\b", t)
     if m:
         return int(float(m.group(1).replace(",", ".")))
@@ -327,12 +330,14 @@ def score(caso, res, flags):
         if hit is None:
             s["rem_falta"] += 1; s["detalhe"].append(f"faltou: {gm['nome']}"); continue
         usados.add(hit); m = res["meds"][hit]
+        both = f"{m['dose']} {m['posologia']}"          # o modelo às vezes põe o volume na posologia ("8 mL de 12/12h")
+
         def same(k):          # "*": qualquer (ex.: mantido sem dose dita); números do gabarito contidos na saída
             if str(gm.get(k, "")) == "*":
                 return True
-            if k == "posologia" and freq(str(gm.get(k, ""))) and freq(m[k]):          # "de manhã" = "1x/dia"
-                return freq(str(gm.get(k, ""))) == freq(m[k])
-            want, got = _nums(str(gm.get(k, ""))), _nums(m[k])
+            if k == "posologia" and freq(str(gm.get(k, ""))) and freq(both):           # "de manhã" = "1x/dia"
+                return freq(str(gm.get(k, ""))) == freq(both)
+            want, got = _nums(str(gm.get(k, ""))), _nums(both)
             return all(want.count(x) <= got.count(x) for x in set(want)) and (bool(want) or not got)
         acoes = str(gm.get("acao", "*")).split("|")                           # "ajustado|mantido": qualquer um
         ok = same("dose") and same("posologia") and ("*" in acoes or m["acao"] in acoes)
@@ -347,7 +352,10 @@ def score(caso, res, flags):
     for i, m in enumerate(res["meds"]):        # citado só para recusar/explicar (sem ação) não conta
         if i in usados or m["acao"] not in ("iniciado", "mantido", "ajustado"):
             continue
-        if scribe.same_drug(m["nome"], script) or scribe.same_drug(m["nome"], cad):
+        falado = lambda txt: scribe.same_drug(m["nome"], txt) or any(
+            len(w) >= 4 and w not in scribe._GENERICO and any(scribe._tok_eq(w, t) for t in scribe.tokens(txt))
+            for w in scribe.tokens(m["nome"]))                   # "soro fisiológico" quando a fala diz "soro"
+        if falado(script) or falado(cad) or scribe.same_drug(m["nome"].split()[0], script):
             s["rem_extra"] += 1; s["detalhe"].append(f"a mais (foi citado, não está no gabarito): {m['nome']} {m['acao']}")
         else:
             s["rem_inventado"] += 1; s["detalhe"].append(f"INVENTADO: {m['nome']}")
@@ -548,12 +556,12 @@ def compare():
     rs = [r for r in rs if r.get("voz")]
     if not rs:
         sys.exit("nenhum relatório de hoje")
-    head = ("| Voz | Transcritor | Evolução | Dose errada sem aviso | Remédio inventado | Remédio faltando | Fatos | Sinais | CID | "
+    head = ("| Voz | Transcritor | Evolução | Prompt | Dose errada sem aviso | Remédio inventado | Remédio faltando | Fatos | Sinais | CID | "
             "WER | Dúvida pega erro | Precisão da dúvida | Geração (média/máx s) | Critérios |")
-    lines = [f"# Comparação — {day}", "", head, "|" + "---|" * 14]
+    lines = [f"# Comparação — {day}", "", head, "|" + "---|" * 15]
     for r in sorted(rs, key=lambda r: (r["voz"], r["stt"], r["modelo"])):
         rm = r["remedios"]; c = r["criterios"]
-        lines.append(f"| {r['voz']} | {r['stt']} | {r['modelo']} | {rm['rem_sem_aviso']} | {rm['rem_inventado']} | {rm['rem_falta']} | "
+        lines.append(f"| {r['voz']} | {r['stt']} | {r['modelo']} | {r['prompt']} | {rm['rem_sem_aviso']} | {rm['rem_inventado']} | {rm['rem_falta']} | "
                      f"{r['fatos']} | {r['sinais']} | {r['cid']} | {r['wer_medio']} | {r.get('duvida_cobre_erros')} | "
                      f"{r.get('duvida_precisao')} | {r.get('geracao_s_media')}/{r.get('geracao_s_max')} | "
                      f"{sum(bool(v) for v in c.values())}/{len(c)} |")

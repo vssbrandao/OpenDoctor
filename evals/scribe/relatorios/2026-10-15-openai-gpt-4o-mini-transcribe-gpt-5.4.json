@@ -1,0 +1,2695 @@
+{
+ "resumo": {
+  "data": "2026-10-15",
+  "stt": "gpt-4o-mini-transcribe",
+  "modelo": "gpt-5.4",
+  "prompt": "2026-10-15.4",
+  "voz": "openai",
+  "duvida_cobre_erros": 0.5,
+  "duvida_precisao": 0.3,
+  "geracao_s_media": 12.4,
+  "casos": 31,
+  "wer_medio": 0.025,
+  "remedios": {
+   "rem_certo": 42,
+   "rem_aviso": 9,
+   "rem_sem_aviso": 0,
+   "rem_falta": 11,
+   "rem_inventado": 0
+  },
+  "sinais": "61/68",
+  "cid": "26/33",
+  "fatos": "157/183",
+  "proibidos": 0,
+  "geracao_s_max": 29.0,
+  "criterios": {
+   "2_dose_errada_sem_aviso": true,
+   "3_nada_inventado": true,
+   "4_cobertura_95": false,
+   "avisos_esperados": true,
+   "nome_e_documentos_nao_vazaram": true,
+   "todos_os_casos_rodaram": true
+  },
+  "erros": [],
+  "gasto_usd_nesta_rodada": 0.0
+ },
+ "casos": [
+  {
+   "id": "01-has-dm-tontura",
+   "origem": "voz natural",
+   "segundos": 111.6,
+   "trechos": 7,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.3,
+   "t_gen": 19.8,
+   "in_chars": 5300,
+   "out_chars": 2265,
+   "tokens_in": 1558,
+   "tokens_out": 1137,
+   "tokens_raciocinio": 422,
+   "rem_certo": 3,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [],
+   "rem_extra": 0,
+   "vit_certo": 5,
+   "vit_total": 5,
+   "vit_inventado": 0,
+   "cid_certo": 2,
+   "cid_total": 2,
+   "cid_extra": 0,
+   "fatos_ok": 8,
+   "fatos_total": 8,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 6,
+   "tok_errados": 0,
+   "tok_duvidosos": 2,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere uso regular de losartana, metformina e medicação para colesterol. Refere caminhada 4 vezes por semana, cerca de 30 minutos. Relata dois episódios de tontura ao levantar da cama nesta semana, com melhora em menos de um minuto ao sentar. Nega desmaio, dor no peito e falta de ar associados aos episódios. Refere glicemias capilares em jejum entre 110 e 130. Nega episódios de hipoglicemia.",
+    "o": "PA 128/82 mmHg. FC 74 bpm. Peso 86,8 kg. Glicemia capilar no momento 108 mg/dL. Pés sem alterações, com pulsos presentes. Sensibilidade preservada ao monofilamento. Hemoglobina glicada 6,9.",
+    "a": "Diabetes em meta, segundo avaliação médica. Tontura ao levantar, com possibilidade de queda da pressão ao ficar em pé, segundo avaliação médica.",
+    "p": "Manter os três remédios em uso. Orientada a levantar devagar e sentar na cama por um minuto antes de ficar em pé. Solicitados exame de urina para os rins e ácido úrico. Retorno em 3 meses com os exames."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Ausculta cardíaca e pulmonar com termo ouvido com dúvida: 'sem alterações'.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "losartana: 50 mg 12/12h (dose do cadastro: confirme se não mudou)",
+     "src": [
+      7
+     ],
+     "valor": 50.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "losartana: 50 mg 12/12h (dose do cadastro: confirme se não mudou)",
+     "src": [
+      7
+     ],
+     "valor": 12.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "metformina: 850 mg 2x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      7
+     ],
+     "valor": 850.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "metformina: 850 mg 2x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      7
+     ],
+     "valor": 2.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "atorvastatina: 20 mg à noite (dose do cadastro: confirme se não mudou)",
+     "src": [
+      7
+     ],
+     "valor": 20.0
+    }
+   ]
+  },
+  {
+   "id": "02-ajuste-dose-empagliflozina",
+   "origem": "voz natural",
+   "segundos": 71.5,
+   "trechos": 4,
+   "silencio": 0,
+   "wer": 0.008,
+   "t_stt": 0.0,
+   "t_gen": 16.2,
+   "in_chars": 4848,
+   "out_chars": 1795,
+   "tokens_in": 1424,
+   "tokens_out": 1061,
+   "tokens_raciocinio": 482,
+   "rem_certo": 3,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "fato ausente: 8,1|8.1",
+    "fato ausente: esquec"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 4,
+   "vit_total": 4,
+   "vit_inventado": 0,
+   "cid_certo": 2,
+   "cid_total": 2,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 7,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 4,
+   "tok_errados": 1,
+   "tok_duvidosos": 2,
+   "duvida_pega_erro": 1,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Paciente trouxe exames. Refere uso de metformina.",
+    "o": "Hemoglobina glicada acima da meta. PA 152/94 mmHg. FC 80 bpm. Peso 92 kg.",
+    "a": "Hipertensão arterial em acompanhamento. Diabetes mellitus tipo 2 em acompanhamento, com hemoglobina glicada acima da meta.",
+    "p": "Ajustada losartana para 100 mg uma vez ao dia. Iniciada empagliflozina 10 mg, um comprimido de manhã. Mantida metformina 850 mg, duas vezes ao dia. Orientado beber bastante água e caprichar na higiene íntima, pelo risco de infecção urinária com a medicação nova. Solicitados creatinina e potássio em 30 dias. Retorno em dois meses."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Hipertensão arterial em acompanhamento.",
+     "src": [
+      3
+     ]
+    },
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Diabetes mellitus tipo 2 em acompanhamento, com hemoglobina glicada acima da meta.",
+     "src": [
+      1,
+      3,
+      4
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "valor exato da hemoglobina glicada não ficou claro na gravação",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "adesão à dose noturna da metformina não ficou clara na gravação",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "03-fibrilacao-rivaroxabana",
+   "origem": "voz natural",
+   "segundos": 80.2,
+   "trechos": 5,
+   "silencio": 0,
+   "wer": 0.023,
+   "t_stt": 0.3,
+   "t_gen": 13.4,
+   "in_chars": 4890,
+   "out_chars": 1993,
+   "tokens_in": 1435,
+   "tokens_out": 964,
+   "tokens_raciocinio": 317,
+   "rem_certo": 3,
+   "rem_aviso": 1,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "avisado: rivaroxabana esperado 20 mg 1x/dia iniciado / saiu  1 vez ao dia, junto com o jantar iniciado",
+    "fato ausente: nega + sincope|desmai"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 1,
+   "fatos_ok": 7,
+   "fatos_total": 8,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 8,
+   "tok_errados": 2,
+   "tok_duvidosos": 3,
+   "duvida_pega_erro": 1,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere coração disparando há uma semana, com palpitações e maior cansaço para subir escadas. Nega dor no peito e falta de ar ao deitar.",
+    "o": "Pulso irregular. Frequência cardíaca 112 bpm. Pressão arterial 138/86 mmHg. Eletrocardiograma com fibrilação atrial.",
+    "a": "Fibrilação atrial. Hipertensão arterial em acompanhamento.",
+    "p": "Iniciada rivaroxabana 1 vez ao dia, junto com o jantar, para prevenir derrame. Suspenso AAS. Iniciado metoprolol succinato 50 mg 1 vez ao dia para controle da frequência cardíaca. Mantido anlodipino 5 mg 1x/dia. Solicitados ecocardiograma, TSH e função dos rins. Orientado procurar pronto-socorro se sangramento que não para, fezes pretas ou urina com sangue. Retorno em quatro semanas."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Hipertensão arterial em acompanhamento.",
+     "src": [
+      4
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Resposta sobre desmaio não ficou clara na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose da rivaroxabana foi ouvida com dúvida.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Mantido anlodipino 5 mg 1x/dia.",
+     "src": [
+      4
+     ],
+     "valor": 5.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "AAS: 100 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 100.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "AAS: 100 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 1.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "anlodipino: 5 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      4
+     ],
+     "valor": 5.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "anlodipino: 5 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      4
+     ],
+     "valor": 1.0
+    }
+   ]
+  },
+  {
+   "id": "04-pediatria-otite",
+   "origem": "voz natural",
+   "segundos": 78.9,
+   "trechos": 5,
+   "silencio": 0,
+   "wer": 0.063,
+   "t_stt": 0.1,
+   "t_gen": 14.1,
+   "in_chars": 4806,
+   "out_chars": 1506,
+   "tokens_in": 1404,
+   "tokens_out": 831,
+   "tokens_raciocinio": 367,
+   "rem_certo": 0,
+   "rem_aviso": 1,
+   "rem_sem_aviso": 0,
+   "rem_falta": 1,
+   "rem_inventado": 0,
+   "detalhe": [
+    "avisado: amoxicilina esperado 8 ml 12/12h iniciado / saiu   iniciado",
+    "faltou: paracetamol",
+    "fato ausente: abaulad",
+    "fato ausente: 48 horas"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 2,
+   "vit_total": 2,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 4,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 5,
+   "tok_errados": 6,
+   "tok_duvidosos": 5,
+   "duvida_pega_erro": 3,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Mãe refere febre desde ontem, com temperatura máxima de 38,5 °C, e choro por dor no ouvido direito. Nega vômitos, diarreia e falta de ar. Refere paciente mais molinho e comendo pouco.",
+    "o": "Peso 16 kg. Temperatura 38,2 °C. Ouvido direito vermelho. Ouvido esquerdo normal. Garganta sem alterações. Pulmões sem alterações.",
+    "a": "Otite média aguda.",
+    "p": "Iniciada amoxicilina. Orientado retorno antes em caso de persistência da febre após início do antibiótico ou se ficar prostrado. Retorno em 10 dias."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Descrição do ouvido direito ficou parcialmente inaudível na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose e apresentação da amoxicilina não ficaram claras na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Posologia da amoxicilina não ficou clara na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Medicamento para febre/dor ouvido com dúvida: paracetamol.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Prazo exato de reavaliação da febre após antibiótico não ficou claro na gravação.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "05-prenatal-28-semanas",
+   "origem": "voz natural",
+   "segundos": 68.3,
+   "trechos": 4,
+   "silencio": 0,
+   "wer": 0.01,
+   "t_stt": 0.1,
+   "t_gen": 16.0,
+   "in_chars": 4744,
+   "out_chars": 1434,
+   "tokens_in": 1378,
+   "tokens_out": 960,
+   "tokens_raciocinio": 490,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 1,
+   "rem_inventado": 0,
+   "detalhe": [
+    "faltou: sulfato ferroso"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 8,
+   "fatos_total": 8,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 4,
+   "tok_errados": 1,
+   "tok_duvidosos": 4,
+   "duvida_pega_erro": 1,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere 28 semanas de gestação. Relata bebê mexendo bastante. Refere um pouco de azia à noite. Nega sangramento, perda de líquido e contrações.",
+    "o": "Pressão arterial 110/70 mmHg. Peso 68,4 kg. Altura uterina 28 cm. Batimentos fetais 144.",
+    "a": "Gestação com 28 semanas.",
+    "p": "Orientado parar ácido fólico. Solicitada curva glicêmica. Orientada a tomar vacina DTPA no posto. Orientadas refeições menores e evitar deitar logo após comer para azia. Retorno em 2 semanas."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Medicamento novo ouvido com dúvida: 'sulfato ferroso', com orientação de 40 mg de ferro, 1 comprimido por dia, longe do café e do leite.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Nome do exame ouvido com dúvida: 'TTG de 75 gramas'.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Ácido fólico: 5 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      4
+     ],
+     "valor": 5.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Ácido fólico: 5 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      4
+     ],
+     "valor": 1.0
+    }
+   ]
+  },
+  {
+   "id": "06-idoso-queda-desprescricao",
+   "origem": "voz natural",
+   "segundos": 74.5,
+   "trechos": 4,
+   "silencio": 0,
+   "wer": 0.014,
+   "t_stt": 0.1,
+   "t_gen": 29.0,
+   "in_chars": 4933,
+   "out_chars": 1973,
+   "tokens_in": 1450,
+   "tokens_out": 1639,
+   "tokens_raciocinio": 1024,
+   "rem_certo": 2,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 2,
+   "rem_inventado": 0,
+   "detalhe": [
+    "faltou: diazepam",
+    "faltou: anlodipino",
+    "fato ausente: sentado + 138",
+    "fato ausente: 2 semanas|duas semanas"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 4,
+   "vit_total": 4,
+   "vit_inventado": 0,
+   "cid_certo": 0,
+   "cid_total": 1,
+   "cid_extra": 3,
+   "fatos_ok": 6,
+   "fatos_total": 8,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 12,
+   "tok_errados": 2,
+   "tok_duvidosos": 9,
+   "duvida_pega_erro": 2,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Queda no banheiro de madrugada na semana passada, com trauma no braço. Relata que levantou para ir ao banheiro e a vista escureceu antes da queda. Refere não ter mais sintoma de estômago.",
+    "o": "PA sentada 138/78 mmHg. PA em pé 112/70 mmHg. FC 72 bpm. Peso 61 kg. Braço com hematoma, sem dor para mexer.",
+    "a": "Queda na última semana após levantar-se para ir ao banheiro, precedida por escurecimento visual. Redução da pressão arterial ao ortostatismo na consulta. Insônia em acompanhamento. Gastrite sem sintomas no momento. Hipertensão arterial em acompanhamento.",
+    "p": "Suspenso omeprazol. Mantida sinvastatina. Orientado manter luz baixa à noite, evitar café à tarde e deixar uma luz acesa no caminho do banheiro. Retorno em 1 mês."
+   },
+   "pontos": [
+    {
+     "tipo": "numero",
+     "nivel": "alto",
+     "campo": "o",
+     "texto": "PA sentada 138/78 mmHg.",
+     "src": [
+      2
+     ],
+     "valor": 78.0
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "s",
+     "texto": "Relata que levantou para ir ao banheiro e a vista escureceu antes da queda. (ouvido com dúvida: para)",
+     "src": [
+      1,
+      2
+     ]
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Queda na última semana após levantar-se para ir ao banheiro, precedida por escurecimento visual. (ouvido com dúvida: para)",
+     "src": [
+      1,
+      2
+     ]
+    },
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Redução da pressão arterial ao ortostatismo na consulta.",
+     "src": [
+      2,
+      3
+     ]
+    },
+    {
+     "tipo": "vital_longe",
+     "nivel": "medio",
+     "campo": "pa_s",
+     "texto": "pa_s = 112: o número está no trecho, mas não junto de PA",
+     "src": [
+      3
+     ],
+     "valor": 112.0
+    },
+    {
+     "tipo": "vital_longe",
+     "nivel": "medio",
+     "campo": "pa_d",
+     "texto": "pa_d = 70: o número está no trecho, mas não junto de PA",
+     "src": [
+      3
+     ],
+     "valor": 70.0
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Nome do medicamento de uso noturno ouvido com dúvida na gravação; consta no cadastro como diazepam.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose da redução do medicamento de uso noturno não ficou clara na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Manutenção do anlodipino foi ouvida com dúvida na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Omeprazol: 20 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      4
+     ],
+     "valor": 20.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Omeprazol: 20 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      4
+     ],
+     "valor": 1.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Sinvastatina: 20 mg à noite (dose do cadastro: confirme se não mudou)",
+     "src": [
+      4
+     ],
+     "valor": 20.0
+    }
+   ]
+  },
+  {
+   "id": "07-depressao-sertralina",
+   "origem": "voz natural",
+   "segundos": 62.9,
+   "trechos": 4,
+   "silencio": 0,
+   "wer": 0.01,
+   "t_stt": 0.0,
+   "t_gen": 13.5,
+   "in_chars": 4704,
+   "out_chars": 1456,
+   "tokens_in": 1358,
+   "tokens_out": 811,
+   "tokens_raciocinio": 394,
+   "rem_certo": 0,
+   "rem_aviso": 1,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "avisado: sertralina esperado 100 mg * ajustado / saiu  de manhã ajustado",
+    "fato ausente: 15",
+    "fato ausente: dorme mal|insonia|sono"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 0,
+   "vit_total": 0,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 7,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 5,
+   "tok_errados": 1,
+   "tok_duvidosos": 3,
+   "duvida_pega_erro": 1,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere estar um pouco melhor desde o início da sertralina há dois meses, mas ainda sem vontade de fazer as coisas. Refere dormir mal e chorar com facilidade. Nega pensamentos de se machucar ou de morrer. Refere enjoo no começo do uso da medicação, já resolvido.",
+    "o": "Questionário de hoje com resultado referido como depressão moderada.",
+    "a": "Episódio depressivo em acompanhamento, com melhora parcial e sintomas persistentes.",
+    "p": "Ajustada sertralina para uso pela manhã. Encaminhada para psicoterapia. Orientada a procurar ajuda imediatamente se surgirem pensamentos de se machucar. Orientada que pode ligar no 188 se surgirem pensamentos de se machucar. Retorno em quatro semanas."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Episódio depressivo em acompanhamento, com melhora parcial e sintomas persistentes.",
+     "src": [
+      1,
+      2
+     ]
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "p",
+     "texto": "Ajustada sertralina para uso pela manhã. (ouvido com dúvida: para)",
+     "src": [
+      3,
+      4
+     ]
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "p",
+     "texto": "Encaminhada para psicoterapia. (ouvido com dúvida: para)",
+     "src": [
+      4
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose da sertralina após ajuste não ficou clara na gravação: '100 miligramas' foi ouvida com dúvida.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Pontuação exata do questionário de hoje não ficou clara na gravação: 'quinze pontos' foi ouvida com dúvida.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "08-asma-crise",
+   "origem": "voz natural",
+   "segundos": 68.8,
+   "trechos": 4,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.0,
+   "t_gen": 13.9,
+   "in_chars": 4790,
+   "out_chars": 1884,
+   "tokens_in": 1378,
+   "tokens_out": 951,
+   "tokens_raciocinio": 339,
+   "rem_certo": 3,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 7,
+   "fatos_total": 7,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 2,
+   "tok_errados": 0,
+   "tok_duvidosos": 0,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Paciente refere falta de ar desde ontem e chiado importante. Relata que o spray não está resolvendo. Informa uso da bombinha cerca de seis vezes hoje. Refere gripe na semana passada.",
+    "o": "SpO2 inicial de 93%. Frequência respiratória de 24 irpm. Frequência cardíaca de 104 bpm. Sibilos em ambos os pulmões. Após três séries de salbutamol com espaçador, SpO2 de 97% e sibilos bem menores.",
+    "a": "Asma em manejo na consulta, com falta de ar e sibilância.",
+    "p": "Realizado salbutamol, quatro jatos a cada vinte minutos, três vezes, com espaçador. Prescrita prednisolona 40 mg uma vez ao dia por 5 dias. Iniciado budesonida com formoterol, dois jatos de 12 em 12 horas, todos os dias. Orientado procurar pronto-socorro se piorar a falta de ar ou se a boca ficar roxa. Retorno em 1 semana."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Asma em manejo na consulta, com falta de ar e sibilância.",
+     "src": [
+      1,
+      2,
+      4
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "dose da budesonida com formoterol não foi dita",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "09-meio-comprimido-captopril",
+   "origem": "voz natural",
+   "segundos": 47.4,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.1,
+   "t_gen": 13.7,
+   "in_chars": 4648,
+   "out_chars": 1250,
+   "tokens_in": 1340,
+   "tokens_out": 757,
+   "tokens_raciocinio": 376,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 1,
+   "rem_inventado": 0,
+   "detalhe": [
+    "faltou: hidroclorotiazida",
+    "sinal pa_s: esperado 156.0 / saiu None",
+    "sinal pa_d: esperado 92.0 / saiu None"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 1,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 4,
+   "fatos_total": 4,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 4,
+   "tok_errados": 0,
+   "tok_duvidosos": 2,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere pressão arterial em casa sempre alta, com medidas em torno de 150 a 160. Relata que está tomando meio comprimido de captopril, porque foi orientada por terceiros de que seria forte.",
+    "o": "Frequência cardíaca 78 bpm.",
+    "a": "Hipertensão arterial em acompanhamento. Uso de captopril em dose diferente da prescrita no cadastro até a consulta.",
+    "p": "Orientado captopril 25 mg, 1 comprimido, 2 vezes ao dia. Orientado medir a pressão em casa e anotar as medidas. Retorno em 4 semanas com as medidas de pressão."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "s",
+     "texto": "Refere pressão arterial em casa sempre alta, com medidas em torno de 150 a 160.",
+     "src": [
+      1
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Valor da pressão arterial aferida hoje não ficou totalmente claro na gravação: 'cento e cinquenta e seis por noventa e dois'.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Medicamento novo ouvido com dúvida: 'hidroclorotiazida'.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose do medicamento novo ouvida com dúvida: '25 miligramas'.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "10-cistite-alergia-sulfa",
+   "origem": "voz natural",
+   "segundos": 54.9,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.022,
+   "t_stt": 0.0,
+   "t_gen": 14.3,
+   "in_chars": 4581,
+   "out_chars": 1146,
+   "tokens_in": 1326,
+   "tokens_out": 826,
+   "tokens_raciocinio": 482,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "sinal temp: esperado 36.8 / saiu None",
+    "fato ausente: ardencia|disuria",
+    "fato ausente: punho|giordano"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 0,
+   "vit_total": 1,
+   "vit_inventado": 0,
+   "cid_certo": 0,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 4,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 2,
+   "tok_errados": 2,
+   "tok_duvidosos": 6,
+   "duvida_pega_erro": 1,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere vontade urinária frequente há dois dias. Nega febre. Nega dor nas costas. Nega sangue na urina. Relata que em outra ocasião recebeu Bactrim e perguntou se poderia tomar novamente.",
+    "o": "Abdômen sem dor.",
+    "a": "Alergia a sulfa considerada na escolha do antibiótico.",
+    "p": "Iniciada nitrofurantoína 100 mg de seis em seis horas por cinco dias. Orientada a beber bastante água. Orientada a retornar se tiver febre ou dor nas costas. Sem necessidade de retorno se houver melhora."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Sintoma ouvido com dúvida: ardência para urinar.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Temperatura e valor medido com dúvida na gravação.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "11-alergia-penicilina-esquecida",
+   "origem": "voz natural",
+   "segundos": 43.5,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.0,
+   "t_gen": 10.0,
+   "in_chars": 4455,
+   "out_chars": 1046,
+   "tokens_in": 1290,
+   "tokens_out": 639,
+   "tokens_raciocinio": 291,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [],
+   "rem_extra": 0,
+   "vit_certo": 1,
+   "vit_total": 1,
+   "vit_inventado": 0,
+   "cid_certo": 0,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 5,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 2,
+   "tok_errados": 0,
+   "tok_duvidosos": 0,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Paciente refere nariz entupido e dor no rosto há 12 dias. Relata que começou como gripe e voltou a piorar. Refere febre ontem de 38 °C.",
+    "o": "Temperatura aferida em consulta: 37,6 °C. Dor à palpação em seios maxilares. Secreção amarelada na garganta.",
+    "a": "Quadro de obstrução nasal, dor facial e febre relatada, com piora após início como gripe.",
+    "p": "Iniciada amoxicilina 875 mg de 12/12 h por 7 dias. Orientada lavagem nasal com soro 3 vezes ao dia. Orientado retorno se não houver melhora em 3 dias."
+   },
+   "pontos": [
+    {
+     "tipo": "alergia",
+     "nivel": "alto",
+     "campo": "p",
+     "texto": "amoxicilina com alergia registrada a Penicilina",
+     "src": [
+      2
+     ]
+    },
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Quadro de obstrução nasal, dor facial e febre relatada, com piora após início como gripe.",
+     "src": [
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "id": "12-metformina-sem-dose",
+   "origem": "voz natural",
+   "segundos": 36.4,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.021,
+   "t_stt": 0.0,
+   "t_gen": 11.6,
+   "in_chars": 4389,
+   "out_chars": 1009,
+   "tokens_in": 1273,
+   "tokens_out": 650,
+   "tokens_raciocinio": 313,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 3,
+   "fatos_total": 3,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 3,
+   "tok_errados": 0,
+   "tok_duvidosos": 1,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere que exagerou nas festas.",
+    "o": "Hemoglobina glicada 7,8. Pressão arterial 124/78 mmHg. Peso 74 kg.",
+    "a": "Diabetes tipo 2 em acompanhamento, com hemoglobina glicada 7,8, ainda acima.",
+    "p": "Aumentada metformina. Reforçadas orientações de dieta. Solicitada repetição da hemoglobina glicada em 3 meses."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose e posologia da metformina após ajuste não foram ditas.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Orientação dietética incluiu termo inaudível após 'cortar refrigerante'.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "a",
+     "texto": "Diabetes tipo 2 em acompanhamento, com hemoglobina glicada 7,8, ainda acima.",
+     "src": [
+      1
+     ],
+     "valor": 2.0
+    }
+   ]
+  },
+  {
+   "id": "13-nomes-terceiros-e-cpf",
+   "origem": "voz natural",
+   "segundos": 65.8,
+   "trechos": 4,
+   "silencio": 0,
+   "wer": 0.071,
+   "t_stt": 0.0,
+   "t_gen": 11.8,
+   "in_chars": 4615,
+   "out_chars": 1049,
+   "tokens_in": 1351,
+   "tokens_out": 773,
+   "tokens_raciocinio": 459,
+   "rem_certo": 0,
+   "rem_aviso": 1,
+   "rem_sem_aviso": 0,
+   "rem_falta": 1,
+   "rem_inventado": 0,
+   "detalhe": [
+    "avisado: paracetamol esperado 750 mg 6/6h iniciado / saiu   iniciado",
+    "faltou: ciclobenzaprina",
+    "fato ausente: lasegue",
+    "fato ausente: 7 dias|sete dias"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 0,
+   "vit_total": 0,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 3,
+   "fatos_total": 5,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 4,
+   "tok_errados": 4,
+   "tok_duvidosos": 7,
+   "duvida_pega_erro": 3,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "livre": "Paciente relata travamento nas costas após carregar o filho no sábado. Refere dor restrita à região lombar. Nega dor descendo para a perna, formigamento, perda de força e alteração para urinar.\nForça preservada. Quadro definido como lombalgia mecânica. Orientado uso de compressa morna. Orientado retorno se a dor descer para a perna."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "dose e posologia do paracetamol não ficaram claras na gravação",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "medicação ouvida com dúvida: 'Cibor'",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "medicação ouvida com dúvida: 'ciclobenzaprina' e respectivos dose e posologia não ficaram claros na gravação",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "termo ouvido com dúvida: 'Lasegue negativo'",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "14-ruido-alto-gastrite",
+   "origem": "voz natural",
+   "segundos": 41.3,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.056,
+   "t_stt": 0.0,
+   "t_gen": 13.5,
+   "in_chars": 4453,
+   "out_chars": 1340,
+   "tokens_in": 1300,
+   "tokens_out": 944,
+   "tokens_raciocinio": 512,
+   "rem_certo": 1,
+   "rem_aviso": 1,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "avisado: omeprazol esperado 20 mg * iniciado / saiu  em jejum por 8 semanas iniciado",
+    "fato ausente: nega + sangue|melena|hematem"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 2,
+   "vit_total": 2,
+   "vit_inventado": 0,
+   "cid_certo": 0,
+   "cid_total": 1,
+   "cid_extra": 1,
+   "fatos_ok": 5,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 3,
+   "tok_errados": 4,
+   "tok_duvidosos": 7,
+   "duvida_pega_erro": 4,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere queimação no estômago há um mês. Relata uso de ibuprofeno quase todos os dias para dor de cabeça.",
+    "o": "Dor leve no epigástrio, sem outros achados. Pressão arterial 126/80 mmHg.",
+    "a": "Queixa de queimação no estômago há um mês. Uso quase diário de ibuprofeno.",
+    "p": "Orientado suspender ibuprofeno. Iniciado omeprazol em jejum por 8 semanas. Solicitada pesquisa de Helicobacter pylori nas fezes. Retorno em 8 semanas."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Resposta sobre vômito com sangue ou fezes pretas não ficou clara na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose do omeprazol não ficou clara na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Piora da queimação ao comer e à noite não ficou clara na gravação.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "15-pedido-dentro-da-fala",
+   "origem": "voz natural",
+   "segundos": 55.9,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.0,
+   "t_gen": 9.1,
+   "in_chars": 4564,
+   "out_chars": 1061,
+   "tokens_in": 1324,
+   "tokens_out": 664,
+   "tokens_raciocinio": 320,
+   "rem_certo": 0,
+   "rem_aviso": 1,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "avisado: dipirona esperado 1 g 6/6h iniciado / saiu  se dor, até de seis em seis horas iniciado"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 2,
+   "vit_total": 2,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 5,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 1,
+   "tok_errados": 0,
+   "tok_duvidosos": 0,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere cefaleia no fim do dia, em aperto, bilateral. Nega náusea, piora com luz, alteração de força e alteração de visão. Relaciona o quadro a estresse no trabalho.",
+    "o": "Pressão arterial 122/80 mmHg. Exame neurológico normal.",
+    "a": "Cefaleia tensional.",
+    "p": "Prescrita dipirona se dor, até de seis em seis horas. Orientados alongamento e pausas no trabalho. Orientado retorno se piorar. Atestado não indicado para o caso."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "dose da dipirona não ficou clara na gravação",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "16-dpoc-exacerbacao",
+   "origem": "voz natural",
+   "segundos": 62.5,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.043,
+   "t_stt": 0.0,
+   "t_gen": 14.0,
+   "in_chars": 4662,
+   "out_chars": 1652,
+   "tokens_in": 1377,
+   "tokens_out": 1019,
+   "tokens_raciocinio": 457,
+   "rem_certo": 3,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 1,
+   "rem_inventado": 0,
+   "detalhe": [
+    "faltou: azitromicina",
+    "fato ausente: escarro|expector"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 9,
+   "tok_errados": 3,
+   "tok_duvidosos": 7,
+   "duvida_pega_erro": 2,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere piora do cansaço há quatro dias. Nega febre. Nega inchaço nas pernas.",
+    "o": "Saturação de oxigênio: 91%. Frequência respiratória: 22 irpm. Frequência cardíaca: 96 bpm. Sibilos esparsos.",
+    "a": "DPOC em acompanhamento, com piora recente do cansaço.",
+    "p": "Iniciada prednisona 40 mg 1 vez ao dia por 5 dias. Mantido tiotrópio. Acrescentada budesonida com formoterol, 1 inalação de 12 em 12 horas. Orientado procurar pronto-socorro se a saturação em casa cair abaixo de 88 ou se piorar a falta de ar. Retorno em 1 semana."
+   },
+   "pontos": [
+    {
+     "tipo": "duvida_grave",
+     "nivel": "alto",
+     "campo": "p",
+     "texto": "budesonida + formoterol: 12 ouvido com dúvida",
+     "src": [
+      3
+     ],
+     "valor": 12.0
+    },
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "DPOC em acompanhamento, com piora recente do cansaço.",
+     "src": [
+      1,
+      3
+     ]
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "p",
+     "texto": "Acrescentada budesonida com formoterol, 1 inalação de 12 em 12 horas. (ouvido com dúvida: 12)",
+     "src": [
+      3
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Sintoma ouvido com dúvida: escarro com mudança de cor e aumento.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Remédio ouvido com dúvida: azitromicina 500 mg 1 vez ao dia por 3 dias.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose da budesonida com formoterol não ficou clara na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "tiotrópio: 2,5 mcg 2 jatos 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 2.5
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "tiotrópio: 2,5 mcg 2 jatos 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 2.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "tiotrópio: 2,5 mcg 2 jatos 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 1.0
+    }
+   ]
+  },
+  {
+   "id": "17-hipotireoidismo-levotiroxina",
+   "origem": "voz natural",
+   "segundos": 39.9,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.0,
+   "t_gen": 6.4,
+   "in_chars": 4418,
+   "out_chars": 857,
+   "tokens_in": 1299,
+   "tokens_out": 431,
+   "tokens_raciocinio": 125,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "sinal fc: esperado 62.0 / saiu None"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 1,
+   "vit_total": 2,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 5,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 1,
+   "tok_errados": 0,
+   "tok_duvidosos": 0,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "livre": "TSH 8,2 e T4 livre 0,8. Refere cansaço e sentir mais frio. Relata uso diário de levotiroxina em jejum, meia hora antes do café. Peso 70,5 kg. Tireoide sem nódulos à palpação. Ajustada levotiroxina para 75 mcg em jejum. Orientado repetir TSH em seis semanas."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "frequência cardíaca com valor não totalmente claro na gravação: 'sessenta e dois'",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "18-lombalgia-doenca-renal",
+   "origem": "voz natural",
+   "segundos": 49.1,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.071,
+   "t_stt": 0.0,
+   "t_gen": 12.6,
+   "in_chars": 4616,
+   "out_chars": 1545,
+   "tokens_in": 1344,
+   "tokens_out": 794,
+   "tokens_raciocinio": 312,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 2,
+   "rem_inventado": 0,
+   "detalhe": [
+    "faltou: paracetamol",
+    "faltou: ciclobenzaprina",
+    "fato ausente: 4 comprimidos|quatro comprimidos",
+    "fato ausente: 7 dias|sete dias"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 2,
+   "vit_total": 2,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 1,
+   "fatos_ok": 3,
+   "fatos_total": 5,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 8,
+   "tok_errados": 4,
+   "tok_duvidosos": 3,
+   "duvida_pega_erro": 2,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere dor nas costas após carregar caixas. Pergunta se pode usar diclofenaco que tem em casa. Nega irradiação da dor para a perna. Nega febre.",
+    "o": "Pressão arterial 134/84 mmHg. Dor à palpação da musculatura lombar. Sem déficit.",
+    "a": "Dor lombar após esforço. Doença renal crônica estágio 3 em contexto de filtração referida como 42. Hipertensão arterial em acompanhamento.",
+    "p": "Orientado que anti-inflamatório pode piorar a função renal e que não use diclofenaco. Losartana mantida. Prescritos analgésico e relaxante muscular, porém nome e/ou dose não ficaram totalmente claros na gravação."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Dor lombar após esforço.",
+     "src": [
+      1,
+      2
+     ]
+    },
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Hipertensão arterial em acompanhamento.",
+     "src": [
+      2,
+      3
+     ]
+    },
+    {
+     "tipo": "cid",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "CID N18.3 não existe na tabela (descartado)",
+     "src": [
+      1
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Remédio ouvido com dúvida: analgésico provavelmente 'paracetamol', com dose e posologia parcialmente incertas na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Remédio ouvido com dúvida: 'ciclobenzaprina', com dose parcialmente incerta na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "a",
+     "texto": "Doença renal crônica estágio 3 em contexto de filtração referida como 42.",
+     "src": [
+      1
+     ],
+     "valor": 3.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "losartana: 50 mg 2x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 50.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "losartana: 50 mg 2x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 2.0
+    }
+   ]
+  },
+  {
+   "id": "19-dislipidemia-atorvastatina",
+   "origem": "voz natural",
+   "segundos": 39.3,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.0,
+   "t_gen": 7.8,
+   "in_chars": 4355,
+   "out_chars": 1053,
+   "tokens_in": 1270,
+   "tokens_out": 532,
+   "tokens_raciocinio": 172,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "fato ausente: 160"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 2,
+   "tok_errados": 0,
+   "tok_duvidosos": 1,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Nega dor muscular. Nega fraqueza.",
+    "o": "LDL 142 e colesterol total 228, em uso de atorvastatina. PA 118/76 mmHg. Peso 63 kg.",
+    "a": "Dislipidemia em tratamento, com LDL 142 e colesterol total 228.",
+    "p": "Ajustada atorvastatina para 40 mg à noite. Solicitado repetir perfil lipídico em três meses. Solicitado repetir enzimas do fígado em três meses."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Dislipidemia em tratamento, com LDL 142 e colesterol total 228.",
+     "src": [
+      1
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Exame/valor ouvido com dúvida: triglicérides 160.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "20-enxaqueca-profilaxia",
+   "origem": "voz natural",
+   "segundos": 46.5,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.047,
+   "t_stt": 0.0,
+   "t_gen": 11.4,
+   "in_chars": 4434,
+   "out_chars": 1073,
+   "tokens_in": 1291,
+   "tokens_out": 718,
+   "tokens_raciocinio": 376,
+   "rem_certo": 0,
+   "rem_aviso": 2,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "avisado: propranolol esperado 40 mg 2x/dia iniciado / saiu   iniciado",
+    "avisado: sumatriptana esperado 50 mg * iniciado / saiu  na crise, no máximo dois comprimidos por dia iniciado",
+    "sinal pa_s: esperado 112.0 / saiu None",
+    "sinal pa_d: esperado 72.0 / saiu None",
+    "fato ausente: anticoncep"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 1,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 6,
+   "fatos_total": 7,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 3,
+   "tok_errados": 1,
+   "tok_duvidosos": 4,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "livre": "Refere enxaqueca cerca de seis vezes por mês, com enjoo e incômodo com luz. Nega asma.\nFrequência cardíaca 76 bpm. Exame neurológico normal.\nConsulta abordou prevenção de enxaqueca com propranolol. Orientado diário da dor. Retorno em dois meses."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "A palavra antes de '112 por 72' foi ouvida com dúvida; medida não registrada em vitals.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose e posologia do propranolol ficaram com dúvida na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose da sumatriptana ficou com dúvida na gravação.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "21-gota-colchicina",
+   "origem": "voz natural",
+   "segundos": 60.1,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.0,
+   "t_gen": 10.4,
+   "in_chars": 4728,
+   "out_chars": 1458,
+   "tokens_in": 1374,
+   "tokens_out": 676,
+   "tokens_raciocinio": 224,
+   "rem_certo": 2,
+   "rem_aviso": 1,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "avisado: colchicina esperado 0,5 mg 8/8h iniciado / saiu 0,5 mg  iniciado",
+    "sinal temp: esperado 37.2 / saiu None"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 0,
+   "vit_total": 1,
+   "vit_inventado": 0,
+   "cid_certo": 0,
+   "cid_total": 1,
+   "cid_extra": 1,
+   "fatos_ok": 6,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 5,
+   "tok_errados": 0,
+   "tok_duvidosos": 0,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere inchaço e vermelhidão no dedão do pé direito de início na madrugada, com dor intensa ao toque, a ponto de não conseguir encostar o lençol. Refere que é a primeira vez que apresenta esse quadro. Relata churrasco com cerveja no fim de semana.",
+    "o": "Primeira articulação do pé direito com calor, edema e vermelhidão. Ácido úrico do último exame: 9,1.",
+    "a": "Quadro de artrite aguda na primeira articulação do pé direito. Hipertensão arterial em uso de hidroclorotiazida até a presente consulta.",
+    "p": "Orientado gelo no local e repouso. Retorno em duas semanas. Alopurinol será considerado após a crise passar."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Quadro de artrite aguda na primeira articulação do pé direito.",
+     "src": [
+      1,
+      2
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Temperatura ouvida com dúvida: 'trinta e sete vírgula dois'.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Posologia da colchicina ouvida com dúvida: 'de oito em oito horas'.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "hidroclorotiazida: 25 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 25.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "hidroclorotiazida: 25 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 1.0
+    }
+   ]
+  },
+  {
+   "id": "22-varfarina-inr",
+   "origem": "voz natural",
+   "segundos": 46.8,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.013,
+   "t_stt": 0.0,
+   "t_gen": 14.4,
+   "in_chars": 4532,
+   "out_chars": 1176,
+   "tokens_in": 1324,
+   "tokens_out": 909,
+   "tokens_raciocinio": 512,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "fato ausente: 35 + 30"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 0,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 8,
+   "tok_errados": 0,
+   "tok_duvidosos": 3,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere sangramento na gengiva ao escovar os dentes, com resolução espontânea. Nega sangue nas fezes e manchas roxas.",
+    "o": "INR 3,8. Meta do INR entre 2 e 3. PA 128/76 mmHg. FC 70 bpm.",
+    "a": "INR acima da meta terapêutica. Fibrilação atrial em uso de varfarina.",
+    "p": "Ajustada varfarina para 30 por semana. Orientado repetir INR em uma semana."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "INR acima da meta terapêutica.",
+     "src": [
+      1
+     ]
+    },
+    {
+     "tipo": "cid",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "CID I48.9 não existe na tabela (descartado)",
+     "src": [
+      1,
+      3
+     ]
+    },
+    {
+     "tipo": "dose_longe",
+     "nivel": "medio",
+     "campo": "p",
+     "texto": "Varfarina: 0,5 está no trecho, mas não junto do nome do remédio",
+     "src": [
+      2,
+      3
+     ],
+     "valor": 0.5
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Resposta sobre sangue na urina não ficou clara na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Dose prévia da varfarina ficou com áudio duvidoso.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Descrição de ritmo cardíaco ficou com áudio duvidoso.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Varfarina: 5 mg 1x/dia; segunda e quinta, meio comprimido (dose do cadastro: confirme se não mudou)",
+     "src": [
+      2,
+      3
+     ],
+     "valor": 5.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Varfarina: 5 mg 1x/dia; segunda e quinta, meio comprimido (dose do cadastro: confirme se não mudou)",
+     "src": [
+      2,
+      3
+     ],
+     "valor": 1.0
+    }
+   ]
+  },
+  {
+   "id": "23-anemia-ferro-sem-exame-fisico",
+   "origem": "voz natural",
+   "segundos": 42.4,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.029,
+   "t_stt": 0.0,
+   "t_gen": 8.0,
+   "in_chars": 4433,
+   "out_chars": 1136,
+   "tokens_in": 1280,
+   "tokens_out": 576,
+   "tokens_raciocinio": 225,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [],
+   "rem_extra": 0,
+   "vit_certo": 0,
+   "vit_total": 0,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 6,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 0,
+   "tok_errados": 2,
+   "tok_duvidosos": 0,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "livre": "Hemoglobina 10,2 e ferritina 8. Paciente refere menstruação muito forte, com duração de sete dias. Informado que se trata de anemia por falta de ferro.\nPrescrito sulfato ferroso, um comprimido de 40 miligramas de ferro, duas vezes ao dia, longe das refeições, com suco de laranja. Orientado que pode haver escurecimento das fezes, considerado normal. Solicitado ultrassom transvaginal para investigar o sangramento. Programada repetição de hemograma e ferritina em dois meses."
+   },
+   "pontos": []
+  },
+  {
+   "id": "24-puericultura-9-meses",
+   "origem": "voz natural",
+   "segundos": 46.4,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.029,
+   "t_stt": 0.0,
+   "t_gen": 10.3,
+   "in_chars": 4516,
+   "out_chars": 1137,
+   "tokens_in": 1302,
+   "tokens_out": 614,
+   "tokens_raciocinio": 240,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "fato ausente: 44",
+    "fato ausente: senta"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 2,
+   "vit_total": 2,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 7,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 6,
+   "tok_errados": 2,
+   "tok_duvidosos": 2,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Paciente em alimentação com papinha de legumes e fruta e ainda mama no peito.",
+    "o": "Peso: 9,2 kg. Comprimento: 74 cm. Temperatura: 36,7 °C. Já engatinha. Vacinas em dia.",
+    "a": "Desenvolvimento referido como ótimo para a idade.",
+    "p": "Manter vitamina D 400 UI 1x/dia. Orientado oferecer água entre as refeições. Próxima vacina aos 12 meses. Retorno com 12 meses."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "o",
+     "texto": "Peso: 9,2 kg.",
+     "src": [
+      1
+     ]
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Desenvolvimento referido como ótimo para a idade. (ouvido com dúvida: para)",
+     "src": [
+      2
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Medida do perímetro cefálico não ficou clara na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Marco do desenvolvimento antes de 'sem apoio' não ficou claro na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Manter vitamina D 400 UI 1x/dia.",
+     "src": [
+      2
+     ],
+     "valor": 1.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Vitamina D: 400 UI 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      2
+     ],
+     "valor": 1.0
+    }
+   ]
+  },
+  {
+   "id": "25-insuficiencia-cardiaca",
+   "origem": "voz natural",
+   "segundos": 51.3,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.034,
+   "t_stt": 0.0,
+   "t_gen": 14.7,
+   "in_chars": 4780,
+   "out_chars": 2050,
+   "tokens_in": 1408,
+   "tokens_out": 1145,
+   "tokens_raciocinio": 452,
+   "rem_certo": 4,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "fato ausente: crepit"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 4,
+   "vit_total": 4,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 1,
+   "fatos_ok": 5,
+   "fatos_total": 6,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 9,
+   "tok_errados": 0,
+   "tok_duvidosos": 2,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere que as pernas incharam novamente. Refere dormir com dois travesseiros. Refere ganho de cerca de 2 kg em 1 semana.",
+    "o": "Peso 78,4 kg. PA 118/72 mmHg. FC 68 bpm. Edema de pernas 2+/4+.",
+    "a": "Insuficiência cardíaca em seguimento, com relato de piora de edema em pernas, necessidade de dois travesseiros para dormir e ganho de peso na semana. Hipertensão arterial em seguimento.",
+    "p": "Ajustada furosemida para 40 mg duas vezes ao dia, de manhã e no começo da tarde. Mantido carvedilol 6,25 mg 2x/dia. Mantida espironolactona 25 mg 1x/dia. Mantido enalapril 10 mg 2x/dia. Orientado pesar-se todo dia de manhã. Solicitados potássio e creatinina em 1 semana. Retorno em 2 semanas."
+   },
+   "pontos": [
+    {
+     "tipo": "duvida_grave",
+     "nivel": "alto",
+     "campo": "p",
+     "texto": "carvedilol: nome do remédio ouvido com dúvida. Confira se foi este o remédio.",
+     "src": [
+      3
+     ]
+    },
+    {
+     "tipo": "duvida_grave",
+     "nivel": "alto",
+     "campo": "p",
+     "texto": "enalapril: nome do remédio ouvido com dúvida. Confira se foi este o remédio.",
+     "src": [
+      3
+     ]
+    },
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Insuficiência cardíaca em seguimento, com relato de piora de edema em pernas, necessidade de dois travesseiros para dormir e ganho de peso na semana.",
+     "src": [
+      1,
+      2,
+      3
+     ]
+    },
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Hipertensão arterial em seguimento.",
+     "src": [
+      2,
+      3
+     ]
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "p",
+     "texto": "Mantido carvedilol 6,25 mg 2x/dia. (ouvido com dúvida: carvedilol)",
+     "src": [
+      3
+     ]
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "p",
+     "texto": "Mantido enalapril 10 mg 2x/dia. (ouvido com dúvida: enalapril)",
+     "src": [
+      3
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Há dúvida de audição na gravação quanto aos nomes carvedilol e enalapril, embora constem no cadastro e tenham sido referidos como mantidos.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "s",
+     "texto": "Refere ganho de cerca de 2 kg em 1 semana.",
+     "src": [
+      1
+     ],
+     "valor": 1.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "espironolactona: 25 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      3
+     ],
+     "valor": 1.0
+    }
+   ]
+  },
+  {
+   "id": "26-insonia-sem-benzodiazepinico",
+   "origem": "voz natural",
+   "segundos": 51.0,
+   "trechos": 3,
+   "silencio": 0,
+   "wer": 0.013,
+   "t_stt": 0.0,
+   "t_gen": 6.2,
+   "in_chars": 4482,
+   "out_chars": 1125,
+   "tokens_in": 1290,
+   "tokens_out": 421,
+   "tokens_raciocinio": 79,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [],
+   "rem_extra": 0,
+   "vit_certo": 0,
+   "vit_total": 0,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 5,
+   "fatos_total": 5,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 3,
+   "tok_errados": 1,
+   "tok_duvidosos": 1,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "livre": "Paciente refere não conseguir dormir há três meses e que deita e fica pensando no trabalho. Relata uso de celular até tarde na cama. Refere ingerir café, cerca de cinco xícaras por dia. Perguntou sobre uso de clonazepam.\nOrientado que clonazepam não é recomendado, por risco de dependência e piora da memória. Iniciada trazodona 50 mg à noite. Orientada a deixar o celular fora do quarto. Orientada a consumir café apenas até o almoço. Encaminhada para terapia cognitiva para insônia. Retorno em um mês."
+   },
+   "pontos": [
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "livre",
+     "texto": "Perguntou sobre uso de clonazepam. (ouvido com dúvida: clonazepam)",
+     "src": [
+      2
+     ]
+    },
+    {
+     "tipo": "duvida",
+     "nivel": "medio",
+     "campo": "livre",
+     "texto": "Orientado que clonazepam não é recomendado, por risco de dependência e piora da memória. (ouvido com dúvida: clonazepam)",
+     "src": [
+      2
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "medicamento citado com dúvida pela gravação: clonazepam",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "27-renovacao-de-receita",
+   "origem": "voz natural",
+   "segundos": 28.5,
+   "trechos": 1,
+   "silencio": 0,
+   "wer": 0.0,
+   "t_stt": 0.0,
+   "t_gen": 7.5,
+   "in_chars": 4363,
+   "out_chars": 1146,
+   "tokens_in": 1271,
+   "tokens_out": 552,
+   "tokens_raciocinio": 175,
+   "rem_certo": 3,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 1,
+   "fatos_ok": 3,
+   "fatos_total": 3,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 7,
+   "tok_errados": 0,
+   "tok_duvidosos": 0,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Paciente veio para renovar receitas e refere estar bem. Nega tontura, inchaço e dificuldade para urinar. Refere urinar bem com o remédio da próstata.",
+    "o": "Pressão arterial 132/80 mmHg. Frequência cardíaca 70 bpm.",
+    "a": "Hipertensão arterial em acompanhamento. Hiperplasia prostática em acompanhamento.",
+    "p": "Receitas renovadas nas mesmas doses de sempre. Retorno em seis meses."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Hipertensão arterial em acompanhamento.",
+     "src": [
+      1
+     ]
+    },
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Hiperplasia prostática em acompanhamento.",
+     "src": [
+      1
+     ]
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "losartana: 50 mg 2x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      1
+     ],
+     "valor": 50.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "losartana: 50 mg 2x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      1
+     ],
+     "valor": 2.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "anlodipino: 5 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      1
+     ],
+     "valor": 5.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "anlodipino: 5 mg 1x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      1
+     ],
+     "valor": 1.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "tansulosina: 0,4 mg à noite (dose do cadastro: confirme se não mudou)",
+     "src": [
+      1
+     ],
+     "valor": 0.4
+    }
+   ]
+  },
+  {
+   "id": "28-insulina-nph",
+   "origem": "voz natural",
+   "segundos": 45.6,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.046,
+   "t_stt": 0.0,
+   "t_gen": 9.6,
+   "in_chars": 4504,
+   "out_chars": 1193,
+   "tokens_in": 1318,
+   "tokens_out": 639,
+   "tokens_raciocinio": 237,
+   "rem_certo": 2,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "fato ausente: 180 + 220"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 2,
+   "vit_total": 2,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 6,
+   "fatos_total": 7,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 4,
+   "tok_errados": 3,
+   "tok_duvidosos": 0,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere uso de insulina NPH 20 UI pela manhã e 10 UI à noite até a consulta. Nega hipoglicemia. Nega tremor e suor frio.",
+    "o": "Hemoglobina glicada 9,4. Pressão arterial 136 por 82.",
+    "a": "Diabetes tipo 2 em acompanhamento.",
+    "p": "Ajustada insulina NPH noturna para 14 unidades. Mantida insulina NPH da manhã em 20 unidades. Mantida metformina. Orientado anotar as glicemias em jejum. Retorno em um mês."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Valores das glicemias em jejum citados no trecho 1 não ficaram claros na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "a",
+     "texto": "Diabetes tipo 2 em acompanhamento.",
+     "src": [
+      2
+     ],
+     "valor": 2.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Metformina: 850 mg 2x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      2
+     ],
+     "valor": 850.0
+    },
+    {
+     "tipo": "cadastro",
+     "nivel": "info",
+     "campo": "p",
+     "texto": "Metformina: 850 mg 2x/dia (dose do cadastro: confirme se não mudou)",
+     "src": [
+      2
+     ],
+     "valor": 2.0
+    }
+   ]
+  },
+  {
+   "id": "29-micose-cetoconazol",
+   "origem": "voz natural",
+   "segundos": 30.6,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.1,
+   "t_stt": 0.0,
+   "t_gen": 10.3,
+   "in_chars": 4376,
+   "out_chars": 712,
+   "tokens_in": 1259,
+   "tokens_out": 581,
+   "tokens_raciocinio": 365,
+   "rem_certo": 0,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 1,
+   "rem_inventado": 0,
+   "detalhe": [
+    "faltou: cetoconazol",
+    "fato ausente: prurido|coca"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 0,
+   "vit_total": 0,
+   "vit_inventado": 0,
+   "cid_certo": 0,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 4,
+   "fatos_total": 5,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 2,
+   "tok_errados": 6,
+   "tok_duvidosos": 2,
+   "duvida_pega_erro": 2,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "livre": "Refere mancha vermelha pruriginosa em virilha há cerca de três semanas. Relata jogar bola e ficar suado. Descreve placa avermelhada, com borda mais viva, em ambas as virilhas.\nOrientado secar bem a região e usar roupa de algodão. Orientado retorno se não houver melhora em quatro semanas."
+   },
+   "pontos": [
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Nome do medicamento/creme orientado ficou duvidoso na gravação.",
+     "src": []
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "A orientação inicial do trecho 2 ficou parcialmente ininteligível.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "30-valor-corrigido",
+   "origem": "voz natural",
+   "segundos": 34.5,
+   "trechos": 2,
+   "silencio": 0,
+   "wer": 0.038,
+   "t_stt": 0.0,
+   "t_gen": 9.9,
+   "in_chars": 4388,
+   "out_chars": 829,
+   "tokens_in": 1274,
+   "tokens_out": 655,
+   "tokens_raciocinio": 381,
+   "rem_certo": 0,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 1,
+   "rem_inventado": 0,
+   "detalhe": [
+    "faltou: hidroclorotiazida"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 3,
+   "vit_total": 3,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 3,
+   "fatos_total": 3,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 2,
+   "tok_errados": 2,
+   "tok_duvidosos": 3,
+   "duvida_pega_erro": 1,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Refere que, em casa, a pressão está parecida.",
+    "o": "PA 140/90 mmHg. FC 76 bpm.",
+    "a": "Pressão arterial um pouco acima da meta. Hipertensão arterial em acompanhamento.",
+    "p": "Orientado reduzir o sal. Orientado medir a pressão em casa duas vezes por semana. Retorno em dois meses com as medidas."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Hipertensão arterial em acompanhamento.",
+     "src": [
+      2
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Medicação ouvida com dúvida na orientação de manutenção: 'Hidroclorotiazida 25 mg'.",
+     "src": []
+    }
+   ]
+  },
+  {
+   "id": "31-exame-em-silencio",
+   "origem": "voz natural",
+   "segundos": 78.4,
+   "trechos": 5,
+   "silencio": 1,
+   "wer": 0.013,
+   "t_stt": 0.0,
+   "t_gen": 9.5,
+   "in_chars": 4485,
+   "out_chars": 1201,
+   "tokens_in": 1314,
+   "tokens_out": 662,
+   "tokens_raciocinio": 263,
+   "rem_certo": 1,
+   "rem_aviso": 0,
+   "rem_sem_aviso": 0,
+   "rem_falta": 0,
+   "rem_inventado": 0,
+   "detalhe": [
+    "fato ausente: raio x|radiografia"
+   ],
+   "rem_extra": 0,
+   "vit_certo": 1,
+   "vit_total": 1,
+   "vit_inventado": 0,
+   "cid_certo": 1,
+   "cid_total": 1,
+   "cid_extra": 0,
+   "fatos_ok": 6,
+   "fatos_total": 7,
+   "proibidos": 0,
+   "avisos_faltando": 0,
+   "avisos": 2,
+   "tok_errados": 1,
+   "tok_duvidosos": 1,
+   "duvida_pega_erro": 0,
+   "nome_vazou": false,
+   "dado_vazou": false,
+   "texto": {
+    "s": "Paciente relata tosse seca há três semanas. Nega febre. Nega tabagismo. Refere azia às vezes à noite. Nega nariz escorrendo.",
+    "o": "Pulmões limpos, sem sibilos. Garganta sem alterações. Saturação de oxigênio 98%.",
+    "a": "Tosse seca há três semanas. Pode ser refluxo.",
+    "p": "Iniciado omeprazol 20 mg em jejum por 4 semanas. Orientado elevar a cabeceira da cama. Se não melhorar, fazer raio-X do tórax. Retorno em 4 semanas."
+   },
+   "pontos": [
+    {
+     "tipo": "inferido",
+     "nivel": "medio",
+     "campo": "a",
+     "texto": "Tosse seca há três semanas.",
+     "src": [
+      1
+     ]
+    },
+    {
+     "tipo": "pendencia",
+     "nivel": "medio",
+     "campo": "",
+     "texto": "Trecho 2 com áudio pouco claro sobre exame: \"Vou deitar ali para o senhor me examinar\".",
+     "src": []
+    }
+   ]
+  }
+ ]
+}
