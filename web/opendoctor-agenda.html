@@ -1595,7 +1595,7 @@
 
             <!-- ===== bloco do gráfico, na estrutura da página de cotação do Google Finance
                  (google.com/finance/quote/RUT:INDEXRUSSELL?comparison=…&type=line): número + variação + data,
-                 cartão do gráfico (barra Linha · Comparar · Indicadores, chips das séries, gráfico, períodos)
+                 cartão do gráfico (barra com Comparar, chips das séries, gráfico, períodos)
                  e tabela de comparação. Fica acima das abas, como no Finance. ===== -->
             <section class="gq" id="ovTop" hidden>
               <!-- "Why is NVDA down 3.16%? · Dive deeper": só preenche a pergunta no assistente -->
@@ -1610,9 +1610,7 @@
               <div class="gq-card" id="ovChart">
                 <div class="gq-bar">
                   <div class="gq-tools">
-                    <div class="gq-dd"><button class="gq-tool" type="button" id="gqType" aria-haspopup="menu" aria-expanded="false"><svg class="gq-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" fill="#0A0A0A"/></svg><span id="gqTypeT">Linha</span><svg class="gq-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="gqTypeM" role="menu" hidden></div></div>
                     <div class="gq-dd"><button class="gq-tool" type="button" id="gqCmp" aria-haspopup="menu" aria-expanded="false"><svg class="gq-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 19.99l7.5-7.51 4 4 7.09-7.97L22 9.92l-8.5 9.56-4-4-6 6.01zm1.5-4.5l6-6.01 4 4L22 3.92l-1.41-1.41-7.09 7.97-4-4L2 13.99z" fill="#0A0A0A"/></svg><span>Comparar</span><svg class="gq-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="gqCmpM" role="menu" hidden></div></div>
-                    <div class="gq-dd"><button class="gq-tool" type="button" id="gqInd" aria-haspopup="menu" aria-expanded="false"><svg class="gq-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8c-1.45 0-2.26 1.44-1.93 2.51l-3.55 3.56c-.3-.09-.74-.09-1.04 0l-2.55-2.55C12.27 10.45 11.46 9 10 9c-1.45 0-2.27 1.44-1.93 2.52l-4.56 4.55C2.44 15.74 1 16.55 1 18c0 1.1.9 2 2 2 1.45 0 2.26-1.44 1.93-2.51l4.55-4.56c.3.09.74.09 1.04 0l2.55 2.55C12.73 16.55 13.54 18 15 18c1.45 0 2.27-1.44 1.93-2.52l3.56-3.55c1.07.33 2.51-.48 2.51-1.93 0-1.1-.9-2-2-2z" fill="#0A0A0A"/></svg><span>Indicadores</span><svg class="gq-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="gqIndM" role="menu" hidden></div></div>
                   </div>
                 </div>
                 <div class="gq-plot">
@@ -3891,10 +3889,9 @@
                    ask: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 2.9 8.6l3.4 3.4" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round"/><path d="M13.4 1.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="#1F1F1F"/></svg>',
                    open: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2.5h6.5l3.5 3.5v9.5H4z" fill="none" stroke="#1F1F1F" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 9.5h5M6.5 12h3.5" stroke="#1F1F1F" stroke-width="1.5" stroke-linecap="round"/></svg>',
                    chev: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" fill="#444746"/></svg>' };
-      var ov = { metric: null, range: 0, hover: -1, S: null, dirty: true, cmp: [], type: 'line', ind: { ref: true, cons: true }, ser: [], times: [] };
+      var ov = { metric: null, range: 0, hover: -1, S: null, dirty: true, cmp: [], ind: { ref: true, cons: true }, ser: [], times: [] };
       try {
         ov.metric = localStorage.getItem('od_pr_metric'); ov.range = +(localStorage.getItem('od_pr_range') || 0) || 0;
-        ov.type = localStorage.getItem('od_pr_type') === 'area' ? 'area' : 'line';
       } catch (_) {}
       // cores dos gráficos do Finance (azul e laranja da comparação), depois verde, roxo e magenta
       var COLORS = ['#3364F0', '#DE7300', '#1E8E3E', '#9334E6', '#D01884'];
@@ -4043,10 +4040,10 @@
         drawChart();
       }
 
-      // ----- menus da barra: Linha · Comparar · Indicadores -----
+      // ----- menu Comparar da barra do gráfico -----
       var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#0B57D0"/></svg>';
       function closeMenus() {
-        [['gqType', 'gqTypeM'], ['gqCmp', 'gqCmpM'], ['gqInd', 'gqIndM'], ['csMetric', 'csMetricM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
+        [['gqCmp', 'gqCmpM'], ['csMetric', 'csMetricM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
       }
       function mi(label, on, fn, opts) {
         var b = el('button', 'gq-mi'); b.type = 'button'; b.setAttribute('role', opts && opts.radio ? 'menuitemradio' : 'menuitemcheckbox'); b.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -4060,30 +4057,21 @@
       function buildMenu(id) {
         var m = $(id + 'M'); m.innerHTML = '';
         var avail = METRICS.filter(function (x) { return ov.S && ov.S[x.k].length; });
-        if (id === 'gqType') {
-          [['line', 'Linha'], ['area', 'Área']].forEach(function (t) {
-            m.appendChild(mi(t[1], ov.type === t[0], function () { ov.type = t[0]; try { localStorage.setItem('od_pr_type', t[0]); } catch (_) {} closeMenus(); drawChart(); }, { radio: true }));
+        m.appendChild(el('div', 'gq-mh', 'Sinal principal'));
+        avail.forEach(function (x) { m.appendChild(mi(x.label, ov.metric === x.k, function () { closeMenus(); pickMetric(x.k); }, { radio: true })); });
+        var others = avail.filter(function (x) { return x.k !== ov.metric; });
+        if (others.length) {
+          m.appendChild(el('div', 'gq-mh', 'Comparar com (variação em %)'));
+          others.forEach(function (x) {
+            var on = ov.cmp.indexOf(x.k) >= 0;
+            m.appendChild(mi(x.label, on, function () {
+              ov.cmp = on ? ov.cmp.filter(function (k) { return k !== x.k; }) : ov.cmp.concat([x.k]);
+              closeMenus(); drawChart();
+            }, { disabled: !on && ov.cmp.length >= 3 }));
           });
-        } else if (id === 'gqCmp') {
-          m.appendChild(el('div', 'gq-mh', 'Sinal principal'));
-          avail.forEach(function (x) { m.appendChild(mi(x.label, ov.metric === x.k, function () { closeMenus(); pickMetric(x.k); }, { radio: true })); });
-          var others = avail.filter(function (x) { return x.k !== ov.metric; });
-          if (others.length) {
-            m.appendChild(el('div', 'gq-mh', 'Comparar com (variação em %)'));
-            others.forEach(function (x) {
-              var on = ov.cmp.indexOf(x.k) >= 0;
-              m.appendChild(mi(x.label, on, function () {
-                ov.cmp = on ? ov.cmp.filter(function (k) { return k !== x.k; }) : ov.cmp.concat([x.k]);
-                closeMenus(); drawChart();
-              }, { disabled: !on && ov.cmp.length >= 3 }));
-            });
-          }
-        } else {
-          m.appendChild(mi('Faixa de referência', ov.ind.ref, function () { ov.ind.ref = !ov.ind.ref; closeMenus(); drawChart(); }));
-          m.appendChild(mi('Consultas', ov.ind.cons, function () { ov.ind.cons = !ov.ind.cons; closeMenus(); drawChart(); }));
         }
       }
-      ['gqType', 'gqCmp', 'gqInd'].forEach(function (id) {
+      ['gqCmp'].forEach(function (id) {
         $(id).addEventListener('click', function (e) {
           e.stopPropagation();
           var open = $(id + 'M').hidden; closeMenus();
@@ -4169,7 +4157,6 @@
         ser.forEach(function (s) { s.pts = from ? s.all.filter(function (p) { return p.t >= from; }) : s.all.slice(); s.base = s.pts.length ? s.get(s.pts[0]) : null; });
         var prim = ser[0];
         [].forEach.call($('ovRanges').children, function (b) { var on = +b.getAttribute('data-r') === ov.range; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
-        $('gqTypeT').textContent = ov.type === 'area' ? 'Área' : 'Linha';
         renderQuote(prim, prim.pts); renderChips(ser); renderTable(ser); renderGaRange(prim);
         ov.hover = -1;
         var svg = $('ovSvg'); svg.innerHTML = '';
@@ -4241,20 +4228,8 @@
             svg.appendChild(r); ov.bars.push({ n: c2.n, r: r });
           });
         }
-        // linhas (área: degradê com um sinal; faixa entre sistólica e diastólica na PA)
+        // linhas
         function path(s) { return s.pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p.t).toFixed(1) + ' ' + Y(val(s, p)).toFixed(1); }).join(' '); }
-        if (ov.type === 'area' && !pct && prim.pts.length > 1) {
-          if (m.k === 'pa') {
-            var back = ser[1].pts.slice().reverse().map(function (p) { return 'L' + X(p.t).toFixed(1) + ' ' + Y(ser[1].get(p)).toFixed(1); }).join(' ');
-            svg.appendChild(svgEl('path', { d: path(prim) + ' ' + back + ' Z', fill: prim.color, 'fill-opacity': '0.08' }));
-          } else {
-            var defs = svgEl('defs', {}), gr = svgEl('linearGradient', { id: 'ovGrad', x1: 0, y1: 0, x2: 0, y2: 1 });
-            gr.appendChild(svgEl('stop', { offset: '0%', 'stop-color': prim.color, 'stop-opacity': '0.38' }));
-            gr.appendChild(svgEl('stop', { offset: '90%', 'stop-color': prim.color, 'stop-opacity': '0' }));
-            defs.appendChild(gr); svg.appendChild(defs);
-            svg.appendChild(svgEl('path', { d: path(prim) + ' L' + X(prim.pts[prim.pts.length - 1].t).toFixed(1) + ' ' + base + ' L' + X(prim.pts[0].t).toFixed(1) + ' ' + base + ' Z', fill: 'url(#ovGrad)' }));
-          }
-        }
         ser.slice().reverse().forEach(function (s) {
           if (s.pts.length > 1) svg.appendChild(svgEl('path', { d: path(s), fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
         });
