@@ -48,3 +48,9 @@ def pytest_runtest_logreport(report):
     if os.environ.get("GITHUB_ACTIONS") and report.failed:
         msg = str(report.longrepr)[-1800:].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
         print(f"\n::error title={report.nodeid}::{msg}", flush=True)
+
+
+def pytest_collectreport(report):
+    if os.environ.get("GITHUB_ACTIONS") and report.failed:
+        msg = str(report.longrepr)[-1800:].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+        print(f"\n::error title=coleta {report.nodeid}::{msg}", flush=True)
