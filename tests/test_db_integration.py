@@ -19,6 +19,7 @@ def novo_usuario(test_db):
     yield criar
     with db.connection() as c:
         for uid in criados:
+            c.execute("delete from patient_files where user_id = %s", (uid,))
             c.execute("delete from clinical_notes where user_id = %s", (uid,))
             c.execute("delete from patients where user_id = %s", (uid,))
             c.execute("delete from users where id = %s", (uid,))
@@ -74,3 +75,14 @@ def test_limpeza_apaga_so_o_vencido(novo_usuario):
     with db.connection() as c:
         n = c.execute("select count(*) from login_events where user_id = %s", (uid,)).fetchone()[0]
     assert n == 1                                       # ficou só o de 11 meses
+
+
+def test_anexo_so_do_proprio_medico(novo_usuario):
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p = db.create_patient(ana, "Paciente da Ana")
+    f = db.add_file(ana, p["id"], "laudo.pdf", "application/pdf", b"%PDF-1.7 teste")
+    assert [x["id"] for x in db.list_files(ana, p["id"])] == [f["id"]]
+    assert db.get_file(ana, f["id"])["data"] == b"%PDF-1.7 teste"
+    assert db.get_file(beto, f["id"]) is None and db.delete_file(beto, f["id"]) is None
+    assert db.delete_patient(ana, p["id"]) == "has_notes"     # exame anexado também é prontuário
+    assert db.delete_file(ana, f["id"]) == p["id"] and db.list_files(ana, p["id"]) == []

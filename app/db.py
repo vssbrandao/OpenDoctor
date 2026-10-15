@@ -575,6 +575,9 @@ def delete_patient(user_id, patient_id):
                         (user_id, patient_id, r[0]))
             if cur.fetchone():
                 return "has_notes"
+            cur.execute("select 1 from patient_files where user_id = %s and patient_id = %s limit 1", (user_id, patient_id))
+            if cur.fetchone():                          # exame anexado também é prontuário
+                return "has_notes"
             cur.execute("delete from clinical_notes where user_id = %s and patient_id = %s", (user_id, patient_id))
             cur.execute("delete from patients where user_id = %s and id = %s", (user_id, patient_id))
         conn.commit()
@@ -717,6 +720,40 @@ def notes_by_event(user_id, event_ids):
                                where user_id = %s and event_id = any(%s)""", (user_id, list(event_ids))).fetchall()
     return {r[0]: {"note_id": r[1], "signed_at": r[2].isoformat() if r[2] else None, "has_content": r[3]}
             for r in rows}
+
+
+# --- exames anexados (PDF/imagem), sempre filtrados pelo médico ---
+def add_file(user_id, patient_id, name, mime, data):
+    with connection() as conn:
+        r = conn.execute("""insert into patient_files (user_id, patient_id, name, mime, size, data)
+                            values (%s,%s,%s,%s,%s,%s) returning id, created_at""",
+                         (user_id, patient_id, name, mime, len(data), data)).fetchone()
+        conn.commit()
+    return {"id": r[0], "name": name, "mime": mime, "size": len(data), "created_at": r[1].isoformat()}
+
+
+def list_files(user_id, patient_id):
+    with connection() as conn:
+        rows = conn.execute("""select id, name, mime, size, created_at from patient_files
+                               where user_id = %s and patient_id = %s order by created_at desc""",
+                            (user_id, patient_id)).fetchall()
+    return [{"id": r[0], "name": r[1], "mime": r[2], "size": r[3], "created_at": r[4].isoformat()} for r in rows]
+
+
+def get_file(user_id, file_id):
+    with connection() as conn:
+        r = conn.execute("select patient_id, name, mime, data from patient_files where user_id = %s and id = %s",
+                         (user_id, file_id)).fetchone()
+    return {"patient_id": r[0], "name": r[1], "mime": r[2], "data": bytes(r[3])} if r else None
+
+
+def delete_file(user_id, file_id):
+    """Apaga o anexo (ex.: arquivo errado ou de outro paciente). Devolve o patient_id ou None."""
+    with connection() as conn:
+        r = conn.execute("delete from patient_files where user_id = %s and id = %s returning patient_id",
+                         (user_id, file_id)).fetchone()
+        conn.commit()
+    return r[0] if r else None
 
 
 def log_access(user_id, action, patient_id=None, note_id=None, dedupe_minutes=0):

@@ -93,3 +93,14 @@ def test_cid10_busca():
     assert cid10.search("") == [] and cid10.search("xyzxyz") == []
     assert len(cid10.search("a", limit=5)) == 5
     assert cid10.get("r51") == "Cefaléia"
+
+
+def test_anexo_so_pdf_e_imagem_pelo_conteudo():
+    from app.server import _sniff, _file_name
+    assert _sniff(b"%PDF-1.7") == "application/pdf"
+    assert _sniff(b"\xff\xd8\xff\xe0") == "image/jpeg"
+    assert _sniff(b"\x89PNG\r\n\x1a\n") == "image/png"
+    assert _sniff(b"RIFF\x00\x00\x00\x00WEBPVP8 ") == "image/webp"
+    for ruim in (b"<svg onload=alert(1)>", b"<html>", b"MZ\x90\x00", b""):
+        assert _sniff(ruim) is None
+    assert _file_name("laudo%2F..%2Fx.pdf") == "laudo .. x.pdf" and _file_name("") == "exame"

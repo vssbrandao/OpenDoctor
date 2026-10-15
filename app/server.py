@@ -22,7 +22,7 @@ import concurrent.futures
 import mimetypes
 
 from fastapi import FastAPI, Request
-from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse
+from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
@@ -1480,6 +1480,93 @@ async def prontuario_access(request: Request):
     if not str(pid or "").isdigit() or not db.get_patient(u["id"], int(pid)):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     return {"access": db.list_access(u["id"], int(pid))}
+
+
+# --- exames anexados (PDF/imagem do laudo) ---
+MAX_FILE_BYTES = 10 * 1024 * 1024
+_FILE_MAGIC = (("application/pdf", b"%PDF-"), ("image/jpeg", b"\xff\xd8\xff"), ("image/png", b"\x89PNG\r\n\x1a\n"))
+
+
+def _sniff(b):
+    """Tipo pelo conteúdo (nunca pelo que o navegador diz): PDF, JPG, PNG ou WEBP. SVG/HTML não entram."""
+    for mime, magic in _FILE_MAGIC:
+        if b.startswith(magic):
+            return mime
+    return "image/webp" if b[:4] == b"RIFF" and b[8:12] == b"WEBP" else None
+
+
+def _file_name(v):
+    n = urllib.parse.unquote(str(v or ""))[:200]
+    return re.sub(r"[\x00-\x1f\x7f/\\]+", " ", n).strip() or "exame"
+
+
+def _file_id_ok(file_id):
+    return 0 < file_id < 2 ** 62
+
+
+@app.post("/prontuario/files")
+async def prontuario_file_add(request: Request):
+    """Anexa um exame. O corpo é o próprio arquivo; o paciente vai pelo id no cabeçalho (nunca o nome
+    na URL). Cabeçalho próprio + tipo não-JSON obrigam o pre-flight: outro site não consegue enviar."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    pid = str(request.headers.get("x-patient-id") or "")
+    if not pid.isdigit() or not db.get_patient(u["id"], int(pid)):
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    cl = request.headers.get("content-length") or ""
+    if cl.isdigit() and int(cl) > MAX_FILE_BYTES:
+        return JSONResponse({"error": "arquivo maior que 10 MB"}, status_code=413)
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > MAX_FILE_BYTES:
+            return JSONResponse({"error": "arquivo maior que 10 MB"}, status_code=413)
+    mime = _sniff(bytes(body[:16]))
+    if not mime:
+        return JSONResponse({"error": "formato não aceito: envie PDF, JPG, PNG ou WEBP"}, status_code=415)
+    f = db.add_file(u["id"], int(pid), _file_name(request.headers.get("x-file-name")), mime, bytes(body))
+    db.log_access(u["id"], "file_add", int(pid))
+    return {"ok": True, "file": f}
+
+
+@app.post("/prontuario/files/list")
+async def prontuario_file_list(request: Request):
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    pid = (await _json(request)).get("patient_id")
+    if not str(pid or "").isdigit() or not db.get_patient(u["id"], int(pid)):
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    return {"files": db.list_files(u["id"], int(pid))}
+
+
+@app.get("/prontuario/files/{file_id}")
+def prontuario_file_get(file_id: int, request: Request):
+    """Abre o anexo (só o médico dono). Fica registrado no histórico de acessos."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    f = db.get_file(u["id"], file_id) if _file_id_ok(file_id) else None
+    if not f:
+        return JSONResponse({"error": "anexo não encontrado"}, status_code=404)
+    db.log_access(u["id"], "file_view", f["patient_id"], dedupe_minutes=10)
+    return Response(f["data"], media_type=f["mime"], headers={
+        "Content-Disposition": "inline; filename*=UTF-8''" + urllib.parse.quote(f["name"]),
+        "Cache-Control": "private, no-store"})
+
+
+@app.delete("/prontuario/files/{file_id}")
+def prontuario_file_delete(file_id: int, request: Request):
+    """Remove um anexo (arquivo errado ou de outro paciente). Fica registrado no histórico de acessos."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    pid = db.delete_file(u["id"], file_id) if _file_id_ok(file_id) else None
+    if pid is None:
+        return JSONResponse({"error": "anexo não encontrado"}, status_code=404)
+    db.log_access(u["id"], "file_delete", pid)
+    return {"ok": True}
 
 
 # --- CID-10 (tabela oficial do DATASUS): busca para o diagnóstico da evolução ---
