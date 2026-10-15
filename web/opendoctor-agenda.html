@@ -4113,9 +4113,8 @@
           var ar2 = art(m), down = dd === 'down';
           wt.appendChild(document.createTextNode('Por que ' + ar2 + ' ' + lower1(m.label) + ' ' + (down ? 'caiu' : 'subiu') + ' '));
           wt.appendChild(el('span', trend(m, a, last) || null, fmtN(Math.abs((last.v / a.v - 1) * 100), 2) + '%'));
-          wt.appendChild(document.createTextNode('?'));
-          why._q = 'O que pode explicar ' + (down ? 'a queda' : 'o aumento') + ' d' + ar2 + ' ' + lower1(m.label) + ' de ' + fmtV(m, a) + ' para ' + fmtV(m, last) + ' ' + m.unit +
-                   ' ' + spanTxt(a.t, last.t) + ' em ' + clinicalCtx() + meds() + '? Quais os próximos passos?';
+          wt.appendChild(document.createTextNode(' ' + spanTxt(a.t, last.t) + '?'));
+          why._q = deepQ(m.k, a, last, pts.length > 1 ? pts.length : 2);
         }
       }
       function renderChips(ser) {
@@ -4327,22 +4326,77 @@
         inp.value = q; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus();
         try { inp.setSelectionRange(q.length, q.length); } catch (_) {}
       }
-      function clinicalCtx() {                             // "mulher de 58 anos com hipertensão arterial e diabetes tipo 2"
-        var p = patient || {}, who = p.sex === 'F' ? 'mulher' : p.sex === 'M' ? 'homem' : 'paciente';
-        var ag = p.birth_date ? ' de ' + age(p.birth_date) : '', pr = lines(p.problems).slice(0, 3).map(lower1);
-        return who + ag + (pr.length ? ' com ' + (pr.length > 1 ? pr.slice(0, -1).join(', ') + ' e ' + pr[pr.length - 1] : pr[0]) : '');
+      // ----- perguntas ao assistente: o caso clínico completo (sem o nome) + o que precisa ser decidido -----
+      // Quem envia é o médico. Vão sexo, idade, problemas, medicações, alergias e os números do prontuário.
+      function cap(t) { return t.charAt(0).toUpperCase() + t.slice(1); }
+      function profile() {                                // "Mulher de 58 anos com …, em uso de …; alergia a …."
+        var p = patient || {}, who = p.sex === 'F' ? 'Mulher' : p.sex === 'M' ? 'Homem' : 'Paciente';
+        var pr = lines(p.problems).map(lower1), md = lines(p.medications).map(lower1), al = lines(p.allergies).map(lower1);
+        return who + (p.birth_date ? ' de ' + age(p.birth_date) : '') + (pr.length ? ' com ' + joinE(pr) : ', sem problemas ativos registrados') +
+               (md.length ? ', em uso de ' + joinE(md) : ', sem medicações registradas') + (al.length ? '; alergia a ' + joinE(al) : '') + '.';
       }
-      function meds() { var l = lines(patient && patient.medications).slice(0, 3).map(lower1); return l.length ? ', em uso de ' + l.join(', ') : ''; }
-      var QUESTION = {
-        pa: function (v) { return 'Qual a meta de pressão arterial para ' + clinicalCtx() + meds() + ', e quando intensificar o tratamento? PA atual ' + v + ' mmHg.'; },
-        imc: function (v) { return 'Quais estratégias e opções de tratamento para perda de peso em ' + clinicalCtx() + ' com IMC de ' + v + '?'; },
-        peso: function (v) { return 'Como avaliar a variação de peso em ' + clinicalCtx() + '? Peso atual ' + v + ' kg.'; },
-        glicemia: function (v) { return 'Como interpretar glicemia de ' + v + ' mg/dL em ' + clinicalCtx() + meds() + ', e quando ajustar o tratamento?'; },
-        fc: function (v) { return 'Como avaliar frequência cardíaca de ' + v + ' bpm em ' + clinicalCtx() + '?'; },
-        spo2: function (v) { return 'Como avaliar saturação de O₂ de ' + v + '% em ' + clinicalCtx() + '?'; },
-        temp: function (v) { return 'Qual a conduta para temperatura de ' + v + ' °C em ' + clinicalCtx() + '?'; },
-        fr: function (v) { return 'Como avaliar frequência respiratória de ' + v + ' irpm em ' + clinicalCtx() + '?'; }
+      function statusTxt(m, p) { return !m.ref ? '' : off(m, p) ? side(m, p) + ' da faixa de referência (' + lower1(m.refTxt.replace(/^Referência\s*/, '')) + ')' : 'dentro da faixa de referência'; }
+      // o que aconteceu com o sinal: de quanto para quanto, em quanto tempo, quantas medidas e onde está hoje
+      function factTxt(m, a, b, n) {
+        var u = ' ' + m.unit, st = statusTxt(m, b), nm = cap(art(m) + ' ' + lower1(m.label));
+        if (a && a !== b && dir(a, b) !== 'flat')
+          return nm + ' foi de ' + fmtV(m, a) + ' para ' + fmtV(m, b) + u + ' ' + spanTxt(a.t, b.t) + ' (' + pctTxt((b.v / a.v - 1) * 100) +
+                 (m.k === 'pa' ? ' na sistólica' : '') + (n > 2 ? ', ' + n + ' medidas' : '') + ')' + (st ? ' e está ' + st : '') + (m.k === 'imc' ? ', ' + imcClass(b.v) : '') + '.';
+        return nm + ' está em ' + fmtV(m, b) + u + ' (' + dayMon(b.t) + ')' + (st ? ', ' + st : '') + (m.k === 'imc' ? ', ' + imcClass(b.v) : '') +
+               (a && a !== b ? ', estável desde ' + dayMon(a.t) : '') + '.';
+      }
+      // sinais que ajudam a explicar a mudança, no mesmo intervalo
+      var COMP = { pa: ['peso', 'fc'], peso: ['pa', 'glicemia'], imc: ['pa', 'glicemia'], glicemia: ['peso', 'pa'], fc: ['pa', 'temp'], spo2: ['fr', 'fc'], temp: ['fc', 'fr'], fr: ['spo2', 'temp'] };
+      function companions(k, a, b) {
+        var S = ov.S || series(), out = [], from = a ? a.t.getTime() - 20 * 864e5 : -Infinity, to = b.t.getTime() + 864e5;
+        COMP[k].forEach(function (c) {
+          var m = MBY[c], pts = S[c].filter(function (p) { return p.t.getTime() >= from && p.t.getTime() <= to; });
+          if (!pts.length) return;
+          var x = pts[0], y = pts[pts.length - 1], nm = art(m) + ' ' + lower1(m.label);
+          out.push(a && pts.length > 1 && dir(x, y) !== 'flat' ? nm + ' foi de ' + fmtV(m, x) + ' para ' + fmtV(m, y) + ' ' + m.unit : nm + ' estava em ' + fmtV(m, y) + ' ' + m.unit);
+        });
+        return out.length ? (a ? 'No mesmo período, ' : 'Na mesma época, ') + joinE(out) + '.' : '';
+      }
+      // o que o médico precisa decidir, por sinal
+      var ASK = {
+        pa: 'Quais as explicações mais prováveis com esses dados? Qual a meta pressórica para esse perfil segundo as diretrizes atuais e qual a conduta: manter o esquema, ajustar a dose, associar outra classe ou confirmar com MRPA/MAPA?',
+        glicemia: 'Como interpretar o valor se não houver confirmação de jejum? Quais metas de glicemia e HbA1c usar para esse perfil, que exames pedir para confirmar o controle e quando intensificar o tratamento, considerando comorbidades e risco cardiovascular?',
+        peso: 'Quais causas considerar neste caso (hábitos, medicações, causas clínicas), o que investigar e qual a conduta para esse perfil?',
+        imc: 'Qual o risco associado neste perfil? Quais metas de perda de peso e opções de tratamento (estilo de vida, farmacoterapia, cirurgia bariátrica) se aplicam a este caso e como acompanhar?',
+        fc: 'Quais causas considerar (medicações, tireoide, anemia, arritmias, condicionamento) e quando investigar com ECG, Holter ou exames laboratoriais?',
+        spo2: 'Quais causas considerar, como investigar (gasometria, exame de imagem, espirometria) e quais sinais de alarme indicam avaliação imediata?',
+        temp: 'Quais causas considerar neste contexto, quais sinais de alarme observar e qual a conduta inicial?',
+        fr: 'Quais causas considerar, como avaliar a gravidade e quando indicar investigação adicional?'
       };
+      function deepQ(k, a, b, n) {
+        var m = MBY[k], moved = a && a !== b && dir(a, b) !== 'flat', o = m.ref && off(m, b) ? side(m, b) : '';
+        // mudança pequena e recente: pode ser só variação da medida; tendência longa: o que diz do controle
+        var pc = moved ? Math.abs(b.v / a.v - 1) : 0, small = moved && (pc < 0.05 || (pc < 0.1 && (n <= 3 || b.t - a.t < 120 * 864e5)));
+        var lead = !moved ? 'Como interpretar esse valor neste contexto?' : small ? 'A variação é clinicamente relevante ou cabe na variabilidade esperada da medida?' :
+                   'O que essa tendência indica sobre o controle e a resposta ao tratamento atual?';
+        // contexto de longo prazo: a primeira medida registrada, quando o período perguntado é mais curto
+        var all = (ov.S || series())[k], f = all[0], hist = a && f && f !== a && f.t < a.t && dir(f, b) !== 'flat' ?
+          'Na primeira medida registrada (' + MON[f.t.getMonth()] + ' ' + f.t.getFullYear() + '), era ' + fmtV(m, f) + ' ' + m.unit + '.' : '';
+        var extra = k === 'pa' && o === 'abaixo' ? ' Há sinais de sobretratamento ou risco de hipotensão?' :
+                    k === 'peso' && moved && dir(a, b) === 'down' ? ' Se a perda não for intencional, quais sinais de alarme e exames iniciais?' : '';
+        return [profile(), factTxt(m, a, b, n), companions(k, a, b), hist, lead + ' ' + ASK[k] + extra].filter(Boolean).join(' ');
+      }
+      // todos os sinais de uma vez (para revisar a consulta ou priorizar o que está fora da meta)
+      function signalsTxt(S) {
+        var l = [];
+        METRICS.forEach(function (m) {
+          var a = S[m.k]; if (!a.length) return;
+          var b = a[a.length - 1], f = a[0], tags = [], o = !!m.ref && off(m, b);
+          if (m.ref) tags.push(o ? side(m, b) + ' da referência' : 'na referência');
+          if (m.k === 'imc') tags.push(imcClass(b.v));
+          if (a.length > 1 && dir(f, b) !== 'flat' && (o || /^(pa|peso|imc|glicemia)$/.test(m.k))) tags.push('era ' + fmtV(m, f) + ' em ' + MON[f.t.getMonth()] + ' ' + f.t.getFullYear());
+          l.push(lower1(m.label) + ' ' + fmtV(m, b) + ' ' + m.unit + (tags.length ? ' (' + tags.join('; ') + ')' : ''));
+        });
+        return l.length ? 'Últimos sinais: ' + l.join(', ') + '.' : '';
+      }
+      function reviewQ(S) {
+        return [profile(), signalsTxt(S), 'O que priorizar nesta consulta e no retorno: metas ainda não atingidas, ajustes de tratamento, exames de acompanhamento e de rastreamento indicados para esse perfil (com a periodicidade recomendada), vacinas e orientações ao paciente?'].filter(Boolean).join(' ');
+      }
 
       // ----- "Resumo do paciente": frases que abrem em detalhe (como "Resumo do mercado") -----
       function renderAcc(S) {
@@ -4370,7 +4424,7 @@
           if (k === 'glicemia') body += ' Confira se cada medida foi feita em jejum.';
           items.push({ cls: cls, title: title, body: body, rank: cls === 'down' ? 0 : cls === 'warn' ? 1 : 2,
             acts: [{ t: 'Ver no gráfico', i: ICON.chart, f: function () { pickMetric(k); $('ovChart').scrollIntoView({ behavior: 'smooth', block: 'center' }); } },
-                   { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(QUESTION[k](lv)); } }] });
+                   { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(deepQ(k, first, last, n)); } }] });
         });
         // pendências
         var drafts = notes.filter(function (n) { return !n.signed_at && (n.content || '').trim() && n !== cur; });
@@ -4612,8 +4666,10 @@
           c.fora * 2 > n ? 'Maioria fora' : c.melhora * 2 > n ? 'Maioria melhorando' : 'Resultado misto';
         var lg = $('gaLg'); lg.innerHTML = '';
         G.forEach(function (g) { var r = el('div', 'ga-lr'), i = el('i'); i.style.background = g[1]; r.appendChild(i); r.appendChild(el('span', null, g[2])); r.appendChild(el('b', null, String(c[g[0]]))); lg.appendChild(r); });
-        var offs = ms.filter(function (m) { return stat(m, S[m.k]) !== 'ok'; }).map(function (m) { var l = S[m.k][S[m.k].length - 1]; return lower1(m.label) + ' ' + fmtV(m, l) + ' ' + m.unit; });
-        $('gaAsk')._q = offs.length ? 'Como priorizar o manejo de ' + joinE(offs) + ' em ' + clinicalCtx() + meds() + '?' : 'Quais metas de acompanhamento para ' + clinicalCtx() + meds() + '?';
+        var offs = ms.filter(function (m) { return stat(m, S[m.k]) !== 'ok'; }).map(function (m) { return lower1(m.label); });
+        $('gaAsk')._q = [profile(), signalsTxt(S), offs.length ?
+          'Fora da faixa de referência: ' + joinE(offs) + '. Como priorizar o manejo desses pontos, quais metas usar para esse perfil segundo as diretrizes atuais e qual a sequência de condutas, exames de acompanhamento e intervalo de retorno?' :
+          'Todos os sinais com faixa de referência estão dentro dela. Quais metas e qual rotina de acompanhamento (exames, rastreamentos e intervalo de retorno) são recomendadas para esse perfil?'].filter(Boolean).join(' ');
         var tb = $('gaTBody'); tb.innerHTML = '';
         avail.forEach(function (m) {
           var a = S[m.k], first = a[0], last = a[a.length - 1], st = stat(m, a), t = a.length > 1 ? trend(m, first, last) : '', d = a.length > 1 ? dir(first, last) : 'flat';
@@ -4669,7 +4725,7 @@
           var txt = fmtV(m, p) + u + (here ? ' nesta consulta' : ' em ' + dayMon(p.t));
           if (prev) txt += dir(prev, p) === 'flat' ? ', igual à medida de ' + dayMon(prev.t) : '; ' + deltaTxt(m, prev, p) + u + ' desde ' + dayMon(prev.t) + ' (' + fmtV(m, prev) + ')';
           if (m.k === 'imc') txt += ', ' + imcClass(p.v);
-          items.push({ lead: m.label + (m.ref ? (o ? ' ' + side(m, p) + ' da referência' : ' na referência') : '') + ': ', txt: txt + '.', r: o ? 0 : 1, k: m.k, v: fmtV(m, p), o: o });
+          items.push({ lead: m.label + (m.ref ? (o ? ' ' + side(m, p) + ' da referência' : ' na referência') : '') + ': ', txt: txt + '.', r: o ? 0 : 1, k: m.k, o: o, p: p, prev: prev, side: o ? side(m, p) : '' });
         });
         var cid = cur && cur.data && cur.data.cid ? cur.data.cid : [];
         if (cid.length) items.push({ lead: (cid.length === 1 ? 'Diagnóstico' : 'Diagnósticos') + ' desta consulta: ', r: 1,
@@ -4684,9 +4740,13 @@
         });
         var Q = $('gcGlanceQ'); Q.innerHTML = '';
         var qs = [], fo = items.filter(function (x) { return x.o; })[0];
-        if (fo) qs.push(QUESTION[fo.k](fo.v));
-        qs.push('Quais pontos revisar no retorno de ' + clinicalCtx() + meds() + '?');
-        qs.forEach(function (q) { var b = el('button', 'gl-q'); b.type = 'button'; b.innerHTML = ICONQ; b.appendChild(document.createTextNode(q)); b.addEventListener('click', function () { askAssistant(q); }); Q.appendChild(b); });
+        if (fo) qs.push({ t: cap(art(MBY[fo.k]) + ' ' + lower1(MBY[fo.k].label)) + ' está ' + fo.side + ' da referência: o que explica e qual a conduta para este perfil?',
+                          q: deepQ(fo.k, fo.prev, fo.p, 2) });
+        qs.push({ t: 'O que priorizar nesta consulta e no retorno: metas, ajustes, exames e orientações?', q: reviewQ(S) });
+        qs.forEach(function (x) {
+          var b = el('button', 'gl-q'); b.type = 'button'; b.title = 'Preenche a pergunta completa no assistente'; b.innerHTML = ICONQ;
+          b.appendChild(document.createTextNode(x.t)); b.addEventListener('click', function () { askAssistant(x.q); }); Q.appendChild(b);
+        });
       }
 
       // ----- gráfico de barras dos sinais por consulta (como o gráfico da aba Finanças) -----
