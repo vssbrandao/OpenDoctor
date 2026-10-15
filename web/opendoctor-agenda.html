@@ -900,6 +900,117 @@
     .pr-acc{gap:32px}
     .pr-item-head{gap:16px}
     .pr-form{column-gap:32px}
+    /* ===== componentes das outras abas do Finance (NVDA): aviso, panorama, análise, em resumo, barras ===== */
+    .gb{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;width:100%;min-height:48px;padding:0;border:0;border-radius:12px;
+      background:#F7F8FA;cursor:pointer;text-align:left;font-family:var(--disp);color:#36373A}
+    .gb:hover{background:#F0F2F5}
+    .gb[hidden]{display:none}
+    .gb-l{display:flex;align-items:center;gap:4px;min-width:0;padding:5px 12px 5px 4px}
+    .gb-i{flex:none;display:flex;align-items:center;justify-content:center;width:38px;height:38px}
+    .gb-i svg{width:18px;height:18px}
+    .gb-t{min-width:0;font-size:14px;line-height:22px;color:#0A0A0A}
+    .gb-t .up{color:#046E00}
+    .gb-t .down{color:#C0151D}
+    .gb-r{flex:none;display:flex;align-items:center;gap:4px;padding:5px 8px 5px 12px;font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A;white-space:nowrap}
+    .gb-r svg{width:20px;height:20px}
+    .gpan{display:flex;flex-direction:column;gap:16px;border-radius:16px;background:#F0F2F5}
+    .gpan-hd{display:flex;flex-direction:column;gap:4px;padding:20px 20px 0}
+    .gpan-t{font-family:var(--disp);font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A}
+    .gpan-s{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .gpan-bar{display:flex;gap:2px;height:12px;margin:0 20px}
+    .gpan-bar span{display:block;height:12px;min-width:12px;border-radius:2px}
+    .gpan-bar span:first-child{border-top-left-radius:20px;border-bottom-left-radius:20px}
+    .gpan-bar span:last-child{border-top-right-radius:20px;border-bottom-right-radius:20px}
+    .gpan-lg{display:flex;justify-content:space-between;gap:16px;padding:0 20px 20px;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px}
+    .gpan-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 40px;padding-top:8px}
+    .gpan-col[hidden]{display:none}
+    .gpan-ch{display:flex;align-items:center;gap:8px;padding-bottom:12px;font-family:var(--disp);font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A}
+    .gpan-ch svg{width:24px;height:24px;flex:none}
+    .gpan-col ul{display:flex;flex-direction:column;gap:12px;margin:0;padding:0 0 0 18px}
+    .gpan-col li{font-family:var(--disp);font-size:14px;line-height:24px;color:#56595E}
+    .gpan-col li b{font-weight:500;color:#0A0A0A}
+    .ga-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .ga-card{display:flex;flex-direction:column;gap:16px;min-width:0;padding:24px;border-radius:16px;background:#F7F8FA}
+    .ga-t{font-family:var(--disp);font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A}
+    .ga-s{margin-top:-8px;font-family:var(--disp);font-size:14px;line-height:20px;color:#56595E}
+    .ga-rate{display:flex;align-items:center;gap:40px;padding:8px 0}
+    .ga-donut{flex:none;display:flex;flex-direction:column;align-items:center;gap:12px;width:120px}
+    .ga-donut svg{display:block;width:120px;height:120px}
+    .ga-dl{font-family:var(--disp);font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A;text-align:center}
+    .ga-lg{display:flex;flex-direction:column;gap:12px;flex:1;min-width:0;max-width:240px;padding-bottom:20px}
+    .ga-lr{display:flex;align-items:center;font-family:var(--disp);font-size:14px;line-height:18px}
+    .ga-lr i{flex:none;width:10px;height:10px;margin-right:10px;border-radius:2px}
+    .ga-lr span{flex:1;min-width:0;color:#56595E}
+    .ga-lr b{margin-left:16px;font-weight:500;color:#36373A}
+    .ga-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:40px;margin-top:auto;padding:0 24px 0 16px;border:0;border-radius:20px;
+      background:#F0F2F5;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:18px;color:#0A0A0A;white-space:nowrap}
+    .ga-btn:hover{background:#E9EBF0}
+    .ga-btn svg{flex:none;width:20px;height:20px}
+    .ga-bars{position:relative;display:flex;flex-direction:column;gap:12px;padding:16px 0 40px}
+    .ga-br{display:flex;align-items:center;gap:12px;height:24px}
+    .ga-bl{flex:none;width:60px;font-family:var(--disp);font-size:14px;line-height:18px;color:#56595E}
+    .ga-bt{flex:1;min-width:0;height:24px}
+    .ga-bf{position:relative;z-index:1;display:flex;align-items:center;justify-content:flex-end;height:24px;border-radius:4px;background:#3364F0;overflow:hidden;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:15px;color:#fff;white-space:nowrap}
+    .ga-bf span{padding:0 8px}
+    .ga-cur{position:absolute;top:4px;bottom:34px;display:flex;flex-direction:column;align-items:center;width:12px;margin-left:-6px;pointer-events:none}
+    .ga-cur i{flex:none;width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid #36373A}
+    .ga-cur s{flex:1;width:1px;background:#36373A;text-decoration:none}
+    .ga-pin{position:absolute;bottom:10px;padding:2px 8px;border-radius:12px;background:#E1E3E8;font-family:var(--disp);font-weight:500;font-size:12px;line-height:15px;
+      color:#0A0A0A;white-space:nowrap;pointer-events:none}
+    .ga-table{width:100%;margin-top:8px;border-collapse:collapse;font-family:var(--disp)}
+    .ga-table th{padding:12px 14px;border-bottom:1px solid #F0F2F5;font-weight:500;font-size:12px;line-height:16px;color:#56595E;text-align:left;white-space:nowrap}
+    .ga-table td{height:59px;padding:12px 14px;border-bottom:1px solid #F0F2F5;font-size:12px;line-height:16px;color:#56595E;white-space:nowrap}
+    .ga-table th:first-child,.ga-table td:first-child{padding-left:0;white-space:normal}
+    .ga-table th:last-child,.ga-table td:last-child{padding-right:0}
+    .ga-table td b{display:block;font-weight:500;color:#0A0A0A}
+    .ga-table td small{display:block;font-size:12px;line-height:16px;color:#56595E}
+    .ga-table td.up{color:#046E00}
+    .ga-table td.down{color:#C0151D}
+    .ga-table tbody tr{cursor:pointer}
+    .ga-table tbody tr:hover td{background:#F7F8FA}
+    .ga-subd{display:none}
+    .ga-cards[hidden],.ga-table[hidden]{display:none}
+    .ga-pill{display:inline-flex;padding:2px 8px;border-radius:100px;font-weight:500;font-size:12px;line-height:16px}
+    .ga-pill.ok{background:#046E00;color:#CDF5C6}
+    .ga-pill.bad{background:#C0151D;color:#FFDAD6}
+    .ga-pill.na{background:#E1E3E8;color:#0A0A0A}
+    .gl{display:flex;flex-direction:column;padding-top:16px}
+    .gl[hidden]{display:none}
+    .gl-hd{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
+    .gl-t{font-family:var(--disp);font-weight:500;font-size:20px;line-height:20px;color:#0A0A0A}
+    .gl-s{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .gl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 40px}
+    .gl-it{display:flex;font-family:var(--disp);font-size:14px;line-height:20px;color:#56595E}
+    .gl-it svg{flex:none;width:24px;height:24px;margin-right:10px}
+    .gl-it b{font-weight:500;color:#0A0A0A}
+    .gl-qs{display:flex;flex-direction:column;gap:12px;margin-top:32px}
+    .gl-qs:empty{display:none}
+    .gl-q{display:flex;align-items:center;gap:6px;width:100%;min-height:48px;padding:10px 20px 10px 12px;border:0;border-radius:100px;background:#E1E3E8;cursor:pointer;
+      text-align:left;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
+    .gl-q:hover{background:#D7DAE0}
+    .gl-q svg{flex:none;width:28px;height:28px;padding:5px}
+    .gfc{margin-bottom:32px;padding:16px 16px 8px;border-radius:16px;background:#F7F8FA}
+    .gfc[hidden]{display:none}
+    .gfc-hd{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+    .gfc-l{min-width:0}
+    .gfc-t{font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:#0A0A0A}
+    .gfc-lg{display:flex;align-items:center;flex-wrap:wrap;min-height:32px}
+    .gfc-lg span{display:flex;align-items:center;margin-right:20px;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#56595E}
+    .gfc-lg i{width:10px;height:10px;margin-right:6px;border-radius:2px}
+    .gfc-dd{display:inline-flex;align-items:center;height:32px;padding:0 8px 0 16px;border:0;border-radius:16px;background:none;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#0A0A0A;white-space:nowrap}
+    .gfc-dd:hover,.gfc-dd[aria-expanded=true]{background:rgba(10,10,10,.06)}
+    .gfc-dd svg{width:22px;height:22px;margin-left:4px}
+    .gfc .gq-menu{left:auto;right:0}
+    .gfc-svg{display:block;width:100%;height:176px;margin-top:12px}
+    .gfc-svg text{font-family:var(--disp);font-size:10px}
+    @container pr (max-width:640px){
+      .ga-cards,.gpan-cols,.gl-grid{grid-template-columns:1fr}
+      .ga-table .ga-tr,.ga-table .ga-dt{display:none}
+      .ga-subd{display:inline}
+      .gb-r{padding-left:4px}
+    }
     .pr-item.flash{animation:prflash 1.6s ease-out}
     @keyframes prflash{0%,30%{background:#E8F0FE}100%{background:transparent}}
     /* coluna estreita (assistente aberto) */
@@ -945,7 +1056,7 @@
       body{background:#fff}
       .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.pr-foot,.pr-chipin,.pr-tabs,
       .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=acessos],.pr-panel[data-panel=prescricoes],.pr-link,#prForm,
-      .ov-ranges,.ov-tip,.ov-link,.ov-ai-chev,.ov-ai-acts,.ov-empty .ov-pill,.ov-tiles,.ov-persp,.ov .pr-chipin{display:none!important}
+      .ov-ranges,.ov-tip,.ov-link,.ov-ai-chev,.ov-ai-acts,.ov-empty .ov-pill,.ov-tiles,.ov-persp,.ov .pr-chipin,.gb,.ga-btn,.gl-qs,.gfc .gq-dd{display:none!important}
       .ov-row b{white-space:normal}
       .ov-ai-b{display:flex!important;padding-bottom:12px}
       .ov-frame,.ov-empty{background:none!important;box-shadow:inset 0 0 0 1px #E8EAED}
@@ -1487,6 +1598,11 @@
                  cartão do gráfico (barra Linha · Comparar · Indicadores, chips das séries, gráfico, períodos)
                  e tabela de comparação. Fica acima das abas, como no Finance. ===== -->
             <section class="gq" id="ovTop" hidden>
+              <!-- "Why is NVDA down 3.16%? · Dive deeper": só preenche a pergunta no assistente -->
+              <button class="gb" type="button" id="gqWhy" hidden>
+                <span class="gb-l"><span class="gb-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg></span><span class="gb-t" id="gqWhyT"></span></span>
+                <span class="gb-r">Perguntar ao assistente<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="#0A0A0A"/></svg></span>
+              </button>
               <div class="gq-quote" id="gqQuote">
                 <div class="gq-price"><span class="gq-val" id="ovVal">—</span><span class="gq-unit" id="ovUnit"></span><span class="gq-chg" id="ovDelta"></span></div>
                 <div class="gq-date" id="ovWhen"></div>
@@ -1525,6 +1641,7 @@
             <!-- abas (fixas no topo ao rolar) -->
             <div class="pr-tabs" id="prTabs" role="tablist">
               <button type="button" role="tab" data-tab="geral" class="on">Visão geral</button>
+              <button type="button" role="tab" data-tab="analise">Análise</button>
               <button type="button" role="tab" data-tab="atual">Consulta</button>
               <button type="button" role="tab" data-tab="prescricoes">Prescrições</button>
               <button type="button" role="tab" data-tab="consultas">Consultas</button>
@@ -1537,6 +1654,19 @@
               <div class="ov-sec" id="ovSumSec" hidden>
                 <div class="ov-hd"><div class="ov-h" role="heading" aria-level="2">Resumo do paciente</div><div class="ov-hs">Calculado a partir do prontuário e da agenda · sem IA</div></div>
                 <div class="ov-acc" id="ovAcc"></div>
+              </div>
+
+              <!-- "Outlook" do Finance: barra dentro / melhorando / fora + pontos positivos e de atenção -->
+              <div class="ov-sec" id="ovPanSec" hidden>
+                <div class="gpan">
+                  <div class="gpan-hd"><span class="gpan-t">Panorama</span><span class="gpan-s" id="ovPanS"></span></div>
+                  <div class="gpan-bar" id="ovPanBar"></div>
+                  <div class="gpan-lg" id="ovPanLg"></div>
+                </div>
+                <div class="gpan-cols">
+                  <div class="gpan-col" id="ovPanPosC"><div class="gpan-ch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" fill="#046E00"/></svg>Pontos positivos</div><ul id="ovPanPos"></ul></div>
+                  <div class="gpan-col" id="ovPanNegC"><div class="gpan-ch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6z" fill="#C0151D"/></svg>Pontos de atenção</div><ul id="ovPanNeg"></ul></div>
+                </div>
               </div>
 
               <div class="ov-stats" id="ovStats"></div>
@@ -1577,6 +1707,35 @@
               </div>
 
               <div class="ov-note">Faixas de referência gerais para adultos, só para orientar a leitura — não substituem o julgamento clínico.</div>
+            </section>
+
+            <!-- Análise (aba "Analysis" do Finance): situação dos sinais (rosca), faixa no período (barras) e tabela -->
+            <section class="pr-panel" data-panel="analise" hidden>
+              <div class="ga-cards" id="gaCards">
+                <div class="ga-card">
+                  <div class="ga-t">Sinais na referência</div>
+                  <div class="ga-s" id="gaRateS"></div>
+                  <div class="ga-rate">
+                    <div class="ga-donut"><svg id="gaDonut" viewBox="0 0 120 120" aria-hidden="true"></svg><div class="ga-dl" id="gaDonutL"></div></div>
+                    <div class="ga-lg" id="gaLg"></div>
+                  </div>
+                  <button class="ga-btn" type="button" id="gaAsk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg>Perguntar ao assistente</button>
+                </div>
+                <div class="ga-card">
+                  <div class="ga-t">Faixa no período</div>
+                  <div class="ga-s" id="gaRangeS"></div>
+                  <div class="ga-bars" id="gaBars"></div>
+                  <button class="ga-btn" type="button" id="gaSee"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" fill="#0A0A0A"/></svg>Ver no gráfico</button>
+                </div>
+              </div>
+              <table class="ga-table" id="gaTable">
+                <thead><tr><th>Sinal</th><th>Situação</th><th class="ga-tr">Tendência</th><th>Última</th><th>Variação</th><th class="ga-dt">Data</th></tr></thead>
+                <tbody id="gaTBody"></tbody>
+              </table>
+              <div class="ov-empty" id="gaEmpty" hidden>
+                <div class="ov-empty-t">Ainda não há sinais vitais para analisar</div>
+                <div class="ov-empty-s">A análise aparece quando as evoluções têm sinais vitais registrados no modo <b>SOAP</b>.</div>
+              </div>
             </section>
 
             <!-- Consulta atual: evolução (texto livre ou SOAP) -->
@@ -1653,6 +1812,12 @@
                 </div>
                 <div class="pr-addbox" id="prAddBox" hidden></div>
               </div>
+              <!-- "At a glance" da aba Ganhos: destaques calculados + perguntas prontas para o assistente -->
+              <div class="gl" id="gcGlance" hidden>
+                <div class="gl-hd"><span class="gl-t">Em resumo</span><span class="gl-s" id="gcGlanceS"></span></div>
+                <div class="gl-grid" id="gcGlanceL"></div>
+                <div class="gl-qs" id="gcGlanceQ"></div>
+              </div>
             </section>
 
             <!-- Resumo clínico (vale para todas as consultas) -->
@@ -1682,6 +1847,13 @@
               </div>
               <div class="gsub" id="csSinais" hidden>
                 <div class="gh"><span class="gh-t">Sinais por consulta</span><span class="gh-s">Medidas registradas nas evoluções (SOAP)</span></div>
+                <div class="gfc" id="csChart" hidden>
+                  <div class="gfc-hd">
+                    <div class="gfc-l"><div class="gfc-t" id="csChartT"></div><div class="gfc-lg" id="csChartLg"></div></div>
+                    <div class="gq-dd"><button class="gfc-dd" type="button" id="csMetric" aria-haspopup="menu" aria-expanded="false"><span id="csMetricT"></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="csMetricM" role="menu" hidden></div></div>
+                  </div>
+                  <svg class="gfc-svg" id="csSvg" aria-hidden="true"></svg>
+                </div>
                 <div class="gf-wrap"><table class="gf-table" id="csTable"></table></div>
               </div>
             </section>
@@ -3669,7 +3841,7 @@
       // faixa de indicadores da aba Consulta (como "Último relatório | Período fiscal | …" da aba Ganhos)
       function renderStrip() {
         var box = $('gkStrip'); if (!box) return; box.innerHTML = '';
-        if (!ctx) return;
+        if (!ctx) { $('gcGlance').hidden = true; return; }
         function item(l, v, sub, cls) {
           var it = el('div', 'gk-i'); it.appendChild(el('div', 'gk-l', l)); it.appendChild(el('div', 'gk-v', v));
           it.appendChild(el('div', 'gk-s' + (cls ? ' ' + cls : ''), sub || '\u00a0')); box.appendChild(it);
@@ -3683,6 +3855,7 @@
         else item('Evolução', 'Em branco', t0 ? 'Consulta em andamento' : 'Ainda não escrita', t0 ? 'live' : '');
         var fut = (visits || []).filter(function (v) { return parseStart(v.start) >= Date.now() && v.id !== ctx.event_id; })[0];
         item('Próxima consulta', fut ? dayMon(parseStart(fut.start)) : (visits === null ? 'Carregando…' : 'Nenhuma'), fut ? untilTxt(parseStart(fut.start)) : '');
+        renderGlance();
       }
       function lastOther() { return notes.filter(function (n) { return n !== cur && (n.content || '').trim(); })[0] || null; }
       $('prCopyLast').addEventListener('click', function () {
@@ -3800,8 +3973,8 @@
         $('ovTilesWrap').hidden = avail.length < 2; if (!any) $('ovTiles').innerHTML = '';
         $('ovEmpty').hidden = any || !patient;
         $('ovEmptyGo').textContent = ctx && ctx.event_id ? 'Abrir a consulta' : 'Nova evolução';
-        if (any) { renderTiles(S, avail); drawChart(); }
-        renderAcc(S); renderStats(S); renderNext(); renderDx(); renderFeed();
+        if (any) { renderTiles(S, avail); drawChart(); } else $('gqWhy').hidden = true;
+        renderAcc(S); renderPan(S); renderAnalysis(S); renderStats(S); renderNext(); renderDx(); renderFeed();
       }
 
       // ----- séries do gráfico: o sinal principal (PA = sistólica + diastólica) e os comparados -----
@@ -3873,7 +4046,7 @@
       // ----- menus da barra: Linha · Comparar · Indicadores -----
       var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#0B57D0"/></svg>';
       function closeMenus() {
-        [['gqType', 'gqTypeM'], ['gqCmp', 'gqCmpM'], ['gqInd', 'gqIndM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
+        [['gqType', 'gqTypeM'], ['gqCmp', 'gqCmpM'], ['gqInd', 'gqIndM'], ['csMetric', 'csMetricM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
       }
       function mi(label, on, fn, opts) {
         var b = el('button', 'gq-mi'); b.type = 'button'; b.setAttribute('role', opts && opts.radio ? 'menuitemradio' : 'menuitemcheckbox'); b.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -3945,6 +4118,17 @@
         var w = $('ovWhen'); w.innerHTML = '';
         w.appendChild(document.createTextNode(m.label + ' · última medida em ' + dayMon(last.t) + ' · ' + eventTitle(last.n.event_title)));
         if (off(m, last)) { w.appendChild(document.createTextNode(' · ')); w.appendChild(el('span', 'ov-flag', side(m, last) === 'acima' ? 'Acima da referência' : 'Abaixo da referência')); }
+        // aviso do topo (como "Why is NVDA down 3.16%? · Dive deeper"): só preenche a pergunta no assistente
+        var why = $('gqWhy'), wt = $('gqWhyT'), dd = a ? dir(a, last) : 'flat';
+        why.hidden = dd === 'flat'; wt.innerHTML = '';
+        if (dd !== 'flat') {
+          var ar2 = art(m), down = dd === 'down';
+          wt.appendChild(document.createTextNode('Por que ' + ar2 + ' ' + lower1(m.label) + ' ' + (down ? 'caiu' : 'subiu') + ' '));
+          wt.appendChild(el('span', trend(m, a, last) || null, fmtN(Math.abs((last.v / a.v - 1) * 100), 2) + '%'));
+          wt.appendChild(document.createTextNode('?'));
+          why._q = 'O que pode explicar ' + (down ? 'a queda' : 'o aumento') + ' d' + ar2 + ' ' + lower1(m.label) + ' de ' + fmtV(m, a) + ' para ' + fmtV(m, last) + ' ' + m.unit +
+                   ' ' + spanTxt(a.t, last.t) + ' em ' + clinicalCtx() + meds() + '? Quais os próximos passos?';
+        }
       }
       function renderChips(ser) {
         var box = $('gqChips'); box.innerHTML = '';
@@ -3986,7 +4170,7 @@
         var prim = ser[0];
         [].forEach.call($('ovRanges').children, function (b) { var on = +b.getAttribute('data-r') === ov.range; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
         $('gqTypeT').textContent = ov.type === 'area' ? 'Área' : 'Linha';
-        renderQuote(prim, prim.pts); renderChips(ser); renderTable(ser);
+        renderQuote(prim, prim.pts); renderChips(ser); renderTable(ser); renderGaRange(prim);
         ov.hover = -1;
         var svg = $('ovSvg'); svg.innerHTML = '';
         var W = svg.clientWidth || 600, H = svg.clientHeight || 161;
@@ -4387,6 +4571,197 @@
           box.appendChild(b);
         });
       }
+
+      // ===== componentes das outras abas do Finance (NVDA) — tudo calculado aqui, sem IA =====
+      function art(m) { return m.k === 'peso' || m.k === 'imc' ? 'o' : 'a'; }
+      function joinE(l) { return l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || ''; }
+      // situação da última medida: 'ok' (na referência) | 'melhora' (fora, mas aproximando-se) | 'fora' | '' (sinal sem faixa)
+      function stat(m, a) {
+        if (!m.ref || !a.length) return '';
+        var last = a[a.length - 1];
+        if (!off(m, last)) return 'ok';
+        return a.length > 1 && trend(m, a[0], last) === 'up' ? 'melhora' : 'fora';
+      }
+      var SPARKB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0B57D0"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0B57D0"/></svg>';
+      var ICONQ = ICON.ask.replace(/#1F1F1F/g, '#5E5E5E');
+
+      // ----- Panorama (como "Outlook": barra + pontos positivos / de atenção) -----
+      function renderPan(S) {
+        var ms = METRICS.filter(function (m) { return m.ref && S[m.k].length; });
+        $('ovPanSec').hidden = !ms.length || !patient;
+        if ($('ovPanSec').hidden) return;
+        var c = { ok: 0, melhora: 0, fora: 0 }, n = ms.length;
+        ms.forEach(function (m) { c[stat(m, S[m.k])]++; });
+        $('ovPanS').textContent = 'Última medida de ' + n + (n === 1 ? ' sinal com faixa' : ' sinais com faixa') + ' de referência';
+        var bar = $('ovPanBar'), lg = $('ovPanLg'); bar.innerHTML = ''; lg.innerHTML = '';
+        [['ok', '#046E00', 'na referência', '#046E00'], ['melhora', '#DADCE0', 'melhorando', '#747B8C'], ['fora', '#C0151D', 'fora da referência', '#C0151D']].forEach(function (g) {
+          var k = c[g[0]], pc = Math.round(k / n * 100);
+          if (k) { var sp = el('span'); sp.style.flex = String(k); sp.style.background = g[1]; sp.title = k + ' de ' + n + ' ' + g[2]; bar.appendChild(sp); }
+          var l = el('span', null, pc + '% ' + g[2]); l.style.color = g[3]; lg.appendChild(l);
+        });
+        var pos = $('ovPanPos'), neg = $('ovPanNeg'); pos.innerHTML = ''; neg.innerHTML = '';
+        function li(ul, lead, txt) { var x = el('li'); x.appendChild(el('b', null, lead + ': ')); x.appendChild(document.createTextNode(txt)); ul.appendChild(x); }
+        ms.forEach(function (m) {
+          var a = S[m.k], first = a[0], last = a[a.length - 1], st = stat(m, a), u = ' ' + m.unit;
+          var moved = a.length > 1 && dir(first, last) !== 'flat', verb = dir(first, last) === 'down' ? 'caiu' : 'subiu';
+          if (st === 'ok') li(pos, m.label + ' na referência', fmtV(m, last) + u + ' em ' + dayMon(last.t) + (moved ? '; era ' + fmtV(m, first) + u + ' em ' + MON[first.t.getMonth()] + ' ' + first.t.getFullYear() : '') + '.');
+          if (st === 'melhora') li(pos, m.label + ' em melhora', verb + ' de ' + fmtV(m, first) + ' para ' + fmtV(m, last) + u + ' ' + spanTxt(first.t, last.t) + '.');
+          if (st === 'melhora' || st === 'fora') {
+            var worse = a.length > 1 && trend(m, first, last) === 'down';
+            li(neg, m.label + ' ' + side(m, last) + ' da referência', fmtV(m, last) + u + ' em ' + dayMon(last.t) + (m.k === 'imc' ? ', ' + imcClass(last.v) : '') +
+               ' (' + lower1(m.refTxt) + ')' + (worse ? '; piorou desde ' + MON[first.t.getMonth()] + ' ' + first.t.getFullYear() : '') + '.');
+          }
+        });
+        $('ovPanPosC').hidden = !pos.children.length; $('ovPanNegC').hidden = !neg.children.length;
+      }
+
+      // ----- aba Análise: rosca (como "Analyst ratings") + tabela (como a lista de analistas) -----
+      function renderAnalysis(S) {
+        var avail = METRICS.filter(function (m) { return S[m.k].length; }), ms = avail.filter(function (m) { return m.ref; }), any = avail.length > 0;
+        $('gaCards').hidden = !any; $('gaTable').hidden = !any; $('gaEmpty').hidden = any || !patient;
+        if (!any) return;
+        var c = { ok: 0, melhora: 0, fora: 0 }, n = ms.length;
+        ms.forEach(function (m) { c[stat(m, S[m.k])]++; });
+        $('gaRateS').textContent = n ? 'Com base na última medida de ' + n + (n === 1 ? ' sinal' : ' sinais') + ' com faixa de referência' : 'Nenhum sinal com faixa de referência registrado';
+        var G = [['ok', '#046E00', 'Na referência'], ['melhora', '#F4BF00', 'Melhorando'], ['fora', '#C0151D', 'Fora da referência']];
+        var svg = $('gaDonut'); svg.innerHTML = '';
+        svg.appendChild(svgEl('circle', { cx: 60, cy: 60, r: 51, fill: 'none', stroke: '#E1E3E8', 'stroke-width': 14 }));
+        var segs = G.filter(function (g) { return c[g[0]]; }), gap = segs.length > 1 ? 1.2 : 0, acc = 0;
+        segs.forEach(function (g) {
+          var pc = c[g[0]] / n * 100;
+          svg.appendChild(svgEl('circle', { cx: 60, cy: 60, r: 51, fill: 'none', stroke: g[1], 'stroke-width': 14, pathLength: 100, transform: 'rotate(-90 60 60)',
+            'stroke-dasharray': Math.max(0.1, pc - gap).toFixed(2) + ' ' + (100 - pc + gap).toFixed(2), 'stroke-dashoffset': (-acc).toFixed(2) }));
+          acc += pc;
+        });
+        $('gaDonutL').textContent = !n ? 'Sem faixa' : c.ok === n ? 'Todos na referência' : c.ok * 2 > n ? 'Maioria na referência' :
+          c.fora * 2 > n ? 'Maioria fora' : c.melhora * 2 > n ? 'Maioria melhorando' : 'Resultado misto';
+        var lg = $('gaLg'); lg.innerHTML = '';
+        G.forEach(function (g) { var r = el('div', 'ga-lr'), i = el('i'); i.style.background = g[1]; r.appendChild(i); r.appendChild(el('span', null, g[2])); r.appendChild(el('b', null, String(c[g[0]]))); lg.appendChild(r); });
+        var offs = ms.filter(function (m) { return stat(m, S[m.k]) !== 'ok'; }).map(function (m) { var l = S[m.k][S[m.k].length - 1]; return lower1(m.label) + ' ' + fmtV(m, l) + ' ' + m.unit; });
+        $('gaAsk')._q = offs.length ? 'Como priorizar o manejo de ' + joinE(offs) + ' em ' + clinicalCtx() + meds() + '?' : 'Quais metas de acompanhamento para ' + clinicalCtx() + meds() + '?';
+        var tb = $('gaTBody'); tb.innerHTML = '';
+        avail.forEach(function (m) {
+          var a = S[m.k], first = a[0], last = a[a.length - 1], st = stat(m, a), t = a.length > 1 ? trend(m, first, last) : '', d = a.length > 1 ? dir(first, last) : 'flat';
+          var tr = el('tr'), td = el('td'); td.appendChild(el('b', null, m.label));
+          var sm = el('small', null, m.unit); sm.appendChild(el('span', 'ga-subd', ' · ' + dayMon(last.t))); td.appendChild(sm); tr.appendChild(td);
+          var tp = el('td'); tp.appendChild(el('span', 'ga-pill ' + (!m.ref ? 'na' : st === 'ok' ? 'ok' : 'bad'),
+            !m.ref ? 'Sem faixa' : st === 'ok' ? 'Na referência' : side(m, last) === 'acima' ? 'Acima' : 'Abaixo')); tr.appendChild(tp);
+          tr.appendChild(el('td', 'ga-tr', a.length < 2 ? '1 medida' : !m.ref ? (d === 'up' ? 'Subindo' : d === 'down' ? 'Caindo' : 'Estável') :
+            t === 'up' ? 'Melhorando' : t === 'down' ? 'Piorando' : 'Estável'));
+          tr.appendChild(el('td', null, fmtV(m, last) + ' ' + m.unit));
+          tr.appendChild(el('td', t || null, a.length > 1 ? pctTxt((last.v / first.v - 1) * 100) : '—'));
+          tr.appendChild(el('td', 'ga-dt', pad(last.t.getDate()) + '/' + pad(last.t.getMonth() + 1) + '/' + last.t.getFullYear()));
+          tr.title = 'Ver ' + lower1(m.label) + ' no gráfico';
+          tr.addEventListener('click', function () { pickMetric(m.k); $('ovTop').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+          tb.appendChild(tr);
+        });
+      }
+      // ----- "Faixa no período" (como "12-month forecast": maior / média / menor e o valor atual) -----
+      function renderGaRange(prim) {
+        var m = prim.m, pts = prim.pts.length ? prim.pts : prim.all, get = prim.get, box = $('gaBars'); box.innerHTML = '';
+        var vals = pts.map(get), cur = get(prim.all[prim.all.length - 1]);
+        var hi = Math.max.apply(null, vals), lo = Math.min.apply(null, vals), avg = vals.reduce(function (x, v) { return x + v; }, 0) / vals.length;
+        var f = pts[0].t, l = pts[pts.length - 1].t;
+        $('gaRangeS').textContent = (m.k === 'pa' ? 'Pressão arterial sistólica' : m.label) + ' (' + m.unit + ') · ' + vals.length + (vals.length === 1 ? ' medida em ' + dayMon(l) :
+          ' medidas de ' + MON[f.getMonth()] + ' ' + f.getFullYear() + ' a ' + MON[l.getMonth()] + ' ' + l.getFullYear());
+        var max = Math.max(hi, cur) || 1;
+        [['Maior', hi], ['Média', avg], ['Menor', lo]].forEach(function (r) {
+          var row = el('div', 'ga-br'); row.appendChild(el('span', 'ga-bl', r[0]));
+          var tk = el('div', 'ga-bt'), fb = el('div', 'ga-bf'); fb.style.width = (r[1] / max * 100).toFixed(2) + '%';
+          fb.appendChild(el('span', null, fmtN(r[1], m.dec) + ' (' + pctTxt(cur ? (r[1] / cur - 1) * 100 : 0) + ')'));
+          fb.title = r[0] + ' no período: ' + fmtN(r[1], m.dec) + ' ' + m.unit;
+          tk.appendChild(fb); row.appendChild(tk); box.appendChild(row);
+        });
+        var fr = Math.max(0, Math.min(1, cur / max)), x = 'calc(72px + (100% - 72px) * ' + fr.toFixed(4) + ')';
+        var mk = el('div', 'ga-cur'); mk.style.left = x; mk.appendChild(el('i')); mk.appendChild(el('s')); box.appendChild(mk);
+        // a etiqueta desliza na proporção do valor: nunca sai do cartão
+        var pin = el('div', 'ga-pin', 'Atual ' + fmtN(cur, m.dec)); pin.style.left = x; pin.style.transform = 'translateX(-' + (fr * 100).toFixed(1) + '%)'; box.appendChild(pin);
+      }
+      $('gqWhy').addEventListener('click', function () { if (this._q) askAssistant(this._q); });
+      $('gaAsk').addEventListener('click', function () { if (this._q) askAssistant(this._q); });
+      $('gaSee').addEventListener('click', function () { $('ovTop').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+
+      // ----- "Em resumo" da aba Consulta (como "At a glance" da aba Ganhos) -----
+      function renderGlance() {
+        var box = $('gcGlance');
+        if (!ctx || !patient) { box.hidden = true; return; }
+        var S = series(), items = [], here = METRICS.some(function (m) { return cur && S[m.k].some(function (p) { return p.n === cur; }); });
+        METRICS.forEach(function (m) {
+          var a = S[m.k]; if (!a.length) return;
+          var i = a.length - 1;
+          if (here) { i = -1; for (var j = a.length - 1; j >= 0; j--) if (a[j].n === cur) { i = j; break; } if (i < 0) return; }
+          var p = a[i], prev = a[i - 1], o = !!m.ref && off(m, p), u = ' ' + m.unit;
+          var txt = fmtV(m, p) + u + (here ? ' nesta consulta' : ' em ' + dayMon(p.t));
+          if (prev) txt += dir(prev, p) === 'flat' ? ', igual à medida de ' + dayMon(prev.t) : '; ' + deltaTxt(m, prev, p) + u + ' desde ' + dayMon(prev.t) + ' (' + fmtV(m, prev) + ')';
+          if (m.k === 'imc') txt += ', ' + imcClass(p.v);
+          items.push({ lead: m.label + (m.ref ? (o ? ' ' + side(m, p) + ' da referência' : ' na referência') : '') + ': ', txt: txt + '.', r: o ? 0 : 1, k: m.k, v: fmtV(m, p), o: o });
+        });
+        var cid = cur && cur.data && cur.data.cid ? cur.data.cid : [];
+        if (cid.length) items.push({ lead: (cid.length === 1 ? 'Diagnóstico' : 'Diagnósticos') + ' desta consulta: ', r: 1,
+          txt: cid.map(function (x) { return (x.code ? x.code + ' ' : '') + (x.desc || ''); }).join(' · ') + '.' });
+        items.sort(function (a, b) { return a.r - b.r; }); items = items.slice(0, 6);
+        box.hidden = !items.length; if (!items.length) return;
+        $('gcGlanceS').textContent = (here ? 'Sinais desta consulta comparados com a medida anterior' : 'Últimas medidas registradas no prontuário') + ' · calculado aqui, sem IA';
+        var L = $('gcGlanceL'); L.innerHTML = '';
+        items.forEach(function (it) {
+          var d = el('div', 'gl-it'); d.innerHTML = SPARKB;
+          var sp = el('span'); sp.appendChild(el('b', null, it.lead)); sp.appendChild(document.createTextNode(it.txt)); d.appendChild(sp); L.appendChild(d);
+        });
+        var Q = $('gcGlanceQ'); Q.innerHTML = '';
+        var qs = [], fo = items.filter(function (x) { return x.o; })[0];
+        if (fo) qs.push(QUESTION[fo.k](fo.v));
+        qs.push('Quais pontos revisar no retorno de ' + clinicalCtx() + meds() + '?');
+        qs.forEach(function (q) { var b = el('button', 'gl-q'); b.type = 'button'; b.innerHTML = ICONQ; b.appendChild(document.createTextNode(q)); b.addEventListener('click', function () { askAssistant(q); }); Q.appendChild(b); });
+      }
+
+      // ----- gráfico de barras dos sinais por consulta (como o gráfico da aba Finanças) -----
+      var csM = null; try { csM = localStorage.getItem('od_pr_csm'); } catch (_) {}
+      function renderCsChart() {
+        var S = series(), avail = METRICS.filter(function (m) { return S[m.k].length; }), box = $('csChart');
+        box.hidden = !avail.length; if (!avail.length) return;
+        if (!MBY[csM] || !S[csM].length) csM = avail[0].k;
+        var m = MBY[csM], a = S[m.k].slice(-6), two = m.k === 'pa', C1 = '#3364F0', C2 = '#00277E';
+        $('csChartT').textContent = m.label + ' (' + m.unit + ')'; $('csMetricT').textContent = m.label;
+        var lg = $('csChartLg'); lg.innerHTML = '';
+        function key(c, t, bd) { var sp = el('span'), i = el('i'); i.style.background = c; if (bd) i.style.boxShadow = 'inset 0 0 0 1px #4285F4'; sp.appendChild(i); sp.appendChild(document.createTextNode(t)); lg.appendChild(sp); }
+        if (two) { key(C1, 'Sistólica'); key(C2, 'Diastólica', true); } else key(C1, m.label);
+        lg.appendChild(el('span', null, a.length < S[m.k].length ? 'Últimas ' + a.length + ' consultas' : (a.length === 1 ? '1 consulta' : a.length + ' consultas')));
+        var svg = $('csSvg'); svg.innerHTML = '';
+        var W = svg.clientWidth || 540, H = svg.clientHeight || 176, R = 40, B = 30, T = 8, pw = W - R, ph = H - T - B, base = T + ph;
+        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+        var hi = Math.max.apply(null, a.map(function (p) { return two ? Math.max(p.v, p.v2) : p.v; })) || 1;
+        var step = niceStep(hi, 4), top = Math.ceil(hi / step) * step;
+        function Y(v) { return base - v / top * ph; }
+        for (var v = 0; v <= top + step / 2; v += step) {
+          var y = Math.round(Y(v)) + 0.5;
+          svg.appendChild(svgEl('line', { x1: 0, x2: pw, y1: y, y2: y, stroke: '#D3E3FD', 'stroke-width': 1 }));
+          var tx = svgEl('text', { x: W - 2, y: y + 3.5, 'text-anchor': 'end', fill: '#36373A' }); tx.textContent = fmtN(v, step < 1 ? 1 : 0); svg.appendChild(tx);
+        }
+        var gw = pw / a.length, bw = Math.max(8, Math.min(38, two ? (gw - 24) / 2 - 1 : gw - 24));
+        a.forEach(function (p, i) {
+          var cx = gw * i + gw / 2;
+          function bar(x, val, col, bd, nm) {
+            var y = Y(val), r = Math.min(3, base - y);
+            var e = svgEl('path', { fill: col, d: 'M' + x + ' ' + base + 'V' + (y + r) + 'Q' + x + ' ' + y + ' ' + (x + r) + ' ' + y + 'H' + (x + bw - r) + 'Q' + (x + bw) + ' ' + y + ' ' + (x + bw) + ' ' + (y + r) + 'V' + base + 'Z' });
+            if (bd) { e.setAttribute('stroke', '#4285F4'); e.setAttribute('stroke-width', 1); }
+            var tt = svgEl('title', {}); tt.textContent = (nm || m.label) + ': ' + fmtN(val, m.dec) + ' ' + m.unit + ' · ' + dayMon(p.t); e.appendChild(tt);
+            svg.appendChild(e);
+          }
+          if (two) { bar(cx - bw - 1, p.v, C1, false, 'Sistólica'); bar(cx + 1, p.v2, C2, true, 'Diastólica'); } else bar(cx - bw / 2, p.v, C1);
+          svg.appendChild(svgEl('rect', { x: cx - 1, y: base + 2, width: 2, height: 4, fill: '#D3E3FD' }));
+          var lb = svgEl('text', { x: cx, y: base + 20, 'text-anchor': 'middle', fill: '#36373A' }); lb.textContent = dayMon(p.t); svg.appendChild(lb);
+        });
+      }
+      $('csMetric').addEventListener('click', function (e) {
+        e.stopPropagation();
+        var M = $('csMetricM'), open = M.hidden; closeMenus(); if (!open) return;
+        M.innerHTML = ''; var S = series();
+        METRICS.filter(function (x) { return S[x.k].length; }).forEach(function (x) {
+          M.appendChild(mi(x.label, x.k === csM, function () { csM = x.k; try { localStorage.setItem('od_pr_csm', x.k); } catch (_) {} closeMenus(); renderCsChart(); }, { radio: true }));
+        });
+        M.hidden = false; this.setAttribute('aria-expanded', 'true'); var f2 = M.querySelector('button'); if (f2) f2.focus();
+      });
+      if (window.ResizeObserver) new ResizeObserver(function () { if (isOpen() && !$('csSinais').hidden && !$('csChart').hidden) renderCsChart(); }).observe($('csChart'));
       $('ovFeedMore').addEventListener('click', function () { setTab('historico'); $('prView').scrollTop = 0; });
       $('ovEmptyGo').addEventListener('click', function () { setTab('atual'); (mode === 'soap' ? soapEls[0] : note).focus(); });
 
@@ -4403,6 +4778,7 @@
       });
       // sinais por consulta = tabela de Finanças: consultas nas colunas (mais antiga → mais recente), sinais nas linhas
       function renderCs() {
+        renderCsChart();
         var tb = $('csTable'); tb.innerHTML = '';
         var cols = notes.filter(function (n) { return n.data && n.data.vitals && Object.keys(n.data.vitals).length && noteDate(n); })
                         .sort(function (a, b) { return noteDate(a) - noteDate(b); });
@@ -4436,7 +4812,7 @@
         tabs.forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
         [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { p.hidden = p.getAttribute('data-panel') !== t; });
         if (t === 'acessos') loadAccess();
-        if (t === 'geral' && ov.dirty) renderOverview();
+        if ((t === 'geral' || t === 'analise') && ov.dirty) renderOverview();
       }
       tabs.forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
 
