@@ -20,6 +20,8 @@ import collections
 import secrets
 import concurrent.futures
 import mimetypes
+import asyncio
+import struct
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse, Response
@@ -27,6 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer, exemplo
+from . import scribe, stt
 
 mimetypes.add_type("text/javascript", ".mjs")   # pdf.js (web/vendor) é módulo: o navegador exige esse tipo
 
@@ -388,7 +391,8 @@ def _clean_history(raw):
 
 # ===== limite de uso por IP (além do login) =====
 RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em s)
-               "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600)}
+               "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600),
+               "transcribe": (240, 600), "scribe": (30, 600)}      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
 MAX_QUERY_CHARS = 2000
 _RL = {}
 _RL_LOCK = threading.Lock()
@@ -1212,6 +1216,7 @@ MAX_DATA_CHARS = 60000
 _SEX = {"F", "M", "O"}
 _VITALS = ("pa_s", "pa_d", "fc", "fr", "temp", "spo2", "peso", "altura", "glicemia")
 # exames laboratoriais registrados na evolução (a TFG é calculada na tela a partir da creatinina)
+_UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 _LABS = ("hba1c", "ct", "ldl", "hdl", "tg", "creat", "rac", "pot", "sod", "au", "tsh", "hb", "alt")
 
 
@@ -1275,6 +1280,14 @@ def _note_data(v):
     cid = v.get("cid") if isinstance(v.get("cid"), list) else []
     out["cid"] = [{"code": str(c.get("code") or "")[:10], "desc": str(c.get("desc") or "")[:200]}
                   for c in cid[:20] if isinstance(c, dict) and (c.get("code") or c.get("desc"))]
+    sc = v.get("scribe") if isinstance(v.get("scribe"), dict) else None
+    if sc:                                              # evolução gerada pela gravação: rastreio, sem texto
+        pts = sc.get("pontos") if isinstance(sc.get("pontos"), dict) else {}
+        out["scribe"] = {"rec_ids": [str(x).lower() for x in (sc.get("rec_ids") or [])[:20] if _UUID.match(str(x).lower())],
+                         "prompt": str(sc.get("prompt") or "")[:40], "model": str(sc.get("model") or "")[:40],
+                         "consent_at": _iso_or_none(sc.get("consent_at")), "generated_at": _iso_or_none(sc.get("generated_at")),
+                         "pontos": {k: pts[k] for k in ("alto", "medio", "info") if isinstance(pts.get(k), int) and 0 <= pts[k] < 1000},
+                         "conferidos": sc["conferidos"] if isinstance(sc.get("conferidos"), int) and 0 <= sc["conferidos"] < 1000 else 0}
     return out if len(json.dumps(out)) <= MAX_DATA_CHARS else None
 
 
@@ -1387,6 +1400,8 @@ async def prontuario_save(request: Request):
     except db.NoteLocked:
         return JSONResponse({"error": "evolução finalizada: use um adendo"}, status_code=409)
     db.touch_patient(u["id"], p["id"])
+    if data and data.get("scribe") and data["scribe"]["rec_ids"]:
+        db.rec_link_note(u["id"], p["id"], data["scribe"]["rec_ids"], nid)
     db.log_access(u["id"], "note_edit", p["id"], nid, dedupe_minutes=10)
     return {"ok": True, "id": nid}
 
@@ -1593,6 +1608,223 @@ def prontuario_file_delete(file_id: int, request: Request):
     if pid is None:
         return JSONResponse({"error": "anexo não encontrado"}, status_code=404)
     db.log_access(u["id"], "file_delete", pid)
+    return {"ok": True}
+
+
+# --- gravação da consulta (só contas liberadas: SCRIBE_EMAILS / SCRIBE_ALL; SCRIBE_OFF desliga) ---
+# O áudio vem em trechos WAV, fica só na memória durante a transcrição e some; guarda-se o texto.
+MAX_SEG_BYTES = 5 * 1024 * 1024
+MAX_SEG_S = 60                          # trecho normal: 15–30 s
+SCRIBE_DAY_S = 6 * 3600                 # teto por médico em 24 h
+
+
+def _scribe_gate(u):
+    """None se a conta pode gravar; senão a resposta. Desligado (SCRIBE_OFF) ou sem chave → 503: a página
+    guarda os trechos e tenta de novo depois. Conta sem a gravação → 403."""
+    if config.SCRIBE_OFF:
+        return JSONResponse({"error": "gravação desligada no momento"}, status_code=503)
+    if not scribe_on(u):
+        return JSONResponse({"error": "gravação não liberada para esta conta"}, status_code=403)
+    if not config.OPENAI_API_KEY:
+        return JSONResponse({"error": "transcrição indisponível no momento"}, status_code=503)
+    return None
+
+
+def _wav_seconds(b):
+    """Duração de um WAV PCM 16 bits mono 16 kHz (o formato da página) ou None se for outra coisa."""
+    if len(b) < 46 or b[:4] != b"RIFF" or b[8:12] != b"WAVE" or b[12:16] != b"fmt " or b[36:40] != b"data":
+        return None
+    fmt, ch, rate = struct.unpack("<HHI", b[20:28])
+    bits, n = struct.unpack("<H", b[34:36])[0], struct.unpack("<I", b[40:44])[0]
+    if fmt != 1 or ch != 1 or rate != 16000 or bits != 16 or not 0 < n <= len(b) - 44:
+        return None
+    return n / 32000
+
+
+def _num_or_none(v, lo, hi):
+    try:
+        x = float(v)
+    except (TypeError, ValueError):
+        return None
+    return x if lo <= x <= hi else None
+
+
+def _rec_ids(b):
+    ids = [b.get("rec_id")] + (b.get("rec_ids") if isinstance(b.get("rec_ids"), list) else [])
+    return [str(x).lower() for x in ids[:20] if _UUID.match(str(x or "").lower())]
+
+
+def _years(bd):
+    d = _date_or_none(bd)
+    if not d:
+        return ""
+    b, t = datetime.date.fromisoformat(d), datetime.date.today()
+    return f"{t.year - b.year - ((t.month, t.day) < (b.month, b.day))} anos"
+
+
+@app.post("/prontuario/transcribe")
+async def prontuario_transcribe(request: Request):
+    """Transcreve um trecho da gravação. O corpo é o WAV; paciente, gravação e ordem vão em cabeçalhos (nunca
+    o nome). Reenvio do mesmo rec_id + seq devolve o texto já guardado, sem transcrever (nem cobrar) de novo.
+    Cabeçalho próprio + tipo não-JSON obrigam o pre-flight: outro site não consegue enviar."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    gate = _scribe_gate(u)
+    if gate:
+        return gate
+    h = request.headers
+    pid, rid, seq = str(h.get("x-patient-id") or ""), str(h.get("x-rec-id") or "").lower(), str(h.get("x-seq") or "")
+    if not (pid.isdigit() and _UUID.match(rid) and seq.isdigit() and 0 < int(seq) <= 2000):
+        return JSONResponse({"error": "trecho sem identificação"}, status_code=400)
+    consent = _iso_or_none(h.get("x-consent"))
+    if not consent:
+        return JSONResponse({"error": "autorização do paciente obrigatória"}, status_code=400)
+    p = db.get_patient(u["id"], int(pid))
+    if not p:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    seq = int(seq)
+    done = db.rec_segment(u["id"], rid, seq)
+    if done:
+        return {"ok": True, "text": done["text"], "duvidas": done["duvidas"], "repetido": True}
+    if _rate_limited(request, "transcribe"):
+        return JSONResponse({"error": "muitos trechos em pouco tempo"}, status_code=429)
+    cl = h.get("content-length") or ""
+    if cl.isdigit() and int(cl) > MAX_SEG_BYTES:
+        return JSONResponse({"error": "trecho grande demais"}, status_code=413)
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > MAX_SEG_BYTES:
+            return JSONResponse({"error": "trecho grande demais"}, status_code=413)
+    dur = _wav_seconds(bytes(body))
+    if dur is None:
+        return JSONResponse({"error": "formato não aceito: WAV 16 kHz mono"}, status_code=415)
+    if dur > MAX_SEG_S:
+        return JSONResponse({"error": "trecho longo demais"}, status_code=413)
+    if db.rec_seconds_today(u["id"]) + dur > SCRIBE_DAY_S:
+        return JSONResponse({"error": "limite de 6 horas de gravação em 24 horas"}, status_code=429)
+    nid = str(h.get("x-note-id") or "")
+    if not db.rec_open(u["id"], p["id"], rid, str(h.get("x-event-id") or "")[:300] or None,
+                       int(nid) if nid.isdigit() else None, consent):
+        return JSONResponse({"error": "gravação não encontrada"}, status_code=404)
+    t0 = time.time()
+    try:
+        r = await stt.atranscribe(bytes(body), "audio/wav", prompt=db.rec_prev_text(u["id"], rid, seq),
+                                  keywords=scribe.keywords(p))
+    except Exception as e:                                  # o log nunca leva conteúdo
+        print("[gravacao] transcrição falhou:", type(e).__name__, flush=True)
+        return JSONResponse({"error": "a transcrição falhou; o trecho fica guardado e é enviado de novo"}, status_code=502)
+    db.rec_add_segment(u["id"], rid, seq, _num_or_none(h.get("x-at"), 0, 24 * 3600) or 0.0, dur, r["text"], r["duvidas"])
+    db.log_access(u["id"], "recording", p["id"], dedupe_minutes=180)
+    print(f"[gravacao] trecho {seq}: {dur:.1f} s transcritos em {time.time() - t0:.1f} s", flush=True)
+    return {"ok": True, "text": r["text"], "duvidas": r["duvidas"]}
+
+
+def _rec_patient(u, b):
+    pid = b.get("patient_id")
+    return db.get_patient(u["id"], int(pid)) if str(pid or "").isdigit() else None
+
+
+def _rec_where(b):
+    nid = b.get("note_id")
+    return str(b.get("event_id") or "")[:300] or None, int(nid) if str(nid or "").isdigit() else None, _rec_ids(b)
+
+
+@app.post("/prontuario/recordings/state")
+async def prontuario_recordings_state(request: Request):
+    """O que já foi transcrito nesta consulta (para continuar depois que a aba fechou ou a internet caiu)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    b = await _json(request)
+    p = _rec_patient(u, b)
+    if not p:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    recs = db.rec_list(u["id"], p["id"], *_rec_where(b))
+    return {"recordings": [{k: r[k] for k in ("rec_id", "status", "consent_at", "seconds", "updated_at", "segments")} for r in recs]}
+
+
+def _line(obj):
+    return json.dumps(obj, ensure_ascii=False) + "\n"
+
+
+@app.post("/prontuario/scribe")
+async def prontuario_scribe(request: Request):
+    """Escreve a evolução a partir das transcrições da consulta e confere (sem IA) números, remédios, doses,
+    alergias, sinais vitais e CID. Responde em linhas JSON (progresso, depois o resultado): a geração leva
+    uns 10–20 s e a linha de progresso mantém a conexão viva (o Cloudflare corta resposta parada em 100 s).
+    Vai ao modelo só texto mascarado (nome, CPF, telefone, e-mail), o cadastro e o perfil de escrita."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    gate = _scribe_gate(u)
+    if gate:
+        return gate
+    b = await _json(request)
+    p = _rec_patient(u, b)
+    if not p:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    if _rate_limited(request, "scribe"):
+        return JSONResponse({"error": "muitos pedidos em pouco tempo"}, status_code=429)
+    eid, nid, rids = _rec_where(b)
+    recs = db.rec_list(u["id"], p["id"], eid, nid, rids)
+    segs, table = [], []                     # numeração única para o modelo, mesmo com mais de uma gravação
+    for r in recs:
+        for s in r["segments"]:
+            if (s.get("text") or "").strip():
+                table.append({"n": len(table) + 1, "rec_id": r["rec_id"], "seq": s["seq"], "at": s["at"]})
+                segs.append({"seq": len(table), "at": s["at"], "text": s["text"], "duvidas": s.get("duvidas") or []})
+    if not segs:
+        return JSONResponse({"error": "nada transcrito nesta consulta ainda"}, status_code=400)
+    mode = "soap" if b.get("mode") == "soap" else "free"
+    cad = {"age": _years(p.get("birth_date")), "sex": p.get("sex") or "", "problems": p["problems"],
+           "medications": p["medications"], "allergies": p["allergies"]}
+    profile = scribe.writing_profile(db.recent_notes(u["id"]))
+    last = next((n["content"] for n in db.list_notes(u["id"], p["id"], p["key"])
+                 if (n["content"] or "").strip() and n["id"] != nid and (eid is None or n["event_id"] != eid)
+                 and (n.get("data") or {}).get("kind") != "labs"), "")
+    msgs = scribe.build_messages(segs, mode, cad, profile, last, p["name"])
+
+    async def run():
+        yield _line({"step": "escrevendo", "trechos": len(segs)})
+        task = asyncio.ensure_future(asyncio.to_thread(scribe.ask_model, msgs))
+        while True:
+            done, _ = await asyncio.wait({task}, timeout=8)
+            if done:
+                break
+            yield _line({"step": "escrevendo"})
+        try:
+            raw = task.result()
+        except Exception as e:                              # o log nunca leva conteúdo
+            print("[gravacao] geração falhou:", type(e).__name__, flush=True)
+            yield _line({"error": "o serviço de IA não respondeu"})
+            return
+        yield _line({"step": "conferindo"})
+        res, flags, _ = scribe.finish(raw, segs, mode, cad, p["name"])
+        fields = scribe.render_text(res)
+        if not any(v.strip() for v in fields.values()):
+            yield _line({"error": "a IA não devolveu uma evolução válida"})
+            return
+        meta = {"rec_ids": [r["rec_id"] for r in recs], "prompt": scribe.PROMPT_VERSION, "model": config.OPENAI_SCRIBE_MODEL,
+                "consent_at": recs[0]["consent_at"], "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")}}
+        db.rec_generated(u["id"], meta["rec_ids"], meta, nid)
+        db.log_access(u["id"], "scribe", p["id"], nid)
+        yield _line({"ok": True, "result": dict(res, fields=fields), "flags": flags, "segs": table, "meta": meta})
+    return StreamingResponse(run(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
+
+
+@app.delete("/prontuario/recordings/{rec_id}")
+def prontuario_recording_delete(rec_id: str, request: Request):
+    """Apaga a transcrição de uma gravação. Fica registrado no histórico de acessos."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    pid = db.rec_delete(u["id"], rec_id.lower()) if _UUID.match(rec_id.lower()) else None
+    if pid is None:
+        return JSONResponse({"error": "gravação não encontrada"}, status_code=404)
+    db.log_access(u["id"], "recording_delete", pid)
     return {"ok": True}
 
 

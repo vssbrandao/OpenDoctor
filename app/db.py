@@ -597,6 +597,10 @@ def delete_patient(user_id, patient_id):
             cur.execute("select 1 from patient_files where user_id = %s and patient_id = %s limit 1", (user_id, patient_id))
             if cur.fetchone():                          # exame anexado também é prontuário
                 return "has_notes"
+            cur.execute("""select 1 from recording_segments s join recordings r on r.id = s.rec_id
+                           where r.user_id = %s and r.patient_id = %s limit 1""", (user_id, patient_id))
+            if cur.fetchone():                          # transcrição de consulta também (gravação vazia sai junto)
+                return "has_notes"
             cur.execute("delete from clinical_notes where user_id = %s and patient_id = %s", (user_id, patient_id))
             cur.execute("delete from patients where user_id = %s and id = %s", (user_id, patient_id))
         conn.commit()
@@ -793,6 +797,114 @@ def delete_file(user_id, file_id):
                          (user_id, file_id)).fetchone()
         conn.commit()
     return r[0] if r else None
+
+
+# --- gravação da consulta: só o texto de cada trecho (o áudio nunca chega aqui) ---
+def rec_open(user_id, patient_id, rec_id, event_id=None, note_id=None, consent_at=None):
+    """Garante a gravação rec_id deste médico e paciente. Devolve False se o id já é de outro médico ou
+    paciente (não mistura), True se existe ou foi criada."""
+    with connection() as conn:
+        conn.execute("""insert into recordings (id, user_id, patient_id, event_id, note_id, consent_at)
+                        values (%s,%s,%s,%s,%s,coalesce(%s::timestamptz, now())) on conflict (id) do nothing""",
+                     (rec_id, user_id, patient_id, event_id, note_id, consent_at))
+        r = conn.execute("select user_id::text, patient_id from recordings where id = %s", (rec_id,)).fetchone()
+        conn.commit()
+    return bool(r) and r[0] == str(user_id) and r[1] == patient_id
+
+
+def rec_segment(user_id, rec_id, seq):
+    """Trecho já transcrito (reenvio): {text, duvidas} ou None."""
+    with connection() as conn:
+        r = conn.execute("""select s.text, s.duvidas from recording_segments s join recordings r on r.id = s.rec_id
+                            where r.user_id = %s and s.rec_id = %s and s.seq = %s""", (user_id, rec_id, seq)).fetchone()
+    return {"text": r[0], "duvidas": r[1] or []} if r else None
+
+
+def rec_prev_text(user_id, rec_id, seq):
+    """Texto do trecho anterior (vai como contexto para a transcrição do próximo)."""
+    with connection() as conn:
+        r = conn.execute("""select s.text from recording_segments s join recordings r on r.id = s.rec_id
+                            where r.user_id = %s and s.rec_id = %s and s.seq < %s order by s.seq desc limit 1""",
+                         (user_id, rec_id, seq)).fetchone()
+    return r[0] if r else ""
+
+
+def rec_add_segment(user_id, rec_id, seq, at, dur, text, duvidas):
+    """Guarda o texto do trecho (uma vez só por rec_id + seq) e avança a gravação."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        conn.execute("""insert into recording_segments (rec_id, seq, at_s, dur_s, text, duvidas)
+                        select %s,%s,%s,%s,%s,%s where exists (select 1 from recordings where id = %s and user_id = %s)
+                        on conflict (rec_id, seq) do nothing""",
+                     (rec_id, seq, at, dur, text, Jsonb(list(duvidas or [])), rec_id, user_id))
+        conn.execute("""update recordings set seconds = greatest(seconds, %s), status = 'gravando', updated_at = now()
+                        where id = %s and user_id = %s""", (at + dur, rec_id, user_id))
+        conn.commit()
+
+
+def rec_seconds_today(user_id):
+    """Segundos transcritos nas últimas 24 h (teto diário por médico)."""
+    with connection() as conn:
+        r = conn.execute("""select coalesce(sum(s.dur_s), 0) from recording_segments s join recordings r on r.id = s.rec_id
+                            where r.user_id = %s and s.created_at > now() - interval '1 day'""", (user_id,)).fetchone()
+    return float(r[0] or 0)
+
+
+def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=()):
+    """Gravações de uma consulta (pela consulta da agenda, pela evolução ou pelos ids que a página conhece),
+    da mais antiga para a mais nova, com os trechos."""
+    ids = [str(x) for x in rec_ids or ()][:20]
+    if not (event_id or note_id or ids):
+        return []
+    with connection() as conn:
+        rows = conn.execute(
+            """select r.id::text, r.status, r.consent_at, r.seconds, r.updated_at, r.event_id, r.note_id,
+                      coalesce((select json_agg(json_build_object('seq', s.seq, 'at', s.at_s, 'dur', s.dur_s, 'text', s.text,
+                                                                  'duvidas', s.duvidas) order by s.seq)
+                                from recording_segments s where s.rec_id = r.id), '[]'::json)
+               from recordings r
+               where r.user_id = %s and r.patient_id = %s
+                 and ((%s::text is not null and r.event_id = %s) or (%s::bigint is not null and r.note_id = %s)
+                      or r.id::text = any(%s::text[]))
+               order by r.created_at""",
+            (user_id, patient_id, event_id, event_id, note_id, note_id, ids)).fetchall()
+    return [{"rec_id": r[0], "status": r[1], "consent_at": r[2].isoformat(), "seconds": r[3],
+             "updated_at": r[4].isoformat(), "event_id": r[5], "note_id": r[6], "segments": r[7] or []} for r in rows]
+
+
+def rec_generated(user_id, rec_ids, meta, note_id=None):
+    """Marca as gravações como geradas (com a versão do prompt, o modelo e a contagem dos pontos)."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        conn.execute("""update recordings set status = 'gerada', scribe = %s, note_id = coalesce(%s, note_id), updated_at = now()
+                        where user_id = %s and id::text = any(%s::text[])""", (Jsonb(meta), note_id, user_id, [str(x) for x in rec_ids]))
+        conn.commit()
+
+
+def rec_link_note(user_id, patient_id, rec_ids, note_id):
+    """A evolução salva passa a apontar para as gravações que a geraram (consulta avulsa não tem event_id)."""
+    if not rec_ids:
+        return
+    with connection() as conn:
+        conn.execute("""update recordings set note_id = %s where user_id = %s and patient_id = %s and id::text = any(%s::text[])""",
+                     (note_id, user_id, patient_id, [str(x) for x in rec_ids][:20]))
+        conn.commit()
+
+
+def rec_delete(user_id, rec_id):
+    """Apaga a transcrição (gravação + trechos). Devolve o patient_id ou None."""
+    with connection() as conn:
+        r = conn.execute("delete from recordings where user_id = %s and id = %s returning patient_id", (user_id, rec_id)).fetchone()
+        conn.commit()
+    return r[0] if r else None
+
+
+def recent_notes(user_id, limit=30):
+    """Últimas evoluções do médico (para o perfil de escrita, calculado aqui no servidor: nenhum texto sai)."""
+    with connection() as conn:
+        rows = conn.execute("""select content, data from clinical_notes where user_id = %s and content <> ''
+                               order by updated_at desc limit %s""", (user_id, limit)).fetchall()
+    return [{"content": r[0], "data": r[1] or {}} for r in rows]
 
 
 def log_access(user_id, action, patient_id=None, note_id=None, dedupe_minutes=0):

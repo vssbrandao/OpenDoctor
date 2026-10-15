@@ -118,3 +118,33 @@ def test_finalizar_guarda_o_tempo_de_documentacao_uma_vez(novo_usuario):
     assert db.get_note(uid, nid)["data"]["timing"] == {"active_s": 300, "wall_s": 420, "edits": 12}
     db.finalize_note(uid, nid, {"active_s": 1, "wall_s": 1, "edits": 1})          # já finalizada: não muda
     assert db.get_note(uid, nid)["data"]["timing"]["active_s"] == 300
+
+
+def test_gravacao_da_consulta(novo_usuario):
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p = db.create_patient(ana, "Paciente da Ana")
+    rid = str(uuid.uuid4())
+    assert db.rec_open(ana, p["id"], rid, "ev1", None, "2026-10-15T10:00:00Z")
+    assert db.rec_open(ana, p["id"], rid, "ev1")                      # reabrir a mesma gravação vale
+    assert not db.rec_open(beto, p["id"], rid)                       # id de outro médico: não mistura
+    db.rec_add_segment(ana, rid, 1, 0.0, 20.0, "Pressão 128 por 82.", ["82"])
+    db.rec_add_segment(ana, rid, 1, 0.0, 20.0, "outro texto", [])     # reenvio: fica o primeiro
+    db.rec_add_segment(beto, rid, 2, 20.0, 20.0, "invasão", [])       # gravação de outro médico: ignorado
+    db.rec_add_segment(ana, rid, 2, 20.0, 18.5, "Manter losartana.", [])
+    assert db.rec_segment(ana, rid, 1) == {"text": "Pressão 128 por 82.", "duvidas": ["82"]}
+    assert db.rec_segment(beto, rid, 1) is None
+    assert db.rec_prev_text(ana, rid, 2) == "Pressão 128 por 82."
+    assert 38 <= db.rec_seconds_today(ana) <= 39 and db.rec_seconds_today(beto) == 0
+    for where in ({"event_id": "ev1"}, {"rec_ids": [rid]}):
+        recs = db.rec_list(ana, p["id"], **where)
+        assert [r["rec_id"] for r in recs] == [rid] and [s["seq"] for s in recs[0]["segments"]] == [1, 2]
+        assert recs[0]["seconds"] == 38.5 and recs[0]["status"] == "gravando"
+    assert db.rec_list(beto, p["id"], event_id="ev1") == [] and db.rec_list(ana, p["id"]) == []
+    assert db.delete_patient(ana, p["id"]) == "has_notes"            # só a transcrição já é prontuário
+    nid = db.upsert_note(ana, p["id"], p["key"], p["name"], "ev1", "Consulta", None, "S: teste")
+    db.rec_generated(ana, [rid], {"prompt": "x"}, None)
+    db.rec_link_note(ana, p["id"], [rid], nid)
+    r = db.rec_list(ana, p["id"], note_id=nid)[0]
+    assert r["status"] == "gerada" and r["note_id"] == nid
+    assert db.rec_delete(beto, rid) is None and db.rec_delete(ana, rid) == p["id"]
+    assert db.rec_segment(ana, rid, 1) is None

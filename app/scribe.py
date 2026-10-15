@@ -709,11 +709,8 @@ def render_text(res):
     return {k: join(v) for k, v in res["fields"].items()}
 
 
-def generate(segments, mode, patient=None, profile="", last_note="", patient_name="", model=None):
-    """Síncrono (avaliação). Devolve (resultado, pontos, bruto)."""
-    msgs = build_messages(segments, mode, patient, profile, last_note, patient_name)
-    raw = llm.chat(msgs, temperature=0, max_tokens=6000, model=model or config.OPENAI_SCRIBE_MODEL, json_mode=True,
-                   reasoning=config.REASONING_EFFORT)
+def finish(raw, segments, mode, patient=None, patient_name=""):
+    """Resposta bruta do modelo → (resultado conferido, pontos para conferir, saída do modelo)."""
     try:
         out = json.loads(raw)
     except ValueError:
@@ -721,3 +718,27 @@ def generate(segments, mode, patient=None, profile="", last_note="", patient_nam
     masked = [dict(s, text=mask(s.get("text"), patient_name)) for s in segments]
     res, flags = check(out, masked, mode, patient)
     return res, flags, out
+
+
+def ask_model(msgs, model=None):
+    """Chamada síncrona ao modelo (o servidor roda em outra thread: o Render tem um processo só)."""
+    return llm.chat(msgs, temperature=0, max_tokens=6000, model=model or config.OPENAI_SCRIBE_MODEL, json_mode=True,
+                    reasoning=config.REASONING_EFFORT)
+
+
+def generate(segments, mode, patient=None, profile="", last_note="", patient_name="", model=None):
+    """Síncrono (avaliação). Devolve (resultado, pontos, bruto)."""
+    msgs = build_messages(segments, mode, patient, profile, last_note, patient_name)
+    return finish(ask_model(msgs, model), segments, mode, patient, patient_name)
+
+
+def keywords(patient):
+    """Palavras que ajudam o transcritor a acertar: remédios, problemas e alergias do cadastro, sem dose
+    (o nome do paciente não entra)."""
+    p, out = patient or {}, []
+    for k in ("medications", "problems", "allergies"):
+        for line in re.split(r"[\n;,]+", p.get(k) or ""):
+            w = re.split(r"\s+\d+(?:[.,]\d+)?\s*(?:mg|mcg|µg|g|ml|ui|%|gotas?|comp)\b|\s+\(", line.strip(), flags=re.I)[0].strip(" -•*.")
+            if 3 <= len(w) <= 40:
+                out.append(w)
+    return out[:50]

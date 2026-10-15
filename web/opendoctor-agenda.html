@@ -3737,7 +3737,8 @@
       var ACTION = { view: 'Abriu o prontuário', note_edit: 'Editou evolução', note_finalize: 'Finalizou evolução',
                      file_add: 'Anexou exame', file_view: 'Abriu exame anexado', file_delete: 'Excluiu exame anexado',
                      addendum: 'Adicionou adendo', patient_create: 'Cadastrou o paciente', patient_update: 'Alterou cadastro ou resumo clínico',
-                     export: 'Exportou / imprimiu' };
+                     export: 'Exportou / imprimiu', recording: 'Gravou a consulta (paciente autorizou)',
+                     scribe: 'Gerou a evolução pela gravação', recording_delete: 'Apagou a transcrição' };
 
       function pad(n) { return String(n).padStart(2, '0'); }
       function parseStart(v) {
@@ -3995,7 +3996,7 @@
       }
       function soapText() { return soapEls.some(function (e) { return e.value.trim(); }) || Object.keys(vitals()).length || Object.keys(labs()).length || cids.length; }
       function compose() {
-        if (mode === 'free') return { content: note.value, data: { mode: 'free' } };
+        if (mode === 'free') return rrTag({ content: note.value, data: { mode: 'free' } });
         var f = {}; soapEls.forEach(function (e) { f[e.getAttribute('data-f')] = e.value; });
         var v = vitals(), old = cur && cur.data && cur.data.labs && cur.data.labs.v ? cur.data.labs : null, parts = [];
         if (f.s.trim()) parts.push('S: ' + f.s.trim());
@@ -4003,9 +4004,10 @@
         var a = [f.a.trim(), cids.length ? 'CID-10: ' + cids.map(function (c) { return (c.code + ' ' + c.desc).trim(); }).join('; ') : '']
                   .filter(Boolean).join('\n'); if (a) parts.push('A: ' + a);
         if (f.p.trim()) parts.push('P: ' + f.p.trim());
-        return { content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v,
-                 labs: old || undefined, cid: cids.slice() } };
+        return rrTag({ content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v,
+                 labs: old || undefined, cid: cids.slice() } });
       }
+      function rrTag(x) { var m = rrMeta(); if (m) x.data.scribe = m; return x; }   // evolução gerada pela gravação
       function snap(x) { return JSON.stringify(x || compose()); }
       function updImc() { var i = imcOf(vitals()); $('prImc').textContent = i ? i.toFixed(1).replace('.', ',') : '—'; }
       // faixa plausível de cada sinal vital: fora dela o campo fica vermelho (provável erro de digitação)
@@ -5308,23 +5310,58 @@
       }
       function rrGenerate(r) {
         if (r.st !== 'ending' && r.st !== 'fail') return;
-        r.st = 'gen'; r.genT0 = Date.now(); rrRender(r);
-        var my = r;
-        api('POST', '/prontuario/scribe', { patient_id: patient && patient.id, event_id: ctx && ctx.event_id || null, note_id: ctx && ctx.note_id || null,
-                                            rec_id: r.recId, mode: mode }).then(function (res) {
-          if (!(res.ok && res.j && res.j.ok)) throw new Error((res.j && res.j.error) || ('http ' + res.status));
-          my.result = res.j.result; my.flags = res.j.flags || []; my.checked = {}; my.st = 'done'; my.finalOk = false;
-          if (my === rrCur() && ready && !locked()) rrApply(my); else my.pending = true;
-          rrRender(my);
-        }).catch(function (e) { my.st = 'fail'; my.err = String(e && e.message || e); rrRender(my); });
+        r.st = 'gen'; r.genStep = 'escrevendo'; rrRender(r);
+        var my = r, buf = '', last = null;
+        fetch('/prontuario/scribe', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ patient_id: patient && patient.id, event_id: ctx && ctx.event_id || null, note_id: ctx && ctx.note_id || null,
+                                 rec_id: r.recId, mode: mode }) })
+          .then(function (resp) {
+            if (!resp.ok || !resp.body) return resp.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('http ' + resp.status)); });
+            var rd = resp.body.getReader(), dec = new TextDecoder();
+            function take(l) {                         // uma linha: {step} enquanto escreve; no fim {ok, result…} ou {error}
+              if (!l.trim()) return;
+              var j = JSON.parse(l);
+              if (j.step && j.step !== my.genStep) { my.genStep = j.step; if (my.st === 'gen') rrRender(my); }
+              if (j.ok || j.error) last = j;
+            }
+            function pump() {
+              return rd.read().then(function (x) {
+                if (x.done) { take(buf); return; }
+                buf += dec.decode(x.value, { stream: true });
+                var ls = buf.split('\n'); buf = ls.pop(); ls.forEach(take);
+                return pump();
+              });
+            }
+            return pump();
+          })
+          .then(function () {
+            if (!last || !last.ok) throw new Error((last && last.error) || 'resposta incompleta');
+            my.result = last.result; my.flags = last.flags || []; my.segTable = last.segs || []; my.meta = last.meta || null;
+            my.checked = {}; my.st = 'done'; my.finalOk = false;
+            if (my === rrCur() && ready && !locked()) rrApply(my); else my.pending = true;
+            rrRender(my);
+          })
+          .catch(function (e) { my.st = 'fail'; my.err = String(e && e.message || e); rrRender(my); });
       }
+      // trecho citado num ponto para conferir: a geração numera os trechos de todas as gravações da consulta
+      function rrRef(r, n) {
+        var t = (r.segTable || []).filter(function (x) { return x.n === n; })[0];
+        if (!t) { var sg = r.segs.filter(function (s) { return s.seq === n; })[0]; return { seq: sg ? n : null, at: sg ? sg.at : null }; }
+        return { seq: t.rec_id === r.recId ? t.seq : null, at: t.at };
+      }
+      // rastreio na evolução (vai em data.scribe; sem texto): versão do prompt, modelo, autorização, pontos conferidos
+      function rrMeta() {
+        var r = RR && RR.on && rrCur(); if (!r || !r.meta || !r.applied) return null;
+        return Object.assign({}, r.meta, { conferidos: Object.keys(r.checked).filter(function (k) { return r.checked[k]; }).length });
+      }
+      function rrTextSnap() { var x = compose(), d = Object.assign({}, x.data); delete d.scribe; return JSON.stringify([x.content, d]); }
       // escreve a evolução: campo vazio recebe o texto; campo com o que o médico digitou fica intacto e o texto entra embaixo.
       // Gerou de novo (gravou mais um trecho): troca o texto gerado antes só se ninguém mexeu nele.
       var SOAPK = ['s', 'o', 'a', 'p'], VITN = { spo2: ['SpO2', '%'], pa_s: ['PAS', 'mmHg'], pa_d: ['PAD', 'mmHg'], fc: ['FC', 'bpm'], fr: ['FR', 'irpm'],
         temp: ['Temperatura', '°C'], peso: ['Peso', 'kg'], altura: ['Altura', 'cm'], glicemia: ['Glicemia capilar', 'mg/dL'] };
       function rrApply(r) {
         if (locked() || !r.result) return;
-        if (r.applied) { if (snap() === r.appliedSnap) fillEditor(r.undo); else { r.applied = false; rrRender(r); return; } }
+        if (r.applied) { if (rrTextSnap() === r.appliedSnap) fillEditor(r.undo); else { r.applied = false; rrRender(r); return; } }
         var x = compose(); r.undo = { content: x.content, data: x.data };
         var f = r.result.fields || {}, isSoap = SOAPK.some(function (k) { return f[k]; });
         function put(t, txt) { if (!txt) return false; t.value = t.value.trim() ? t.value.replace(/\s+$/, '') + '\n\n' + txt : txt; return true; }
@@ -5332,7 +5369,7 @@
           var parts = isSoap ? f : { s: f.livre }, extra = [], marks = {};
           Object.keys(r.result.vitals || {}).forEach(function (k) {
             var v = String(r.result.vitals[k]).replace('.', ','), inp = vitEls.filter(function (e) { return e.getAttribute('data-v') === k; })[0];
-            if (inp) { if (!inp.value.trim()) { inp.value = v; checkVital(inp); marks.o = 1; } else if (num(inp.value) !== num(v)) extra.push((VITN[k] || [k])[0] + ' ' + v + ' (gravação)'); }
+            if (inp) { if (!inp.value.trim()) { inp.value = v; checkVital(inp); marks.o = 1; } else if (num(inp.value) !== num(v)) extra.push(((VITN[k] || [k])[0] + ' na gravação: ' + v + ' ' + ((VITN[k] || [])[1] || '')).trim()); }
             else extra.push((VITN[k] || [k])[0] + ' ' + v + ' ' + ((VITN[k] || [])[1] || ''));
           });
           soapEls.forEach(function (t) { var k = t.getAttribute('data-f'), txt = parts[k] || '';
@@ -5348,7 +5385,7 @@
           var cidT = (r.result.cid || []).map(function (c) { return (c.code + ' ' + (c.desc || '')).trim(); }).join('; ');
           put(note, txt + (cidT ? '\n\nCID-10: ' + cidT : ''));
         }
-        r.applied = true; changed(); r.appliedSnap = snap();
+        r.applied = true; changed(); r.appliedSnap = rrTextSnap();
       }
       function rrUndo(r) { if (locked() || !r.undo) return; fillEditor(r.undo); r.applied = false; changed(); rrRender(r); }
       // finalizar com pontos ainda não conferidos pede confirmação (uma vez)
@@ -5369,10 +5406,13 @@
       function rrLoad(r) {
         if (r.loaded || !patient) return; r.loaded = true;
         var my = r;
-        api('POST', '/prontuario/recordings/state', { patient_id: patient.id, event_id: ctx && ctx.event_id || null, note_id: ctx && ctx.note_id || null })
-          .then(function (res) {
+        idbAll().catch(function () { return []; }).then(function (rows) {
+          var ids = rows.filter(function (x) { return x.rk === my.k; }).map(function (x) { return x.recId; })
+                        .filter(function (x, i, a) { return a.indexOf(x) === i; });
+          return api('POST', '/prontuario/recordings/state', { patient_id: patient.id, event_id: ctx && ctx.event_id || null,
+                                                               note_id: ctx && ctx.note_id || null, rec_ids: ids }).then(function (res) {
             var recs = (res.ok && res.j && res.j.recordings) || [], last = recs[recs.length - 1];
-            return idbAll().then(function (rows) {
+            {
               var mine = rows.filter(function (x) { return x.rk === my.k || (last && x.recId === last.rec_id); });
               if (!last && !mine.length) return;
               if (my.st !== 'idle') return;
@@ -5393,8 +5433,9 @@
               my.st = last && last.status === 'gerada' ? 'saved' : 'interrupted';
               my.stoppedAt = last && last.updated_at;
               rrRender(my); qKick();
-            });
-          }).catch(function () {});
+            }
+          });
+        }).catch(function () {});
       }
       window.addEventListener('beforeunload', function (e) {
         var busy = Object.keys(RR.by).some(function (k) { var r = RR.by[k]; return r.st === 'live' || rrPending(r); });
@@ -5446,20 +5487,21 @@
         r.flags.forEach(function (f, i) {
           var row = el('div', 'rc-pt ' + f.nivel + (r.checked[i] ? ' ok' : '')), t = el('div', 't');
           row.appendChild(el('i')); t.appendChild(document.createTextNode(f.texto));
-          t.appendChild(el('small', null, (FLAGTXT[f.tipo] || f.tipo) + (f.src && f.src.length ? ' · trecho ' + f.src.map(function (q) {
-            var sg = r.segs.filter(function (s) { return s.seq === q; })[0]; return sg ? mmss(sg.at) : q; }).join(', ') : '')));
+          var refs = (f.src || []).map(function (q) { return rrRef(r, q); }), at = refs.filter(function (x) { return x.at != null; });
+          t.appendChild(el('small', null, (FLAGTXT[f.tipo] || f.tipo) + (at.length ? ' · trecho ' + at.map(function (x) { return mmss(x.at); }).join(', ') : '')));
           row.appendChild(t);
           var a = el('div', 'a'), ok = el('button', 'pr-ghost', r.checked[i] ? 'Conferido ✓' : 'Conferido'); ok.type = 'button';
-          if (f.src && f.src.length) {
+          var go = refs.filter(function (x) { return x.seq != null; })[0];
+          if (go) {
             var ver = el('button', 'pr-ghost lk', 'Ver na transcrição'); ver.type = 'button';
             ver.addEventListener('click', function () {
-              rrTx(r, f.src[0]); $('rcTx').hidden = false; $('gcTransBtn').setAttribute('aria-expanded', 'true');
-              var u = [].filter.call($('rcTx').children, function (c) { return c._seq === f.src[0]; })[0];
+              rrTx(r, go.seq); $('rcTx').hidden = false; $('gcTransBtn').setAttribute('aria-expanded', 'true');
+              var u = [].filter.call($('rcTx').children, function (c) { return c._seq === go.seq; })[0];
               if (u) $('rcTx').scrollTop = u.offsetTop - $('rcTx').offsetTop - 16;
             });
             a.appendChild(ver);
           }
-          ok.addEventListener('click', function () { r.checked[i] = !r.checked[i]; rrReview(r); });
+          ok.addEventListener('click', function () { r.checked[i] = !r.checked[i]; rrReview(r); changed(); });
           a.appendChild(ok); row.appendChild(a); box.appendChild(row);
         });
       }
@@ -5524,8 +5566,9 @@
           var g8 = rcBtn('rc-go', '<span>Gerando…</span>', 'Gerando a evolução', function () {}); g8.disabled = true;
           rcmPlayer('gen', { chip: 'Gerando evolução', t: t }, 'Leva uns 10 segundos', [g8]);
           var st8 = $('rcSteps'); st8.innerHTML = ''; st8.hidden = false;
-          [['rc-done', 'Transcrição completa', rrSummary(r)], ['rc-now', 'Escrevendo a evolução' + (mode === 'soap' ? ' em SOAP' : ''), ''],
-           ['rc-wait', 'Conferindo doses, alergias e números', '']].forEach(function (x) {
+          var conf = r.genStep === 'conferindo';
+          [['rc-done', 'Transcrição completa', rrSummary(r)], [conf ? 'rc-done' : 'rc-now', 'Escrevendo a evolução' + (mode === 'soap' ? ' em SOAP' : ''), ''],
+           [conf ? 'rc-now' : 'rc-wait', 'Conferindo doses, alergias e números', '']].forEach(function (x) {
             var row = el('div', 'rc-step ' + x[0]); row.appendChild(el('i')); row.appendChild(el('span', null, x[1])); if (x[2]) row.appendChild(el('small', null, x[2])); st8.appendChild(row); });
           S.textContent = rrSummary(r);
         } else if (r.st === 'fail') {
