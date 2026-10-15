@@ -211,7 +211,7 @@ def test_gerar_evolucao_mascara_o_nome_e_confere_sem_ia(fake, monkeypatch):
     assert out["result"]["vitals"] == {"pa_s": "128", "pa_d": "82", "fc": "74"} and out["result"]["cid"][0]["code"] == "I10"
     assert [t["seq"] for t in out["segs"]] == [1, 2] and out["segs"][0]["rec_id"] == REC
     assert any(f["tipo"] == "duvida_grave" for f in out["flags"])          # o 74 foi ouvido com dúvida
-    assert out["meta"]["prompt"] == scribe.PROMPT_VERSION and out["meta"]["rec_ids"] == [REC]
+    assert out["meta"]["prompt"] == scribe.PROMPT_VERSION and out["meta"]["rec_ids"] == [REC] and out["meta"]["segundos"] == 40
     texto = json.dumps(sent[0], ensure_ascii=False)
     assert "Maria" not in texto and "[PACIENTE]" in texto                   # nem a última evolução leva o nome
     assert fake.recs[REC]["status"] == "gerada" and ("scribe", 7, None) in fake.log
@@ -247,10 +247,10 @@ def test_estado_da_gravacao_e_apagar_transcricao(fake):
 def test_evolucao_guarda_so_o_rastreio_da_gravacao():
     d = server._note_data({"mode": "soap", "s": "x", "scribe": {
         "rec_ids": [REC, "nao-e-uuid"], "prompt": "2026-10-15.5", "model": "gpt-5.4", "consent_at": "2026-10-15T10:00:00Z",
-        "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3, "info": "x"}, "conferidos": 2,
+        "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3, "info": "x"}, "conferidos": 2, "segundos": 912,
         "texto": "transcrição inteira não pode entrar aqui"}})
     assert d["scribe"] == {"rec_ids": [REC], "prompt": "2026-10-15.5", "model": "gpt-5.4", "consent_at": "2026-10-15T10:00:00Z",
-                           "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3}, "conferidos": 2}
+                           "generated_at": "2026-10-15T10:20:00Z", "pontos": {"alto": 1, "medio": 3}, "segundos": 912, "conferidos": 2}
     assert "scribe" not in server._note_data({"mode": "free"})
 
 

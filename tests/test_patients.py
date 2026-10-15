@@ -131,6 +131,11 @@ def test_tempo_de_documentacao_so_numeros_limitados():
     assert _timing({"active_s": 312, "wall_s": 900.4, "edits": 41}) == {"active_s": 312, "wall_s": 900, "edits": 41}
     assert _timing({"active_s": -1, "wall_s": 10 ** 9, "edits": True, "texto": "dor"}) is None
     assert _timing({"active_s": "300"}) is None and _timing(None) is None and _timing([1]) is None
+    sc = _timing({"active_s": 40, "scribe": {"rec_s": 900, "gen_s": 12.4, "review_s": 95, "fim_s": 110, "mantido_pct": 87,
+                                             "alto": 1, "medio": 3, "info": 2, "conferidos": 3, "pendentes": 1, "texto": "dor", "gen_s2": -1}})
+    assert sc == {"active_s": 40, "scribe": {"rec_s": 900, "gen_s": 12, "review_s": 95, "fim_s": 110, "mantido_pct": 87,
+                                             "alto": 1, "medio": 3, "info": 2, "conferidos": 3, "pendentes": 1}}
+    assert _timing({"scribe": {"mantido_pct": 140}}) is None              # fora do limite: descartado
 
 
 def test_gravacao_real_so_para_contas_liberadas(monkeypatch):

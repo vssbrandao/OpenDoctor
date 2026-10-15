@@ -119,7 +119,7 @@ def test_dose_trocada_entre_remedios_e_avisada():
 
 def test_dose_do_cadastro_e_marcada_como_tal():
     _, fl = _check({"meds": [{"nome": "losartana", "dose": "50 mg", "posologia": "12/12h", "acao": "mantido", "src": [4]}]})
-    assert {(f["tipo"], f["valor"], f["nivel"]) for f in fl} == {("cadastro", 50, "info"), ("cadastro", 12, "info")}
+    assert [(f["tipo"], f["valor"], f["nivel"]) for f in fl] == [("cadastro", 50, "info")]   # 50 mg e 12/12h: um aviso só
 
 
 def test_alergia_inclusive_da_mesma_classe():
@@ -215,3 +215,15 @@ def test_evolucao_que_usa_palavra_duvidosa_e_avisada():
     assert s.render_text(res)["s"] == "Relato de desmaio há uma semana."            # o (?) não vai para o prontuário
     assert sorted((f["tipo"], f["nivel"]) for f in fl) == [("duvida", "medio"), ("duvida_grave", "alto"), ("duvida_grave", "alto")]
     assert "(?)" in s.build_messages(segs, "soap", {})[1]["content"]
+
+
+def test_cid_subcodigo_inexistente_vira_a_categoria_e_aviso_nao_repete():
+    seg = [{"seq": 1, "at": 0, "text": "É uma fibrilação atrial. Manter AAS 100 mg uma vez ao dia."}]
+    out = {"soap": {"a": [{"t": "Fibrilação atrial.", "src": [1], "tipo": "dito"}]},
+           "cid": [{"code": "I48.9", "src": [1]}, {"code": "I48", "src": [1]}],
+           "meds": [{"nome": "AAS", "dose": "100 mg", "posologia": "1x/dia", "acao": "mantido", "src": [1]}]}
+    res, flags = s.check(out, seg, "soap", {"medications": "AAS 100 mg 1x/dia"})
+    assert [c["code"] for c in res["cid"]] == ["I48"]
+    assert any("usado I48" in f["texto"] for f in flags if f["tipo"] == "cid")
+    textos = [f["texto"] for f in flags]
+    assert len(textos) == len(set(textos))

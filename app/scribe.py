@@ -627,8 +627,13 @@ def check(out, segments, mode, patient=None):
     for c in items(out.get("cid")):
         code = str(c.get("code") or "").upper().strip()
         desc = cid10.get(code) if code else None
+        if not desc and len(code) > 3 and cid10.leaf(code[:3]):       # subcódigo que a tabela do DATASUS não tem (I48.9 → I48)
+            flag("cid", "a", f"CID {code} não existe na tabela do DATASUS: usado {code[:3]} ({cid10.get(code[:3])})", srcs(c))
+            code, desc = code[:3], cid10.get(code[:3])
         if not desc:
             flag("cid", "a", f"CID {code or '?'} não existe na tabela (descartado)", srcs(c))
+            continue
+        if any(x["code"] == code for x in res["cid"]):
             continue
         ids = srcs(c)
         if not ids:
@@ -691,8 +696,8 @@ def check(out, segments, mode, patient=None):
     for x in res["pendencias"]:
         flag("pendencia", "", x)
     seen, uniq = set(), []
-    for f in flags:                                     # "12/12h" tem dois 12: um aviso só
-        k = (f["tipo"], f["campo"], f["texto"], f.get("valor"))
+    for f in flags:                                     # "12/12h" tem dois 12; "100 mg 1x/dia", dois números: um aviso só
+        k = (f["tipo"], f["campo"], f["texto"])
         if k not in seen:
             seen.add(k); uniq.append(f)
     order = {"alto": 0, "medio": 1, "info": 2}

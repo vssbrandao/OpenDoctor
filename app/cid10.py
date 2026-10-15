@@ -94,6 +94,12 @@ def search(q, limit=20):
     return [{"code": c, "desc": d} for _, c, d in hits[:limit]]
 
 
+def leaf(code):
+    """O código existe e não tem subcódigos na tabela (é o mais específico possível)?"""
+    k = _norm(code).replace(".", "")
+    return get(code) is not None and not any(nc.startswith(k) and nc != k for _, _, nc, _, _ in _table())
+
+
 def get(code):
     """Descrição oficial de um código (ou None)."""
     k = _norm(code).replace(".", "")

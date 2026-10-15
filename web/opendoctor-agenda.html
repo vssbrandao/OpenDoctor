@@ -1037,6 +1037,7 @@
     .lx-st.err{color:#B3261E}
     .lx .pr-save:disabled{opacity:.4;cursor:default}
     .pr-badge.lab{background:#E5EDFF;color:#0B57D0}
+    .pr-badge.ia{background:#D3E3FD;color:#0842A0}
     .pr-tag.ex{background:#E5EDFF;color:#0B57D0;font-weight:500}
     .pr-tag.ex[hidden]{display:none}
     .gx{display:flex;flex-direction:column}
@@ -4392,7 +4393,9 @@
       }, 1000);
       function tmFinal() {
         if (!ctx || !ctx._tk) return null;
-        var t = tmGet(); return { active_s: t.a, wall_s: t.f ? Math.round((Date.now() - t.f) / 1000) : 0, edits: t.e };
+        var t = tmGet(), out = { active_s: t.a, wall_s: t.f ? Math.round((Date.now() - t.f) / 1000) : 0, edits: t.e }, sc = rrMetrics();
+        if (sc) out.scribe = sc;
+        return out;
       }
 
       // ===== finalizar e adendos =====
@@ -5298,7 +5301,7 @@
       function rrEnd(r) {
         if (r.st === 'live') rrPause(r);
         if (r.st !== 'paused' && r.st !== 'interrupted') return;
-        r.st = 'ending'; r.warn = ''; rrRender(r);
+        r.st = 'ending'; r.warn = ''; r.endAt = Date.now(); rrRender(r);
         if (!rrPending(r)) rrGenerate(r); else qKick();
       }
       function rrTest(r) {                       // testa o microfone por 5 s (o navegador pede a permissão aqui)
@@ -5337,7 +5340,8 @@
           .then(function () {
             if (!last || !last.ok) throw new Error((last && last.error) || 'resposta incompleta');
             my.result = last.result; my.flags = last.flags || []; my.segTable = last.segs || []; my.meta = last.meta || null;
-            my.checked = {}; my.st = 'done'; my.finalOk = false;
+            my.checked = {}; my.st = 'done'; my.finalOk = false; my.doneAt = Date.now();
+            my.genS = Math.round((my.doneAt - (my.endAt || my.doneAt)) / 1000);
             if (my === rrCur() && ready && !locked()) rrApply(my); else my.pending = true;
             rrRender(my);
           })
@@ -5354,6 +5358,28 @@
         var r = RR && RR.on && rrCur(); if (!r || !r.meta || !r.applied) return null;
         return Object.assign({}, r.meta, { conferidos: Object.keys(r.checked).filter(function (k) { return r.checked[k]; }).length });
       }
+      function rrWords(t) { return norm(t).match(/[a-z0-9]+/g) || []; }
+      function rrKept(r) {                     // % das palavras geradas que ficaram, na mesma ordem, no texto final (LCS)
+        var a = r.genWords || [], b = rrWords(compose().content), prev = [], i, j;
+        if (!a.length) return 0;
+        for (j = 0; j <= b.length; j++) prev.push(0);
+        for (i = 1; i <= a.length; i++) {
+          var cur = [0];
+          for (j = 1; j <= b.length; j++) cur.push(a[i - 1] === b[j - 1] ? prev[j - 1] + 1 : Math.max(prev[j], cur[j - 1]));
+          prev = cur;
+        }
+        return Math.round(100 * prev[b.length] / a.length);
+      }
+      // números da revisão (vão com o tempo de documentação ao finalizar; nenhum texto): critérios 5 e 6 do plano
+      function rrMetrics() {
+        var r = RR && RR.on && rrCur(); if (!r || !r.result || !r.doneAt) return null;
+        var now = Date.now(), n = function (lv) { return r.flags.filter(function (f) { return f.nivel === lv; }).length; };
+        return { rec_s: Math.round(r.samples / SR16), gen_s: r.genS || 0, review_s: Math.round((now - r.doneAt) / 1000),
+                 fim_s: r.endAt ? Math.round((now - r.endAt) / 1000) : 0, mantido_pct: r.applied ? rrKept(r) : 0,
+                 alto: n('alto'), medio: n('medio'), info: n('info'),
+                 conferidos: Object.keys(r.checked).filter(function (k) { return r.checked[k]; }).length,
+                 pendentes: r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; }).length };
+      }
       function rrTextSnap() { var x = compose(), d = Object.assign({}, x.data); delete d.scribe; return JSON.stringify([x.content, d]); }
       // escreve a evolução: campo vazio recebe o texto; campo com o que o médico digitou fica intacto e o texto entra embaixo.
       // Gerou de novo (gravou mais um trecho): troca o texto gerado antes só se ninguém mexeu nele.
@@ -5364,6 +5390,7 @@
         if (r.applied) { if (rrTextSnap() === r.appliedSnap) fillEditor(r.undo); else { r.applied = false; rrRender(r); return; } }
         var x = compose(); r.undo = { content: x.content, data: x.data };
         var f = r.result.fields || {}, isSoap = SOAPK.some(function (k) { return f[k]; });
+        r.genWords = rrWords(SOAPK.map(function (k) { return f[k] || ''; }).concat([f.livre || '']).join(' '));
         function put(t, txt) { if (!txt) return false; t.value = t.value.trim() ? t.value.replace(/\s+$/, '') + '\n\n' + txt : txt; return true; }
         if (mode === 'soap') {
           var parts = isSoap ? f : { s: f.livre }, extra = [], marks = {};
@@ -6971,6 +6998,8 @@
         tt.appendChild(el('span', null, lab ? 'Resultado de exames' : eventTitle(n.event_title || (n.event_id ? '' : 'Evolução avulsa'))));
         if (d) tt.appendChild(el('small', null, fmtDay(d)));
         tt.appendChild(el('span', 'pr-badge ' + (lab ? 'lab' : n.signed_at ? 'ok' : 'draft'), lab ? 'Exames' : n.signed_at ? 'Finalizada' : 'Rascunho'));
+        var scr = !lab && n.data && n.data.scribe;                   // gerada pela gravação: CFM 2.454/2026 pede o aviso
+        if (scr) tt.appendChild(el('span', 'pr-badge ia', 'Transcrição automática (IA)'));
         hd.appendChild(tt);
         var dd = el('div', 'gq-dd hc-dd'), db = el('button', 'hc-docs'), dm = el('div', 'gq-menu'); db.type = 'button';
         db.setAttribute('aria-haspopup', 'menu'); db.setAttribute('aria-expanded', 'false'); dm.setAttribute('role', 'menu'); dm.hidden = true;
@@ -6980,6 +7009,7 @@
         else if (n.signed_at) item('Adicionar adendo', function () { expand(true); var host = it.querySelector('.hc-body'); addendum(n, host, function (ok) { if (ok) renderHist(); }); });
         else item('Abrir para editar', function () { switchTo(n.event_id ? { event_id: n.event_id, title: eventTitle(n.event_title), start: n.event_start } : { note_id: n.id }); });
         item('Copiar texto', function () { try { navigator.clipboard.writeText(n.content || ''); toast('Texto copiado'); } catch (_) {} });
+        if (scr && (scr.rec_ids || []).length) item('Ver transcrição', function () { histTx(n, body, expand); });
         var day = d ? d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) : '';
         (files || []).filter(function (f) { var c = new Date(f.created_at); return day && c.getFullYear() + '-' + pad(c.getMonth() + 1) + '-' + pad(c.getDate()) === day; }).forEach(function (f, i) {
           if (!i) dm.appendChild(el('div', 'gq-mh', 'Anexos do dia'));
@@ -7001,12 +7031,14 @@
         });
         function seek(x) { played.style.width = 'calc((100% - 13px) * ' + x + ')'; thumb.style.left = 'calc((100% - 13px) * ' + x + ')'; rest.style.left = 'calc((100% - 13px) * ' + x + ' + 13px)'; }
         line.appendChild(played); line.appendChild(rest); tk.appendChild(mks); tk.appendChild(line); tk.appendChild(thumb);
-        var lb = el('div', 'hc-lab'); lb.appendChild(el('span', 'hc-chip', 'Sem gravação')); lb.appendChild(el('span', null, '0:00')); lb.appendChild(el('span', 'hc-dur', '—:—'));
+        var lb = el('div', 'hc-lab'); lb.appendChild(el('span', 'hc-chip', scr ? 'Gravada' : 'Sem gravação')); lb.appendChild(el('span', null, '0:00'));
+        lb.appendChild(el('span', 'hc-dur', scr && scr.segundos ? mmss(scr.segundos) : '—:—'));
         tk.appendChild(lb); pl.appendChild(tk);
+        var why = scr ? 'O áudio não é guardado: só a transcrição' : 'Gravação da consulta — em breve';
         [['vol', 'Volume'], ['play', 'Ouvir']].forEach(function (b) {
-          var x = el('button', 'hc-btn'); x.type = 'button'; x.disabled = true; x.title = 'Gravação da consulta — em breve'; x.setAttribute('aria-label', b[1]); x.innerHTML = HI[b[0]]; pl.appendChild(x);
+          var x = el('button', 'hc-btn'); x.type = 'button'; x.disabled = true; x.title = why; x.setAttribute('aria-label', b[1]); x.innerHTML = HI[b[0]]; pl.appendChild(x);
         });
-        var sp = el('span', 'hc-btn hc-spd', '1x'); sp.title = 'Gravação da consulta — em breve'; pl.appendChild(sp);
+        var sp = el('span', 'hc-btn hc-spd', '1x'); sp.title = why; pl.appendChild(sp);
         pw.appendChild(pl); it.appendChild(pw); seek(0);
         // "Evolução" (como "Transcrição da divulgação"): recolhida com a prévia do 1º destaque
         var tr = el('button', 'hc-tr'); tr.type = 'button'; tr.setAttribute('aria-expanded', 'false');
@@ -7035,6 +7067,21 @@
         tr.addEventListener('click', function () { expand(body.hidden); });
         it._open = function () { expand(true); };
         return it;
+      }
+      // transcrição de uma consulta já registrada (só texto; o áudio nunca foi guardado)
+      function histTx(n, body, expand) {
+        var old = body.querySelector('.hc-rtx'); if (old) { old.remove(); return; }
+        var box = el('div', 'rc-tx hc-rtx'); box.appendChild(el('div', 'rc-h', 'Carregando a transcrição…'));
+        body.insertBefore(box, body.firstChild); expand(true);
+        api('POST', '/prontuario/recordings/state', { patient_id: patient && patient.id, note_id: n.id, event_id: n.event_id || null,
+                                                      rec_ids: (n.data.scribe.rec_ids || []) }).then(function (res) {
+          var recs = (res.ok && res.j && res.j.recordings) || []; box.innerHTML = '';
+          recs.forEach(function (r) { (r.segments || []).forEach(function (sg) {
+            if (!(sg.text || '').trim()) return;
+            var d = el('div', 'rc-u'); d.appendChild(el('div', 'rc-h', mmss(sg.at))); d.appendChild(el('div', 'rc-t', sg.text)); box.appendChild(d);
+          }); });
+          if (!box.children.length) box.appendChild(el('div', 'rc-h', 'A transcrição desta consulta foi apagada.'));
+        }).catch(function () { box.innerHTML = ''; box.appendChild(el('div', 'rc-h', 'Não foi possível abrir a transcrição.')); });
       }
       function filterHist() {
         var box = $('prVisits'), q = norm($('prHistQ').value.trim()), any = false;
@@ -7088,7 +7135,7 @@
       $('prExport').addEventListener('click', function () {
         if (!patient) return;
         save();
-        $('prPrintCur').textContent = locked() ? '' : compose().content;
+        $('prPrintCur').textContent = locked() ? '' : (rrMeta() ? 'Transcrição automática (IA), revisada pelo médico.\n\n' : '') + compose().content;
         $('prEvoBox').classList.toggle('has-text', locked() || !!compose().content.trim());
         api('POST', '/prontuario/audit', { action: 'export', patient_id: patient.id }).catch(function () {});
         $('prHistQ').value = ''; filterHist(); showAllCons();             // no PDF, todas as evoluções abertas

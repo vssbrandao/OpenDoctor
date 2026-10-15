@@ -1287,6 +1287,7 @@ def _note_data(v):
                          "prompt": str(sc.get("prompt") or "")[:40], "model": str(sc.get("model") or "")[:40],
                          "consent_at": _iso_or_none(sc.get("consent_at")), "generated_at": _iso_or_none(sc.get("generated_at")),
                          "pontos": {k: pts[k] for k in ("alto", "medio", "info") if isinstance(pts.get(k), int) and 0 <= pts[k] < 1000},
+                         "segundos": sc["segundos"] if isinstance(sc.get("segundos"), int) and 0 <= sc["segundos"] <= 6 * 3600 else 0,
                          "conferidos": sc["conferidos"] if isinstance(sc.get("conferidos"), int) and 0 <= sc["conferidos"] < 1000 else 0}
     return out if len(json.dumps(out)) <= MAX_DATA_CHARS else None
 
@@ -1430,12 +1431,19 @@ def _timing(v):
     """Tempo de documentação da evolução (linha de base da gravação): só números, limitados. None se vazio."""
     if not isinstance(v, dict):
         return None
-    lim = {"active_s": 86400, "wall_s": 30 * 86400, "edits": 100000}
-    out = {}
-    for k, top in lim.items():
-        x = v.get(k)
-        if isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= top:
-            out[k] = int(x)
+    def nums(d, lim):
+        out = {}
+        for k, top in lim.items():
+            x = d.get(k)
+            if isinstance(x, (int, float)) and not isinstance(x, bool) and 0 <= x <= top:
+                out[k] = int(x)
+        return out
+    out = nums(v, {"active_s": 86400, "wall_s": 30 * 86400, "edits": 100000})
+    if isinstance(v.get("scribe"), dict):              # evolução gerada pela gravação: critérios 5 e 6 do plano
+        sc = nums(v["scribe"], {"rec_s": 6 * 3600, "gen_s": 3600, "review_s": 30 * 86400, "fim_s": 30 * 86400,
+                                "mantido_pct": 100, "alto": 1000, "medio": 1000, "info": 1000, "conferidos": 1000, "pendentes": 1000})
+        if sc:
+            out["scribe"] = sc
     return out or None
 
 
@@ -1807,6 +1815,7 @@ async def prontuario_scribe(request: Request):
             yield _line({"error": "a IA não devolveu uma evolução válida"})
             return
         meta = {"rec_ids": [r["rec_id"] for r in recs], "prompt": scribe.PROMPT_VERSION, "model": config.OPENAI_SCRIBE_MODEL,
+                "segundos": int(sum(r["seconds"] or 0 for r in recs)),
                 "consent_at": recs[0]["consent_at"], "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                 "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")}}
         db.rec_generated(u["id"], meta["rec_ids"], meta, nid)
