@@ -1194,6 +1194,8 @@ MAX_NOTE_CHARS = 50000          # evolução maior é recusada (413) — nunca c
 MAX_DATA_CHARS = 60000
 _SEX = {"F", "M", "O"}
 _VITALS = ("pa_s", "pa_d", "fc", "fr", "temp", "spo2", "peso", "altura", "glicemia")
+# exames laboratoriais registrados na evolução (a TFG é calculada na tela a partir da creatinina)
+_LABS = ("hba1c", "ct", "ldl", "hdl", "tg", "creat", "rac", "pot", "sod", "au", "tsh", "hb", "alt")
 
 
 def _iso_or_none(v):
@@ -1246,6 +1248,11 @@ def _note_data(v):
             out[k] = v[k][:MAX_NOTE_CHARS]
     vit = v.get("vitals") if isinstance(v.get("vitals"), dict) else {}
     out["vitals"] = {k: str(vit[k])[:12] for k in _VITALS if vit.get(k) not in (None, "")}
+    labs = v.get("labs") if isinstance(v.get("labs"), dict) else {}
+    lv = labs.get("v") if isinstance(labs.get("v"), dict) else {}
+    lv = {k: str(lv[k])[:12] for k in _LABS if lv.get(k) not in (None, "")}
+    if lv:
+        out["labs"] = {"date": _date_or_none(labs.get("date")), "v": lv}
     cid = v.get("cid") if isinstance(v.get("cid"), list) else []
     out["cid"] = [{"code": str(c.get("code") or "")[:10], "desc": str(c.get("desc") or "")[:200]}
                   for c in cid[:20] if isinstance(c, dict) and (c.get("code") or c.get("desc"))]

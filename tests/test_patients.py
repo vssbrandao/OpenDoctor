@@ -55,6 +55,15 @@ def test_note_data_so_campos_conhecidos():
     assert _note_data("nada") is None
 
 
+def test_note_data_exames():
+    from app.server import _note_data
+    d = _note_data({"mode": "soap", "labs": {"date": "2026-01-10", "v": {"hba1c": "7,1", "ldl": "", "hack": "1"}}})
+    assert d["labs"] == {"date": "2026-01-10", "v": {"hba1c": "7,1"}}
+    assert _note_data({"mode": "soap", "labs": {"date": "3000-01-01", "v": {"tsh": "2"}}})["labs"]["date"] is None
+    assert "labs" not in _note_data({"mode": "soap", "labs": {"v": {"ldl": ""}}})
+    assert "labs" not in _note_data({"mode": "soap", "labs": "texto"})
+
+
 def test_nome_do_paciente_em_evento_antigo():
     from app.integrations import _event_patient_name
     from app.db import patient_key

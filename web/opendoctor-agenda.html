@@ -900,6 +900,23 @@
     .pr-acc{gap:32px}
     .pr-item-head{gap:16px}
     .pr-form{column-gap:32px}
+    /* ===== exames laboratoriais no SOAP (bloco que abre e fecha) ===== */
+    .pr-labs{display:flex;flex-direction:column;gap:16px;margin-top:8px}
+    .pr-labtg{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;height:40px;padding:0 16px 0 10px;border:0;border-radius:20px;background:#F0F2F5;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
+    .pr-labtg:hover{background:#E9EBF0}
+    .pr-labtg small{font-weight:400;font-size:12px;line-height:16px;color:#56595E}
+    .pr-labchev{width:20px;height:20px;flex:none;transition:transform .15s}
+    .pr-labtg[aria-expanded=true] .pr-labchev{transform:rotate(90deg)}
+    .pr-labbody{display:flex;flex-direction:column;gap:24px;padding:24px;border-radius:16px;background:#F7F8FA}
+    .pr-labbody[hidden]{display:none}
+    .pr-labdate{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
+    .pr-labdate span{font-family:var(--disp);font-size:13px;line-height:18px;color:#5F6368}
+    .pr-labdate .pr-in{width:180px}
+    .pr-labdate small{font-family:var(--disp);font-size:12px;line-height:16px;color:#80868B}
+    .pr-labgrp{display:flex;flex-direction:column;gap:12px}
+    .pr-labgh{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#0A0A0A}
+    .pr-labbody .pr-vital span{white-space:normal}
     /* ===== componentes das outras abas do Finance (NVDA): aviso, panorama, análise, em resumo, barras ===== */
     .gb{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;width:100%;min-height:48px;padding:0;border:0;border-radius:12px;
       background:#F7F8FA;cursor:pointer;text-align:left;font-family:var(--disp);color:#36373A}
@@ -971,6 +988,15 @@
     .ga-table tbody tr:hover td{background:#F7F8FA}
     .ga-subd{display:none}
     .ga-cards[hidden],.ga-table[hidden]{display:none}
+    .ga-table tr.ga-grp td{height:auto;padding:24px 0 8px;font-weight:500;font-size:12px;line-height:16px;color:#0A0A0A;cursor:default;background:none}
+    .ga-table tr.ga-grp:first-child td{padding-top:12px}
+    .ga-fu{display:flex;flex-direction:column;margin-top:24px}
+    .ga-fu[hidden]{display:none}
+    .ga-futable tbody tr{cursor:default}
+    .ga-futable tbody tr:hover td{background:none}
+    .gq-menu{max-height:min(520px,70vh);overflow-y:auto}
+    .gq-mh.sub{padding-top:4px;font-size:11px;color:#80868B}
+    .gf-table tr.gf-grp td{height:auto;padding:20px 0 8px;font-weight:500;color:#0A0A0A;background:none;border-top:0}
     .ga-pill{display:inline-flex;padding:2px 8px;border-radius:100px;font-weight:500;font-size:12px;line-height:16px}
     .ga-pill.ok{background:#046E00;color:#CDF5C6}
     .ga-pill.bad{background:#C0151D;color:#FFDAD6}
@@ -1679,6 +1705,15 @@
                 </div>
               </div>
 
+              <div class="ov-sec" id="ovLabWrap" hidden>
+                <div class="ov-h" role="heading" aria-level="2">Exames</div>
+                <div class="gr-wrap">
+                  <div class="gr-row" id="ovLabTiles"></div>
+                  <button class="ov-tnav prev" type="button" id="ovLPrev" aria-label="Exames anteriores" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#1F1F1F"/></svg></button>
+                  <button class="ov-tnav next" type="button" id="ovLNext" aria-label="Mais exames" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="#1F1F1F"/></svg></button>
+                </div>
+              </div>
+
               <div class="ov-sec" id="ovNextSec" hidden>
                 <div class="ov-hd"><div class="ov-h" role="heading" aria-level="2">Próximas consultas</div><div class="ov-hs">Da sua agenda</div></div>
                 <div class="ov-next" id="ovNext"></div>
@@ -1711,7 +1746,7 @@
             <section class="pr-panel" data-panel="analise" hidden>
               <div class="ga-cards" id="gaCards">
                 <div class="ga-card">
-                  <div class="ga-t">Sinais na referência</div>
+                  <div class="ga-t" id="gaRateT">Sinais na referência</div>
                   <div class="ga-s" id="gaRateS"></div>
                   <div class="ga-rate">
                     <div class="ga-donut"><svg id="gaDonut" viewBox="0 0 120 120" aria-hidden="true"></svg><div class="ga-dl" id="gaDonutL"></div></div>
@@ -1727,12 +1762,17 @@
                 </div>
               </div>
               <table class="ga-table" id="gaTable">
-                <thead><tr><th>Sinal</th><th>Situação</th><th class="ga-tr">Tendência</th><th>Última</th><th>Variação</th><th class="ga-dt">Data</th></tr></thead>
+                <thead><tr><th>Sinal ou exame</th><th>Situação</th><th class="ga-tr">Tendência</th><th>Última</th><th>Variação</th><th class="ga-dt">Data</th></tr></thead>
                 <tbody id="gaTBody"></tbody>
               </table>
+              <!-- exames de acompanhamento sugeridos pelos problemas e medicações -->
+              <div class="ga-fu" id="gaFuSec" hidden>
+                <div class="gh gh-col"><span class="gh-t">Exames de acompanhamento</span><span class="gh-s">Sugestão a partir dos problemas e medicações registrados · diretrizes gerais (SBD, SBC, KDIGO) — ajuste ao caso</span></div>
+                <table class="ga-table ga-futable"><thead><tr><th>Exame</th><th>Último</th><th>Frequência</th><th>Situação</th></tr></thead><tbody id="gaFuBody"></tbody></table>
+              </div>
               <div class="ov-empty" id="gaEmpty" hidden>
-                <div class="ov-empty-t">Ainda não há sinais vitais para analisar</div>
-                <div class="ov-empty-s">A análise aparece quando as evoluções têm sinais vitais registrados no modo <b>SOAP</b>.</div>
+                <div class="ov-empty-t">Ainda não há sinais vitais nem exames para analisar</div>
+                <div class="ov-empty-s">A análise aparece quando as evoluções têm sinais vitais ou exames registrados no modo <b>SOAP</b>.</div>
               </div>
             </section>
 
@@ -1779,7 +1819,36 @@
                       <div class="pr-vital"><span>IMC</span><div class="pr-imc" id="prImc">—</div></div>
                       <label class="pr-vital"><span>Glicemia (mg/dL)</span><input class="pr-in" data-v="glicemia" inputmode="decimal" placeholder="90" autocomplete="off"></label>
                     </div>
-                    <textarea data-f="o" placeholder="Exame físico, resultados de exames…"></textarea>
+                    <textarea data-f="o" placeholder="Exame físico, outros resultados de exames…"></textarea>
+                    <!-- exames laboratoriais (a TFG é calculada pela creatinina, idade e sexo — CKD-EPI 2021) -->
+                    <div class="pr-labs" id="prLabs">
+                      <button class="pr-labtg" type="button" id="prLabTg" aria-expanded="false" aria-controls="prLabBody"><svg class="pr-labchev" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z" fill="#0A0A0A"/></svg><span>Exames laboratoriais</span><small id="prLabN"></small></button>
+                      <div class="pr-labbody" id="prLabBody" hidden>
+                        <label class="pr-labdate"><span>Data da coleta</span><input class="pr-in" type="date" id="prLabDate"><small>Em branco: data da consulta</small></label>
+                        <div class="pr-labgrp"><div class="pr-labgh">Controle glicêmico</div><div class="pr-vitals">
+                          <label class="pr-vital"><span>HbA1c (%)</span><input class="pr-in" data-l="hba1c" inputmode="decimal" autocomplete="off"></label>
+                        </div></div>
+                        <div class="pr-labgrp"><div class="pr-labgh">Lipídios</div><div class="pr-vitals">
+                          <label class="pr-vital"><span>Colesterol total (mg/dL)</span><input class="pr-in" data-l="ct" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>LDL (mg/dL)</span><input class="pr-in" data-l="ldl" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>HDL (mg/dL)</span><input class="pr-in" data-l="hdl" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>Triglicerídeos (mg/dL)</span><input class="pr-in" data-l="tg" inputmode="decimal" autocomplete="off"></label>
+                        </div></div>
+                        <div class="pr-labgrp"><div class="pr-labgh">Função renal e eletrólitos</div><div class="pr-vitals">
+                          <label class="pr-vital"><span>Creatinina (mg/dL)</span><input class="pr-in" data-l="creat" inputmode="decimal" autocomplete="off"></label>
+                          <div class="pr-vital"><span>TFG (CKD-EPI)</span><div class="pr-imc" id="prTfg" title="Calculada pela creatinina, idade e sexo do cadastro">—</div></div>
+                          <label class="pr-vital"><span>Albuminúria — RAC (mg/g)</span><input class="pr-in" data-l="rac" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>Potássio (mEq/L)</span><input class="pr-in" data-l="pot" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>Sódio (mEq/L)</span><input class="pr-in" data-l="sod" inputmode="decimal" autocomplete="off"></label>
+                        </div></div>
+                        <div class="pr-labgrp"><div class="pr-labgh">Outros</div><div class="pr-vitals">
+                          <label class="pr-vital"><span>Ácido úrico (mg/dL)</span><input class="pr-in" data-l="au" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>TSH (mUI/L)</span><input class="pr-in" data-l="tsh" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>Hemoglobina (g/dL)</span><input class="pr-in" data-l="hb" inputmode="decimal" autocomplete="off"></label>
+                          <label class="pr-vital"><span>TGP / ALT (U/L)</span><input class="pr-in" data-l="alt" inputmode="decimal" autocomplete="off"></label>
+                        </div></div>
+                      </div>
+                    </div>
                   </div>
                   <div class="pr-soapf"><span>A — Avaliação</span>
                     <textarea data-f="a" placeholder="Hipóteses diagnósticas, raciocínio clínico…"></textarea>
@@ -1837,14 +1906,14 @@
             <section class="pr-panel" data-panel="consultas" hidden>
               <div class="gs-tabs" id="csTabs" role="tablist">
                 <button type="button" role="tab" data-s="agenda" class="on" aria-selected="true">Consultas</button>
-                <button type="button" role="tab" data-s="sinais" aria-selected="false">Sinais por consulta</button>
+                <button type="button" role="tab" data-s="sinais" aria-selected="false">Sinais e exames</button>
               </div>
               <div class="gsub" id="csAgenda">
                 <div class="gh"><span class="gh-t">Consultas</span><span class="gh-s">Da sua agenda</span></div>
                 <div class="pr-table" id="prVisits"></div>
               </div>
               <div class="gsub" id="csSinais" hidden>
-                <div class="gh"><span class="gh-t">Sinais por consulta</span><span class="gh-s">Medidas registradas nas evoluções (SOAP)</span></div>
+                <div class="gh"><span class="gh-t">Sinais e exames por consulta</span><span class="gh-s">Medidas registradas nas evoluções (SOAP)</span></div>
                 <div class="gfc" id="csChart" hidden>
                   <div class="gfc-hd">
                     <div class="gfc-l"><div class="gfc-t" id="csChartT"></div><div class="gfc-lg" id="csChartLg"></div></div>
@@ -3443,6 +3512,32 @@
       var vitEls = [].slice.call(document.querySelectorAll('#prSoap [data-v]'));
       function num(v) { var x = parseFloat(String(v || '').replace(',', '.')); return isNaN(x) ? null : x; }
       function vitals() { var v = {}; vitEls.forEach(function (e) { if (e.value.trim()) v[e.getAttribute('data-v')] = e.value.trim(); }); return v; }
+      var labEls = [].slice.call(document.querySelectorAll('#prSoap [data-l]')), labDate = $('prLabDate');
+      function labs() { var v = {}; labEls.forEach(function (e) { if (e.value.trim()) v[e.getAttribute('data-l')] = e.value.trim(); }); return v; }
+      // TFG pela CKD-EPI 2021 (sem raça): creatinina, idade na coleta e sexo do cadastro; só adultos
+      function tfgOf(scr, when) {
+        var p = patient || {}; if (!scr || !p.birth_date || (p.sex !== 'F' && p.sex !== 'M')) return null;
+        var b = parseStart(p.birth_date), t = when ? (when instanceof Date ? when : parseStart(when)) : new Date();
+        var ag = (t - b) / (365.25 * 864e5); if (!(ag >= 18)) return null;
+        var fe = p.sex === 'F', r = scr / (fe ? 0.7 : 0.9);
+        return 142 * Math.pow(Math.min(r, 1), fe ? -0.241 : -0.302) * Math.pow(Math.max(r, 1), -1.2) * Math.pow(0.9938, ag) * (fe ? 1.012 : 1);
+      }
+      var LABTXT = [['hba1c', 'HbA1c', '%'], ['ct', 'CT', 'mg/dL'], ['ldl', 'LDL', 'mg/dL'], ['hdl', 'HDL', 'mg/dL'], ['tg', 'TG', 'mg/dL'], ['creat', 'Creatinina', 'mg/dL'],
+                    ['rac', 'RAC', 'mg/g'], ['pot', 'K', 'mEq/L'], ['sod', 'Na', 'mEq/L'], ['au', 'Ácido úrico', 'mg/dL'], ['tsh', 'TSH', 'mUI/L'], ['hb', 'Hb', 'g/dL'], ['alt', 'TGP', 'U/L']];
+      function labWhen(d) { return d || (ctx && ctx.start ? String(ctx.start).slice(0, 10) : ''); }
+      function labsLine(v, d) {
+        var out = [];
+        LABTXT.forEach(function (x) {
+          if (!v[x[0]]) return;
+          out.push(x[1] + ' ' + v[x[0]] + (x[2] === '%' ? '%' : ' ' + x[2]));
+          if (x[0] === 'creat') { var g = tfgOf(num(v.creat), labWhen(d)); if (g) out.push('TFG ' + Math.round(g) + ' mL/min/1,73 m² (CKD-EPI 2021)'); }
+        });
+        return out.length ? 'Exames' + (d ? ' (coleta ' + d.split('-').reverse().join('/') + ')' : '') + ': ' + out.join(' · ') : '';
+      }
+      function updTfg() { var g = tfgOf(num(labs().creat), labWhen(labDate.value)); $('prTfg').textContent = g ? String(Math.round(g)) : '—'; }
+      function updLabN() { var n = Object.keys(labs()).length; $('prLabN').textContent = n ? n + (n === 1 ? ' preenchido' : ' preenchidos') : ''; }
+      function setLabOpen(on) { $('prLabTg').setAttribute('aria-expanded', on ? 'true' : 'false'); $('prLabBody').hidden = !on; }
+      $('prLabTg').addEventListener('click', function () { setLabOpen($('prLabBody').hidden); });
       function imcOf(v) { var p = num(v.peso), h = num(v.altura); if (!p || !h) return null; h = h > 3 ? h / 100 : h; return p / (h * h); }
       function vitalsLine(v) {
         var out = [], imc = imcOf(v);
@@ -3456,25 +3551,28 @@
         if (v.glicemia) out.push('Glicemia ' + v.glicemia + ' mg/dL');
         return out.length ? 'Sinais vitais: ' + out.join(' · ') : '';
       }
-      function soapText() { return soapEls.some(function (e) { return e.value.trim(); }) || Object.keys(vitals()).length || cids.length; }
+      function soapText() { return soapEls.some(function (e) { return e.value.trim(); }) || Object.keys(vitals()).length || Object.keys(labs()).length || cids.length; }
       function compose() {
         if (mode === 'free') return { content: note.value, data: { mode: 'free' } };
         var f = {}; soapEls.forEach(function (e) { f[e.getAttribute('data-f')] = e.value; });
-        var v = vitals(), parts = [];
+        var v = vitals(), lb = labs(), ld = labDate.value || '', parts = [];
         if (f.s.trim()) parts.push('S: ' + f.s.trim());
-        var o = [vitalsLine(v), f.o.trim()].filter(Boolean).join('\n'); if (o) parts.push('O: ' + o);
+        var o = [vitalsLine(v), labsLine(lb, ld), f.o.trim()].filter(Boolean).join('\n'); if (o) parts.push('O: ' + o);
         var a = [f.a.trim(), cids.length ? 'CID-10: ' + cids.map(function (c) { return (c.code + ' ' + c.desc).trim(); }).join('; ') : '']
                   .filter(Boolean).join('\n'); if (a) parts.push('A: ' + a);
         if (f.p.trim()) parts.push('P: ' + f.p.trim());
-        return { content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v, cid: cids.slice() } };
+        return { content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v,
+                 labs: Object.keys(lb).length ? { date: ld || null, v: lb } : undefined, cid: cids.slice() } };
       }
       function snap(x) { return JSON.stringify(x || compose()); }
       function updImc() { var i = imcOf(vitals()); $('prImc').textContent = i ? i.toFixed(1).replace('.', ',') : '—'; }
       // faixa plausível de cada sinal vital: fora dela o campo fica vermelho (provável erro de digitação)
       var RANGE = { pa_s: [50, 300], pa_d: [20, 200], fc: [20, 250], fr: [4, 80], temp: [30, 45], spo2: [40, 100],
-                    peso: [0.3, 400], altura: [0.3, 250], glicemia: [10, 1500] };
+                    peso: [0.3, 400], altura: [0.3, 250], glicemia: [10, 1500],
+                    hba1c: [3, 20], ct: [50, 600], ldl: [5, 500], hdl: [5, 200], tg: [10, 5000], creat: [0.1, 20], rac: [0, 10000],
+                    pot: [1.5, 9], sod: [100, 180], au: [0.5, 20], tsh: [0.001, 150], hb: [3, 25], alt: [1, 5000] };
       function checkVital(e) {
-        var k = e.getAttribute('data-v'), v = num(e.value), r = RANGE[k];
+        var k = e.getAttribute('data-v') || e.getAttribute('data-l'), v = num(e.value), r = RANGE[k];
         var bad = e.value.trim() !== '' && (v === null || (r && (v < r[0] || v > r[1])));
         e.classList.toggle('bad', bad);
         e.title = bad ? 'Valor fora do esperado — confira' : '';
@@ -3494,13 +3592,16 @@
         note.value = soap ? '' : (n && n.content || '');
         soapEls.forEach(function (e) { e.value = soap ? (d[e.getAttribute('data-f')] || '') : ''; });
         vitEls.forEach(function (e) { e.value = soap && d.vitals ? (d.vitals[e.getAttribute('data-v')] || '') : ''; checkVital(e); });
-        cids = soap && d.cid ? d.cid.slice() : []; renderCids(); updImc();
+        var L = soap && d.labs && d.labs.v ? d.labs : null;
+        labEls.forEach(function (e) { e.value = L ? (L.v[e.getAttribute('data-l')] || '') : ''; checkVital(e); });
+        labDate.value = L && L.date ? L.date : ''; setLabOpen(!!L);
+        cids = soap && d.cid ? d.cid.slice() : []; renderCids(); updImc(); updTfg(); updLabN();
       }
       function setMode(m, silent) {
         if (!silent && m !== mode) {
           // texto livre → SOAP: o texto vai para "S" (nada se perde); SOAP → texto livre: vira o texto composto
           if (m === 'soap' && note.value.trim() && !soapText()) { soapEls[0].value = note.value; note.value = ''; }
-          else if (m === 'free') { note.value = compose().content; soapEls.forEach(function (e) { e.value = ''; }); vitEls.forEach(function (e) { e.value = ''; }); cids = []; renderCids(); updImc(); }
+          else if (m === 'free') { note.value = compose().content; soapEls.forEach(function (e) { e.value = ''; }); vitEls.concat(labEls).forEach(function (e) { e.value = ''; }); labDate.value = ''; cids = []; renderCids(); updImc(); updTfg(); updLabN(); }
         }
         mode = m;
         $('prFree').hidden = locked() || m !== 'free'; $('prSoap').hidden = locked() || m !== 'soap';
@@ -3511,12 +3612,12 @@
         b.addEventListener('click', function () {
           var m = b.getAttribute('data-m');
           if (!ready || locked() || m === mode) return;
-          if (m === 'free' && soapText() && !confirm('Passar para texto livre?\n\nOs campos do SOAP, os sinais vitais e o CID-10 serão juntados num texto só.')) return;
+          if (m === 'free' && soapText() && !confirm('Passar para texto livre?\n\nOs campos do SOAP, os sinais vitais, os exames e o CID-10 serão juntados num texto só.')) return;
           setMode(m);
         });
       });
       function setEditable(on) {
-        [note].concat(soapEls, vitEls, [$('prCidIn')]).forEach(function (e) { e.readOnly = !on; });
+        [note].concat(soapEls, vitEls, labEls, [labDate, $('prCidIn')]).forEach(function (e) { e.readOnly = !on; });
       }
       function setStatus(t, err) { status.textContent = t; status.className = 'pr-status' + (err ? ' err' : ''); }
       function updCount(len) {
@@ -3535,6 +3636,8 @@
       note.addEventListener('input', changed);
       soapEls.forEach(function (e) { e.addEventListener('input', changed); e.addEventListener('blur', save); });
       vitEls.forEach(function (e) { e.addEventListener('input', function () { checkVital(e); updImc(); changed(); }); });
+      labEls.forEach(function (e) { e.addEventListener('input', function () { checkVital(e); updTfg(); updLabN(); changed(); }); });
+      labDate.addEventListener('change', function () { updTfg(); changed(); });
       note.addEventListener('blur', save);
       // CID-10: sugestões da tabela oficial (DATASUS) enquanto digita; Enter sem sugestão aceita texto livre
       var cidIn = $('prCidIn'), cidList = $('prCidList'), cidItems = [], cidAct = -1, cidSeq = 0, cidTimer = null;
@@ -3859,7 +3962,7 @@
       $('prCopyLast').addEventListener('click', function () {
         var last = lastOther(); if (!last || locked()) return;
         if (compose().content.trim() && !confirm('Substituir o texto atual pelo da última evolução?')) return;
-        var d = last.data && last.data.mode === 'soap' ? Object.assign({}, last.data, { vitals: {} }) : null;  // sinais vitais são de hoje
+        var d = last.data && last.data.mode === 'soap' ? Object.assign({}, last.data, { vitals: {}, labs: null }) : null;  // sinais vitais e exames são de hoje
         fillEditor({ content: last.content, data: d }); changed();
       });
 
@@ -3879,8 +3982,36 @@
         { k: 'fc', label: 'Frequência cardíaca', short: 'FC', unit: 'bpm', ref: [50, 100], dec: 0, minSpan: 20, refTxt: 'Referência 50–100' },
         { k: 'spo2', label: 'Saturação de O₂', short: 'SpO₂', unit: '%', ref: [95, 100], dec: 0, minSpan: 6, refTxt: 'Referência 95–100' },
         { k: 'temp', label: 'Temperatura', short: 'Temp.', unit: '°C', ref: [35.5, 37.5], dec: 1, minSpan: 1.5, refTxt: 'Referência 35,5–37,5' },
-        { k: 'fr', label: 'Frequência respiratória', short: 'FR', unit: 'irpm', ref: [12, 20], dec: 0, minSpan: 8, refTxt: 'Referência 12–20' }
+        { k: 'fr', label: 'Frequência respiratória', short: 'FR', unit: 'irpm', ref: [12, 20], dec: 0, minSpan: 8, refTxt: 'Referência 12–20' },
+        // exames laboratoriais (g: 'lab'); creatinina, hemoglobina, HDL e ácido úrico têm faixa por sexo (sexRefs)
+        { k: 'hba1c', g: 'lab', label: 'Hemoglobina glicada', short: 'HbA1c', unit: '%', ref: [4, 5.6], dec: 1, minSpan: 1, refTxt: 'Referência < 5,7% (no diabetes a meta costuma ser < 7%)' },
+        { k: 'ldl', g: 'lab', label: 'LDL-colesterol', short: 'LDL', unit: 'mg/dL', ref: [0, 129], dec: 0, minSpan: 30, refTxt: 'Desejável < 130 (a meta depende do risco cardiovascular)' },
+        { k: 'hdl', g: 'lab', label: 'HDL-colesterol', short: 'HDL', unit: 'mg/dL', ref: [40, 999], dec: 0, minSpan: 10, refTxt: 'Desejável ≥ 40' },
+        { k: 'tg', g: 'lab', label: 'Triglicerídeos', short: 'TG', unit: 'mg/dL', ref: [0, 149], dec: 0, minSpan: 40, refTxt: 'Desejável < 150' },
+        { k: 'ct', g: 'lab', label: 'Colesterol total', short: 'CT', unit: 'mg/dL', ref: [0, 189], dec: 0, minSpan: 30, refTxt: 'Desejável < 190' },
+        { k: 'tfg', g: 'lab', label: 'Taxa de filtração glomerular', short: 'TFG', unit: 'mL/min/1,73 m²', ref: [60, 999], dec: 0, minSpan: 15, refTxt: 'Referência ≥ 60 (CKD-EPI 2021)' },
+        { k: 'creat', g: 'lab', label: 'Creatinina', short: 'Creat.', unit: 'mg/dL', ref: [0.5, 1.3], dec: 2, minSpan: 0.3, refTxt: 'Referência 0,5–1,3' },
+        { k: 'rac', g: 'lab', label: 'Albuminúria (RAC)', short: 'RAC', unit: 'mg/g', ref: [0, 29], dec: 0, minSpan: 20, refTxt: 'Normal < 30' },
+        { k: 'pot', g: 'lab', label: 'Potássio', short: 'K', unit: 'mEq/L', ref: [3.5, 5.1], dec: 1, minSpan: 0.8, refTxt: 'Referência 3,5–5,1' },
+        { k: 'sod', g: 'lab', label: 'Sódio', short: 'Na', unit: 'mEq/L', ref: [135, 145], dec: 0, minSpan: 6, refTxt: 'Referência 135–145' },
+        { k: 'au', g: 'lab', label: 'Ácido úrico', short: 'Ác. úrico', unit: 'mg/dL', ref: [2.4, 7], dec: 1, minSpan: 1.5, refTxt: 'Referência 2,4–7,0' },
+        { k: 'tsh', g: 'lab', label: 'TSH', short: 'TSH', unit: 'mUI/L', ref: [0.4, 4.5], dec: 2, minSpan: 1, refTxt: 'Referência 0,4–4,5' },
+        { k: 'hb', g: 'lab', label: 'Hemoglobina', short: 'Hb', unit: 'g/dL', ref: [12, 17.5], dec: 1, minSpan: 1.5, refTxt: 'Referência 12–17,5' },
+        { k: 'alt', g: 'lab', label: 'TGP (ALT)', short: 'TGP', unit: 'U/L', ref: [0, 40], dec: 0, minSpan: 15, refTxt: 'Referência até 40 (varia por laboratório)' }
       ];
+      var LABK = ['hba1c', 'ldl', 'hdl', 'tg', 'ct', 'creat', 'rac', 'pot', 'sod', 'au', 'tsh', 'hb', 'alt'];   // digitados (a TFG é calculada)
+      function sexRefs() {
+        var sx = patient && patient.sex, F = sx === 'F', M = sx === 'M';
+        function set(k, r, t) { MBY[k].ref = r; MBY[k].refTxt = t; }
+        set('creat', F ? [0.5, 1.1] : M ? [0.7, 1.3] : [0.5, 1.3], 'Referência ' + (F ? '0,5–1,1' : M ? '0,7–1,3' : '0,5–1,3'));
+        set('hb', F ? [12, 16] : M ? [13, 17.5] : [12, 17.5], 'Referência ' + (F ? '12–16' : M ? '13–17,5' : '12–17,5'));
+        set('hdl', F ? [50, 999] : [40, 999], 'Desejável ≥ ' + (F ? '50' : '40'));
+        set('au', F ? [2.4, 6] : M ? [3.4, 7] : [2.4, 7], 'Referência ' + (F ? '2,4–6,0' : M ? '3,4–7,0' : '2,4–7,0'));
+        // no diabetes vale a meta de controle, não a faixa de quem não tem a doença (individualizar)
+        var dm = /diabet|\bdm ?[12]?\b/i.test(patient && patient.problems || '');
+        set('hba1c', dm ? [0, 6.9] : [4, 5.6], dm ? 'Meta no diabetes < 7% (individualizar)' : 'Referência < 5,7%');
+        set('glicemia', dm ? [80, 130] : [70, 99], dm ? 'Meta pré-prandial no diabetes 80–130' : 'Referência em jejum 70–99');
+      }
       var MBY = {}; METRICS.forEach(function (m) { MBY[m.k] = m; });
       var ARROW = { up: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 8.6V1.6M1.9 4.6L5 1.5l3.1 3.1" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
                     down: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.4v7M1.9 5.4L5 8.5l3.1-3.1" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -3933,6 +4064,7 @@
       function lower1(t) { return /^[A-ZÀ-Ý]{2}/.test(t) ? t : t.charAt(0).toLowerCase() + t.slice(1); }   // siglas (IMC, PA) ficam como estão
       // sinais vitais de cada evolução, em ordem de data (valores impossíveis = erro de digitação: ficam de fora)
       function series() {
+        sexRefs();
         var S = {}; METRICS.forEach(function (m) { S[m.k] = []; });
         var rows = notes.filter(function (n) { return n.data && n.data.vitals && Object.keys(n.data.vitals).length && noteDate(n); })
                         .map(function (n) { return { n: n, t: noteDate(n), v: n.data.vitals }; })
@@ -3947,6 +4079,15 @@
           var h = val(r.v, 'altura'), alt = h ? (h > 3 ? h / 100 : h) : lastAlt, p = val(r.v, 'peso');
           if (p && alt) push('imc', p / (alt * alt));
         });
+        // exames: valem pela data da coleta (em branco = data da consulta)
+        notes.forEach(function (n) {
+          var L = n.data && n.data.labs, tn = noteDate(n);
+          if (!L || !L.v || !tn) return;
+          var t = L.date ? parseStart(L.date) : tn;
+          LABK.forEach(function (k) { var x = val(L.v, k); if (x != null) S[k].push({ t: t, v: x, n: n }); });
+          var c = val(L.v, 'creat'), g = c != null ? tfgOf(c, t) : null; if (g) S.tfg.push({ t: t, v: g, n: n });
+        });
+        LABK.concat(['tfg']).forEach(function (k) { S[k].sort(function (a, b) { return a.t - b.t; }); });
         return S;
       }
       function lastAltura() {
@@ -3967,10 +4108,12 @@
         ov.cmp = ov.cmp.filter(function (k) { return k !== ov.metric && S[k] && S[k].length; });
         $('ovTop').hidden = !patient;
         $('ovChart').hidden = !any; $('gqTable').hidden = !any; $('gqQuote').hidden = !any;
-        $('ovTilesWrap').hidden = avail.length < 2; if (!any) $('ovTiles').innerHTML = '';
+        var vitA = avail.filter(function (m) { return !m.g; }), labA = avail.filter(function (m) { return m.g; });
+        $('ovTilesWrap').hidden = avail.length < 2 || !vitA.length; $('ovLabWrap').hidden = avail.length < 2 || !labA.length;
+        if (!any) { $('ovTiles').innerHTML = ''; $('ovLabTiles').innerHTML = ''; }
         $('ovEmpty').hidden = any || !patient;
         $('ovEmptyGo').textContent = ctx && ctx.event_id ? 'Abrir a consulta' : 'Nova evolução';
-        if (any) { renderTiles(S, avail); drawChart(); } else $('gqWhy').hidden = true;
+        if (any) { renderTiles(S, vitA, 'ovTiles'); renderTiles(S, labA, 'ovLabTiles'); drawChart(); } else $('gqWhy').hidden = true;
         renderAcc(S); renderPan(S); renderAnalysis(S); renderStats(S); renderNext(); renderDx(); renderFeed();
       }
 
@@ -4006,8 +4149,8 @@
         s.appendChild(svgEl('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 1.5, 'vector-effect': 'non-scaling-stroke', 'stroke-linejoin': 'round' }));
         return s;
       }
-      function renderTiles(S, avail) {
-        var box = $('ovTiles'); box.innerHTML = '';
+      function renderTiles(S, avail, id) {
+        var box = $(id); box.innerHTML = '';
         avail.forEach(function (m) {
           var a = S[m.k], last = a[a.length - 1], first = a[0], o = off(m, last), t = a.length > 1 ? trend(m, first, last) : '';
           var b = el('button', 'gr-card' + (m.k === ov.metric ? ' on' : '')); b.type = 'button'; b._k = m.k;
@@ -4022,21 +4165,24 @@
           b.addEventListener('click', function () { pickMetric(m.k); $('ovTop').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
           box.appendChild(b);
         });
-        tilesNav();
+        tilesNav(id);
       }
-      function tilesNav() {
-        var b = $('ovTiles'), more = b.scrollWidth - b.clientWidth > 2;
-        $('ovTPrev').hidden = !more || b.scrollLeft < 4;
-        $('ovTNext').hidden = !more || b.scrollLeft + b.clientWidth >= b.scrollWidth - 4;
+      var TNAV = { ovTiles: ['ovTPrev', 'ovTNext'], ovLabTiles: ['ovLPrev', 'ovLNext'] };
+      function tilesNav(id) {
+        var b = $(id), nv = TNAV[id], more = b.scrollWidth - b.clientWidth > 2;
+        $(nv[0]).hidden = !more || b.scrollLeft < 4;
+        $(nv[1]).hidden = !more || b.scrollLeft + b.clientWidth >= b.scrollWidth - 4;
       }
-      $('ovTiles').addEventListener('scroll', function () { tilesNav(); }, { passive: true });
-      $('ovTPrev').addEventListener('click', function () { var b = $('ovTiles'); b.scrollBy({ left: -(b.clientWidth + 12), behavior: 'smooth' }); });
-      $('ovTNext').addEventListener('click', function () { var b = $('ovTiles'); b.scrollBy({ left: b.clientWidth + 12, behavior: 'smooth' }); });
-      if (window.ResizeObserver) new ResizeObserver(function () { tilesNav(); }).observe($('ovTiles'));
+      Object.keys(TNAV).forEach(function (id) {
+        $(id).addEventListener('scroll', function () { tilesNav(id); }, { passive: true });
+        $(TNAV[id][0]).addEventListener('click', function () { var b = $(id); b.scrollBy({ left: -(b.clientWidth + 12), behavior: 'smooth' }); });
+        $(TNAV[id][1]).addEventListener('click', function () { var b = $(id); b.scrollBy({ left: b.clientWidth + 12, behavior: 'smooth' }); });
+        if (window.ResizeObserver) new ResizeObserver(function () { tilesNav(id); }).observe($(id));
+      });
       function pickMetric(k) {
         ov.metric = k; ov.cmp = ov.cmp.filter(function (x) { return x !== k; });
         try { localStorage.setItem('od_pr_metric', k); } catch (_) {}
-        [].forEach.call($('ovTiles').children, function (c) { c.classList.toggle('on', c._k === k); });
+        [].forEach.call(document.querySelectorAll('#ovTiles > *, #ovLabTiles > *'), function (c) { c.classList.toggle('on', c._k === k); });
         drawChart();
       }
 
@@ -4054,15 +4200,23 @@
         b.addEventListener('click', function (e) { e.stopPropagation(); fn(); });
         return b;
       }
+      // itens do menu separados em "Sinais vitais" e "Exames" quando há os dois
+      function grouped(m, list, fn) {
+        var v = list.filter(function (x) { return !x.g; }), l = list.filter(function (x) { return x.g; }), both = v.length && l.length;
+        if (both) m.appendChild(el('div', 'gq-mh sub', 'Sinais vitais'));
+        v.forEach(fn);
+        if (both) m.appendChild(el('div', 'gq-mh sub', 'Exames'));
+        l.forEach(fn);
+      }
       function buildMenu(id) {
         var m = $(id + 'M'); m.innerHTML = '';
         var avail = METRICS.filter(function (x) { return ov.S && ov.S[x.k].length; });
         m.appendChild(el('div', 'gq-mh', 'Sinal principal'));
-        avail.forEach(function (x) { m.appendChild(mi(x.label, ov.metric === x.k, function () { closeMenus(); pickMetric(x.k); }, { radio: true })); });
+        grouped(m, avail, function (x) { m.appendChild(mi(x.label, ov.metric === x.k, function () { closeMenus(); pickMetric(x.k); }, { radio: true })); });
         var others = avail.filter(function (x) { return x.k !== ov.metric; });
         if (others.length) {
           m.appendChild(el('div', 'gq-mh', 'Comparar com (variação em %)'));
-          others.forEach(function (x) {
+          grouped(m, others, function (x) {
             var on = ov.cmp.indexOf(x.k) >= 0;
             m.appendChild(mi(x.label, on, function () {
               ov.cmp = on ? ov.cmp.filter(function (k) { return k !== x.k; }) : ov.cmp.concat([x.k]);
@@ -4111,7 +4265,7 @@
         why.hidden = dd === 'flat'; wt.innerHTML = '';
         if (dd !== 'flat') {
           var ar2 = art(m), down = dd === 'down';
-          wt.appendChild(document.createTextNode('Por que ' + ar2 + ' ' + lower1(m.label) + ' ' + (down ? 'caiu' : 'subiu') + ' '));
+          wt.appendChild(document.createTextNode('Por que ' + ar2 + ' ' + lower1(m.label) + ' ' + (down ? V(m, 'caiu', 'caíram') : V(m, 'subiu', 'subiram')) + ' '));
           wt.appendChild(el('span', trend(m, a, last) || null, fmtN(Math.abs((last.v / a.v - 1) * 100), 2) + '%'));
           wt.appendChild(document.createTextNode(' ' + spanTxt(a.t, last.t) + '?'));
           why._q = deepQ(m.k, a, last, pts.length > 1 ? pts.length : 2);
@@ -4338,22 +4492,36 @@
       function statusTxt(m, p) { return !m.ref ? '' : off(m, p) ? side(m, p) + ' da faixa de referência (' + lower1(m.refTxt.replace(/^Referência\s*/, '')) + ')' : 'dentro da faixa de referência'; }
       // o que aconteceu com o sinal: de quanto para quanto, em quanto tempo, quantas medidas e onde está hoje
       function factTxt(m, a, b, n) {
-        var u = ' ' + m.unit, st = statusTxt(m, b), nm = cap(art(m) + ' ' + lower1(m.label));
+        var u = ' ' + m.unit, st = statusTxt(m, b), nm = cap(art(m) + ' ' + lower1(m.label)), est = V(m, 'está', 'estão');
         if (a && a !== b && dir(a, b) !== 'flat')
-          return nm + ' foi de ' + fmtV(m, a) + ' para ' + fmtV(m, b) + u + ' ' + spanTxt(a.t, b.t) + ' (' + pctTxt((b.v / a.v - 1) * 100) +
-                 (m.k === 'pa' ? ' na sistólica' : '') + (n > 2 ? ', ' + n + ' medidas' : '') + ')' + (st ? ' e está ' + st : '') + (m.k === 'imc' ? ', ' + imcClass(b.v) : '') + '.';
-        return nm + ' está em ' + fmtV(m, b) + u + ' (' + dayMon(b.t) + ')' + (st ? ', ' + st : '') + (m.k === 'imc' ? ', ' + imcClass(b.v) : '') +
-               (a && a !== b ? ', estável desde ' + dayMon(a.t) : '') + '.';
+          return nm + ' ' + V(m, 'foi', 'foram') + ' de ' + fmtV(m, a) + ' para ' + fmtV(m, b) + u + ' ' + spanTxt(a.t, b.t) + ' (' + pctTxt((b.v / a.v - 1) * 100) +
+                 (m.k === 'pa' ? ' na sistólica' : '') + (n > 2 ? ', ' + n + ' medidas' : '') + ')' + (st ? ' e ' + est + ' ' + st : '') + (m.k === 'imc' ? ', ' + imcClass(b.v) : '') + '.';
+        return nm + ' ' + est + ' em ' + fmtV(m, b) + u + ' (' + dayMon(b.t) + ')' + (st ? ', ' + st : '') + (m.k === 'imc' ? ', ' + imcClass(b.v) : '') +
+               (a && a !== b ? ', ' + V(m, 'estável', 'estáveis') + ' desde ' + dayMon(a.t) : '') + '.';
       }
       // sinais que ajudam a explicar a mudança, no mesmo intervalo
-      var COMP = { pa: ['peso', 'fc'], peso: ['pa', 'glicemia'], imc: ['pa', 'glicemia'], glicemia: ['peso', 'pa'], fc: ['pa', 'temp'], spo2: ['fr', 'fc'], temp: ['fc', 'fr'], fr: ['spo2', 'temp'] };
+      var COMP = { pa: ['peso', 'fc'], peso: ['pa', 'glicemia'], imc: ['pa', 'glicemia'], glicemia: ['peso', 'pa'], fc: ['pa', 'temp'], spo2: ['fr', 'fc'], temp: ['fc', 'fr'], fr: ['spo2', 'temp'],
+                   hba1c: ['glicemia', 'imc'], ldl: ['imc'], hdl: ['imc'], tg: ['imc', 'glicemia'], ct: ['imc'], tfg: ['pa'], creat: ['pa'], rac: ['pa', 'glicemia'],
+                   pot: ['pa'], sod: ['pa'], au: ['peso', 'pa'], tsh: ['fc', 'peso'], hb: ['fc'], alt: ['imc'] };
+      // exames mais recentes que importam para cada assunto (com data e situação)
+      var LABCTX = { pa: ['tfg', 'pot', 'rac', 'ldl'], glicemia: ['hba1c', 'tfg', 'rac', 'ldl'], peso: ['hba1c', 'ldl', 'tg', 'alt', 'tsh'], imc: ['hba1c', 'ldl', 'tg', 'alt'],
+                     fc: ['tsh', 'hb', 'pot'], spo2: ['hb'], temp: [], fr: ['hb'], hba1c: ['tfg', 'rac', 'ldl', 'alt'], ldl: ['ct', 'hdl', 'tg', 'hba1c', 'tfg', 'alt'],
+                     hdl: ['ldl', 'tg', 'hba1c'], tg: ['ldl', 'hdl', 'hba1c', 'alt', 'tsh'], ct: ['ldl', 'hdl', 'tg'], creat: ['tfg', 'rac', 'pot', 'hb', 'hba1c'],
+                     tfg: ['creat', 'rac', 'pot', 'hb', 'hba1c'], rac: ['tfg', 'hba1c', 'ldl'], pot: ['tfg', 'sod'], sod: ['pot', 'tfg'], au: ['tfg'], tsh: ['ldl', 'hb'], hb: ['tfg'], alt: ['tg', 'hba1c'] };
+      function labLine(m, b) {
+        return lower1(m.label) + ' ' + fmtV(m, b) + ' ' + m.unit + ' (' + MON[b.t.getMonth()] + ' ' + b.t.getFullYear() + (m.ref && off(m, b) ? ', ' + side(m, b) + ' da referência' : '') + ')';
+      }
+      function labsCtx(k) {
+        var S = ov.S || series(), l = (LABCTX[k] || []).filter(function (x) { return x !== k && S[x].length; }).map(function (x) { var a = S[x]; return labLine(MBY[x], a[a.length - 1]); });
+        return l.length ? 'Exames mais recentes: ' + l.join(', ') + '.' : '';
+      }
       function companions(k, a, b) {
         var S = ov.S || series(), out = [], from = a ? a.t.getTime() - 20 * 864e5 : -Infinity, to = b.t.getTime() + 864e5;
         COMP[k].forEach(function (c) {
           var m = MBY[c], pts = S[c].filter(function (p) { return p.t.getTime() >= from && p.t.getTime() <= to; });
           if (!pts.length) return;
           var x = pts[0], y = pts[pts.length - 1], nm = art(m) + ' ' + lower1(m.label);
-          out.push(a && pts.length > 1 && dir(x, y) !== 'flat' ? nm + ' foi de ' + fmtV(m, x) + ' para ' + fmtV(m, y) + ' ' + m.unit : nm + ' estava em ' + fmtV(m, y) + ' ' + m.unit);
+          out.push(a && pts.length > 1 && dir(x, y) !== 'flat' ? nm + ' ' + V(m, 'foi', 'foram') + ' de ' + fmtV(m, x) + ' para ' + fmtV(m, y) + ' ' + m.unit : nm + ' ' + V(m, 'estava', 'estavam') + ' em ' + fmtV(m, y) + ' ' + m.unit);
         });
         return out.length ? (a ? 'No mesmo período, ' : 'Na mesma época, ') + joinE(out) + '.' : '';
       }
@@ -4366,7 +4534,21 @@
         fc: 'Quais causas considerar (medicações, tireoide, anemia, arritmias, condicionamento) e quando investigar com ECG, Holter ou exames laboratoriais?',
         spo2: 'Quais causas considerar, como investigar (gasometria, exame de imagem, espirometria) e quais sinais de alarme indicam avaliação imediata?',
         temp: 'Quais causas considerar neste contexto, quais sinais de alarme observar e qual a conduta inicial?',
-        fr: 'Quais causas considerar, como avaliar a gravidade e quando indicar investigação adicional?'
+        fr: 'Quais causas considerar, como avaliar a gravidade e quando indicar investigação adicional?',
+        hba1c: 'Qual a meta de HbA1c para esse perfil (idade, comorbidades, risco de hipoglicemia)? O tratamento atual é suficiente ou é hora de intensificar — e com quais classes, considerando benefício cardiovascular e renal e a função renal atual? Com que frequência repetir o exame?',
+        ldl: 'Qual o risco cardiovascular deste paciente pelas diretrizes (SBC/ESC) e a meta de LDL-c correspondente? A terapia hipolipemiante atual é suficiente ou cabe intensificar (dose, troca de estatina, associar ezetimiba)? Há causas secundárias a investigar?',
+        hdl: 'Como esse HDL entra na estimativa de risco cardiovascular deste paciente? Quais medidas ajudam e o que priorizar no perfil lipídico como um todo?',
+        tg: 'Quais causas secundárias considerar neste caso (controle glicêmico, álcool, medicações, hipotireoidismo, obesidade)? Qual a meta e quando tratar com fármacos?',
+        ct: 'Como interpretar o colesterol total junto com LDL, HDL e triglicerídeos, e qual a meta lipídica pelo risco cardiovascular deste paciente?',
+        tfg: 'Em que estágio da doença renal crônica o paciente se enquadra (KDIGO, TFG e albuminúria)? Alguma medicação em uso precisa de ajuste de dose ou suspensão pela TFG? Quais medidas de nefroproteção indicar (IECA/BRA, iSGLT2, controle pressórico e glicêmico) e com que frequência monitorar?',
+        creat: 'Qual a TFG estimada e o estágio KDIGO? Alguma medicação em uso precisa de ajuste pela função renal? Quais medidas de nefroproteção indicar e com que frequência monitorar?',
+        rac: 'Qual a categoria de albuminúria (KDIGO) e o que ela muda no risco cardiovascular e renal? Há indicação de IECA/BRA, iSGLT2 ou outra medida de nefroproteção, e quando repetir para confirmar?',
+        pot: 'Quais causas considerar (medicações em uso, função renal, dieta) e qual a conduta? Algum fármaco precisa ser ajustado ou suspenso, e quando repetir?',
+        sod: 'Quais causas considerar (medicações, volemia, endocrinopatias) e qual a investigação e a conduta iniciais?',
+        au: 'Há indicação de tratamento (gota, litíase, doença renal) ou só de medidas não farmacológicas? Alguma medicação em uso eleva o ácido úrico e pode ser trocada?',
+        tsh: 'Como interpretar no contexto (sintomas, uso de levotiroxina, idade)? Quais exames complementares pedir (T4 livre, anti-TPO) e qual a conduta?',
+        hb: 'Há anemia? Qual a investigação inicial (VCM, ferritina, B12, função renal) e qual a conduta neste perfil?',
+        alt: 'Quais causas considerar (esteatose hepática metabólica, álcool, medicações como estatina, hepatites virais)? Qual a investigação inicial (USG, sorologias, FIB-4) e quando encaminhar?'
       };
       function deepQ(k, a, b, n) {
         var m = MBY[k], moved = a && a !== b && dir(a, b) !== 'flat', o = m.ref && off(m, b) ? side(m, b) : '';
@@ -4376,40 +4558,57 @@
                    'O que essa tendência indica sobre o controle e a resposta ao tratamento atual?';
         // contexto de longo prazo: a primeira medida registrada, quando o período perguntado é mais curto
         var all = (ov.S || series())[k], f = all[0], hist = a && f && f !== a && f.t < a.t && dir(f, b) !== 'flat' ?
-          'Na primeira medida registrada (' + MON[f.t.getMonth()] + ' ' + f.t.getFullYear() + '), era ' + fmtV(m, f) + ' ' + m.unit + '.' : '';
+          'Na primeira medida registrada (' + MON[f.t.getMonth()] + ' ' + f.t.getFullYear() + '), ' + V(m, 'era', 'eram') + ' ' + fmtV(m, f) + ' ' + m.unit + '.' : '';
         var extra = k === 'pa' && o === 'abaixo' ? ' Há sinais de sobretratamento ou risco de hipotensão?' :
                     k === 'peso' && moved && dir(a, b) === 'down' ? ' Se a perda não for intencional, quais sinais de alarme e exames iniciais?' : '';
-        return [profile(), factTxt(m, a, b, n), companions(k, a, b), hist, lead + ' ' + ASK[k] + extra].filter(Boolean).join(' ');
+        var fact = factTxt(m, a, b, n), ask = lead + ' ' + ASK[k] + extra;
+        return fitQ([[profile(), fact, companions(k, a, b), hist, labsCtx(k), ask], [profile(), fact, companions(k, a, b), labsCtx(k), ask], [profile(), fact, ask]]);
       }
       // todos os sinais de uma vez (para revisar a consulta ou priorizar o que está fora da meta)
-      function signalsTxt(S) {
-        var l = [];
+      function signalsTxt(S, brief) {
+        var vit = [], lab = [], rest = [];
         METRICS.forEach(function (m) {
-          var a = S[m.k]; if (!a.length) return;
+          var a = S[m.k]; if (!a.length || m.k === 'creat' && S.tfg.length) return;   // com TFG, a creatinina já está dita
           var b = a[a.length - 1], f = a[0], tags = [], o = !!m.ref && off(m, b);
+          if (brief && !o && !/^(pa|imc|hba1c|ldl|tfg)$/.test(m.k)) { rest.push(m.short); return; }
+          if (m.g) tags.push(MON[b.t.getMonth()] + ' ' + b.t.getFullYear());
           if (m.ref) tags.push(o ? side(m, b) + ' da referência' : 'na referência');
           if (m.k === 'imc') tags.push(imcClass(b.v));
-          if (a.length > 1 && dir(f, b) !== 'flat' && (o || /^(pa|peso|imc|glicemia)$/.test(m.k))) tags.push('era ' + fmtV(m, f) + ' em ' + MON[f.t.getMonth()] + ' ' + f.t.getFullYear());
-          l.push(lower1(m.label) + ' ' + fmtV(m, b) + ' ' + m.unit + (tags.length ? ' (' + tags.join('; ') + ')' : ''));
+          if (a.length > 1 && dir(f, b) !== 'flat' && (o || /^(pa|peso|imc|glicemia|hba1c|ldl|tfg)$/.test(m.k))) tags.push(V(m, 'era', 'eram') + ' ' + fmtV(m, f) + ' em ' + MON[f.t.getMonth()] + ' ' + f.t.getFullYear());
+          (m.g ? lab : vit).push(lower1(m.label) + ' ' + fmtV(m, b) + ' ' + m.unit + (tags.length ? ' (' + tags.join('; ') + ')' : ''));
         });
-        return l.length ? 'Últimos sinais: ' + l.join(', ') + '.' : '';
+        return [vit.length ? 'Últimos sinais vitais: ' + vit.join(', ') + '.' : '', lab.length ? 'Últimos exames: ' + lab.join(', ') + '.' : '',
+                rest.length ? 'Demais na referência ou sem faixa: ' + rest.join(', ') + '.' : ''].filter(Boolean).join(' ');
+      }
+      // o assistente aceita até 2000 caracteres: tenta a versão completa, depois a compacta, depois tira o contexto opcional
+      // (a completa só até 1400: pergunta enxuta busca melhor)
+      var QMAX = 1900;
+      function fitQ(versions) {
+        for (var i = 0; i < versions.length; i++) {
+          var q = versions[i].filter(Boolean).join(' ');
+          if (q.length <= (i ? QMAX : 1400) || i === versions.length - 1) return q.length <= QMAX ? q : q.slice(0, QMAX);
+        }
       }
       function reviewQ(S) {
-        return [profile(), signalsTxt(S), 'O que priorizar nesta consulta e no retorno: metas ainda não atingidas, ajustes de tratamento, exames de acompanhamento e de rastreamento indicados para esse perfil (com a periodicidade recomendada), vacinas e orientações ao paciente?'].filter(Boolean).join(' ');
+        var ask = 'O que priorizar nesta consulta e no retorno: metas ainda não atingidas, ajustes de tratamento, exames de acompanhamento e de rastreamento indicados para esse perfil (com a periodicidade recomendada), vacinas e orientações ao paciente?';
+        return fitQ([[profile(), signalsTxt(S), overdueTxt(S), ask], [profile(), signalsTxt(S, true), overdueTxt(S), ask], [profile(), signalsTxt(S, true), ask]]);
       }
 
       // ----- "Resumo do paciente": frases que abrem em detalhe (como "Resumo do mercado") -----
       function renderAcc(S) {
         var items = [], c = { good: 0, bad: 0, worse: 0, todo: 0 };
-        ['pa', 'imc', 'glicemia', 'fc', 'spo2', 'temp', 'fr'].forEach(function (k) {
+        var accK = ['pa', 'imc', 'glicemia', 'fc', 'spo2', 'temp', 'fr', 'hba1c', 'ldl', 'hdl', 'tg', 'ct', S.tfg.length ? 'tfg' : 'creat', 'rac', 'pot', 'sod', 'au', 'tsh', 'hb', 'alt'];
+        accK.forEach(function (k) {
           var m = MBY[k], a = S[k]; if (!a.length) return;
           var first = a[0], last = a[a.length - 1], n = a.length, t = n > 1 ? trend(m, first, last) : '', o = off(m, last);
-          var fv = fmtV(m, first), lv = fmtV(m, last), u = ' ' + m.unit, verb = dir(first, last) === 'down' ? 'caiu' : 'subiu';
+          if (m.g && !o && t !== 'down' && !(t === 'up' && /^(hba1c|ldl)$/.test(k))) return;   // exame: só o que pede atenção
+          var fv = fmtV(m, first), lv = fmtV(m, last), u = ' ' + m.unit, verb = dir(first, last) === 'down' ? V(m, 'caiu', 'caíram') : V(m, 'subiu', 'subiram');
           if (t === 'up') c.good++; if (t === 'down') c.worse++; if (o) c.bad++;
           var title, cls;
-          if (t === 'up' && !o) { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + ' e está dentro da referência'; cls = 'up'; }
-          else if (t === 'up') { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + ', mas segue ' + side(m, last) + ' da referência'; cls = 'warn'; }
-          else if (t === 'down') { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + (o ? ' e está ' + side(m, last) + ' da referência' : ''); cls = 'down'; }
+          var est = V(m, 'está', 'estão'), seg = V(m, 'segue', 'seguem');
+          if (t === 'up' && !o) { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + ' e ' + est + ' dentro da referência'; cls = 'up'; }
+          else if (t === 'up') { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + ', mas ' + seg + ' ' + side(m, last) + ' da referência'; cls = 'warn'; }
+          else if (t === 'down') { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + (o ? ' e ' + est + ' ' + side(m, last) + ' da referência' : ''); cls = 'down'; }
           else if (o) { title = 'Última medida de ' + lower1(m.label) + ' ' + side(m, last) + ' da referência: ' + lv + u; cls = 'down'; }
           else return;                                     // estável e dentro da faixa: não precisa de destaque
           var nOff = a.filter(function (p) { return off(m, p); }).length;
@@ -4426,6 +4625,15 @@
             acts: [{ t: 'Ver no gráfico', i: ICON.chart, f: function () { pickMetric(k); $('ovChart').scrollIntoView({ behavior: 'smooth', block: 'center' }); } },
                    { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(deepQ(k, first, last, n)); } }] });
         });
+        // exames de acompanhamento atrasados ou nunca registrados
+        var fu = followups(S).filter(function (x) { return x.st !== 'ok'; });
+        if (fu.length) {
+          c.todo++;
+          items.push({ cls: 'todo', rank: 3, title: fu.length === 1 ? '1 exame de acompanhamento atrasado ou sem registro' : fu.length + ' exames de acompanhamento atrasados ou sem registro',
+            body: fu.map(function (x) { return x.f.label + (x.last ? ' — último em ' + dayMon(x.last) : ' — sem registro') + ' (' + freqTxt(x.months) + '; ' + x.why.join(', ') + ')'; }).join('. ') + '. Sugestão a partir dos problemas e medicações registrados; ajuste ao caso.',
+            acts: [{ t: 'Ver na Análise', i: ICON.chart, f: function () { setTab('analise'); $('gaFuSec').scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
+                   { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(reviewQ(S)); } }] });
+        }
         // pendências
         var drafts = notes.filter(function (n) { return !n.signed_at && (n.content || '').trim() && n !== cur; });
         if (drafts.length) {
@@ -4602,7 +4810,9 @@
       }
 
       // ===== componentes das outras abas do Finance (NVDA) — tudo calculado aqui, sem IA =====
-      function art(m) { return m.k === 'peso' || m.k === 'imc' ? 'o' : 'a'; }
+      var ART = { peso: 'o', imc: 'o', ldl: 'o', hdl: 'o', ct: 'o', tsh: 'o', pot: 'o', sod: 'o', au: 'o', tg: 'os' };
+      function art(m) { return ART[m.k] || 'a'; }
+      function V(m, sing, plur) { return m.k === 'tg' ? plur : sing; }        // "os triglicerídeos caíram"
       function joinE(l) { return l.length > 1 ? l.slice(0, -1).join(', ') + ' e ' + l[l.length - 1] : l[0] || ''; }
       // situação da última medida: 'ok' (na referência) | 'melhora' (fora, mas aproximando-se) | 'fora' | '' (sinal sem faixa)
       function stat(m, a) {
@@ -4614,14 +4824,87 @@
       var SPARKB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0B57D0"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0B57D0"/></svg>';
       var ICONQ = ICON.ask.replace(/#1F1F1F/g, '#5E5E5E');
 
+
+      // ----- exames de acompanhamento: o que os problemas e as medicações pedem, e quando foi o último -----
+      // Intervalos de diretrizes gerais (SBD, SBC, KDIGO); servem de lembrete — o médico ajusta ao caso.
+      var FUP = [
+        { id: 'hba1c', label: 'Hemoglobina glicada (HbA1c)', keys: ['hba1c'] },
+        { id: 'lip', label: 'Perfil lipídico', keys: ['ct', 'ldl', 'hdl', 'tg'] },
+        { id: 'renal', label: 'Creatinina e TFG', keys: ['creat'] },
+        { id: 'rac', label: 'Albuminúria (RAC)', keys: ['rac'] },
+        { id: 'pot', label: 'Potássio', keys: ['pot'] },
+        { id: 'sod', label: 'Sódio', keys: ['sod'] },
+        { id: 'au', label: 'Ácido úrico', keys: ['au'] },
+        { id: 'tsh', label: 'TSH', keys: ['tsh'] },
+        { id: 'alt', label: 'TGP (ALT)', keys: ['alt'] },
+        { id: 'hb', label: 'Hemoglobina', keys: ['hb'] }
+      ];
+      var FUP_PROB = [
+        [/diabet|\bdm ?[12]\b|\bdm\b/i, 'Diabetes', { hba1c: 6, lip: 12, renal: 12, rac: 12 }],
+        [/hipertens|\bhas\b/i, 'Hipertensão', { renal: 12, pot: 12, lip: 12, hba1c: 12, au: 12 }],
+        [/obesid|sobrepeso/i, 'Obesidade', { hba1c: 12, lip: 12, alt: 12 }],
+        [/dislipid|hipercolest|hipertrigl/i, 'Dislipidemia', { lip: 12, alt: 12 }],
+        [/renal cr|\bdrc\b|nefropat|insufici[eê]ncia renal|doen[cç]a renal/i, 'Doença renal', { renal: 6, rac: 6, pot: 6, hb: 12 }],
+        [/tireo|tiroid|hashimoto/i, 'Tireoide', { tsh: 12 }],
+        [/\bgota\b|hiperuric/i, 'Gota', { au: 6, renal: 12 }]
+      ];
+      var FUP_MEDS = [
+        [/losartana|valsartana|candesartana|olmesartana|irbesartana|telmisartana|enalapril|captopril|ramipril|lisinopril|perindopril|espironolactona|eplerenona/i, 'IECA/BRA ou antialdosterônico', { renal: 12, pot: 12 }],
+        [/hidroclorotiazida|clortalidona|indapamida|furosemida|bumetanida/i, 'Diurético', { pot: 12, sod: 12, renal: 12, au: 12 }],
+        [/metformina/i, 'Metformina', { renal: 12 }],
+        [/sinvastatina|atorvastatina|rosuvastatina|pravastatina|pitavastatina|lovastatina/i, 'Estatina', { lip: 12, alt: 12 }],
+        [/levotiroxina/i, 'Levotiroxina', { tsh: 12 }],
+        [/dapagliflozina|empagliflozina|canagliflozina/i, 'iSGLT2', { renal: 12 }],
+        [/l[ií]tio/i, 'Lítio', { renal: 6, tsh: 6 }],
+        [/amiodarona/i, 'Amiodarona', { tsh: 6, alt: 6 }]
+      ];
+      function freqTxt(mo) { return mo === 12 ? 'anual' : 'a cada ' + mo + ' meses'; }
+      function followups(S) {
+        var p = patient || {}, need = {};
+        function add(map, why) { for (var id in map) { var x = need[id] || (need[id] = { months: 99, why: [] }); x.months = Math.min(x.months, map[id]); if (x.why.indexOf(why) < 0) x.why.push(why); } }
+        FUP_PROB.forEach(function (r) { if (r[0].test(p.problems || '')) add(r[2], r[1]); });
+        FUP_MEDS.forEach(function (r) { if (r[0].test(p.medications || '')) add(r[2], r[1]); });
+        var im = S.imc[S.imc.length - 1]; if (im && im.v >= 30 && !/obesid/i.test(p.problems || '')) add({ hba1c: 12, lip: 12, alt: 12 }, 'IMC ≥ 30');
+        var h = S.hba1c[S.hba1c.length - 1];                  // diabetes fora da meta: HbA1c a cada 3 meses
+        if (need.hba1c && need.hba1c.why.indexOf('Diabetes') >= 0 && h && h.v >= 7) need.hba1c.months = 3;
+        var now = new Date(), rank = { late: 0, none: 1, ok: 2 };
+        return FUP.filter(function (f) { return need[f.id]; }).map(function (f) {
+          var last = null; f.keys.forEach(function (k) { var a = S[k]; if (a.length && (!last || a[a.length - 1].t > last)) last = a[a.length - 1].t; });
+          var mo = need[f.id].months, due = last ? new Date(last.getFullYear(), last.getMonth() + mo, last.getDate()) : null;
+          return { f: f, months: mo, why: need[f.id].why, last: last, due: due, st: !last ? 'none' : due < now ? 'late' : 'ok' };
+        }).sort(function (a, b) { return rank[a.st] - rank[b.st]; });
+      }
+      function renderFollowups(S) {
+        var list = followups(S), tb = $('gaFuBody'); tb.innerHTML = '';
+        $('gaFuSec').hidden = !list.length || !patient;
+        list.forEach(function (x) {
+          var tr = el('tr'), td = el('td'); td.appendChild(el('b', null, x.f.label)); td.appendChild(el('small', null, x.why.join(' · '))); tr.appendChild(td);
+          var tl = el('td'); if (x.last) { tl.appendChild(document.createTextNode(pad(x.last.getDate()) + '/' + pad(x.last.getMonth() + 1) + '/' + x.last.getFullYear())); tl.appendChild(el('small', null, agoTxt(x.last))); } else tl.textContent = '—';
+          tr.appendChild(tl);
+          tr.appendChild(el('td', null, freqTxt(x.months)));
+          var ts = el('td'); ts.appendChild(el('span', 'ga-pill ' + (x.st === 'ok' ? 'ok' : x.st === 'late' ? 'bad' : 'na'), x.st === 'ok' ? 'Em dia' : x.st === 'late' ? 'Atrasado' : 'Sem registro'));
+          if (x.due) ts.title = (x.st === 'late' ? 'Venceu em ' : 'Próximo em ') + MON[x.due.getMonth()] + ' ' + x.due.getFullYear();
+          tr.appendChild(ts); tb.appendChild(tr);
+        });
+      }
+      function overdueTxt(S) {
+        var l = followups(S).filter(function (x) { return x.st !== 'ok'; });
+        return l.length ? 'Exames de acompanhamento atrasados ou sem registro: ' + l.map(function (x) {
+          return lower1(x.f.label) + ' (' + (x.last ? 'último em ' + MON[x.last.getMonth()] + ' ' + x.last.getFullYear() : 'sem registro') + '; ' + freqTxt(x.months) + ')'; }).join(', ') + '.' : '';
+      }
+
       // ----- Panorama (como "Outlook": barra + pontos positivos / de atenção) -----
+      function cntTxt(ms) {                               // "6 sinais vitais e 9 exames"
+        var v = ms.filter(function (m) { return !m.g; }).length, l = ms.length - v;
+        return [v ? v + (v === 1 ? ' sinal vital' : ' sinais vitais') : '', l ? l + (l === 1 ? ' exame' : ' exames') : ''].filter(Boolean).join(' e ');
+      }
       function renderPan(S) {
         var ms = METRICS.filter(function (m) { return m.ref && S[m.k].length; });
         $('ovPanSec').hidden = !ms.length || !patient;
         if ($('ovPanSec').hidden) return;
         var c = { ok: 0, melhora: 0, fora: 0 }, n = ms.length;
         ms.forEach(function (m) { c[stat(m, S[m.k])]++; });
-        $('ovPanS').textContent = 'Última medida de ' + n + (n === 1 ? ' sinal com faixa' : ' sinais com faixa') + ' de referência';
+        $('ovPanS').textContent = 'Última medida de ' + cntTxt(ms) + ' com faixa de referência';
         var bar = $('ovPanBar'), lg = $('ovPanLg'); bar.innerHTML = ''; lg.innerHTML = '';
         [['ok', '#046E00', 'na referência', '#046E00'], ['melhora', '#DADCE0', 'melhorando', '#747B8C'], ['fora', '#C0151D', 'fora da referência', '#C0151D']].forEach(function (g) {
           var k = c[g[0]], pc = Math.round(k / n * 100);
@@ -4633,14 +4916,15 @@
         ms.forEach(function (m) {
           var a = S[m.k], first = a[0], last = a[a.length - 1], st = stat(m, a), u = ' ' + m.unit;
           var moved = a.length > 1 && dir(first, last) !== 'flat', verb = dir(first, last) === 'down' ? 'caiu' : 'subiu';
-          if (st === 'ok') li(pos, m.label + ' na referência', fmtV(m, last) + u + ' em ' + dayMon(last.t) + (moved ? '; era ' + fmtV(m, first) + u + ' em ' + MON[first.t.getMonth()] + ' ' + first.t.getFullYear() : '') + '.');
-          if (st === 'melhora') li(pos, m.label + ' em melhora', verb + ' de ' + fmtV(m, first) + ' para ' + fmtV(m, last) + u + ' ' + spanTxt(first.t, last.t) + '.');
+          if (st === 'ok' && a.length > 1 && trend(m, first, last) === 'up') li(pos, m.label + ' na referência', fmtV(m, last) + u + ' em ' + dayMon(last.t) + (moved ? '; ' + V(m, 'era', 'eram') + ' ' + fmtV(m, first) + u + ' em ' + MON[first.t.getMonth()] + ' ' + first.t.getFullYear() : '') + '.');
+          if (st === 'melhora') li(pos, m.label + ' em melhora', (dir(first, last) === 'down' ? V(m, 'caiu', 'caíram') : V(m, 'subiu', 'subiram')) + ' de ' + fmtV(m, first) + ' para ' + fmtV(m, last) + u + ' ' + spanTxt(first.t, last.t) + '.');
           if (st === 'melhora' || st === 'fora') {
             var worse = a.length > 1 && trend(m, first, last) === 'down';
             li(neg, m.label + ' ' + side(m, last) + ' da referência', fmtV(m, last) + u + ' em ' + dayMon(last.t) + (m.k === 'imc' ? ', ' + imcClass(last.v) : '') +
                ' (' + lower1(m.refTxt) + ')' + (worse ? '; piorou desde ' + MON[first.t.getMonth()] + ' ' + first.t.getFullYear() : '') + '.');
           }
         });
+        while (pos.children.length > 6) pos.removeChild(pos.lastChild);       // positivos = o que melhorou (até 6)
         $('ovPanPosC').hidden = !pos.children.length; $('ovPanNegC').hidden = !neg.children.length;
       }
 
@@ -4651,7 +4935,8 @@
         if (!any) return;
         var c = { ok: 0, melhora: 0, fora: 0 }, n = ms.length;
         ms.forEach(function (m) { c[stat(m, S[m.k])]++; });
-        $('gaRateS').textContent = n ? 'Com base na última medida de ' + n + (n === 1 ? ' sinal' : ' sinais') + ' com faixa de referência' : 'Nenhum sinal com faixa de referência registrado';
+        $('gaRateS').textContent = n ? 'Com base na última medida de ' + cntTxt(ms) + ' com faixa de referência' : 'Nenhum item com faixa de referência registrado';
+        $('gaRateT').textContent = ms.some(function (m) { return m.g; }) ? 'Sinais e exames na referência' : 'Sinais na referência';
         var G = [['ok', '#046E00', 'Na referência'], ['melhora', '#F4BF00', 'Melhorando'], ['fora', '#C0151D', 'Fora da referência']];
         var svg = $('gaDonut'); svg.innerHTML = '';
         svg.appendChild(svgEl('circle', { cx: 60, cy: 60, r: 51, fill: 'none', stroke: '#E1E3E8', 'stroke-width': 14 }));
@@ -4667,11 +4952,14 @@
         var lg = $('gaLg'); lg.innerHTML = '';
         G.forEach(function (g) { var r = el('div', 'ga-lr'), i = el('i'); i.style.background = g[1]; r.appendChild(i); r.appendChild(el('span', null, g[2])); r.appendChild(el('b', null, String(c[g[0]]))); lg.appendChild(r); });
         var offs = ms.filter(function (m) { return stat(m, S[m.k]) !== 'ok'; }).map(function (m) { return lower1(m.label); });
-        $('gaAsk')._q = [profile(), signalsTxt(S), offs.length ?
+        var gq = offs.length ?
           'Fora da faixa de referência: ' + joinE(offs) + '. Como priorizar o manejo desses pontos, quais metas usar para esse perfil segundo as diretrizes atuais e qual a sequência de condutas, exames de acompanhamento e intervalo de retorno?' :
-          'Todos os sinais com faixa de referência estão dentro dela. Quais metas e qual rotina de acompanhamento (exames, rastreamentos e intervalo de retorno) são recomendadas para esse perfil?'].filter(Boolean).join(' ');
-        var tb = $('gaTBody'); tb.innerHTML = '';
+          'Todos os sinais e exames com faixa de referência estão dentro dela. Quais metas e qual rotina de acompanhamento (exames, rastreamentos e intervalo de retorno) são recomendadas para esse perfil?';
+        $('gaAsk')._q = fitQ([[profile(), signalsTxt(S), overdueTxt(S), gq], [profile(), signalsTxt(S, true), overdueTxt(S), gq], [profile(), signalsTxt(S, true), gq]]);
+        var tb = $('gaTBody'), grp = null, both = avail.some(function (m) { return m.g; }) && avail.some(function (m) { return !m.g; }); tb.innerHTML = '';
+        renderFollowups(S);
         avail.forEach(function (m) {
+          if (both && grp !== (m.g || 'vit')) { grp = m.g || 'vit'; var gr = el('tr', 'ga-grp'), gd = el('td', null, grp === 'lab' ? 'Exames' : 'Sinais vitais'); gd.colSpan = 6; gr.appendChild(gd); tb.appendChild(gr); }
           var a = S[m.k], first = a[0], last = a[a.length - 1], st = stat(m, a), t = a.length > 1 ? trend(m, first, last) : '', d = a.length > 1 ? dir(first, last) : 'flat';
           var tr = el('tr'), td = el('td'); td.appendChild(el('b', null, m.label));
           var sm = el('small', null, m.unit); sm.appendChild(el('span', 'ga-subd', ' · ' + dayMon(last.t))); td.appendChild(sm); tr.appendChild(td);
@@ -4730,7 +5018,7 @@
         var cid = cur && cur.data && cur.data.cid ? cur.data.cid : [];
         if (cid.length) items.push({ lead: (cid.length === 1 ? 'Diagnóstico' : 'Diagnósticos') + ' desta consulta: ', r: 1,
           txt: cid.map(function (x) { return (x.code ? x.code + ' ' : '') + (x.desc || ''); }).join(' · ') + '.' });
-        items.sort(function (a, b) { return a.r - b.r; }); items = items.slice(0, 6);
+        items.sort(function (a, b) { return a.r - b.r; }); items = items.slice(0, 8);
         box.hidden = !items.length; if (!items.length) return;
         $('gcGlanceS').textContent = (here ? 'Sinais desta consulta comparados com a medida anterior' : 'Últimas medidas registradas no prontuário') + ' · calculado aqui, sem IA';
         var L = $('gcGlanceL'); L.innerHTML = '';
@@ -4740,7 +5028,7 @@
         });
         var Q = $('gcGlanceQ'); Q.innerHTML = '';
         var qs = [], fo = items.filter(function (x) { return x.o; })[0];
-        if (fo) qs.push({ t: cap(art(MBY[fo.k]) + ' ' + lower1(MBY[fo.k].label)) + ' está ' + fo.side + ' da referência: o que explica e qual a conduta para este perfil?',
+        if (fo) qs.push({ t: cap(art(MBY[fo.k]) + ' ' + lower1(MBY[fo.k].label)) + ' ' + V(MBY[fo.k], 'está', 'estão') + ' ' + fo.side + ' da referência: o que explica e qual a conduta para este perfil?',
                           q: deepQ(fo.k, fo.prev, fo.p, 2) });
         qs.push({ t: 'O que priorizar nesta consulta e no retorno: metas, ajustes, exames e orientações?', q: reviewQ(S) });
         qs.forEach(function (x) {
@@ -4760,7 +5048,7 @@
         var lg = $('csChartLg'); lg.innerHTML = '';
         function key(c, t, bd) { var sp = el('span'), i = el('i'); i.style.background = c; if (bd) i.style.boxShadow = 'inset 0 0 0 1px #4285F4'; sp.appendChild(i); sp.appendChild(document.createTextNode(t)); lg.appendChild(sp); }
         if (two) { key(C1, 'Sistólica'); key(C2, 'Diastólica', true); } else key(C1, m.label);
-        lg.appendChild(el('span', null, a.length < S[m.k].length ? 'Últimas ' + a.length + ' consultas' : (a.length === 1 ? '1 consulta' : a.length + ' consultas')));
+        lg.appendChild(el('span', null, a.length < S[m.k].length ? 'Últimas ' + a.length + ' medidas' : (a.length === 1 ? '1 medida' : a.length + ' medidas')));
         var svg = $('csSvg'); svg.innerHTML = '';
         var W = svg.clientWidth || 540, H = svg.clientHeight || 176, R = 40, B = 30, T = 8, pw = W - R, ph = H - T - B, base = T + ph;
         svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
@@ -4791,7 +5079,7 @@
         e.stopPropagation();
         var M = $('csMetricM'), open = M.hidden; closeMenus(); if (!open) return;
         M.innerHTML = ''; var S = series();
-        METRICS.filter(function (x) { return S[x.k].length; }).forEach(function (x) {
+        grouped(M, METRICS.filter(function (x) { return S[x.k].length; }), function (x) {
           M.appendChild(mi(x.label, x.k === csM, function () { csM = x.k; try { localStorage.setItem('od_pr_csm', x.k); } catch (_) {} closeMenus(); renderCsChart(); }, { radio: true }));
         });
         M.hidden = false; this.setAttribute('aria-expanded', 'true'); var f2 = M.querySelector('button'); if (f2) f2.focus();
@@ -4815,31 +5103,49 @@
       function renderCs() {
         renderCsChart();
         var tb = $('csTable'); tb.innerHTML = '';
-        var cols = notes.filter(function (n) { return n.data && n.data.vitals && Object.keys(n.data.vitals).length && noteDate(n); })
+        function has(o) { return o && Object.keys(o).length; }
+        var cols = notes.filter(function (n) { var d = n.data || {}; return noteDate(n) && (has(d.vitals) || (d.labs && has(d.labs.v))); })
                         .sort(function (a, b) { return noteDate(a) - noteDate(b); });
-        if (!cols.length) { tb.innerHTML = '<tbody><tr><td class="pr-empty" style="position:static">Nenhum sinal vital registrado nas evoluções (modo SOAP).</td></tr></tbody>'; return; }
+        if (!cols.length) { tb.innerHTML = '<tbody><tr><td class="pr-empty" style="position:static">Nenhum sinal vital ou exame registrado nas evoluções (modo SOAP).</td></tr></tbody>'; return; }
         var alt = lastAltura();
-        var ROWS = [['PA', 'mmHg', function (v) { var a = num(v.pa_s), b = num(v.pa_d); return a != null && b != null ? { t: fmtN(a, 0) + '/' + fmtN(b, 0), bad: dist(a, MBY.pa.ref) > 0 || dist(b, MBY.pa.ref2) > 0 } : null; }],
-          ['FC', 'bpm', 'fc'], ['FR', 'irpm', 'fr'], ['Temperatura', '°C', 'temp'], ['SpO₂', '%', 'spo2'], ['Peso', 'kg', 'peso'],
-          ['Altura', 'cm', function (v) { var h = num(v.altura); return h ? { t: fmtN(h > 3 ? h : h * 100, 0) } : null; }],
-          ['IMC', 'kg/m²', function (v) { var p2 = num(v.peso), h = num(v.altura); h = h ? (h > 3 ? h / 100 : h) : alt; return p2 && h ? (function (x) { return { t: fmtN(x, 1), bad: dist(x, MBY.imc.ref) > 0 }; })(p2 / (h * h)) : null; }],
-          ['Glicemia', 'mg/dL', 'glicemia']];
+        function cell(x, m) { return x != null ? { t: fmtN(x, m.dec), bad: dist(x, m.ref) > 0 } : null; }
+        function vit(k) { return function (n) { return cell(num((n.data.vitals || {})[k]), MBY[k]); }; }
+        function labOf(n) { return n.data.labs && n.data.labs.v ? n.data.labs : null; }
+        function lab(k) { return function (n) { var L = labOf(n), c = L ? cell(num(L.v[k]), MBY[k]) : null; if (c && L.date) c.d = L.date; return c; }; }
+        var VR = [['PA', 'mmHg', function (n) { var v = n.data.vitals || {}, a = num(v.pa_s), b = num(v.pa_d); return a != null && b != null ? { t: fmtN(a, 0) + '/' + fmtN(b, 0), bad: dist(a, MBY.pa.ref) > 0 || dist(b, MBY.pa.ref2) > 0 } : null; }],
+          ['FC', 'bpm', vit('fc')], ['FR', 'irpm', vit('fr')], ['Temperatura', '°C', vit('temp')], ['SpO₂', '%', vit('spo2')], ['Peso', 'kg', vit('peso')],
+          ['Altura', 'cm', function (n) { var h = num((n.data.vitals || {}).altura); return h ? { t: fmtN(h > 3 ? h : h * 100, 0) } : null; }],
+          ['IMC', 'kg/m²', function (n) { var v = n.data.vitals || {}, p2 = num(v.peso), h = num(v.altura); h = h ? (h > 3 ? h / 100 : h) : alt; return p2 && h ? cell(p2 / (h * h), MBY.imc) : null; }],
+          ['Glicemia', 'mg/dL', vit('glicemia')]];
+        var LR = [['HbA1c', '%', lab('hba1c')], ['Colesterol total', 'mg/dL', lab('ct')], ['LDL', 'mg/dL', lab('ldl')], ['HDL', 'mg/dL', lab('hdl')], ['Triglicerídeos', 'mg/dL', lab('tg')],
+          ['Creatinina', 'mg/dL', lab('creat')],
+          ['TFG', 'mL/min/1,73 m²', function (n) { var L = labOf(n), c = L ? num(L.v.creat) : null, g = c != null ? tfgOf(c, L.date ? parseStart(L.date) : noteDate(n)) : null; return g ? { t: fmtN(g, 0), bad: g < 60, d: L.date } : null; }],
+          ['RAC', 'mg/g', lab('rac')], ['Potássio', 'mEq/L', lab('pot')], ['Sódio', 'mEq/L', lab('sod')], ['Ácido úrico', 'mg/dL', lab('au')],
+          ['TSH', 'mUI/L', lab('tsh')], ['Hemoglobina', 'g/dL', lab('hb')], ['TGP', 'U/L', lab('alt')]];
         var thead = el('thead'), hr = el('tr'); hr.appendChild(el('th', null, 'Valores das evoluções'));
         cols.forEach(function (n) { var th = el('th', null, dayMon(noteDate(n))); th.title = eventTitle(n.event_title); hr.appendChild(th); });
         thead.appendChild(hr); tb.appendChild(thead);
         var body = el('tbody');
-        ROWS.forEach(function (r) {
-          var tr = el('tr'), td0 = el('td', null, r[0]); td0.appendChild(el('small', null, r[1])); tr.appendChild(td0);
-          var anyV = false;
-          cols.forEach(function (n) {
-            var v = n.data.vitals, out;
-            if (typeof r[2] === 'function') out = r[2](v);
-            else { var x = num(v[r[2]]); out = x != null ? { t: fmtN(x, MBY[r[2]].dec), bad: dist(x, MBY[r[2]].ref) > 0 } : null; }
-            if (out) anyV = true;
-            tr.appendChild(el('td', out && out.bad ? 'bad' : null, out ? out.t : '-'));
+        function rows(R) {
+          var out = [];
+          R.forEach(function (r) {
+            var tr = el('tr'), td0 = el('td', null, r[0]); td0.appendChild(el('small', null, r[1])); tr.appendChild(td0);
+            var anyV = false;
+            cols.forEach(function (n) {
+              var o = r[2](n); if (o) anyV = true;
+              var td = el('td', o && o.bad ? 'bad' : null, o ? o.t : '-');
+              if (o && o.d) td.title = 'Coleta em ' + o.d.split('-').reverse().join('/');
+              tr.appendChild(td);
+            });
+            if (anyV) out.push(tr);
           });
-          if (anyV) body.appendChild(tr);
-        });
+          return out;
+        }
+        var vr = rows(VR), lr = rows(LR);
+        function grp(t) { var tr = el('tr', 'gf-grp'), td = el('td', null, t); td.colSpan = cols.length + 1; tr.appendChild(td); body.appendChild(tr); }
+        if (vr.length && lr.length) grp('Sinais vitais');
+        vr.forEach(function (tr) { body.appendChild(tr); });
+        if (lr.length) { grp('Exames laboratoriais'); lr.forEach(function (tr) { body.appendChild(tr); }); }
         tb.appendChild(body);
         var w = tb.parentElement; w.scrollLeft = w.scrollWidth;          // a mais recente fica à vista
       }
