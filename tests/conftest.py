@@ -41,3 +41,10 @@ def test_db(monkeypatch):
     if db._pool is not None:
         db._pool.close()
         db._pool = None
+
+
+def pytest_runtest_logreport(report):
+    """No GitHub Actions, cada falha vira anotação do commit (lida sem acesso de administrador ao log)."""
+    if os.environ.get("GITHUB_ACTIONS") and report.failed:
+        msg = str(report.longrepr)[-1800:].replace("%", "%25").replace("\r", "").replace("\n", "%0A")
+        print(f"\n::error title={report.nodeid}::{msg}", flush=True)
