@@ -1117,7 +1117,13 @@
          etiqueta 10/18 500 #E1E3E8 r8, tempos 10/18 500 #56595E, botões 44px #F7F8FA
        · transcrição: título 16/24 500, prévia 14/20 com ícone 18 + 4, seta 24 · destaques 14 500, lista 14 com 8px
        · "Abrir destaques" 40px (14/500 #0B57D0 + ícone 18) entre linhas onduladas · falas 14/20 500 + texto 14/22 #56595E */
-    #prHist{display:flex;flex-direction:column;gap:0}
+    .pr-tst{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+    .pr-tchev{display:flex;width:24px;height:24px;color:#444746}
+    .pr-tchev svg{width:24px;height:24px;transition:transform .15s}
+    .pr-trow.open{background:#F7F8FA}
+    .pr-trow.open .pr-tchev svg{transform:rotate(180deg)}
+    .pr-item.hc.in-cs{margin:12px 0 20px}
+    .pr-histbar .gh{margin-bottom:0}
     .pr-item.hc{display:flex;flex-direction:column;gap:0;margin:0 0 24px;padding:16px;border:0;border-radius:16px;background:#F7F8FA;font-family:var(--disp)}
     .pr-item.hc:first-child{padding-top:16px}
     .hc-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:28px}
@@ -1818,7 +1824,6 @@
               <button type="button" role="tab" data-tab="atual">Consulta</button>
               <button type="button" role="tab" data-tab="prescricoes">Prescrições</button>
               <button type="button" role="tab" data-tab="consultas">Consultas</button>
-              <button type="button" role="tab" data-tab="historico">Histórico</button>
               <button type="button" role="tab" data-tab="acessos">Acessos</button>
             </div>
 
@@ -2034,7 +2039,10 @@
                 <button type="button" role="tab" data-s="sinais" aria-selected="false">Sinais e exames</button>
               </div>
               <div class="gsub" id="csAgenda">
-                <div class="gh"><span class="gh-t">Consultas</span><span class="gh-s">Da sua agenda</span></div>
+                <div class="pr-histbar">
+                  <div class="gh gh-col"><span class="gh-t">Consultas</span><span class="gh-s" id="prHistCount">Da agenda e do prontuário</span></div>
+                  <input class="srch-in pr-histq" id="prHistQ" type="search" placeholder="Buscar nas consultas" autocomplete="off" spellcheck="false">
+                </div>
                 <div class="pr-table" id="prVisits"></div>
               </div>
               <div class="gsub" id="csSinais" hidden>
@@ -2050,14 +2058,6 @@
               </div>
             </section>
 
-            <!-- Histórico de evoluções -->
-            <section class="pr-panel" data-panel="historico" hidden>
-              <div class="pr-histbar">
-                <div class="gh"><span class="gh-t">Evoluções anteriores</span><span class="gh-s" id="prHistCount"></span></div>
-                <input class="srch-in pr-histq" id="prHistQ" type="search" placeholder="Buscar no histórico" autocomplete="off" spellcheck="false">
-              </div>
-              <div class="pr-hist" id="prHist"></div>
-            </section>
 
 
             <!-- ===== Adicionar exames: cada laudo vira um registro com a data da coleta (com ou sem consulta) ===== -->
@@ -4963,12 +4963,17 @@
         if (isLabRec(n)) { openLabs(n); return; }
         if (n === cur) { setTab('atual'); $('prEvoBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
         if (!n.signed_at) { switchTo(n.event_id ? { event_id: n.event_id, title: eventTitle(n.event_title), start: n.event_start } : { note_id: n.id }); return; }
-        setTab('historico'); $('prHistQ').value = ''; filterHist();
-        var it = [].filter.call($('prHist').querySelectorAll('.pr-item'), function (x) { return x._note === n; })[0];
-        if (!it) return;
-        if (it._open) it._open();
-        it.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        it.classList.remove('flash'); void it.offsetWidth; it.classList.add('flash');
+        openInCons(n);                                   // finalizada: abre o cartão em Consultas
+      }
+      function openInCons(n) {
+        setTab('consultas');
+        var ag = document.querySelector('#csTabs [data-s=agenda]'); if (ag && !ag.classList.contains('on')) ag.click();
+        $('prHistQ').value = ''; filterHist(); showAllCons();
+        var r = [].filter.call($('prVisits').querySelectorAll('.pr-trow'), function (x) { return x._note === n; })[0];
+        if (!r) return;
+        var c = toggleCard(r, true); if (c && c._open) c._open();
+        r.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (c) { c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); }
       }
       // pergunta pronta no assistente (à direita); quem envia é o médico
       function askAssistant(q) {
@@ -5587,7 +5592,7 @@
         M.hidden = false; this.setAttribute('aria-expanded', 'true'); var f2 = M.querySelector('button'); if (f2) f2.focus();
       });
       if (window.ResizeObserver) new ResizeObserver(function () { if (isOpen() && !$('csSinais').hidden && !$('csChart').hidden) renderCsChart(); }).observe($('csChart'));
-      $('ovFeedMore').addEventListener('click', function () { setTab('historico'); $('prView').scrollTop = 0; });
+      $('ovFeedMore').addEventListener('click', function () { setTab('consultas'); var ag = document.querySelector('#csTabs [data-s=agenda]'); if (ag && !ag.classList.contains('on')) ag.click(); $('prTabs').scrollIntoView({ block: 'start' }); });
       $('ovEmptyGo').addEventListener('click', function () { setTab('atual'); (mode === 'soap' ? soapEls[0] : note).focus(); });
 
       // ===== abas =====
@@ -5662,67 +5667,99 @@
       // ===== consultas do paciente na agenda =====
       function eventTitle(t) { return (t || '').split(' — ')[0] || 'Consulta'; }
       function loadVisits(my) {
-        var box = $('prVisits');
         if (!ctx || !ctx.patient_id) return;
-        box.innerHTML = '<div class="pr-empty">Carregando consultas…</div>';
+        visitsErr = false; $('prVisits').innerHTML = '<div class="pr-empty">Carregando consultas…</div>';
         api('POST', '/prontuario/visits', { patient_id: ctx.patient_id }).then(function (res) {
           if (ctx !== my) return;
-          box.innerHTML = '';
-          visits = res.ok && res.j.connected ? (res.j.visits || []) : []; calOn = !!(res.ok && res.j.connected);
-          renderKpis();
-          if (!res.ok) { box.innerHTML = '<div class="pr-empty">Não foi possível carregar as consultas.</div>'; return; }
-          if (!res.j.connected) { box.innerHTML = '<div class="pr-empty"><a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para ver as consultas deste paciente.</div>'; return; }
-          var now = Date.now(), vs = visits;
-          if (!vs.length) { box.innerHTML = '<div class="pr-empty">Nenhuma consulta deste paciente na agenda.</div>'; return; }
-          var next = vs.filter(function (v) { return parseStart(v.start) >= now; });
-          var past = vs.filter(function (v) { return parseStart(v.start) < now; }).reverse();
-          var th = el('div', 'pr-trow th');
-          ['Data', 'Consulta', 'Local', 'Evolução'].forEach(function (t, i) { th.appendChild(el('span', i === 2 ? 'pr-tloc' : null, t)); });
-          box.appendChild(th);
-          function row(v, future) {
-            var b = el('button', 'pr-trow' + (ctx.event_id === v.id ? ' cur' : '')); b.type = 'button';
-            var d = parseStart(v.start), dc = el('span', 'pr-tdate', dayMon(d));
-            dc.appendChild(el('small', null, DOWS[d.getDay()] + (v.allDay ? ' · dia todo' : ' · ' + hm(d))));
-            b.appendChild(dc);
-            b.appendChild(el('span', 'pr-tcell', eventTitle(v.title)));
-            b.appendChild(el('span', 'pr-tcell pr-tmuted pr-tloc', v.location || '—'));
-            var n = v.note, badge;
-            if (ctx.event_id === v.id) badge = el('span', 'pr-badge cur', 'Aberta');
-            else if (n && n.signed_at) badge = el('span', 'pr-badge ok', 'Finalizada');
-            else if (n && n.has_content) badge = el('span', 'pr-badge draft', 'Rascunho');
-            else badge = el('span', 'pr-badge', future ? 'Agendada' : 'Sem evolução');
-            b.appendChild(badge);
-            b.addEventListener('click', function () {
-              setTab('atual');
-              if (ctx.event_id === v.id) { $('prEvoBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-              switchTo({ event_id: v.id, title: eventTitle(v.title), start: v.start, end: v.end, all_day: v.allDay, location: v.location });
-            });
-            return b;
-          }
-          if (next.length) { box.appendChild(el('div', 'pr-tgroup', 'Próximas')); next.forEach(function (v) { box.appendChild(row(v, true)); }); }
-          if (past.length) {
-            box.appendChild(el('div', 'pr-tgroup', 'Anteriores'));
-            past.forEach(function (v, i) { var r = row(v, false); if (i >= 10) { r.hidden = true; r.classList.add('more'); } box.appendChild(r); });
-            if (past.length > 10) {
-              var m = el('button', 'pr-ghost', 'Mostrar todas (' + past.length + ')'); m.type = 'button'; m.style.alignSelf = 'flex-start'; m.style.marginTop = '12px';
-              m.addEventListener('click', function () { [].forEach.call(box.querySelectorAll('.pr-trow.more'), function (r) { r.hidden = false; }); m.remove(); });
-              box.appendChild(m);
-            }
-          }
-        }).catch(function () { if (ctx === my) { visits = []; calOn = false; renderKpis(); box.innerHTML = '<div class="pr-empty">Não foi possível carregar as consultas.</div>'; } });
+          visits = res.ok && res.j.connected ? (res.j.visits || []) : []; calOn = !!(res.ok && res.j.connected); visitsErr = !res.ok;
+          renderKpis(); renderCons();
+        }).catch(function () { if (ctx === my) { visits = []; calOn = false; visitsErr = true; renderKpis(); renderCons(); } });
       }
-
-      // ===== histórico de evoluções (busca, finalizadas com adendos, rascunhos abrem para editar) =====
-      function renderHist() {
-        var box = $('prHist'); box.innerHTML = '';
-        var list = notes.filter(function (n) { return n !== cur && ((n.content || '').trim() || n.signed_at); })
-                        .sort(function (a, b) { return (noteDate(b) || 0) - (noteDate(a) || 0); });   // pela data (da consulta ou da coleta)
-        var nl = list.filter(isLabRec).length, ne = list.length - nl;
-        $('prHistCount').textContent = [ne ? ne + (ne === 1 ? ' evolução' : ' evoluções') : '', nl ? nl + (nl === 1 ? ' resultado de exames' : ' resultados de exames') : ''].filter(Boolean).join(' · ');
-        if (!list.length) { box.innerHTML = '<div class="pr-empty">Nenhuma evolução anterior deste paciente.</div>'; return; }
-        list.forEach(function (n) { box.appendChild(histCard(n)); });
+      var visitsErr = false;
+      // ===== Consultas: agenda + evoluções + resultados de exames (o antigo Histórico); a linha abre o cartão =====
+      function renderCons() {
+        var box = $('prVisits'); box.innerHTML = '';
+        if (!ctx) return;
+        if (visits === null) { box.innerHTML = '<div class="pr-empty">Carregando consultas…</div>'; return; }
+        var now = Date.now(), vs = visits || [], used = {};
+        function noteOfVisit(v) {
+          var nn = v.note && v.note.note_id;
+          var n = notes.filter(function (x) { return (nn && x.id === nn) || (x.event_id && x.event_id === v.id); })[0] || null;
+          if (n) used[n.id] = 1; return n;
+        }
+        function hasText(n) { return !!n && ((n.content || '').trim() || n.signed_at); }
+        var next = vs.filter(function (v) { return parseStart(v.start) >= now; }).map(function (v) { return { v: v, n: noteOfVisit(v), t: parseStart(v.start) }; });
+        var past = vs.filter(function (v) { return parseStart(v.start) < now; }).map(function (v) { return { v: v, n: noteOfVisit(v), t: parseStart(v.start) }; });
+        notes.forEach(function (n) {                     // evoluções sem evento na agenda (avulsas, exemplo, agenda desconectada) e exames
+          if (used[n.id] || !hasText(n)) return;
+          if (n === cur && n.event_id) return;           // a consulta aberta já aparece pela agenda
+          past.push({ n: n, t: noteDate(n) || new Date(n.updated_at || Date.now()) });
+        });
+        past.sort(function (a, b) { return b.t - a.t; });
+        var ne = past.filter(function (x) { return x.n && !isLabRec(x.n) && hasText(x.n); }).length, nl = past.filter(function (x) { return isLabRec(x.n); }).length;
+        $('prHistCount').textContent = [ne ? ne + (ne === 1 ? ' evolução' : ' evoluções') : '', nl ? nl + (nl === 1 ? ' resultado de exames' : ' resultados de exames') : ''].filter(Boolean).join(' · ') || 'Da agenda e do prontuário';
+        if (visitsErr) box.appendChild(el('div', 'pr-empty', 'Não foi possível carregar a agenda; abaixo, as evoluções do prontuário.'));
+        else if (!calOn) { var h = el('div', 'pr-empty'); h.innerHTML = '<a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para ver também as consultas agendadas.'; box.appendChild(h); }
+        if (!next.length && !past.length) { box.appendChild(el('div', 'pr-empty', calOn ? 'Nenhuma consulta deste paciente ainda.' : 'Nenhuma evolução registrada ainda.')); return; }
+        var th = el('div', 'pr-trow th');
+        ['Data', 'Consulta', 'Local', 'Evolução'].forEach(function (t, i) { th.appendChild(el('span', i === 2 ? 'pr-tloc' : null, t)); });
+        box.appendChild(th);
+        function row(x, future) {
+          var v = x.v, n = x.n, isCur = (v && ctx.event_id === v.id) || (n && n === cur), lab = isLabRec(n);
+          var b = el('button', 'pr-trow' + (isCur ? ' cur' : '')); b.type = 'button'; b._note = n;
+          var d = x.t, dc = el('span', 'pr-tdate', d ? dayMon(d) : '—');
+          dc.appendChild(el('small', null, d ? DOWS[d.getDay()] + (v && v.allDay ? ' · dia todo' : lab ? ' · coleta' : ' · ' + hm(d)) : ''));
+          b.appendChild(dc);
+          b.appendChild(el('span', 'pr-tcell', lab ? 'Resultado de exames' : eventTitle((v && v.title) || (n && n.event_title) || 'Evolução avulsa')));
+          b.appendChild(el('span', 'pr-tcell pr-tmuted pr-tloc', (v && v.location) || '—'));
+          var st = el('span', 'pr-tst'), badge;
+          if (isCur) badge = el('span', 'pr-badge cur', 'Aberta');
+          else if (lab) badge = el('span', 'pr-badge lab', 'Exames');
+          else if (n && n.signed_at) badge = el('span', 'pr-badge ok', 'Finalizada');
+          else if (hasText(n)) badge = el('span', 'pr-badge draft', 'Rascunho');
+          else badge = el('span', 'pr-badge', future ? 'Agendada' : 'Sem evolução');
+          st.appendChild(badge);
+          var expand = !isCur && hasText(n);
+          if (expand) { var cv = el('span', 'pr-tchev'); cv.innerHTML = HI.down; st.appendChild(cv); b.setAttribute('aria-expanded', 'false'); b.title = 'Ver a evolução'; }
+          b.appendChild(st);
+          b._q = norm([n ? n.content : '', (v && v.title) || '', n ? n.event_title : '', lab ? 'resultado de exames' : ''].concat(n ? (n.addenda || []).map(function (a) { return a.content; }) : []).join(' '));
+          b.addEventListener('click', function () {
+            if (expand) { toggleCard(b); return; }
+            setTab('atual');
+            if (isCur) { $('prEvoBox').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+            if (v) switchTo({ event_id: v.id, title: eventTitle(v.title), start: v.start, end: v.end, all_day: v.allDay, location: v.location });
+            else if (n) switchTo({ note_id: n.id });
+          });
+          return b;
+        }
+        if (next.length) { box.appendChild(el('div', 'pr-tgroup', 'Próximas')); next.forEach(function (x) { box.appendChild(row(x, true)); }); }
+        if (past.length) {
+          box.appendChild(el('div', 'pr-tgroup', 'Anteriores'));
+          past.forEach(function (x, i) { var r = row(x, false); if (i >= 10) { r.hidden = true; r.classList.add('more'); } box.appendChild(r); });
+          if (past.length > 10) {
+            var m = el('button', 'pr-ghost pr-more10', 'Mostrar todas (' + past.length + ')'); m.type = 'button'; m.style.alignSelf = 'flex-start'; m.style.marginTop = '12px';
+            m.addEventListener('click', function () { showAllCons(); }); box.appendChild(m);
+          }
+        }
         filterHist();
       }
+      function showAllCons() {
+        [].forEach.call($('prVisits').querySelectorAll('.pr-trow.more'), function (r) { r.hidden = false; r.classList.remove('more'); });
+        var m = $('prVisits').querySelector('.pr-more10'); if (m) m.remove();
+      }
+      // abre/fecha o cartão da evolução logo abaixo da linha (um por vez)
+      function toggleCard(b, keep) {
+        var nx = b.nextSibling, was = !!(nx && nx.classList && nx.classList.contains('hc'));
+        [].forEach.call($('prVisits').querySelectorAll('.pr-item.hc'), function (c) { c.remove(); });
+        [].forEach.call($('prVisits').querySelectorAll('.pr-trow.open'), function (r) { r.classList.remove('open'); r.setAttribute('aria-expanded', 'false'); });
+        if (was && !keep) return null;
+        var c = histCard(b._note); c.classList.add('in-cs'); b.parentNode.insertBefore(c, b.nextSibling);
+        b.classList.add('open'); b.setAttribute('aria-expanded', 'true');
+        return c;
+      }
+
+      // quem salvava/finalizava chamava o Histórico: agora atualiza a lista de Consultas
+      function renderHist() { renderCons(); }
       // ===== histórico: cada evolução no cartão da teleconferência de resultados do Finance (VRTX › Ganhos) =====
       // cabeçalho + "Documentos" · player (marcadores = S, O, A, P) · "Evolução" recolhida com prévia → destaques + texto
       var HI = {
@@ -5846,10 +5883,15 @@
         return it;
       }
       function filterHist() {
-        var q = norm($('prHistQ').value.trim()), any = false;
-        [].forEach.call($('prHist').querySelectorAll('.pr-item'), function (it) { it.hidden = !!q && it._q.indexOf(q) < 0; any = any || !it.hidden; });
-        var e = $('prHist').querySelector('.pr-nohit');
-        if (q && !any && !e) { e = el('div', 'pr-empty pr-nohit', 'Nada encontrado no histórico.'); $('prHist').appendChild(e); }
+        var box = $('prVisits'), q = norm($('prHistQ').value.trim()), any = false;
+        if (q) showAllCons();
+        [].forEach.call(box.querySelectorAll('.pr-trow:not(.th)'), function (r) {
+          r.hidden = !!q && (r._q || '').indexOf(q) < 0; any = any || !r.hidden;
+          var c = r.nextSibling; if (r.hidden && c && c.classList && c.classList.contains('hc')) { c.remove(); r.classList.remove('open'); }
+        });
+        [].forEach.call(box.querySelectorAll('.pr-tgroup'), function (g) { g.hidden = !!q; });
+        var e = box.querySelector('.pr-nohit');
+        if (q && !any && !e) { e = el('div', 'pr-empty pr-nohit', 'Nada encontrado nas consultas.'); box.appendChild(e); }
         if ((!q || any) && e) e.remove();
       }
       $('prHistQ').addEventListener('input', filterHist);
@@ -5895,6 +5937,10 @@
         $('prPrintCur').textContent = locked() ? '' : compose().content;
         $('prEvoBox').classList.toggle('has-text', locked() || !!compose().content.trim());
         api('POST', '/prontuario/audit', { action: 'export', patient_id: patient.id }).catch(function () {});
+        $('prHistQ').value = ''; filterHist(); showAllCons();             // no PDF, todas as evoluções abertas
+        [].forEach.call($('prVisits').querySelectorAll('.pr-trow[aria-expanded]'), function (r) {
+          var nx = r.nextSibling; if (!(nx && nx.classList && nx.classList.contains('hc'))) r.parentNode.insertBefore(histCard(r._note), nx);
+        });
         var t = document.title; document.title = 'Prontuário — ' + patient.name;
         window.print();
         document.title = t;
@@ -5988,7 +6034,7 @@
         $('prBack').innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3.5M7.5 3.5L3 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         $('prBack').appendChild(document.createTextNode(ctx.from === 'pacientes' ? 'Pacientes' : 'Agenda'));
         fillEditor(null); cur = null; renderHeader(); renderConsulta(); renderEvo(); renderVisit(); renderKpis(); updCount(0);
-        $('prHist').innerHTML = ''; $('prVisits').innerHTML = ''; $('prHistQ').value = '';
+        $('prVisits').innerHTML = ''; $('prHistQ').value = '';
         cols.forEach(function (col) { col.querySelector('.pr-chips').innerHTML = ''; });
         load();
         if (location.hash !== '#prontuario') { history.pushState({ pr: 1 }, '', '#prontuario'); direct = false; }
