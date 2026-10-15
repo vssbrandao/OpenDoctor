@@ -20,7 +20,10 @@ MAX_BYTES = 25 * 1024 * 1024          # limite da OpenAI por arquivo
 _BAD_KW = ("<", ">", "\r", "\n")      # a API recusa o pedido inteiro se uma palavra-chave tiver isso
 _RETRY = (408, 409, 429, 500, 502, 503, 504)
 _TRIES = 3
-DUVIDA = 0.6          # palavra com confiança abaixo disto (produto dos pedaços) é marcada como duvidosa
+# palavra com confiança abaixo disto (produto dos pedaços) é marcada como duvidosa. Calibrado em 15/10/2026 com os
+# cortes da página (evals/scribe/relatorios/duvida-2026-10-15.md): 0,8 marca 40% dos erros do transcritor (0,6: 14%)
+# com a mesma precisão, ~1 em 3 palavras marcadas está errada de fato; custa ~1 ponto a mais para conferir por consulta.
+DUVIDA = 0.8
 
 # Frases que os transcritores da família Whisper "ouvem" em silêncio ou ruído (vêm de legendas de vídeo do
 # treino). Em português aparecem muito; numa consulta, nunca são fala de verdade.

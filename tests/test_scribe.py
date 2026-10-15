@@ -308,6 +308,15 @@ def test_duvida_em_numero_com_virgula_barra_e_hifen():
     assert r["duvidas"] == ["12/12h", "6,9", "Punho-percussão"]
 
 
+def test_limite_de_duvida_calibrado():
+    import math
+    class R:
+        status_code = 200
+        def json(self): return {"text": "Metformina oitocentos", "logprobs": [
+            {"token": " Metformina", "logprob": math.log(0.7)}, {"token": " oitocentos", "logprob": math.log(0.9)}]}
+    assert stt.DUVIDA == 0.8 and stt._parse(R(), "")["duvidas"] == ["Metformina"]   # 0,7 marca; 0,9 não
+
+
 def test_sinal_vital_fora_da_fala_nao_vai_para_o_campo():
     res, fl = s.check({"vitals": {"pa_s": {"v": "140", "src": [1]}, "fc": {"v": "74", "src": [1]}}},
                       [{"seq": 1, "at": 0, "text": "Frequência 74."}], "soap", {})
