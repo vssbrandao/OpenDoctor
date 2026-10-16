@@ -7031,7 +7031,7 @@
                   x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#56595E"/></svg>' };
       function rnNum(x) { return String(x).replace('.', ','); }
       function rxCan() { return ready && !locked(); }
-      function rxSame(a, b) { return norm(a.nome).split(' ')[0] === norm(b.nome).split(' ')[0]; }
+      function rxSame(a, b) { var k = function (n) { return norm(n).replace(/\s+/g, ' ').trim(); }; return k(a.nome) === k(b.nome); }
       function rxHas(it) { return rx.some(function (x) { return rxSame(x, it); }); }
       function sgWarn(it) { return (it.alergias || []).length > 0 || !!it.faixa || !!it.renal; }
       function sgFonte(it) { return it.fontes && it.fontes[0] && sg && sg.fontes ? sg.fontes[it.fontes[0]] || null : null; }
@@ -7104,7 +7104,7 @@
         var pane = document.querySelector('.pr-panel[data-panel=prescricoes]');
         if (!isOpen() || !pane || pane.hidden) return;
         var p = patient; $('rnBox').hidden = !p; renderRx(); if (!p) return;
-        var key = [p.id, p.medications, p.allergies, p.problems, p.birth_date, p.sex, notes.length].join('|');
+        var key = [p.id, p.medications, p.allergies, p.problems, p.birth_date, p.sex].join('|');   // sinais novos: "Gerar de novo"
         if (key !== sgKey) sgLoad(key, false); else drawSg();
       }
       function sgLoad(key, novo) {
@@ -7211,7 +7211,7 @@
         foot.appendChild(document.createTextNode(!ready ? 'Carregando a evolução… ' : locked() ? 'A evolução aberta já foi finalizada: a receita não muda mais. ' :
           s.st === 'pronto' ? 'Apoio à decisão: confira indicação, dose e alergias antes de prescrever. ' :
           s.falhou ? 'Não foi possível gerar as sugestões da IA agora; aparece só a renovação do uso contínuo. ' : 'Confira indicação, dose e alergias antes de prescrever. '));
-        if (RR.on && (s.st === 'pronto' || s.falhou)) {
+        if (RR.on && can && (s.st === 'pronto' || s.falhou)) {
           var g = el('button', 'pr-link', s.falhou ? 'Tentar de novo' : 'Gerar de novo'); g.type = 'button';
           g.addEventListener('click', function () { sgLoad(sgKey, true); }); foot.appendChild(g);
         }

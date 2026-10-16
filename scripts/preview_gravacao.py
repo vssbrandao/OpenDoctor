@@ -281,10 +281,15 @@ def _fake_fontes(p, tfg_=None):
 
 
 def _fake_presc(msgs, model=None):
+    """A resposta real guardada só vale para o perfil da Maria; para as outras pacientes, nenhuma mudança (as conferências
+    devolvem o que está em uso como "manter")."""
     time.sleep(2.5)
     if SIM["ia"]:
         raise RuntimeError("IA simulada fora")
-    return json.dumps(_PRESC["resposta"], ensure_ascii=False)
+    perfil = msgs[1]["content"]
+    if "Diabetes tipo 2" in perfil and "Metformina 850 mg" in perfil:
+        return json.dumps(_PRESC["resposta"], ensure_ascii=False)
+    return json.dumps({"itens": [], "observacoes": "Resposta simulada do preview: só a Maria tem uma resposta real guardada."}, ensure_ascii=False)
 
 
 prescricao.fontes = _fake_fontes
