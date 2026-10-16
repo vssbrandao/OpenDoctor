@@ -1,6 +1,6 @@
 # Prescrições: receitas, possíveis prescrições e receitas anteriores
 
-A aba Prescrições do prontuário tem três cartões (fase 1 do plano; as fases 2 e 3 estão em "Pendências"):
+A aba Prescrições do prontuário tem três cartões (fases 1 e 2 do plano; a fase 3 está em "Pendências"):
 
 1. **Prescrições:** a receita da consulta aberta, que fica no rascunho até ser emitida.
 2. **Possíveis prescrições:** sugestões da IA (ou só a renovação, sem IA). O "+" leva o item à receita; nada entra sem
@@ -44,7 +44,8 @@ A aba Prescrições do prontuário tem três cartões (fase 1 do plano; as fases
 
 ### Tela
 - **Lista:** cada linha mostra os avisos e tem "×" com "Desfazer". Clicar edita: remédio, dose, posologia,
-  quantidade, via e uso contínuo.
+  quantidade, via e uso contínuo. O nome do remédio tem sugestão enquanto digita (`GET /prontuario/remedios`, a lista
+  de `app/data/remedios.txt`, num `<datalist>`).
 - **Emitir receita:** confirma mostrando os avisos e imprime as folhas, com o cabeçalho do médico e os itens agrupados
   por via de uso.
 - **Copiar:** copia o texto da receita.
@@ -52,6 +53,10 @@ A aba Prescrições do prontuário tem três cartões (fase 1 do plano; as fases
   - "Usar nesta consulta" copia os itens para a receita de hoje;
   - "2ª via" imprime marcada, com a data original;
   - "Cancelar" pede o motivo.
+- **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
+  - entra o remédio de uso contínuo que não está no cadastro;
+  - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta);
+  - "Tirar" o que foi suspenso e o médico quis manter nas em uso aparece desmarcado.
 - **Histórico:** as emitidas aparecem no card da consulta e, com ele, no "Exportar PDF".
 - **Impressão:** só a folha vai para o papel enquanto `body.rxp` estiver ligado; desliga no `afterprint`. No Safari, o
   `window.print()` não espera a impressão terminar.
@@ -75,6 +80,27 @@ A aba Prescrições do prontuário tem três cartões (fase 1 do plano; as fases
    - remédio em uso esquecido pelo modelo volta como "manter".
 5. **Guarda em memória** por 24 h, enquanto o perfil não muda. "Gerar de novo" força outra geração.
 
+### Na tela
+- **Adicionar** leva o item à receita. Em **ajustar**, se o remédio já está na receita, o botão vira "Trocar a dose" e
+  a dose nova substitui a anterior.
+- **Suspender:** tira o remédio da receita e pergunta se ele sai também das medicações em uso; o aviso tem "Desfazer",
+  que devolve os dois.
+- **Perguntar ao assistente:** põe no campo do assistente o perfil (sem o nome) e a pergunta sobre a sugestão; quem
+  envia é o médico.
+- **Não sugerir:** esconde a sugestão neste navegador (`localStorage`, por paciente). "Ver as que você tirou" mostra
+  de novo, com "Voltar a sugerir".
+- **Perfil mudou:** abrir a aba com o resumo clínico mudado gera de novo. Com a aba aberta, e quando chega sinal ou
+  exame novo, só avisa "O perfil mudou desde estas sugestões", com "Gerar de novo", porque gerar gasta crédito e troca
+  a lista. O que o médico muda pela própria aba (suspender, atualizar as em uso) não conta como mudança.
+
+### Gravação da consulta
+Os remédios que a gravação extrai (`scribe.finish` → `meds`) entram no rascunho da receita desta consulta como "Da
+gravação" (`prescricao.da_gravacao`), para revisar:
+- entra o mantido, o ajustado (os dois de uso contínuo) e o iniciado; o suspenso não entra;
+- o que já está no rascunho não repete (`prescricao.mesmo_remedio`), nem ao gerar de novo;
+- a tela recarrega a receita e avisa quantos entraram;
+- se der erro, a evolução sai do mesmo jeito, sem a receita (`_receita_da_gravacao`).
+
 **Acesso:** só as contas da gravação (`SCRIBE_EMAILS` / `SCRIBE_ALL`; `SCRIBE_OFF` desliga). Sem acesso, ou se a IA
 falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.renovacao`).
 
@@ -96,7 +122,14 @@ falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.r
   - cancelar;
   - 2ª via;
   - recarregar no meio;
-  - receita no Histórico.
+  - receita no Histórico;
+  - ajustar troca a dose; suspender com Desfazer (receita e medicações em uso);
+  - atualizar as medicações em uso depois de emitir;
+  - "Não sugerir" depois de recarregar, "Perguntar ao assistente" sem o nome e a sugestão do nome do remédio;
+  - sinal novo na consulta: aviso de perfil mudado.
+
+  As sugestões da IA desses cenários são trocadas no próprio Chrome (`Fetch.fulfillRequest`); o servidor nem é
+  chamado.
 - **Qualidade da IA:** `scripts/presc_try.py`. **Gasta crédito:** só com o ok do usuário.
 
 ## Pendências
@@ -104,10 +137,9 @@ falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.r
   perto da RDC 657/2022 da Anvisa.
 - **Advogado:** modelo de receita, assinatura digital (ICP-Brasil), RIPD e Política, incluindo o envio do perfil à IA.
 - **Produção:** a migração 0014 vai para produção só com o ok do usuário; no banco de testes ela já foi aplicada.
-- **Fases 2 e 3 do plano:**
-  - "Não sugerir";
-  - suspender e ajustar com efeito;
-  - sincronia com as medicações em uso;
-  - pré-preencher pela gravação;
-  - sugestão do nome do remédio enquanto digita;
-  - receita digital.
+- **Fase 3 do plano:**
+  - "útil / não útil" nas sugestões, para o médico revisor;
+  - linha do tempo dos remédios;
+  - receita em A5;
+  - enviar ao paciente por WhatsApp ou e-mail (ação externa: pedir antes);
+  - receita digital com assinatura ICP-Brasil (decidir com o advogado).

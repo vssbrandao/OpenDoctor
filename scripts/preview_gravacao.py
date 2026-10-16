@@ -47,6 +47,7 @@ PATS = {9001: dict(BASE, id=9001, name="Maria Silva", key=" exemplo", example=Tr
                    medications="Salbutamol spray SOS"),
         9004: dict(BASE, id=9004, name="Carlos Eduardo Nunes", key="carlos eduardo nunes", example=False, sex="M", birth_date="1955-01-20",
                    allergies="Dipirona", problems="Hipertensão arterial", medications="Losartana 50 mg 12/12h")}
+_PATS0 = {k: dict(v) for k, v in PATS.items()}       # o reset volta o cadastro (a aba Prescrições muda as medicações)
 NOTES = {}                                           # id → evolução (em memória)
 
 
@@ -218,6 +219,9 @@ db.last_note_content = lambda uid, pid, nid=None, eid=None: next(
     (n["content"] for n in sorted(NOTES.values(), key=lambda n: n["updated_at"], reverse=True)
      if n["pid"] == pid and n["content"].strip() and n["id"] != nid and (eid is None or n["event_id"] != eid)), "")
 db.log_access = lambda *a, **k: None
+# resumo clínico (Suspender e "Atualizar as medicações em uso" na aba Prescrições): grava no paciente em memória
+db.find_by_cpf = lambda uid, cpf, exclude_id=None: None
+db.update_patient = lambda uid, pid, fields: (PATS[pid].update({k: v for k, v in fields.items() if k in db._PATIENT_FIELDS}) or dict(PATS[pid])) if pid in PATS else None
 # receitas e dados do médico em memória (os mesmos contratos de app/db.py); o médico do preview começa sem CRM, para o
 # "Emitir receita" mostrar o caminho de completar os dados em Configurações
 RX = FakeReceitas({UID: {"name": "Dra. Teste"}})
@@ -352,7 +356,7 @@ def _estado():
 
 @mock.get("/_preview/reset")
 def _reset():
-    GRAV.reset(); NOTES.clear(); FILES.clear(); RX.reset(); prescricao._CACHE.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
+    GRAV.reset(); NOTES.clear(); FILES.clear(); RX.reset(); PATS.clear(); PATS.update({k: dict(v) for k, v in _PATS0.items()}); prescricao._CACHE.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
     return {"ok": True}
 
 

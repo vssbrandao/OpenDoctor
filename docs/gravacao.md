@@ -18,6 +18,8 @@ trocados entre página, servidor e banco, como testar e avaliar, e as decisões 
 4. **Encerrar → evolução.** `POST /prontuario/scribe` junta os trechos da consulta, mascara o texto (`scribe.mask`) e
    pede a evolução ao modelo (`app/scribe.py`). Confere a resposta sem IA (números, remédios, doses, alergias, sinais
    vitais, CID) e responde em linhas JSON, com progresso e depois o resultado.
+   Os remédios extraídos (menos os suspensos) entram no rascunho da receita desta consulta como "Da gravação", sem
+   repetir (detalhes em `docs/prescricao.md`); a última linha diz quantos (`receita`).
 5. **Revisão.** A página preenche os campos vazios da evolução, sem apagar o que o médico escreveu, e lista os pontos
    para conferir. Ao finalizar com pontos abertos, pede confirmação. A evolução guarda o rastreio (`data.scribe`) e,
    ao finalizar, os números da revisão (`data.timing.scribe`).

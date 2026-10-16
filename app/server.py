@@ -1762,6 +1762,43 @@ async def prontuario_receita_cancela(rid: str, request: Request):
     return {"receita": out}
 
 
+def _receita_da_gravacao(u, p, eid, nid, meds):
+    """Os remédios que a gravação extraiu entram no rascunho da receita desta consulta (o mesmo que a aba Prescrições
+    abre), marcados "Da gravação" para o médico revisar; o que já está lá não repete. Devolve quantos entraram. Nunca
+    derruba a geração da evolução: falhou, devolve 0 (o log só leva o tipo do erro)."""
+    try:
+        novos = prescricao.da_gravacao(meds)
+        if not novos:
+            return 0
+        def desta(r):
+            if r["status"] != "rascunho":
+                return False
+            if eid:
+                return r["event_id"] == eid
+            return (nid and r["note_id"] == nid) or (not r["note_id"] and not r["event_id"])
+        d = next((r for r in db.list_receitas(u["id"], p["id"]) if desta(r)), None)
+        ja = d["itens"] if d else []
+        add = [x for x in novos if not any(prescricao.mesmo_remedio(x["nome"], y["nome"]) for y in ja)]
+        if add:
+            if d:
+                db.update_receita(u["id"], d["id"], ja + add)
+            else:
+                db.create_receita(u["id"], p["id"], add, "simples", nid, eid)
+        return len(add)
+    except Exception as e:
+        print("[gravacao] receita da gravação falhou:", type(e).__name__, flush=True)
+        return 0
+
+
+@app.get("/prontuario/remedios")
+async def prontuario_remedios(request: Request):
+    """Nomes de remédios para sugerir enquanto o médico digita a receita (app/data/remedios.txt)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    return {"nomes": prescricao.nomes_remedios()}
+
+
 @app.get("/me/medico")
 async def me_medico(request: Request):
     """Dados do médico para a receita (Configurações)."""
@@ -2119,6 +2156,7 @@ async def prontuario_scribe(request: Request):
             return
         yield _line({"step": "conferindo"})
         res, flags, _ = scribe.finish(raw, segs, mode, cad, p["name"])
+        n_rx = await run_in_threadpool(_receita_da_gravacao, u, p, eid, nid, res.get("meds"))   # remédios → rascunho da receita
         fields = scribe.render_text(res)
         if not any(v.strip() for v in fields.values()):
             yield _line({"error": "a IA não devolveu uma evolução válida"})
@@ -2135,7 +2173,7 @@ async def prontuario_scribe(request: Request):
             db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table}), nid)
             db.log_access(u["id"], "scribe", p["id"], nid)
         await run_in_threadpool(save)
-        yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta})
+        yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta, "receita": n_rx})
     return StreamingResponse(run(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
 
 

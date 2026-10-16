@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app import auth, config, db, scribe, server, stt
 from tests.fake_gravacao import FakeGravacao
+from tests.fake_receitas import FakeReceitas
 
 UID = "00000000-0000-0000-0000-0000000000aa"
 REC = "6dff997e-a076-444e-9db4-403c512c010c"
@@ -56,6 +57,7 @@ class FakeDB(FakeGravacao):
 @pytest.fixture
 def fake(monkeypatch):
     f = FakeDB(); f.install(monkeypatch)
+    FakeReceitas().install(monkeypatch.setattr)                   # a gravação também preenche o rascunho da receita
     monkeypatch.setattr(auth, "current_user", lambda request: {"id": UID, "email": "medica@exemplo.com", "sv": 0})
     monkeypatch.setattr(config, "SCRIBE_EMAILS", {"medica@exemplo.com"})
     monkeypatch.setattr(config, "SCRIBE_ALL", False)
@@ -181,6 +183,12 @@ def test_gerar_evolucao_mascara_o_nome_e_confere_sem_ia(fake, monkeypatch):
     texto = json.dumps(sent[0], ensure_ascii=False)
     assert "Maria" not in texto and "[PACIENTE]" in texto                   # nem a última evolução leva o nome
     assert fake.recs[REC]["status"] == "gerada" and ("scribe", 7, None) in fake.log
+    # o remédio que a gravação extraiu foi para o rascunho da receita desta consulta, para revisar; gerar de novo não repete
+    assert out["receita"] == 1
+    (rx,) = db.list_receitas(UID, 7)
+    assert rx["status"] == "rascunho" and rx["event_id"] == "ev9" and rx["itens"][0]["nome"] == "Losartana"
+    assert rx["itens"][0]["origem"] == "gravacao" and rx["itens"][0]["continuo"] is True
+    assert _lines(c.post("/prontuario/scribe", json={"patient_id": 7, "event_id": "ev9", "rec_id": REC, "mode": "soap"}))[-1]["receita"] == 0
 
 
 def test_gerar_avisa_quando_a_ia_falha_ou_nao_ha_trechos(fake, monkeypatch):

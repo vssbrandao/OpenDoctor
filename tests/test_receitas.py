@@ -135,3 +135,14 @@ def test_medico_configuracoes(cli):
 def test_exige_login(monkeypatch, metodo, rota):
     monkeypatch.setattr(auth, "current_user", lambda request: None)
     assert getattr(TestClient(server.app), metodo)(rota).status_code == 401
+
+
+def test_remedios_para_sugerir(cli):
+    nomes = cli.get("/prontuario/remedios").json()["nomes"]
+    assert "Losartana" in nomes and "Metformina" in nomes and len(nomes) > 500 and nomes == sorted(set(nomes), key=lambda x: pr.scribe.norm(x))
+
+
+def test_da_gravacao_so_o_que_continua():
+    itens = pr.da_gravacao([{"nome": "losartana", "dose": "50 mg", "posologia": "12/12h", "acao": "mantido"},
+                            {"nome": "metformina", "acao": "suspenso"}, {"nome": "dapagliflozina", "dose": "10 mg", "acao": "iniciado"}, "x"])
+    assert [(i["nome"], i["continuo"], i["origem"]) for i in itens] == [("Losartana", True, "gravacao"), ("Dapagliflozina", False, "gravacao")]

@@ -282,6 +282,25 @@ def conferir(itens, alergias, tfg_=None):
     return out
 
 
+def mesmo_remedio(a, b):
+    """Os dois nomes são o mesmo remédio ("losartana" e "Losartana potássica")?"""
+    return scribe.same_drug(a, b) or scribe.same_drug(b, a)
+
+
+def da_gravacao(meds):
+    """Os remédios que a gravação extraiu (scribe: meds com acao) como itens de receita, para revisar: mantido, iniciado
+    e ajustado entram (mantido e ajustado como uso contínuo); suspenso não entra."""
+    cap = lambda t: str(t or "").strip()[:1].upper() + str(t or "").strip()[1:]  # noqa: E731
+    return itens_limpos([{"nome": cap(m.get("nome")), "dose": m.get("dose"), "posologia": m.get("posologia"),
+                          "continuo": m.get("acao") in ("mantido", "ajustado"), "origem": "gravacao"}
+                         for m in (meds if isinstance(meds, list) else []) if isinstance(m, dict) and m.get("acao") != "suspenso"])
+
+
+def nomes_remedios():
+    """Os nomes de app/data/remedios.txt para sugerir enquanto o médico digita (com a primeira letra maiúscula)."""
+    return sorted({x[:1].upper() + x[1:] for x in scribe._linhas("remedios.txt")}, key=scribe.norm)
+
+
 def grupos(itens, conf):
     """Separa para emitir: simples, controle especial e antimicrobiano, cada um na sua receita (nesta ordem)."""
     g = {}
