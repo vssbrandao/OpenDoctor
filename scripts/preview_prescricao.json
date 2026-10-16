@@ -1,0 +1,129 @@
+{
+ "nota": "Resposta real do gpt-5.4 (2ª rodada de teste, 16/10/2026) para a paciente fictícia Maria Silva (app/exemplo), com as fontes da busca. O preview usa este arquivo no lugar da OpenAI e da busca.",
+ "fontes": [
+  {
+   "rotulo": "F1",
+   "chunk_id": 553,
+   "title": "Lifestyle modifications in individuals with blood pressure beyond treatment target despite pharmacological treatment: design and baseline characteristics of the MeDiPA randomised controlled trial.",
+   "url": "https://doi.org/10.1080/08037051.2026.2705014",
+   "publication_date": "2026-01-01",
+   "evidence": "Ensaio clínico",
+   "text": ""
+  },
+  {
+   "rotulo": "F2",
+   "chunk_id": 5164,
+   "title": "Higher blood pressure targets for hypertension in older adults.",
+   "url": "https://doi.org/10.1002/14651858.CD011575.pub3",
+   "publication_date": "2024-01-01",
+   "evidence": "Metanálise",
+   "text": ""
+  },
+  {
+   "rotulo": "F3",
+   "chunk_id": 1687,
+   "title": "Exercise Training Across the Hypertensive Heart Disease Continuum: Clinical Evidence and Implications for Prescription.",
+   "url": "https://doi.org/10.3390/jcdd13090441",
+   "publication_date": "2026-01-01",
+   "evidence": "Artigo",
+   "text": ""
+  },
+  {
+   "rotulo": "F4",
+   "chunk_id": 9872,
+   "title": "SGLT2 inhibitors and GLP-1 receptor agonists: established and emerging indications.",
+   "url": "https://doi.org/10.1016/S0140-6736(21)00536-5",
+   "publication_date": "2021-01-01",
+   "evidence": "Revisão",
+   "text": ""
+  },
+  {
+   "rotulo": "F5",
+   "chunk_id": 1769,
+   "title": "Adjunctive Treatments for Patients with Type 1 Diabetes Using Automated Insulin Delivery Systems. A Narrative Review.",
+   "url": "https://doi.org/10.1177/15209156261486127",
+   "publication_date": "2026-01-01",
+   "evidence": "Revisão",
+   "text": ""
+  },
+  {
+   "rotulo": "F6",
+   "chunk_id": 2967,
+   "title": "Medications for adults with type 2 diabetes: a living systematic review and network meta-analysis.",
+   "url": "https://doi.org/10.1136/bmj-2024-083039",
+   "publication_date": "2025-01-01",
+   "evidence": "Revisão sistemática",
+   "text": ""
+  },
+  {
+   "rotulo": "F7",
+   "chunk_id": 2788,
+   "title": "Pharmacotherapy for obesity management in adults: 2025 clinical practice guideline update.",
+   "url": "https://doi.org/10.1503/cmaj.250502",
+   "publication_date": "2025-01-01",
+   "evidence": "Diretriz",
+   "text": ""
+  },
+  {
+   "rotulo": "F8",
+   "chunk_id": 2789,
+   "title": "Pharmacotherapy for obesity management in adults: 2025 clinical practice guideline update.",
+   "url": "https://doi.org/10.1503/cmaj.250502",
+   "publication_date": "2025-01-01",
+   "evidence": "Diretriz",
+   "text": ""
+  },
+  {
+   "rotulo": "F9",
+   "chunk_id": 2786,
+   "title": "Pharmacotherapy for obesity management in adults: 2025 clinical practice guideline update.",
+   "url": "https://doi.org/10.1503/cmaj.250502",
+   "publication_date": "2025-01-01",
+   "evidence": "Diretriz",
+   "text": ""
+  }
+ ],
+ "resposta": {
+  "itens": [
+   {
+    "acao": "manter",
+    "nome": "losartana",
+    "dose": "50 mg",
+    "posologia": "1 comprimido de 12/12 h",
+    "quantidade": "60 comprimidos",
+    "motivo": "PA próxima da meta, com benefício adicional na albuminúria e potássio/TFG estáveis.",
+    "fontes": []
+   },
+   {
+    "acao": "manter",
+    "nome": "metformina",
+    "dose": "850 mg",
+    "posologia": "1 comprimido 2x/dia",
+    "quantidade": "60 comprimidos",
+    "motivo": "HbA1c em meta aceitável e TFG atual permite manutenção da dose.",
+    "fontes": []
+   },
+   {
+    "acao": "manter",
+    "nome": "atorvastatina",
+    "dose": "20 mg",
+    "posologia": "1 comprimido à noite",
+    "quantidade": "30 comprimidos",
+    "motivo": "Em uso regular, com LDL abaixo de 100 mg/dL e boa tolerabilidade laboratorial.",
+    "fontes": []
+   },
+   {
+    "acao": "iniciar",
+    "nome": "empagliflozina",
+    "dose": "10 mg",
+    "posologia": "1 comprimido 1x/dia",
+    "quantidade": "30 comprimidos",
+    "motivo": "Diabetes tipo 2 com obesidade e benefício cardiorrenal potencial; a eficácia é mais favorável com TFG acima de 60 mL/min/1,73 m².",
+    "fontes": [
+     "F4"
+    ]
+   }
+  ],
+  "observacoes": "RAC disponível é de 2025; se houver piora renal, infecção urinária de repetição, candidíase genital recorrente ou risco de cetoacidose, reavaliar a conveniência de iSGLT2. Meta pressórica e meta de LDL devem ser individualizadas pelo médico assistente."
+ }
+}

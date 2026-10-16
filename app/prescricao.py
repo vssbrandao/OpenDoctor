@@ -1,0 +1,260 @@
+"""Possíveis prescrições (aba Prescrições): a partir do perfil da paciente, o modelo propõe manter, ajustar, iniciar ou
+suspender cada remédio, com o artigo da base do assistente que sustenta a sugestão. Antes de mostrar, conferências sem
+IA: fonte obrigatória para mudar algo, remédio conhecido, alergia do cadastro (inclusive família e marca) e dose fora da
+faixa usual — as mesmas tabelas da gravação (app/scribe.py).
+
+O nome da paciente nunca vai ao modelo: o perfil leva só idade, sexo, problemas, remédios, alergias e os últimos sinais e
+exames (e ainda passa por scribe.mask). É apoio à decisão: nada entra na receita sem o clique do médico.
+"""
+import collections
+import concurrent.futures
+import datetime
+import hashlib
+import json
+import os
+import re
+import threading
+import time
+
+from . import config, llm, scribe, search
+
+PROMPT_VERSION = "2026-10-16.1"
+with open(os.path.join(scribe._DATA, "prescricao_prompt.txt"), encoding="utf-8") as _arq:
+    SYSTEM = _arq.read().strip()
+ACOES = ("manter", "ajustar", "iniciar", "suspender")
+MAX_FONTES, MAX_NOVOS = 12, 4
+MIN_SIM = 0.35            # trecho menos parecido com a pergunta fica de fora (o ajuste renal trazia cálculo renal, anticoagulante…)
+
+_VIT = (("pa", "PA", "mmHg"), ("fc", "FC", "bpm"), ("peso", "peso", "kg"), ("imc", "IMC", "kg/m²"), ("glicemia", "glicemia", "mg/dL"),
+        ("spo2", "SpO₂", "%"), ("temp", "temperatura", "°C"))
+_LAB = (("hba1c", "HbA1c", "%"), ("ldl", "LDL", "mg/dL"), ("hdl", "HDL", "mg/dL"), ("tg", "triglicerídeos", "mg/dL"),
+        ("ct", "colesterol total", "mg/dL"), ("creat", "creatinina", "mg/dL"), ("rac", "albuminúria (RAC)", "mg/g"),
+        ("pot", "potássio", "mEq/L"), ("sod", "sódio", "mEq/L"), ("au", "ácido úrico", "mg/dL"), ("tsh", "TSH", "mUI/L"),
+        ("hb", "hemoglobina", "g/dL"), ("alt", "TGP", "U/L"))
+# termos em inglês para a busca por palavra (o corpus é inglês; a busca vetorial já entende o português)
+_EN = (("hipertens", "hypertension antihypertensive treatment"), ("diabet", "type 2 diabetes glucose-lowering therapy"),
+       ("obes", "obesity pharmacotherapy weight"), ("dislipid|colesterol", "dyslipidemia statin LDL"),
+       ("renal|rim|drc", "chronic kidney disease"), ("insufici.ncia card", "heart failure therapy"),
+       ("fibrila", "atrial fibrillation anticoagulation"), ("asma", "asthma inhaled therapy"), ("dpoc", "COPD bronchodilator"),
+       ("hipotireo", "hypothyroidism levothyroxine"), ("depress", "depression antidepressant"), ("gota|hiperuric", "gout urate"))
+
+
+def _num(s):
+    try:
+        return scribe._f(str(s).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _fmt(v, dec=1):
+    return (f"{v:.{dec}f}".rstrip("0").rstrip(".") if dec else str(round(v))).replace(".", ",")
+
+
+def _dia(d):
+    return d.strftime("%d/%m/%Y") if d else ""
+
+
+def _quando(n):
+    """Data da evolução (consulta da agenda ou atualização)."""
+    for k in ("event_start", "updated_at"):
+        try:
+            return datetime.date.fromisoformat(str(n.get(k) or "")[:10])
+        except ValueError:
+            pass
+    return None
+
+
+def idade(birth):
+    try:
+        b = datetime.date.fromisoformat(str(birth or "")[:10])
+    except ValueError:
+        return None
+    t = datetime.date.today()
+    return t.year - b.year - ((t.month, t.day) < (b.month, b.day))
+
+
+def tfg(creat, anos, sexo):
+    """TFG pela CKD-EPI 2021 (sem raça), em mL/min/1,73 m², como a tela (tfgOf): idade em anos fracionados.
+    None sem os três dados ou antes dos 18 anos."""
+    if not creat or anos is None or anos < 18 or sexo not in ("F", "M"):
+        return None
+    k, a = (0.7, -0.241) if sexo == "F" else (0.9, -0.302)
+    r = creat / k
+    return 142 * min(r, 1) ** a * max(r, 1) ** -1.2 * 0.9938 ** anos * (1.012 if sexo == "F" else 1)
+
+
+def ultimos(notes):
+    """Último valor de cada sinal e exame registrado nas evoluções, com a data: {chave: (valor, data)}."""
+    out = {}
+    for n in sorted(notes or [], key=lambda n: _quando(n) or datetime.date.min, reverse=True):
+        d = n.get("data") if isinstance(n.get("data"), dict) else {}
+        quando = _quando(n)
+        vit = d.get("vitals") if isinstance(d.get("vitals"), dict) else {}
+        s, di = _num(vit.get("pa_s")), _num(vit.get("pa_d"))
+        if s and di and "pa" not in out:
+            out["pa"] = (f"{_fmt(s, 0)}/{_fmt(di, 0)}", quando)
+        for k in ("fc", "peso", "glicemia", "spo2", "temp", "altura"):
+            v = _num(vit.get(k))
+            if v and k not in out:
+                out[k] = (v, quando)
+        labs = d.get("labs") if isinstance(d.get("labs"), dict) else {}
+        lv = labs.get("v") if isinstance(labs.get("v"), dict) else {}
+        try:
+            ld = datetime.date.fromisoformat(str(labs.get("date") or "")[:10])
+        except ValueError:
+            ld = quando
+        for k, _, _ in _LAB:
+            v = _num(lv.get(k))
+            if v is not None and k not in out:
+                out[k] = (v, ld)
+    if "peso" in out and "altura" in out:
+        h = out["altura"][0] / 100 if out["altura"][0] > 3 else out["altura"][0]
+        if h:
+            out["imc"] = (out["peso"][0] / (h * h), out["peso"][1])
+    return out
+
+
+def perfil(p, notes):
+    """Texto do perfil para o modelo (sem nome) e os números usados nas conferências."""
+    anos, sexo = idade(p.get("birth_date")), p.get("sex") or ""
+    u = ultimos(notes)
+    linhas = ["Paciente: " + ", ".join(x for x in ({"F": "mulher", "M": "homem"}.get(sexo, ""), f"{anos} anos" if anos is not None else "") if x) + "."]
+    for rot, campo in (("Problemas", "problems"), ("Em uso", "medications"), ("Alergias", "allergies")):
+        itens = [x.strip() for x in (p.get(campo) or "").split("\n") if x.strip()]
+        linhas.append(f"{rot}: " + ("; ".join(itens) if itens else "nenhum registrado") + ".")
+    sinais = [f"{rot} {v[0] if isinstance(v[0], str) else _fmt(v[0])} {un} ({_dia(v[1])})" for k, rot, un in _VIT for v in [u.get(k)] if v]
+    if sinais:
+        linhas.append("Últimos sinais: " + "; ".join(sinais) + ".")
+    exames = [f"{rot} {_fmt(v[0], 2)} {un} ({_dia(v[1])})" for k, rot, un in _LAB for v in [u.get(k)] if v]
+    g = None
+    try:
+        nasc = datetime.date.fromisoformat(str(p.get("birth_date") or "")[:10])
+        if "creat" in u:                                    # idade na data do exame, como a tela
+            g = tfg(u["creat"][0], ((u["creat"][1] or datetime.date.today()) - nasc).days / 365.25, sexo)
+    except ValueError:
+        pass
+    if g:
+        exames.append(f"TFG {_fmt(g, 0)} mL/min/1,73 m² (CKD-EPI 2021, da creatinina)")
+    linhas.append("Últimos exames: " + ("; ".join(exames) if exames else "nenhum registrado") + ".")
+    return scribe.mask("\n".join(linhas), p.get("name") or ""), {"tfg": g, "anos": anos}
+
+
+def fontes(p, tfg_=None):
+    """Trechos da base do assistente para os problemas da paciente e, com a TFG abaixo de 60, para a dose de cada
+    remédio em uso na doença renal (o modelo só ajusta ou suspende com fonte)."""
+    probs = [x.strip() for x in (p.get("problems") or "").split("\n") if x.strip()][:4]
+    meds = [re.split(r"\s\d", x.strip())[0].strip() for x in (p.get("medications") or "").split("\n") if x.strip()][:6]
+    consultas = [(f"{pr}: tratamento farmacológico, metas e escolha do remédio",
+                  next((en for pat, en in _EN if re.search(pat, scribe.norm(pr))), None)) for pr in probs]
+    if tfg_ is not None and tfg_ < 60:
+        for m in meds[:4]:                                  # "metformina" → "metformin" para a busca por palavra (corpus inglês)
+            en = re.sub(r"[ao]$", "", scribe.norm(m).split(" ")[0])
+            consultas.append((f"{m}: dose na doença renal crônica com TFG de {round(tfg_)} mL/min", f"{en} chronic kidney disease eGFR dose"))
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:            # as buscas em paralelo (cada uma ~3 s)
+        res = list(ex.map(lambda qe: search.search(qe[0], k=3, fts_query=qe[1])["hits"], consultas))
+    vistos, out = set(), []
+    for hits in res:
+        for h in hits:
+            if h["chunk_id"] not in vistos and len(out) < MAX_FONTES and (h.get("cosine_sim") or 0) >= MIN_SIM:
+                vistos.add(h["chunk_id"])
+                out.append(h)
+    return [dict(h, rotulo=f"F{i + 1}") for i, h in enumerate(out)]
+
+
+def build_messages(perfil_txt, fts):
+    corpo = "\n\n".join(f"[{h['rotulo']}] {h.get('title') or ''} ({str(h.get('publication_date') or '')[:4]})\n"
+                        f"{(h.get('text') or '')[:900]}" for h in fts)
+    return [{"role": "system", "content": SYSTEM},
+            {"role": "user", "content": f"<perfil>\n{perfil_txt}\n</perfil>\n\n<fontes>\n{corpo or '(nenhuma fonte encontrada)'}\n</fontes>"}]
+
+
+def ask_model(msgs, model=None):
+    """Chamada síncrona (o servidor a roda em outra thread: o Render tem um processo só)."""
+    return llm.chat(msgs, temperature=0, max_tokens=3000, model=model or config.OPENAI_PRESC_MODEL, json_mode=True,
+                    reasoning=config.REASONING_EFFORT)
+
+
+# ----- função renal (app/data/ajuste_renal.tsv): só avisa; vale o menor limite que ainda fica acima da TFG -----
+_RENAL = sorted(((k, float(v.split("\t")[0]), v.split("\t")[1].strip()) for k, v in scribe._pares("ajuste_renal.tsv")),
+                key=lambda r: r[1])
+_NAO_INICIAR = re.compile(r"não iniciar|contraindicad|evitar")
+
+
+def aviso_renal(nome, tfg_):
+    if tfg_ is None:
+        return ""
+    return next((msg for k, lim, msg in _RENAL if tfg_ < lim and scribe.same_drug(k, nome)), "")
+
+
+def _txt(v, n):
+    return re.sub(r"\s+", " ", str(v or "")).strip()[:n]
+
+
+def finish(raw, p, fts, tfg_=None):
+    """Confere a resposta do modelo: só ações conhecidas; mudar algo exige fonte; remédio novo precisa ser conhecido e
+    não pode bater com alergia nem com a função renal; dose fora da faixa usual e ajuste renal viram aviso. Remédio em
+    uso que o modelo esqueceu entra como "manter" (nada some da receita sem o médico ver)."""
+    try:
+        out = json.loads(raw) if isinstance(raw, str) else (raw or {})
+    except ValueError:
+        out = {}
+    rot = {h["rotulo"] for h in fts}
+    meds_txt, alergias = p.get("medications") or "", p.get("allergies") or ""
+    itens, descartados, novos = [], 0, 0
+    for m in out.get("itens") if isinstance(out.get("itens"), list) else []:
+        if not isinstance(m, dict):
+            continue
+        acao, nome = m.get("acao") if m.get("acao") in ACOES else "", _txt(m.get("nome"), 120)
+        fs = [f for f in (m.get("fontes") if isinstance(m.get("fontes"), list) else []) if f in rot][:3]
+        em_uso = bool(nome) and scribe.same_drug(nome, meds_txt)
+        if not acao or not nome or (acao != "manter" and not fs) or (acao in ("manter", "ajustar", "suspender") and not em_uso):
+            descartados += 1
+            continue
+        al = scribe.allergy_hits(nome, alergias)
+        ren = aviso_renal(nome, tfg_) if acao != "suspender" else ""
+        if acao == "iniciar" and (em_uso or al or _NAO_INICIAR.search(ren) or scribe.drug_lookup(nome)[0] != "ok" or novos >= MAX_NOVOS):
+            descartados += 1
+            continue
+        novos += acao == "iniciar"
+        dose = _txt(m.get("dose"), 60)
+        odd = scribe.dose_incomum(nome, dose) if acao != "suspender" else None
+        itens.append({"acao": acao, "nome": nome[:1].upper() + nome[1:], "dose": dose, "posologia": _txt(m.get("posologia"), 160),
+                      "quantidade": _txt(m.get("quantidade"), 60), "motivo": _txt(m.get("motivo"), 300), "fontes": fs,
+                      "alergias": al if acao != "suspender" else [], "faixa": list(odd[1]) if odd else None, "renal": ren})
+    for r in scribe.renovacao(meds_txt, alergias):                 # o que estava em uso e o modelo não citou
+        if not any(scribe.same_drug(it["nome"], r["texto"]) for it in itens if it["acao"] != "iniciar"):
+            itens.insert(sum(1 for it in itens if it["acao"] != "iniciar"),
+                         {"acao": "manter", "nome": r["nome"], "dose": r["dose"], "posologia": r["posologia"], "quantidade": "",
+                          "motivo": "Em uso (cadastro).", "fontes": [], "alergias": r["alergias"], "faixa": r["faixa"],
+                          "renal": aviso_renal(r["nome"], tfg_)})
+    usadas = {f for it in itens for f in it["fontes"]}
+    return {"itens": itens, "observacoes": _txt(out.get("observacoes"), 400), "descartados": descartados,
+            "fontes": {h["rotulo"]: {"titulo": _txt(h.get("title"), 200), "url": h.get("url") or "",
+                                     "ano": str(h.get("publication_date") or "")[:4], "nivel": h.get("evidence") or ""}
+                       for h in fts if h["rotulo"] in usadas},
+            "prompt": PROMPT_VERSION, "modelo": config.OPENAI_PRESC_MODEL}
+
+
+# ----- guarda o resultado enquanto o perfil não muda: abrir a aba de novo não gasta crédito -----
+_CACHE, _LOCK, _TTL, _MAX = collections.OrderedDict(), threading.Lock(), 24 * 3600, 300
+
+
+def chave(uid, pid, perfil_txt):
+    return hashlib.sha256(f"{uid}|{pid}|{PROMPT_VERSION}|{config.OPENAI_PRESC_MODEL}|{perfil_txt}".encode()).hexdigest()
+
+
+def guardado(k):
+    with _LOCK:
+        v = _CACHE.get(k)
+        if v and time.time() - v[0] < _TTL:
+            _CACHE.move_to_end(k)
+            return v[1]
+        _CACHE.pop(k, None)
+    return None
+
+
+def guardar(k, res):
+    with _LOCK:
+        _CACHE[k] = (time.time(), res)
+        while len(_CACHE) > _MAX:
+            _CACHE.popitem(last=False)

@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer, exemplo
-from . import scribe, stt
+from . import prescricao, scribe, stt
 
 mimetypes.add_type("text/javascript", ".mjs")   # pdf.js (web/vendor) é módulo: o navegador exige esse tipo
 
@@ -392,7 +392,7 @@ def _clean_history(raw):
 # ===== limite de uso por IP (além do login) =====
 RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em s)
                "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600),
-               "transcribe": (240, 600), "scribe": (30, 600)}      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
+               "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600)}      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
 MAX_QUERY_CHARS = 2000
 _RL = {}
 _RL_LOCK = threading.Lock()
@@ -1282,6 +1282,14 @@ def _note_data(v):
                   for c in cid[:20] if isinstance(c, dict) and (c.get("code") or c.get("desc"))]
     if isinstance(v.get("scribe"), dict):              # evolução gerada pela gravação: rastreio, sem texto
         out["scribe"] = _scribe_rastreio(v["scribe"])
+    rx = v.get("receita") if isinstance(v.get("receita"), list) else []   # rascunho da receita (aba Prescrições)
+    rx = [{"nome": str(i.get("nome") or "")[:120], "dose": str(i.get("dose") or "")[:60],
+           "posologia": str(i.get("posologia") or "")[:160], "quantidade": str(i.get("quantidade") or "")[:60],
+           "origem": i.get("origem") if i.get("origem") in ("ia", "uso", "manual") else "manual",
+           "fonte": str(i.get("fonte") or "")[:240], "ia": str(i.get("ia") or "")[:60]}
+          for i in rx[:20] if isinstance(i, dict) and str(i.get("nome") or "").strip()]
+    if rx:
+        out["receita"] = rx
     return out if len(json.dumps(out)) <= MAX_DATA_CHARS else None
 
 
@@ -1558,6 +1566,59 @@ async def prontuario_renovacao(request: Request):
     if not p:
         return JSONResponse({"error": "inválido"}, status_code=400)
     return {"itens": scribe.renovacao(p.get("medications"), p.get("allergies"))}
+
+
+@app.post("/prontuario/prescricao/sugerir")
+async def prontuario_prescricao_sugerir(request: Request):
+    """Possíveis prescrições pela IA (aba Prescrições): o perfil da paciente (sem nome) + trechos da base do assistente
+    → o modelo propõe manter/ajustar/iniciar/suspender, e app/prescricao.finish confere (fonte, remédio conhecido,
+    alergia, dose). Só contas liberadas (as mesmas da gravação). Nada é gravado: o resultado fica em memória enquanto o
+    perfil não muda (abrir a aba de novo não gasta crédito; "novo": true gera de novo). NDJSON: passos e o resultado."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    if not scribe_on(u):
+        return JSONResponse({"error": "sem acesso"}, status_code=403)
+    if not config.OPENAI_API_KEY:
+        return JSONResponse({"error": "IA indisponível"}, status_code=503)
+    b = await _json(request)
+    pid = b.get("patient_id")
+    p = await run_in_threadpool(db.get_patient, u["id"], int(pid)) if str(pid or "").isdigit() else None
+    if not p:
+        return JSONResponse({"error": "inválido"}, status_code=400)
+    notes = await run_in_threadpool(db.list_notes, u["id"], p["id"], p.get("key"))
+    texto, nums = prescricao.perfil(p, notes)
+    chave = prescricao.chave(u["id"], p["id"], texto)
+    pronto = None if b.get("novo") else prescricao.guardado(chave)
+    if not pronto and _rate_limited(request, "prescricao"):
+        return _too_many()
+
+    async def run():
+        if pronto:
+            yield _line(dict(pronto, ok=True, guardado=True))
+            return
+        t0 = time.monotonic()
+        yield _line({"step": "buscando"})
+        try:
+            fts = await asyncio.to_thread(prescricao.fontes, p, nums["tfg"])
+            yield _line({"step": "escrevendo", "fontes": len(fts)})
+            task = asyncio.ensure_future(asyncio.to_thread(prescricao.ask_model, prescricao.build_messages(texto, fts)))
+            while True:
+                done, _ = await asyncio.wait({task}, timeout=8)
+                if done:
+                    break
+                yield _line({"step": "escrevendo"})
+            raw = task.result()
+        except Exception as e:                              # o log nunca leva conteúdo
+            print("[prescricao] falhou:", type(e).__name__, flush=True)
+            yield _line({"error": "o serviço de IA não respondeu"})
+            return
+        res = prescricao.finish(raw, p, fts, nums["tfg"])
+        prescricao.guardar(chave, res)
+        print("[prescricao] itens=", len(res["itens"]), "descartados=", res["descartados"], "fontes=", len(fts),
+              "s=", round(time.monotonic() - t0), flush=True)
+        yield _line(dict(res, ok=True))
+    return StreamingResponse(run(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
 
 
 @app.post("/prontuario/access")

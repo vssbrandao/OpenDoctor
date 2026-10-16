@@ -28,7 +28,7 @@ from fastapi import APIRouter, Request  # noqa: E402
 from fastapi.responses import HTMLResponse, JSONResponse, Response  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
-from app import auth, config, db, scribe, server, stt  # noqa: E402
+from app import auth, config, db, prescricao, scribe, server, stt  # noqa: E402
 from tests.fake_gravacao import EPOCA, FakeGravacao  # noqa: E402
 
 UID = "00000000-0000-0000-0000-000000000000"
@@ -270,6 +270,26 @@ def _fake_model(msgs, model=None):
 stt.atranscribe = _fake_stt
 scribe.ask_model = _fake_model
 
+# possíveis prescrições (aba Prescrições): busca e modelo simulados com uma resposta real guardada da Maria
+# (scripts/preview_prescricao.json). O botão "IA" também faz esta geração falhar.
+_PRESC = json.loads(pathlib.Path(__file__).with_name("preview_prescricao.json").read_text(encoding="utf-8"))
+
+
+def _fake_fontes(p, tfg_=None):
+    time.sleep(1.0)
+    return [dict(f) for f in _PRESC["fontes"]]
+
+
+def _fake_presc(msgs, model=None):
+    time.sleep(2.5)
+    if SIM["ia"]:
+        raise RuntimeError("IA simulada fora")
+    return json.dumps(_PRESC["resposta"], ensure_ascii=False)
+
+
+prescricao.fontes = _fake_fontes
+prescricao.ask_model = _fake_presc
+
 
 class _Rede(BaseHTTPMiddleware):
     """'Internet caiu' só para as rotas da gravação (o preview roda no próprio computador)."""
@@ -317,7 +337,7 @@ def _estado():
 
 @mock.get("/_preview/reset")
 def _reset():
-    GRAV.reset(); NOTES.clear(); FILES.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
+    GRAV.reset(); NOTES.clear(); FILES.clear(); prescricao._CACHE.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
     return {"ok": True}
 
 

@@ -35,6 +35,7 @@ OPENAI_FAST_MODEL = os.environ.get("OPENAI_FAST_MODEL", "gpt-4o-mini").strip()
 # gravação da consulta: transcritor e modelo que escreve a evolução (escolhidos pela avaliação de qualidade)
 OPENAI_STT_MODEL = os.environ.get("OPENAI_STT_MODEL", "gpt-transcribe").strip()
 OPENAI_SCRIBE_MODEL = os.environ.get("OPENAI_SCRIBE_MODEL", "gpt-5.4").strip()
+OPENAI_PRESC_MODEL = os.environ.get("OPENAI_PRESC_MODEL", "gpt-5.4").strip()   # possíveis prescrições (aba Prescrições)
 # quem tem a gravação real: e-mails separados por vírgula, ou todos (SCRIBE_ALL=1); SCRIBE_OFF=1 desliga na hora
 SCRIBE_EMAILS = {e.strip().lower() for e in os.environ.get("SCRIBE_EMAILS", "").split(",") if e.strip()}
 SCRIBE_ALL = os.environ.get("SCRIBE_ALL", "").strip() == "1"

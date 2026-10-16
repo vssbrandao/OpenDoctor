@@ -1,0 +1,25 @@
+# Ajuste pela função renal (TFG em mL/min/1,73 m²): remédio<TAB>avisa quando a TFG fica abaixo de<TAB>aviso.
+# Só para AVISAR nas possíveis prescrições (prescricao.finish): não muda a sugestão nem é recomendação de dose. Vale a
+# linha de menor limite que ainda fica acima da TFG. Fontes: bula brasileira e KDIGO 2022 (Diabetes na DRC).
+# Revisão: médico revisor (pendente).
+metformina	30	TFG abaixo de 30: contraindicada; suspender.
+metformina	45	TFG entre 30 e 44: dose máxima de 1.000 mg/dia; não iniciar.
+glibenclamida	60	TFG abaixo de 60: evitar pelo risco de hipoglicemia (gliclazida ou glipizida são alternativas).
+sitagliptina	30	TFG abaixo de 30: dose de 25 mg/dia.
+sitagliptina	45	TFG entre 30 e 44: dose de 50 mg/dia.
+empagliflozina	20	TFG abaixo de 20: não iniciar.
+dapagliflozina	25	TFG abaixo de 25: não iniciar.
+espironolactona	30	TFG abaixo de 30: evitar pelo risco de hipercalemia.
+alopurinol	60	TFG abaixo de 60: começar com dose baixa (até 100 mg/dia) e subir devagar.
+gabapentina	60	TFG abaixo de 60: reduzir a dose (ver bula).
+pregabalina	60	TFG abaixo de 60: reduzir a dose (ver bula).
+ibuprofeno	30	TFG abaixo de 30: evitar anti-inflamatório.
+ibuprofeno	60	TFG abaixo de 60: anti-inflamatório só com cautela e pelo menor tempo.
+diclofenaco	30	TFG abaixo de 30: evitar anti-inflamatório.
+diclofenaco	60	TFG abaixo de 60: anti-inflamatório só com cautela e pelo menor tempo.
+naproxeno	30	TFG abaixo de 30: evitar anti-inflamatório.
+naproxeno	60	TFG abaixo de 60: anti-inflamatório só com cautela e pelo menor tempo.
+nimesulida	30	TFG abaixo de 30: evitar anti-inflamatório.
+nimesulida	60	TFG abaixo de 60: anti-inflamatório só com cautela e pelo menor tempo.
+cetoprofeno	30	TFG abaixo de 30: evitar anti-inflamatório.
+cetoprofeno	60	TFG abaixo de 60: anti-inflamatório só com cautela e pelo menor tempo.

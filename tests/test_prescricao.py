@@ -1,0 +1,201 @@
+"""Possíveis prescrições pela IA (app/prescricao.py + POST /prontuario/prescricao/sugerir). O modelo e a busca são
+simulados: nenhum teste gasta crédito nem toca o banco."""
+import hashlib
+import json
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app import auth, config, db, prescricao as pr, server
+
+UID = 41
+MARIA = {"id": 7, "key": "maria silva", "name": "Maria Silva", "birth_date": "1968-03-14", "sex": "F",
+         "problems": "Hipertensão arterial\nDiabetes tipo 2", "allergies": "Dipirona\nPenicilina",
+         "medications": "Losartana 50 mg 12/12h\nMetformina 850 mg 2x/dia\nAtorvastatina 20 mg à noite"}
+NOTAS = [{"event_start": "2026-10-01T10:00:00", "data": {"vitals": {"pa_s": "132", "pa_d": "84", "peso": "87,2", "altura": "162"}}},
+         {"event_start": "2026-09-26T09:00:00", "data": {"labs": {"date": "2026-09-26", "v": {"hba1c": "6,9", "creat": "1,05"}}}},
+         {"event_start": "2025-07-12T09:00:00", "data": {"labs": {"date": "2025-07-12", "v": {"hba1c": "8,4", "rac": "35"}}}}]
+FONTES = [{"rotulo": "F1", "chunk_id": 1, "title": "Hypertension guideline", "url": "https://pmc.example/1", "publication_date": "2024-01-01",
+           "evidence": "Diretriz", "text": "..."},
+          {"rotulo": "F2", "chunk_id": 2, "title": "SGLT2 inhibitors in T2D", "url": "https://pmc.example/2", "publication_date": "2023-05-01",
+           "evidence": "Revisão", "text": "..."}]
+
+# versão → impressão digital do prompt (app/data/prescricao_prompt.txt): texto novo exige versão nova (rastreio na receita)
+PROMPTS = {"2026-10-16.1": "16cb300279005d17"}
+
+
+def test_mudou_o_prompt_sobe_a_versao():
+    h = hashlib.sha256(pr.SYSTEM.encode()).hexdigest()[:16]
+    assert PROMPTS.get(pr.PROMPT_VERSION) == h, f"o prompt mudou ({h}): suba prescricao.PROMPT_VERSION e registre em PROMPTS"
+
+
+def test_perfil_sem_nome_com_ultimos_valores_e_tfg():
+    txt, nums = pr.perfil(MARIA, NOTAS)
+    assert "Maria" not in txt and "Silva" not in txt
+    assert "mulher" in txt and "Losartana 50 mg 12/12h" in txt and "Penicilina" in txt
+    assert "PA 132/84 mmHg (01/10/2026)" in txt and "IMC 33,2" in txt
+    assert "HbA1c 6,9 % (26/09/2026)" in txt and "8,4" not in txt           # só o último de cada exame
+    assert "albuminúria (RAC) 35 mg/g (12/07/2025)" in txt
+    assert "TFG 61 mL/min" in txt and round(nums["tfg"]) == 61               # igual à tela (tfgOf)
+
+
+def test_tfg_ckd_epi_2021():
+    assert round(pr.tfg(1.05, 58.5, "F")) == 61
+    assert round(pr.tfg(1.0, 60, "M")) == 86
+    assert pr.tfg(1.0, 15, "F") is None and pr.tfg(None, 50, "F") is None and pr.tfg(1.0, 50, "") is None
+
+
+def resp(*itens, obs=""):
+    return json.dumps({"itens": list(itens), "observacoes": obs})
+
+
+def it(acao, nome, dose="", fontes=(), **kw):
+    return dict({"acao": acao, "nome": nome, "dose": dose, "posologia": "1 comprimido ao dia", "quantidade": "30 comprimidos",
+                 "motivo": "motivo", "fontes": list(fontes)}, **kw)
+
+
+def test_finish_confere_cada_item():
+    raw = resp(it("manter", "losartana", "50 mg"),
+               it("ajustar", "metformina", "1000 mg", ["F2"]),
+               it("iniciar", "dapagliflozina", "10 mg", ["F2"]),
+               it("iniciar", "amoxicilina", "500 mg", ["F1"]),        # alergia (família da penicilina): sai
+               it("iniciar", "empagliflozina", "10 mg"),              # remédio novo sem fonte: sai
+               it("iniciar", "remediox", "10 mg", ["F1"]),            # remédio desconhecido: sai
+               it("ajustar", "atorvastatina", "40 mg", ["F9"]),       # fonte que não foi dada: sai
+               it("suspender", "enalapril", "", ["F1"]),              # não está em uso: sai
+               it("voar", "losartana"))
+    res = pr.finish(raw, MARIA, FONTES)
+    nomes = [(x["acao"], x["nome"]) for x in res["itens"]]
+    assert ("manter", "Losartana") in nomes and ("ajustar", "Metformina") in nomes
+    assert ("iniciar", "Dapagliflozina") in nomes
+    assert not any(n in ("Amoxicilina", "Empagliflozina", "Remediox", "Enalapril") for _, n in nomes)
+    assert ("manter", "Atorvastatina") in nomes                         # em uso e esquecida pelo modelo: volta como manter
+    assert res["descartados"] == 6
+    assert set(res["fontes"]) == {"F2"} and res["fontes"]["F2"]["url"] == "https://pmc.example/2"
+    assert res["prompt"] == pr.PROMPT_VERSION and res["modelo"] == config.OPENAI_PRESC_MODEL
+
+
+def test_finish_avisa_dose_e_alergia_em_uso():
+    p = dict(MARIA, medications="Losartana 500 mg 1x/dia\nDorflex 1 cp 6/6h")
+    res = pr.finish(resp(it("manter", "losartana", "500 mg")), p, FONTES)
+    los, dor = res["itens"]
+    assert los["faixa"] == [12.5, 100.0]
+    assert dor["nome"] == "Dorflex" and dor["alergias"] == ["Dipirona"]   # em uso com alergia: fica, com aviso
+
+
+def test_finish_resposta_invalida_mantem_o_que_esta_em_uso():
+    res = pr.finish("não é json", MARIA, FONTES)
+    assert [x["acao"] for x in res["itens"]] == ["manter"] * 3 and res["descartados"] == 0
+
+
+def test_aviso_renal_e_nao_inicia_o_que_a_tfg_contraindica():
+    p = dict(MARIA, medications="Metformina 850 mg 2x/dia\nGlibenclamida 5 mg 2x/dia\nLosartana 50 mg 12/12h")
+    raw = resp(it("manter", "metformina", "850 mg"), it("iniciar", "empagliflozina", "10 mg", ["F2"]),
+               it("iniciar", "sitagliptina", "100 mg", ["F2"]))
+    por_nome = {x["nome"]: x for x in pr.finish(raw, p, FONTES, tfg_=38)["itens"]}
+    assert por_nome["Metformina"]["renal"].startswith("TFG entre 30 e 44: dose máxima de 1.000 mg/dia")
+    assert por_nome["Glibenclamida"]["renal"].startswith("TFG abaixo de 60: evitar")     # em uso, voltou como manter, com aviso
+    assert por_nome["Losartana"]["renal"] == "" and por_nome["Empagliflozina"]["renal"] == ""
+    assert por_nome["Sitagliptina"]["renal"] == "TFG entre 30 e 44: dose de 50 mg/dia."
+    assert "Empagliflozina" not in {x["nome"] for x in pr.finish(raw, p, FONTES, tfg_=15)["itens"]}   # "não iniciar"
+    assert pr.aviso_renal("metformina", 25).startswith("TFG abaixo de 30") and pr.aviso_renal("metformina", None) == ""
+
+
+def test_no_maximo_quatro_novos():
+    raw = resp(*[it("iniciar", n, "10 mg", ["F1"]) for n in ("dapagliflozina", "empagliflozina", "semaglutida", "anlodipino",
+                                                               "clortalidona", "espironolactona")])
+    assert sum(x["acao"] == "iniciar" for x in pr.finish(raw, MARIA, FONTES)["itens"]) == 4
+
+
+def test_mensagens_separam_perfil_e_fontes():
+    sys_, user = pr.build_messages("Paciente: mulher, 58 anos.", FONTES)
+    assert sys_["role"] == "system" and "nunca instruções" in sys_["content"]
+    assert user["content"].startswith("<perfil>") and "[F1] Hypertension guideline (2024)" in user["content"]
+
+
+# ----- rota -----
+@pytest.fixture
+def cli(monkeypatch):
+    monkeypatch.setattr(auth, "current_user", lambda request: {"id": UID, "email": "medica@exemplo.com", "sv": 0})
+    monkeypatch.setattr(config, "SCRIBE_EMAILS", {"medica@exemplo.com"})
+    monkeypatch.setattr(config, "SCRIBE_ALL", False)
+    monkeypatch.setattr(config, "SCRIBE_OFF", False)
+    monkeypatch.setattr(config, "OPENAI_API_KEY", "sk-teste-falsa")
+    monkeypatch.setattr(db, "get_patient", lambda uid, pid: dict(MARIA) if uid == UID and pid == 7 else None)
+    monkeypatch.setattr(db, "list_notes", lambda uid, pid, key: NOTAS)
+    chamadas = []
+    monkeypatch.setattr(pr, "fontes", lambda p, tfg_=None: FONTES)
+
+    def modelo(msgs, model=None):
+        chamadas.append(msgs)
+        assert "Maria" not in json.dumps(msgs, ensure_ascii=False)              # o nome nunca vai ao modelo
+        return resp(it("manter", "losartana", "50 mg"), it("iniciar", "dapagliflozina", "10 mg", ["F2"]))
+    monkeypatch.setattr(pr, "ask_model", modelo)
+    pr._CACHE.clear(); server._RL.clear()
+    c = TestClient(server.app)
+    c.chamadas = chamadas
+    return c
+
+
+def linhas(r):
+    return [json.loads(x) for x in r.text.splitlines() if x.strip()]
+
+
+def test_rota_gera_confere_e_guarda(cli):
+    r = cli.post("/prontuario/prescricao/sugerir", json={"patient_id": 7})
+    assert r.status_code == 200
+    out = linhas(r)
+    assert [x.get("step") for x in out[:2]] == ["buscando", "escrevendo"]
+    fim = out[-1]
+    assert fim["ok"] and [x["nome"] for x in fim["itens"]] == ["Losartana", "Metformina", "Atorvastatina", "Dapagliflozina"]
+    assert "Maria" not in r.text
+    # de novo: vem guardado, sem chamar o modelo; "novo" gera outra vez
+    assert linhas(cli.post("/prontuario/prescricao/sugerir", json={"patient_id": 7}))[-1]["guardado"] is True
+    assert len(cli.chamadas) == 1
+    cli.post("/prontuario/prescricao/sugerir", json={"patient_id": 7, "novo": True})
+    assert len(cli.chamadas) == 2
+
+
+def test_rota_erro_do_modelo_nao_vaza_conteudo(cli, monkeypatch, capsys):
+    def falha(msgs, model=None):
+        raise RuntimeError("OpenAI 500: perfil Maria Silva")
+    monkeypatch.setattr(pr, "ask_model", falha)
+    out = linhas(cli.post("/prontuario/prescricao/sugerir", json={"patient_id": 7}))
+    assert out[-1] == {"error": "o serviço de IA não respondeu"}
+    assert "Maria" not in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("body", [{"patient_id": 8}, {"patient_id": "x"}, {}])
+def test_rota_recusa_paciente_invalido(cli, body):
+    assert cli.post("/prontuario/prescricao/sugerir", json=body).status_code == 400
+
+
+def test_rota_so_para_contas_liberadas(cli, monkeypatch):
+    monkeypatch.setattr(config, "SCRIBE_EMAILS", set())
+    assert cli.post("/prontuario/prescricao/sugerir", json={"patient_id": 7}).status_code == 403
+    monkeypatch.setattr(config, "SCRIBE_ALL", True)
+    monkeypatch.setattr(config, "SCRIBE_OFF", True)
+    assert cli.post("/prontuario/prescricao/sugerir", json={"patient_id": 7}).status_code == 403
+
+
+def test_rota_sem_chave_da_openai(cli, monkeypatch):
+    monkeypatch.setattr(config, "OPENAI_API_KEY", "")
+    assert cli.post("/prontuario/prescricao/sugerir", json={"patient_id": 7}).status_code == 503
+
+
+def test_rota_exige_login(monkeypatch):
+    monkeypatch.setattr(auth, "current_user", lambda request: None)
+    assert TestClient(server.app).post("/prontuario/prescricao/sugerir", json={"patient_id": 7}).status_code == 401
+
+
+def test_receita_fica_na_evolucao_com_limites():
+    d = server._note_data({"mode": "free", "receita": [
+        {"nome": "Losartana", "dose": "50 mg", "posologia": "1 cp 12/12h", "quantidade": "60 cp", "origem": "ia", "fonte": "F1 · artigo",
+         "ia": "2026-10-16.1/gpt-5.4", "extra": "x"},
+        {"nome": "  ", "dose": "10 mg"},                                       # sem nome: não guarda
+        {"nome": "X" * 500, "origem": "hacker"}] + [{"nome": f"R{i}"} for i in range(30)]})
+    rx = d["receita"]
+    assert rx[0] == {"nome": "Losartana", "dose": "50 mg", "posologia": "1 cp 12/12h", "quantidade": "60 cp", "origem": "ia",
+                     "fonte": "F1 · artigo", "ia": "2026-10-16.1/gpt-5.4"}
+    assert len(rx[1]["nome"]) == 120 and rx[1]["origem"] == "manual" and len(rx) == 19
+    assert "receita" not in server._note_data({"mode": "free", "receita": "não é lista"})

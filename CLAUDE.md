@@ -26,6 +26,9 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
      transcrição e a evolução anterior. O áudio nunca é gravado em disco, banco ou log;
      o log da gravação só leva números. Mudar isso (outro provedor, guardar áudio) pede revisão do
      `docs/ripd-gravacao.md` e da Política de Privacidade.
+   - Possíveis prescrições (aba Prescrições, contas da gravação): vai ao modelo o perfil sem nome (sexo, idade, cadastro
+     clínico, últimos sinais e exames; ainda por `scribe.mask`) e trechos da base do assistente. Como funciona e as
+     pendências (médico revisor, RIPD): `docs/prescricao.md`.
 4. **Segredos** só em variável de ambiente (Render / `.env`, que não é commitado). Nunca em código,
    comando, log ou mensagem. O usuário cola os segredos; não imprimir chaves.
 5. **Front-end:** a CSP só roda os `<script>` escritos nas páginas (hash calculado ao subir o servidor)
@@ -53,6 +56,8 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
   `app/scribe.py`, `app/data/`): rodar o teste ponta a ponta `node tests/e2e/gravacao.mjs` contra o preview local
   (`.venv/bin/uvicorn scripts.preview_gravacao:app --port 8770`; `PREVIEW=` se a porta for outra). Como a gravação
   funciona e as decisões tomadas: `docs/gravacao.md` (manter em dia junto com o código).
+- Mudou as possíveis prescrições (`app/prescricao.py`, `app/data/prescricao_prompt.txt`, `ajuste_renal.tsv`): `tests/test_prescricao.py`
+  roda sem crédito; a qualidade de verdade é `python -m scripts.presc_try`, que **gasta crédito** — só com o ok do usuário.
 - O CI (`.github/workflows/ci.yml`) roda os testes a cada push; `tests/test_security.py` percorre
   todas as rotas, páginas, migrações e arquivos sozinho. Se ele falhar, **não ajuste o teste para
   passar**: entenda o que abriu.
