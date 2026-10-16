@@ -74,9 +74,48 @@ async def _access(request: Request):
     return {"access": []}
 
 
+FILES = {}                                           # id → anexo (o laudo da paciente de exemplo)
+
+
 @mock.post("/prontuario/files/list")
 async def _files(request: Request):
-    return {"files": []}
+    pid = (await request.json()).get("patient_id")
+    return {"files": [{k: f[k] for k in ("id", "name", "mime", "size", "created_at")} for f in FILES.values() if f["pid"] == pid]}
+
+
+@mock.get("/prontuario/files/{fid}")
+def _file(fid: int):
+    f = FILES.get(fid)
+    if not f:
+        return JSONResponse({"error": "anexo não encontrado"}, status_code=404)
+    return Response(f["data"], media_type=f["mime"], headers={"Content-Disposition": f'inline; filename="{f["name"]}"'})
+
+
+@mock.get("/_preview/exemplo")
+def _exemplo():
+    """Maria Silva (9001) com TODO o histórico da paciente de exemplo de app/exemplo.py: cadastro, 11 consultas
+    finalizadas com sinais vitais e CID, os resultados de exames e o laudo em PDF. Só sob pedido (&exemplo=1): o teste
+    ponta a ponta continua com ela vazia."""
+    from app import exemplo
+    now = dt.datetime.now(dt.timezone.utc)
+    PATS[9001].update(allergies=exemplo.ALLERGIES, problems=exemplo.PROBLEMS, medications=exemplo.MEDICATIONS)
+    for k in [k for k, n in NOTES.items() if n.get("exemplo")]:
+        del NOTES[k]
+    rows = [(c["title"], c["start"], c["content"], c["data"], c["signed_at"], c["signed_at"]) for c in exemplo.consultas(now)]
+    rows += [(None, None, e["content"], e["data"], None, dt.datetime.combine(e["date"], dt.time(18, 0), tzinfo=dt.timezone.utc))
+             for e in exemplo.exames(now)]
+    for title, start, content, data, signed, upd in rows:
+        i = 8000 + len(NOTES)
+        NOTES[i] = {"id": i, "pid": 9001, "event_id": None, "event_title": title, "event_start": start and start.isoformat(),
+                    "content": content, "updated_at": upd.isoformat(), "data": server._note_data(data),
+                    "signed_at": signed and signed.isoformat(), "addenda": [], "exemplo": True}
+    recente = min(exemplo.EXAMES)                    # o laudo da coleta mais recente, como na conta nova
+    coleta = (exemplo._when(now, recente) - dt.timedelta(days=5)).date()
+    pdf = exemplo.laudo_pdf(coleta, exemplo.EXAMES[recente])
+    FILES.clear()
+    FILES[7001] = {"id": 7001, "pid": 9001, "name": "laudo-exemplo.pdf", "mime": "application/pdf", "size": len(pdf),
+                   "created_at": now.isoformat(), "data": pdf}
+    return {"ok": True, "notas": len(rows), "anexos": len(FILES)}
 
 
 @mock.post("/prontuario/notes")
@@ -119,7 +158,9 @@ def _events():
 
 # ----- abrir o prontuário de um paciente fictício (script externo: a CSP não roda script inline injetado) -----
 @mock.get("/_preview/pr")
-def _pr(pid: int = 9003, tab: str = "atual", ev: str = ""):
+def _pr(pid: int = 9003, tab: str = "atual", ev: str = "", exemplo: int = 0):
+    if exemplo:                                      # &exemplo=1: Maria (9001) com o histórico de exemplo inteiro
+        _exemplo()
     return HTMLResponse(f'<!doctype html><script src="/_preview/pr.js?pid={pid}&tab={quote(tab)}&ev={quote(ev)}"></script>')
 
 
@@ -276,7 +317,7 @@ def _estado():
 
 @mock.get("/_preview/reset")
 def _reset():
-    GRAV.reset(); NOTES.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
+    GRAV.reset(); NOTES.clear(); FILES.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
     return {"ok": True}
 
 

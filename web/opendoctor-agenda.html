@@ -83,7 +83,7 @@
     /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) =====
        escala das referências (Google Finance, em px reais): texto 14px, valores 18px, títulos de
        cartão 16px; cartões #F4F5F7 com raio 20; divisórias #E8EAED; destaque azul #0B57D0 */
-    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:32px 32px 96px;
+    .pr-view{display:none;position:absolute;inset:0;overflow-y:auto;justify-content:center;padding:0 24px 96px;
       background:#fff;z-index:5;scrollbar-width:thin;container-type:inline-size;container-name:pr;
       font-family:var(--disp);color:#1F1F1F}
     .stage.prontuario .pr-view{display:flex}
@@ -92,8 +92,24 @@
     .pr{width:100%;max-width:748px;height:max-content;display:flex;flex-direction:column;gap:8px}
     #prMain{display:flex;flex-direction:column;gap:16px}
     #prMain[hidden]{display:none}
-    .pr-top{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px}
-    .pr-tools{display:flex;gap:4px;margin-right:-16px}
+    /* barra da navegação: a 8 px do topo (como o cabeçalho da barra lateral), conteúdo a 20 px dela (Figma: cartão em y 64) */
+    .pr .pr-top{position:sticky;top:0;z-index:7;min-height:0;background:#fff;padding:8px 0;margin-bottom:12px}
+    .pr-nav{position:relative;display:flex;height:36px;border-radius:24px;background:#F7F8F8;overflow:hidden}
+    /* as cinco abas dividem a barra por igual (nada sobra no fim, em qualquer largura), com o texto no meio de cada uma */
+    .pr-nav button{position:relative;z-index:1;flex:1 1 0;min-width:0;box-sizing:border-box;height:36px;border:0;background:none;
+      padding:8.2px 6px;text-align:center;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;
+      line-height:19.6px;color:#666C6F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:24px}
+    /* texto 14 px Medium (altura 1,4 = 19,6 px), centralizado na barra de 36 px */
+    .pr-nav button.on{color:#000}
+    .pr-nav button:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px}
+    .pr-nav-pill{position:absolute;top:0;left:0;height:36px;box-sizing:border-box;border:1px solid rgba(0,0,0,.08);border-radius:24px;background:#fff}
+    .pr-nav-pill[hidden]{display:none}
+    .pr-view [id]{scroll-margin-top:64px}              /* "ir até" para logo abaixo da barra de abas (fixa no topo) */
+    .pr-top .pr-back{display:none}                     /* volta à agenda pelo menu lateral (Consultas, Pacientes) */
+    /* cabeçalho da paciente só no Resumo (o gráfico fica na Análise) */
+    @media screen{
+      #prMain:not([data-tab=geral]) > .pr-head{display:none!important}
+    }
     .pr-back{border:0;background:none;padding:0;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:24px;color:#0A0A0A}
     .pr-back:hover{text-decoration:underline}
     /* botões: "fantasma" (texto) e pílula escura; pílula clara como "Saiba mais" */
@@ -120,7 +136,17 @@
     .pr-head .pr-name{grid-column:2;grid-row:1}
     .pr-head .pr-sub{grid-column:1 / -1;grid-row:2;margin-top:10px}
     .pr-head .pr-tags{grid-column:1 / -1;grid-row:3}
-    .pr-head .pr-visit{grid-column:3;grid-row:1}
+    .pr-head .pr-more{grid-column:3;grid-row:1}
+    /* menu ⋯ do cartão da paciente: Editar cadastro e Exportar PDF (ponto vermelho = cadastro sem nascimento) */
+    .pr-more .gq-menu{left:auto;right:0}
+    .pr-dots{position:relative;display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;border-radius:18px;background:none;cursor:pointer}
+    .pr-dots:hover,.pr-dots[aria-expanded=true]{background:rgba(10,10,10,.06)}
+    .pr-dots svg{width:24px;height:24px}
+    .pr-dots.warn::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#C0151D}
+    .gq-mi[hidden]{display:none}
+    .gq-mi.warn{color:#C0151D}
+    /* Iniciar consulta e o cronômetro: no cartão da Consulta, ao lado de Texto livre / SOAP */
+    .pr-cardacts{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .pr-head .pr-avatar{grid-column:1;grid-row:1}
     .pr-avatar{width:32px;height:32px;flex:none;border-radius:50%;background:#D3E3FD;color:#0842A0;
       display:flex;align-items:center;justify-content:center;font-family:var(--disp);font-weight:500;font-size:13px}
@@ -412,45 +438,6 @@
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--g-ink);white-space:nowrap}
     .ov-pill:hover{background:#D7DAE0}
     .ov-pill svg{flex:none;display:block;width:20px;height:20px}
-    /* resumo do paciente = "Resumo do mercado" (linha 12px + divisória #F0F2F5; título 16/24 500; botão 40) */
-    .ov-acc{display:flex;flex-direction:column}
-    .ov-ai{padding:12px 0;border-bottom:1px solid var(--g-line)}
-    .ov-ai-h{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;border:0;background:none;padding:0;cursor:pointer;text-align:left;
-      font-family:var(--disp);font-weight:500;font-size:16px;line-height:24px;color:var(--g-ink)}
-    .ov-ai-dot{width:8px;height:8px;border-radius:50%;flex:none;background:#9AA0A6;margin-right:4px}
-    .ov-ai-dot.up{background:var(--g-green)}.ov-ai-dot.down{background:var(--g-red)}.ov-ai-dot.warn{background:#E37400}.ov-ai-dot.todo{background:#9AA0A6}
-    .ov-ai-t{flex:1;min-width:0}
-    .ov-ai-chev{width:40px;height:40px;flex:none;border-radius:20px;background:var(--g-line);display:flex;align-items:center;justify-content:center;transition:transform .2s}
-    .ov-ai-chev svg{width:24px;height:24px}
-    .ov-ai-h:hover .ov-ai-chev{background:#E3E6EA}
-    .ov-ai-h[aria-expanded=true] .ov-ai-chev{transform:rotate(180deg)}
-    .ov-ai-b{padding:12px 48px 4px 20px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}
-    .ov-ai-b[hidden]{display:none}
-    .ov-ai-b p{margin:0;max-width:650px;font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:var(--g-ink)}
-    .ov-ai-acts{display:flex;gap:8px;flex-wrap:wrap}
-    /* indicadores = "Abrir / Alta / Baixa…" (3 colunas, espaço 20; linha 40 + 1px #F0F2F5; 12/16) */
-    .ov-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:20px}
-    .ov-col{display:flex;flex-direction:column;min-width:0}
-    .ov-row{display:flex;align-items:center;justify-content:space-between;gap:12px;height:41px;padding:0 8px;border-bottom:1px solid var(--g-line);
-      font-family:var(--disp);font-size:12px;line-height:16px}
-    .ov-row span{color:var(--g-ink2);white-space:nowrap}
-    .ov-row b{font-weight:400;color:var(--g-ink);text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .ov-row b.bad{color:var(--g-red);font-weight:500}
-    .ov-row b.warn{color:#B06000;font-weight:500}
-    .ov-row b.muted{color:var(--g-ink2)}
-    .ov-row button{border:0;background:none;padding:0;cursor:pointer;font:inherit;font-weight:500;color:var(--g-red)}
-    /* próximas consultas = "Próximos resultados" (linha 12px; bloco de data 42, raio 4) */
-    .ov-next{display:flex;flex-direction:column}
-    .ov-nrow{display:grid;grid-template-columns:42px minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 0;border:0;border-bottom:1px solid var(--g-line);
-      background:none;width:100%;text-align:left;cursor:pointer;font-family:var(--disp)}
-    .ov-nrow:hover .ov-nt b{text-decoration:underline}
-    .ov-date{display:flex;flex-direction:column;align-items:center;width:42px;height:42px;padding:2px;border-radius:4px;background:var(--g-line)}
-    .ov-date small{font-weight:500;font-size:11px;line-height:16px;color:var(--g-ink);text-transform:uppercase}
-    .ov-date b{font-weight:400;font-size:18px;line-height:24px;color:var(--g-ink2)}
-    .ov-nt{display:flex;flex-direction:column;gap:4px;min-width:0}
-    .ov-nt b{font-weight:500;font-size:14px;line-height:18px;color:var(--g-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .ov-nt span{font-size:12px;line-height:16px;color:var(--g-ink3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .ov-nwhen{font-size:12px;line-height:16px;color:var(--g-ink3);white-space:nowrap}
     .ov-nmsg{font-family:var(--disp);font-size:14px;line-height:20px;color:var(--g-ink2)}
     .ov-nmsg a{color:var(--g-blue)}
     /* resumo clínico como tabela de perfil (rótulo 12/16; etiquetas 24px, raio 8, 12/16) */
@@ -495,7 +482,6 @@
        painéis #F7F8FA raio 12–16 · linhas 12px + divisória #F0F2F5 · etiquetas 24px raio 8 (12/16) ·
        botões 36 (raio 18) · campos 40 (raio 8) · rótulos 12/16 #56595E · títulos 20/28 ===== */
     .pr-panel{gap:24px}
-    .pr-tools .pr-ghost{height:32px;padding:0 12px;border-radius:16px}
     .pr-top{min-height:32px}
     .pr-tags{row-gap:8px}
     /* evolução (aba Consulta): sem o cartão cinza em volta — seções abertas, como no Finance */
@@ -577,7 +563,7 @@
     .pr-item-body.clamp{white-space:normal;-webkit-line-clamp:3}
     .pr-item-acts{margin-left:-12px}
     .pr-item-acts .pr-ghost{height:32px;padding:0 12px;border-radius:16px}
-    /* acessos (linhas de 40 + 1px, como a grade de indicadores) */
+    /* acessos (linhas de 40 + 1px) */
     .pr-acc{grid-template-columns:200px minmax(0,1fr);gap:12px;align-items:center;min-height:41px;padding:0 8px;border-bottom:1px solid #F0F2F5;
       font-size:12px;line-height:16px;color:#0A0A0A}
     .pr-acc.th{min-height:0;padding:0 8px 8px;border-bottom:1px solid #E1E3E1;font-weight:500;color:#56595E}
@@ -623,7 +609,6 @@
     .gq-ar{width:16px;height:16px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;background:#56595E}
     .gq-ar.up{background:#046E00}.gq-ar.down{background:#C0151D}
     .gq-ar svg{width:12px;height:12px;display:block}
-    .gq-ar.s12{width:12px;height:12px}.gq-ar.s12 svg{width:10px;height:10px}
     /* cartão do gráfico: barra 40 (raio 16 16 4 4) · gráfico (raio 4, padding 16/13/10) · períodos 39 (raio 4 4 16 16); 2px entre eles */
     .gq-card{display:flex;flex-direction:column}
     .gq-card[hidden]{display:none}
@@ -666,22 +651,6 @@
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:#56595E}
     .gq-rtabs button:hover{background:#ECEEF2;color:#0A0A0A}
     .gq-rtabs button.on{background:#E9EBF0;color:#0A0A0A;font-weight:500}
-    /* tabela de comparação (th 14/16 #56595E, padding 1/1/4; td padding 8/1 com borda superior #CCCFD9; 12/16) */
-    .gq-table{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(--disp)}
-    .gq-table[hidden]{display:none}
-    .gq-table th{padding:1px 1px 4px;font-weight:400;font-size:14px;line-height:16px;color:#56595E;text-align:right;vertical-align:bottom}
-    .gq-table th:first-child{width:12%}
-    .gq-table th.l{text-align:left;width:29%}
-    .gq-table td{padding:8px 1px;border-top:1px solid #CCCFD9;font-size:12px;line-height:16px;color:#0A0A0A;text-align:right;vertical-align:middle}
-    .gq-table td.mk{text-align:center}
-    .gq-table td.mk svg{width:11px;height:11px;display:inline-block;vertical-align:middle}
-    .gq-table td.l{text-align:left}
-    .gq-table td.l b{display:block;font-weight:500;font-size:12px;line-height:15.6px;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .gq-table td.l small{display:block;font-size:11px;line-height:14.3px;color:#56595E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .gq-table td .ch{display:flex;align-items:center;justify-content:flex-end;gap:6px;font-weight:500}
-    .gq-table td .ch.up{color:#046E00}.gq-table td .ch.down{color:#C0151D}
-    .gq-table td.bad{color:#C0151D;font-weight:500}
-    .gq-table tr.cur td{background:#F7F8FA}
     /* cartões "Ativos relacionados" (178×144, #F7F8FA, raio 12; padding 12/16/0/12; espaço 8; mini-gráfico de 32) */
     .gr-wrap{position:relative}
     .gr-row{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;padding:1px;margin:-1px}
@@ -699,8 +668,6 @@
     .gr-ch{display:flex;align-items:center;gap:6px;height:20px;font-weight:500;font-size:16px;line-height:20px;color:#56595E}
     .gr-ch.up{color:#046E00}.gr-ch.down{color:#C0151D}
     .gr-card svg.sp{display:block;width:100%;height:32px;margin-top:auto;flex:none}
-    /* indicadores: divisória só entre as linhas (como no Finance) */
-    .ov-col .ov-row:last-child{border-bottom:0;height:40px}
     /* notícias: espaço 24 × 24; fonte → título 6px */
     .ov-feed{gap:24px}
     .ov-post{gap:6px}
@@ -910,8 +877,6 @@
     .gq-chips{padding:0 0 16px}
     .gq-svgbox{height:200px}
     .gq-ranges{height:48px;padding:0 20px}
-    .gq-table th{padding:8px 4px 10px}
-    .gq-table td{padding:14px 4px}
     /* abas */
     .pr-tabs{margin-top:8px}
     .pr-panel{gap:32px}
@@ -919,16 +884,10 @@
     /* seções da Visão geral */
     .ov-sec{gap:24px}
     .ov-hd{gap:4px}
-    .ov-ai{padding:18px 0}
-    .ov-ai-b{padding:16px 56px 8px 20px;gap:16px}
-    .ov-stats{column-gap:28px}
-    .ov-row{height:53px;padding:0 10px}
-    .ov-col .ov-row:last-child{height:52px}
     .gr-row{gap:16px}
     .gr-card{height:164px;flex-basis:188px}
     .gr-in{padding:16px 20px 0 16px;gap:10px}
     .gr-h{gap:4px}
-    .ov-nrow{padding:18px 0;gap:16px}
     .ov .pr-sumcol{padding:18px 10px;row-gap:10px}
     .ov .pr-chips{gap:8px}
     .ov-dxrow{padding:18px 0;gap:16px}
@@ -970,7 +929,6 @@
     .pr-field{gap:8px}
     /* ===== respiro horizontal dentro dos componentes (margens da página e largura da coluna iguais) ===== */
     .pr-crumb{gap:8px}
-    .pr-tools{gap:8px}
     .pr-head{column-gap:12px}
     .pr-head .pr-tags{gap:10px}
     .pr-tag,.pr-allergy{padding-left:12px;padding-right:12px}
@@ -981,15 +939,7 @@
     .gq-chip{padding:8px 18px;gap:8px}
     .gq-chip.rm{padding-right:6px}
     .gq-rtabs{gap:10px}
-    .gq-table th{padding-left:12px;padding-right:12px}
-    .gq-table td{padding-left:12px;padding-right:12px}
-    .gq-table th:first-child,.gq-table td:first-child{padding-left:0;padding-right:0}
-    .gq-table td .ch{gap:8px}
-    .ov-stats{column-gap:40px}
-    .ov-row{padding:0 12px;gap:16px}
-    .ov-ai-h{gap:12px}
     .gr-row{gap:20px}
-    .ov-nrow{gap:20px}
     .ov-dxrow{gap:24px}
     .ov .pr-sumcol{column-gap:24px;padding-left:12px;padding-right:12px}
     .ov .pr-chips{gap:10px}
@@ -1008,7 +958,6 @@
     .pr-item-head{gap:16px}
     .pr-form{column-gap:32px}
     /* ===== exames laboratoriais no SOAP (bloco que abre e fecha) ===== */
-    .pr-hacts{display:flex;align-items:center;gap:8px}
     .pr-addlab{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px 0 12px;border:1px solid #CCCFD9;border-radius:18px;background:#fff;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A;white-space:nowrap}
     .pr-addlab:hover{background:#F7F8FA}
@@ -1112,15 +1061,6 @@
     .gb-t .down{color:#C0151D}
     .gb-r{flex:none;display:flex;align-items:center;gap:4px;padding:5px 8px 5px 12px;font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A;white-space:nowrap}
     .gb-r svg{width:20px;height:20px}
-    .gpan{display:flex;flex-direction:column;gap:16px;border-radius:16px;background:#F0F2F5}
-    .gpan-hd{display:flex;flex-direction:column;gap:4px;padding:20px 20px 0}
-    .gpan-t{font-family:var(--disp);font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A}
-    .gpan-s{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
-    .gpan-bar{display:flex;gap:2px;height:12px;margin:0 20px}
-    .gpan-bar span{display:block;height:12px;min-width:12px;border-radius:2px}
-    .gpan-bar span:first-child{border-top-left-radius:20px;border-bottom-left-radius:20px}
-    .gpan-bar span:last-child{border-top-right-radius:20px;border-bottom-right-radius:20px}
-    .gpan-lg{display:flex;justify-content:space-between;gap:16px;padding:0 20px 20px;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px}
     .gpan-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 40px;padding-top:8px}
     .gpan-col[hidden]{display:none}
     .gpan-ch{display:flex;align-items:center;gap:8px;padding-bottom:12px;font-family:var(--disp);font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A}
@@ -1168,10 +1108,7 @@
     .ga-table td.down{color:#C0151D}
     .ga-table tbody tr{cursor:pointer}
     .ga-table tbody tr:hover td{background:#F7F8FA}
-    .ga-subd{display:none}
-    .ga-cards[hidden],.ga-table[hidden]{display:none}
-    .ga-table tr.ga-grp td{height:auto;padding:24px 0 8px;font-weight:500;font-size:12px;line-height:16px;color:#0A0A0A;cursor:default;background:none}
-    .ga-table tr.ga-grp:first-child td{padding-top:12px}
+    .ga-cards[hidden]{display:none}
     .ga-fu{display:flex;flex-direction:column;margin-top:24px}
     .ga-fu[hidden]{display:none}
     .ga-futable tbody tr{cursor:default}
@@ -1179,25 +1116,17 @@
     .gq-menu{max-height:min(520px,70vh);overflow-y:auto}
     .gq-mh.sub{padding-top:4px;font-size:11px;color:#80868B}
     .gf-table tr.gf-grp td{height:auto;padding:20px 0 8px;font-weight:500;color:#0A0A0A;background:none;border-top:0}
+    /* lista de sinais e exames da Análise: a situação é só a cor do texto (sem pílula); a linha leva ao gráfico */
+    .gf-table td.ok{color:#046E00;font-weight:500}
+    .gf-table td.up{color:#046E00}
+    .gf-table td.down{color:#C0151D}
+    .gf-list td:first-child{white-space:normal}                 /* o nome quebra linha: a tabela cabe sem rolar de lado */
+    .gf-list tbody tr:not(.gf-grp){cursor:pointer}
+    .gf-list tbody tr:not(.gf-grp):hover td{background:#F7F8FA}
     .ga-pill{display:inline-flex;padding:2px 8px;border-radius:100px;font-weight:500;font-size:12px;line-height:16px}
     .ga-pill.ok{background:#046E00;color:#CDF5C6}
     .ga-pill.bad{background:#C0151D;color:#FFDAD6}
     .ga-pill.na{background:#E1E3E8;color:#0A0A0A}
-    .gl{display:flex;flex-direction:column;padding-top:16px}
-    .gl[hidden]{display:none}
-    .gl-hd{display:flex;flex-direction:column;gap:8px;margin-bottom:24px}
-    .gl-t{font-family:var(--disp);font-weight:500;font-size:20px;line-height:20px;color:#0A0A0A}
-    .gl-s{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
-    .gl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px 40px}
-    .gl-it{display:flex;font-family:var(--disp);font-size:14px;line-height:20px;color:#56595E}
-    .gl-it svg{flex:none;width:24px;height:24px;margin-right:10px}
-    .gl-it b{font-weight:500;color:#0A0A0A}
-    .gl-qs{display:flex;flex-direction:column;gap:12px;margin-top:32px}
-    .gl-qs:empty{display:none}
-    .gl-q{display:flex;align-items:center;gap:6px;width:100%;min-height:48px;padding:10px 20px 10px 12px;border:0;border-radius:100px;background:#E1E3E8;cursor:pointer;
-      text-align:left;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
-    .gl-q:hover{background:#D7DAE0}
-    .gl-q svg{flex:none;width:28px;height:28px;padding:5px}
     .gfc{margin-bottom:32px;padding:16px 16px 8px;border-radius:16px;background:#F7F8FA}
     .gfc[hidden]{display:none}
     .gfc-hd{display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
@@ -1214,9 +1143,8 @@
     .gfc-svg{display:block;width:100%;height:176px;margin-top:12px}
     .gfc-svg text{font-family:var(--disp);font-size:10px}
     @container pr (max-width:640px){
-      .ga-cards,.gpan-cols,.gl-grid{grid-template-columns:1fr}
-      .ga-table .ga-tr,.ga-table .ga-dt{display:none}
-      .ga-subd{display:inline}
+      .ga-cards,.gpan-cols{grid-template-columns:1fr}
+      .gf-list .ga-tr{display:none}
       .gb-r{padding-left:4px}
     }
     /* ===== histórico: cartão da teleconferência de resultados do Finance (VRTX › Ganhos), medida por medida =====
@@ -1300,8 +1228,6 @@
     @keyframes prflash{0%,30%{background:#E8F0FE}100%{background:transparent}}
     /* coluna estreita (assistente aberto) */
     @container pr (max-width:720px){
-      .ov-stats{column-gap:40px}
-      .ov-ai-b{padding-right:8px}
       .pr-sum{grid-template-columns:1fr}
       .ov .pr-sum{grid-template-columns:repeat(2,minmax(0,1fr))}
       .ov .pr-sumcol[data-k=medications]{grid-column:1 / -1}
@@ -1312,18 +1238,14 @@
       .pr-tabs button{padding:0 12px}                      /* 6 abas cabem sem rolar */
     }
     @container pr (max-width:640px){
-      .ov-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .ov-col:nth-child(3){grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:40px;margin-top:0}
       .ov-feed{grid-template-columns:1fr}
     }
     @container pr (max-width:640px){
       .ov .pr-sumcol{grid-template-columns:132px minmax(0,1fr)}
-      .gq-table th:last-child,.gq-table td:last-child{display:none}
       .pr-vitals{grid-template-columns:repeat(2,minmax(0,1fr))}
     }
     @container pr (max-width:520px){
       .gc-trans-s,.gc-trans-i{display:none}
-      .ov-stats,.ov-col:nth-child(3){grid-template-columns:1fr}
       .ov-dxrow{grid-template-columns:52px minmax(0,1fr)}
       .ov-dxbar{grid-column:2}
       .ov .pr-sumcol{grid-template-columns:1fr}
@@ -1338,12 +1260,10 @@
       @page{margin:16mm}
       body{background:#fff}
       .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.rc-tx,.rc-note,.pr-foot,.pr-chipin,.pr-tabs,
-      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=acessos],.pr-panel[data-panel=prescricoes],.pr-link,#prForm,
-      .ov-ranges,.ov-tip,.ov-link,.ov-ai-chev,.ov-ai-acts,.ov-empty .ov-pill,.ov-tiles,.ov-persp,.ov .pr-chipin,.gb,.ga-btn,.gl-qs,.gfc .gq-dd,.hc-pw,.hc-dd,.hc-tr,.hc-more{display:none!important}
+      .pr-chip button,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),#prAccess,.pr-panel[data-panel=prescricoes],.pr-link,#prForm,
+      .pr-more,.ov-ranges,.ov-tip,.ov-link,.ov-empty .ov-pill,.ov-tiles,.ov-persp,.ov .pr-chipin,.gb,.ga-btn,.gfc .gq-dd,.hc-pw,.hc-dd,.hc-tr,.hc-more{display:none!important}
       .hc-body{display:flex!important}
       .hc-hl li{display:list-item!important}
-      .ov-row b{white-space:normal}
-      .ov-ai-b{display:flex!important;padding-bottom:12px}
       .ov-frame,.ov-empty{background:none!important;box-shadow:inset 0 0 0 1px #E8EAED}
       .ov-plot,.ov-plot svg{height:auto!important}
       .pr-tabs{position:static}
@@ -1355,7 +1275,7 @@
       #prFree,#prSoap{display:none!important}
       .pr-printcur{display:block!important}
       .pr-bigcard,.pr-sumcol{background:none!important;padding:0!important;border-radius:0!important}
-      .pr-sumcol,.pr-allergy,.pr-item,.pr-trow,.ov-chart,.ov-stats,.ov-dxrow,.ov-post,.ov-ai,.ov-nrow{break-inside:avoid}
+      .pr-sumcol,.pr-allergy,.pr-item,.pr-trow,.ov-chart,.ov-dxrow,.ov-post{break-inside:avoid}
     }
     /* ===== PACIENTES (estilo "Configurações": título grande, seções com rótulo, cartões brancos com
        borda fina e linhas com divisória; ações à direita) — medidas em px reais (referência 2x) ===== */
@@ -1791,6 +1711,17 @@
     .bi-send{width:60px;height:48px;flex:none;border:0;border-radius:999px;background:var(--send-bg);cursor:pointer;
       display:flex;align-items:center;justify-content:center;transition:background .12s ease}
     .bi-send:hover{background:#c2d8fb}
+  
+    /* ===== cartões do prontuário: fundo #F7F8F8 (o mesmo da navegação) e cantos de 40 px ===== */
+    .gc,.gcard,.pr-form,.pr-locked .pr-body,.gr-card,.ga-card,.gfc,.pr-item.hc{background:#F7F8F8;border-radius:40px}
+    .gr-card{overflow:hidden}            /* o minigráfico vai até a borda: com cantos de 40 px, não sai da curva */
+    /* cabeçalho da paciente (Resumo) num cartão como o da gravação: fundo #F7F8F8, cantos de 40 e 24 px por dentro.
+       Anexar exame fica na seção Exames; Iniciar consulta, no cartão da Consulta; Editar cadastro e Exportar PDF, no menu ⋯ */
+    #prMain > .pr-head{background:#F7F8F8;border-radius:40px;padding:24px}
+    /* o gráfico do Resumo é um cartão em três faixas (ferramentas, gráfico, períodos): 40 px só nos cantos de fora */
+    .gq-bar,.gq-plot,.gq-ranges{background:#F7F8F8}
+    .gq-bar{border-radius:40px 40px 4px 4px}
+    .gq-ranges{border-radius:4px 4px 40px 40px}
   </style>
 </head>
 <body>
@@ -1838,16 +1769,21 @@
       </div>
       <div class="pr-view" id="prView">
         <div class="pr">
+          <!-- navegação do prontuário (Figma Concept 1067:45507): fica no topo ao rolar; volta à agenda pelo menu lateral -->
           <div class="pr-top">
-            <div class="pr-crumb"><button class="pr-back" type="button" id="prBack">Agenda</button><span class="pr-crumb-sep" aria-hidden="true"></span><span class="pr-crumb-t">Prontuário</span></div>
-            <div class="pr-tools">
-              <button class="pr-ghost" type="button" id="prEditBtn" hidden>Editar cadastro</button>
-              <button class="pr-ghost" type="button" id="prExport" hidden>Exportar PDF</button>
+            <button class="pr-back" type="button" id="prBack" hidden>Agenda</button>
+            <div class="pr-nav" id="prTabs" role="tablist" aria-label="Prontuário">
+              <span class="pr-nav-pill" aria-hidden="true"></span>
+              <button type="button" role="tab" data-tab="atual">Consulta</button>
+              <button type="button" role="tab" data-tab="geral" class="on">Resumo</button>
+              <button type="button" role="tab" data-tab="analise">Análise</button>
+              <button type="button" role="tab" data-tab="consultas">Histórico</button>
+              <button type="button" role="tab" data-tab="prescricoes">Prescrições</button>
             </div>
           </div>
           <div class="pr-msg" id="prMsg" hidden></div>
 
-          <div id="prMain" hidden>
+          <div id="prMain" hidden data-tab="geral">
             <!-- identificação (separa homônimos) -->
             <div class="pr-head">
               <div class="pr-avatar" id="prAvatar"></div>
@@ -1860,15 +1796,15 @@
                   <span id="prProbTags"></span>
                 </div>
               </div>
-              <div class="pr-hacts">
-                <button class="pr-addlab" type="button" id="prAttach" data-attach><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5a2.5 2.5 0 0 0 5 0V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6z" fill="currentColor"/></svg>Anexar exame</button>
-                <input type="file" id="prAttFile" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp" multiple hidden>
-                <div class="pr-visit" id="prVisitBox">
-                  <span class="pr-timer" id="prTimer" hidden></span>
-                  <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+              <div class="gq-dd pr-more">
+                <button class="pr-dots" type="button" id="prMore" aria-haspopup="menu" aria-expanded="false" aria-label="Mais ações" title="Mais ações"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2m-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2" fill="#0A0A0A"/></svg></button>
+                <div class="gq-menu" id="prMoreM" role="menu" hidden>
+                  <button class="gq-mi" type="button" role="menuitem" id="prEditBtn" hidden>Editar cadastro</button>
+                  <button class="gq-mi" type="button" role="menuitem" id="prExport" hidden>Exportar PDF</button>
                 </div>
               </div>
             </div>
+            <input type="file" id="prAttFile" accept="application/pdf,image/jpeg,image/png,image/webp,.pdf,.jpg,.jpeg,.png,.webp" multiple hidden>
             <div class="pr-form" id="prForm" hidden>
               <label class="pr-field wide"><span>Nome completo</span><input class="pr-in" id="pfName" autocomplete="off" spellcheck="false"></label>
               <label class="pr-field"><span>Data de nascimento</span><input class="pr-in" id="pfBirth" type="date"></label>
@@ -1883,80 +1819,33 @@
               </div>
             </div>
 
-            <!-- ===== bloco do gráfico, na estrutura da página de cotação do Google Finance
-                 (google.com/finance/quote/RUT:INDEXRUSSELL?comparison=…&type=line): número + variação + data,
-                 cartão do gráfico (barra com Comparar, chips das séries, gráfico, períodos)
-                 e tabela de comparação. Fica acima das abas, como no Finance. ===== -->
-            <section class="gq" id="ovTop" hidden>
-              <!-- "Why is NVDA down 3.16%? · Dive deeper": só preenche a pergunta no assistente -->
-              <button class="gb" type="button" id="gqWhy" hidden>
-                <span class="gb-l"><span class="gb-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg></span><span class="gb-t" id="gqWhyT"></span></span>
-                <span class="gb-r">Perguntar ao assistente<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="#0A0A0A"/></svg></span>
-              </button>
-              <div class="gq-quote" id="gqQuote">
-                <div class="gq-price"><span class="gq-val" id="ovVal">—</span><span class="gq-unit" id="ovUnit"></span><span class="gq-chg" id="ovDelta"></span></div>
-                <div class="gq-date" id="ovWhen"></div>
-              </div>
-              <div class="gq-card" id="ovChart">
-                <div class="gq-bar">
-                  <div class="gq-tools">
-                    <div class="gq-dd"><button class="gq-tool" type="button" id="gqCmp" aria-haspopup="menu" aria-expanded="false"><svg class="gq-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 19.99l7.5-7.51 4 4 7.09-7.97L22 9.92l-8.5 9.56-4-4-6 6.01zm1.5-4.5l6-6.01 4 4L22 3.92l-1.41-1.41-7.09 7.97-4-4L2 13.99z" fill="#0A0A0A"/></svg><span>Comparar</span><svg class="gq-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="gqCmpM" role="menu" hidden></div></div>
-                  </div>
-                </div>
-                <div class="gq-plot">
-                  <div class="gq-chips" id="gqChips"></div>
-                  <div class="gq-svgbox" id="ovPlot" tabindex="0" aria-label="Gráfico dos sinais vitais ao longo das consultas. Use as setas para percorrer as medidas e Enter para abrir a evolução.">
-                    <svg id="ovSvg" aria-hidden="true"></svg>
-                    <div class="ov-tip" id="ovTip" hidden></div>
-                    <div class="ov-plotmsg" id="ovPlotMsg" hidden></div>
-                  </div>
-                </div>
-                <div class="gq-ranges"><div class="gq-rtabs" id="ovRanges" role="tablist" aria-label="Período">
-                  <button type="button" role="tab" data-r="6">6M</button><button type="button" role="tab" data-r="12">1A</button><button type="button" role="tab" data-r="24">2A</button><button type="button" role="tab" data-r="60">5A</button><button type="button" role="tab" data-r="0" class="on">MÁX</button>
-                </div></div>
-              </div>
-              <table class="gq-table" id="gqTable">
-                <thead><tr><th></th><th class="l">Sinais</th><th>Última</th><th>Variação</th><th>% de variação</th><th>Primeira medida</th></tr></thead>
-                <tbody id="gqTBody"></tbody>
-              </table>
-              <div class="ov-empty" id="ovEmpty" hidden>
-                <div class="ov-empty-t">Ainda não há sinais vitais registrados</div>
-                <div class="ov-empty-s">Pressão, peso, glicemia e os outros sinais aparecem aqui, em gráfico, quando a evolução é feita no modo <b>SOAP</b>.</div>
-                <button class="ov-pill" type="button" id="ovEmptyGo">Abrir a consulta</button>
-              </div>
-            </section>
-
-            <!-- abas (fixas no topo ao rolar) -->
-            <div class="pr-tabs" id="prTabs" role="tablist">
-              <button type="button" role="tab" data-tab="geral" class="on">Visão geral</button>
-              <button type="button" role="tab" data-tab="analise">Análise</button>
-              <button type="button" role="tab" data-tab="atual">Consulta</button>
-              <button type="button" role="tab" data-tab="prescricoes">Prescrições</button>
-              <button type="button" role="tab" data-tab="consultas">Consultas</button>
-              <button type="button" role="tab" data-tab="acessos">Acessos</button>
-            </div>
-
             <!-- Visão geral: tudo calculado no navegador a partir do prontuário — nada vai para fora -->
             <section class="pr-panel ov" data-panel="geral">
-              <div class="ov-sec" id="ovSumSec" hidden>
-                <div class="ov-hd"><div class="ov-h" role="heading" aria-level="2">Resumo do paciente</div><div class="ov-hs">Calculado a partir do prontuário e da agenda · sem IA</div></div>
-                <div class="ov-acc" id="ovAcc"></div>
-              </div>
-
-              <!-- "Outlook" do Finance: barra dentro / melhorando / fora + pontos positivos e de atenção -->
-              <div class="ov-sec" id="ovPanSec" hidden>
-                <div class="gpan">
-                  <div class="gpan-hd"><span class="gpan-t">Panorama</span><span class="gpan-s" id="ovPanS"></span></div>
-                  <div class="gpan-bar" id="ovPanBar"></div>
-                  <div class="gpan-lg" id="ovPanLg"></div>
+              <!-- os dois cartões da Análise (sinais e exames na referência; faixa no período) -->
+              <div class="ga-cards" id="gaCards">
+                <div class="ga-card">
+                  <div class="ga-t" id="gaRateT">Sinais na referência</div>
+                  <div class="ga-s" id="gaRateS"></div>
+                  <div class="ga-rate">
+                    <div class="ga-donut"><svg id="gaDonut" viewBox="0 0 120 120" aria-hidden="true"></svg><div class="ga-dl" id="gaDonutL"></div></div>
+                    <div class="ga-lg" id="gaLg"></div>
+                  </div>
+                  <button class="ga-btn" type="button" id="gaAsk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg>Perguntar ao assistente</button>
                 </div>
+                <div class="ga-card">
+                  <div class="ga-t">Faixa no período</div>
+                  <div class="ga-s" id="gaRangeS"></div>
+                  <div class="ga-bars" id="gaBars"></div>
+                  <button class="ga-btn" type="button" id="gaSee"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" fill="#0A0A0A"/></svg>Ver no gráfico</button>
+                </div>
+              </div>
+              <!-- "Outlook" do Finance: pontos positivos e de atenção -->
+              <div class="ov-sec" id="ovPanSec" hidden>
                 <div class="gpan-cols">
                   <div class="gpan-col" id="ovPanPosC"><div class="gpan-ch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" fill="#046E00"/></svg>Pontos positivos</div><ul id="ovPanPos"></ul></div>
                   <div class="gpan-col" id="ovPanNegC"><div class="gpan-ch"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6z" fill="#C0151D"/></svg>Pontos de atenção</div><ul id="ovPanNeg"></ul></div>
                 </div>
               </div>
-
-              <div class="ov-stats" id="ovStats"></div>
 
               <!-- "Ativos relacionados" do Finance: um cartão por sinal vital -->
               <div class="ov-sec" id="ovTilesWrap" hidden>
@@ -1977,11 +1866,6 @@
                   <button class="ov-tnav prev" type="button" id="ovLPrev" aria-label="Exames anteriores" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#1F1F1F"/></svg></button>
                   <button class="ov-tnav next" type="button" id="ovLNext" aria-label="Mais exames" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="#1F1F1F"/></svg></button>
                 </div>
-              </div>
-
-              <div class="ov-sec" id="ovNextSec" hidden>
-                <div class="ov-hd"><div class="ov-h" role="heading" aria-level="2">Próximas consultas</div><div class="ov-hs">Da sua agenda</div></div>
-                <div class="ov-next" id="ovNext"></div>
               </div>
 
               <div class="ov-sec" id="ovFeedSec" hidden>
@@ -2009,27 +1893,50 @@
 
             <!-- Análise (aba "Analysis" do Finance): situação dos sinais (rosca), faixa no período (barras) e tabela -->
             <section class="pr-panel" data-panel="analise" hidden>
-              <div class="ga-cards" id="gaCards">
-                <div class="ga-card">
-                  <div class="ga-t" id="gaRateT">Sinais na referência</div>
-                  <div class="ga-s" id="gaRateS"></div>
-                  <div class="ga-rate">
-                    <div class="ga-donut"><svg id="gaDonut" viewBox="0 0 120 120" aria-hidden="true"></svg><div class="ga-dl" id="gaDonutL"></div></div>
-                    <div class="ga-lg" id="gaLg"></div>
+              <!-- ===== bloco do gráfico, na estrutura da página de cotação do Google Finance
+                   (google.com/finance/quote/RUT:INDEXRUSSELL?comparison=…&type=line): número + variação + data,
+                   cartão do gráfico (barra com Comparar, chips das séries, gráfico, períodos)
+                   e tabela de comparação. Fica no começo da Análise. ===== -->
+              <section class="gq" id="ovTop" hidden>
+                <!-- "Why is NVDA down 3.16%? · Dive deeper": só preenche a pergunta no assistente -->
+                <button class="gb" type="button" id="gqWhy" hidden>
+                  <span class="gb-l"><span class="gb-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg></span><span class="gb-t" id="gqWhyT"></span></span>
+                  <span class="gb-r">Perguntar ao assistente<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="#0A0A0A"/></svg></span>
+                </button>
+                <div class="gq-quote" id="gqQuote">
+                  <div class="gq-price"><span class="gq-val" id="ovVal">—</span><span class="gq-unit" id="ovUnit"></span><span class="gq-chg" id="ovDelta"></span></div>
+                  <div class="gq-date" id="ovWhen"></div>
+                </div>
+                <div class="gq-card" id="ovChart">
+                  <div class="gq-bar">
+                    <div class="gq-tools">
+                      <div class="gq-dd"><button class="gq-tool" type="button" id="gqCmp" aria-haspopup="menu" aria-expanded="false"><svg class="gq-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 19.99l7.5-7.51 4 4 7.09-7.97L22 9.92l-8.5 9.56-4-4-6 6.01zm1.5-4.5l6-6.01 4 4L22 3.92l-1.41-1.41-7.09 7.97-4-4L2 13.99z" fill="#0A0A0A"/></svg><span>Comparar</span><svg class="gq-caret" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="#0A0A0A"/></svg></button><div class="gq-menu" id="gqCmpM" role="menu" hidden></div></div>
+                    </div>
                   </div>
-                  <button class="ga-btn" type="button" id="gaAsk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg>Perguntar ao assistente</button>
+                  <div class="gq-plot">
+                    <div class="gq-chips" id="gqChips"></div>
+                    <div class="gq-svgbox" id="ovPlot" tabindex="0" aria-label="Gráfico dos sinais vitais ao longo das consultas. Use as setas para percorrer as medidas e Enter para abrir a evolução.">
+                      <svg id="ovSvg" aria-hidden="true"></svg>
+                      <div class="ov-tip" id="ovTip" hidden></div>
+                      <div class="ov-plotmsg" id="ovPlotMsg" hidden></div>
+                    </div>
+                  </div>
+                  <div class="gq-ranges"><div class="gq-rtabs" id="ovRanges" role="tablist" aria-label="Período">
+                    <button type="button" role="tab" data-r="6">6M</button><button type="button" role="tab" data-r="12">1A</button><button type="button" role="tab" data-r="24">2A</button><button type="button" role="tab" data-r="60">5A</button><button type="button" role="tab" data-r="0" class="on">MÁX</button>
+                  </div></div>
                 </div>
-                <div class="ga-card">
-                  <div class="ga-t">Faixa no período</div>
-                  <div class="ga-s" id="gaRangeS"></div>
-                  <div class="ga-bars" id="gaBars"></div>
-                  <button class="ga-btn" type="button" id="gaSee"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z" fill="#0A0A0A"/></svg>Ver no gráfico</button>
+                <div class="ov-empty" id="ovEmpty" hidden>
+                  <div class="ov-empty-t">Ainda não há sinais vitais registrados</div>
+                  <div class="ov-empty-s">Pressão, peso, glicemia e os outros sinais aparecem aqui, em gráfico, quando a evolução é feita no modo <b>SOAP</b>.</div>
+                  <button class="ov-pill" type="button" id="ovEmptyGo">Abrir a consulta</button>
                 </div>
+              </section>
+              <div class="gf-wrap" id="gaTable">
+                <table class="gf-table gf-list">
+                  <thead><tr><th>Sinal ou exame</th><th>Situação</th><th class="ga-tr">Tendência</th><th>Última</th><th>Variação</th></tr></thead>
+                  <tbody id="gaTBody"></tbody>
+                </table>
               </div>
-              <table class="ga-table" id="gaTable">
-                <thead><tr><th>Sinal ou exame</th><th>Situação</th><th class="ga-tr">Tendência</th><th>Última</th><th>Variação</th><th class="ga-dt">Data</th></tr></thead>
-                <tbody id="gaTBody"></tbody>
-              </table>
               <!-- sinais e exames por consulta (gráfico de barras como o da aba Finanças + tabela) -->
               <div class="ga-cs" id="csSinais">
                 <div class="gh gh-col"><span class="gh-t">Sinais e exames por consulta</span><span class="gh-s">Medidas registradas nas evoluções e nos resultados de exames</span></div>
@@ -2064,7 +1971,13 @@
                     <div class="pr-h2" id="prEvoLabel">Evolução</div>
                     <div class="pr-cardsub" id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
                   </div>
-                  <div class="pr-seg" id="prSeg" role="tablist"><button type="button" data-m="free" class="on">Texto livre</button><button type="button" data-m="soap">SOAP</button></div>
+                  <div class="pr-cardacts">
+                    <div class="pr-visit" id="prVisitBox">
+                      <span class="pr-timer" id="prTimer" hidden></span>
+                      <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+                    </div>
+                    <div class="pr-seg" id="prSeg" role="tablist"><button type="button" data-m="free" class="on">Texto livre</button><button type="button" data-m="soap">SOAP</button></div>
+                  </div>
                 </div>
                 <!-- gravação da consulta (peça principal da aba): player da divulgação do Finance, ao vivo -->
                 <div class="pr-rec" id="prRec"></div>
@@ -2130,12 +2043,6 @@
                 </div>
                 <div class="pr-addbox" id="prAddBox" hidden></div>
               </div>
-              <!-- "At a glance" da aba Ganhos: destaques calculados + perguntas prontas para o assistente -->
-              <div class="gl" id="gcGlance" hidden>
-                <div class="gl-hd"><span class="gl-t">Em resumo</span><span class="gl-s" id="gcGlanceS"></span></div>
-                <div class="gl-grid" id="gcGlanceL"></div>
-                <div class="gl-qs" id="gcGlanceQ"></div>
-              </div>
             </section>
 
             <!-- Resumo clínico (vale para todas as consultas) -->
@@ -2161,6 +2068,17 @@
                   <input class="srch-in pr-histq" id="prHistQ" type="search" placeholder="Buscar nas consultas" autocomplete="off" spellcheck="false">
                 </div>
                 <div class="pr-table" id="prVisits"></div>
+              </div>
+                          <!-- Registro de acessos (LGPD): no fim do Histórico -->
+              <div class="gsub pr-access" id="prAccess">
+                <div class="gh gh-col"><span class="gh-t">Registro de acessos</span><span class="gh-s">Quem abriu ou alterou este prontuário, com data e hora (LGPD)</span></div>
+                <div class="pr-table" id="prAccessList"></div>
+                <div class="gp" id="accPager" hidden>
+                  <button type="button" id="accFirst" aria-label="Primeira página"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.41 16.59 13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z" fill="#0A0A0A"/></svg></button>
+                  <button type="button" id="accPrev" aria-label="Página anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#0A0A0A"/></svg></button>
+                  <span id="accPage">Página 1</span>
+                  <button type="button" id="accNext" aria-label="Próxima página"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="#0A0A0A"/></svg></button>
+                </div>
               </div>
             </section>
 
@@ -2209,17 +2127,6 @@
               </div>
             </div>
 
-            <!-- Registro de acessos (LGPD) -->
-            <section class="pr-panel" data-panel="acessos" id="prAccess" hidden>
-              <div class="gh gh-col"><span class="gh-t">Registro de acessos</span><span class="gh-s">Quem abriu ou alterou este prontuário, com data e hora (LGPD)</span></div>
-              <div class="pr-table" id="prAccessList"></div>
-              <div class="gp" id="accPager" hidden>
-                <button type="button" id="accFirst" aria-label="Primeira página"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.41 16.59 13.82 12l4.59-4.59L17 6l-6 6 6 6zM6 6h2v12H6z" fill="#0A0A0A"/></svg></button>
-                <button type="button" id="accPrev" aria-label="Página anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" fill="#0A0A0A"/></svg></button>
-                <span id="accPage">Página 1</span>
-                <button type="button" id="accNext" aria-label="Próxima página"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.59 16.59 10 18l6-6-6-6-1.41 1.41L13.17 12z" fill="#0A0A0A"/></svg></button>
-              </div>
-            </section>
           </div>
         </div>
       </div>
@@ -4483,10 +4390,16 @@
         $('prSub').textContent = bits.length ? bits.map(function (b) { return b.replace(/ /g, '\u00a0'); }).join(' · ') : 'Prontuário';
         var miss = patient && !p.birth_date;               // sem nascimento não dá para diferenciar homônimos
         $('prEditBtn').textContent = miss ? 'Completar cadastro' : 'Editar cadastro';
-        $('prEditBtn').classList.toggle('warn', !!miss);
+        $('prEditBtn').classList.toggle('warn', !!miss); $('prMore').classList.toggle('warn', !!miss);
         $('prEditBtn').hidden = !patient;
       }
+      $('prMore').addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = $('prMoreM').hidden; closeMenus();
+        if (open) { $('prMoreM').hidden = false; this.setAttribute('aria-expanded', 'true'); var f = $('prMoreM').querySelector('button:not([hidden])'); if (f) f.focus(); }
+      });
       $('prEditBtn').addEventListener('click', function () {
+        closeMenus();
         if (!patient) return;
         var f = $('prForm'); if (!f.hidden) { f.hidden = true; return; }
         $('pfName').value = patient.name; $('pfBirth').value = patient.birth_date || ''; $('pfSex').value = patient.sex || '';
@@ -4554,7 +4467,6 @@
         $('prEvTitle').textContent = '';
         $('prEvWhen').textContent = has ? fmtWhen(ctx.start, ctx.end, ctx.all_day) : 'Registro fora de uma consulta agendada';
         $('prEvLoc').textContent = has && ctx.location ? ' · ' + ctx.location : '';
-        renderStrip();
       }
       function renderEvo() {
         var lk = locked();
@@ -4568,12 +4480,7 @@
           renderAdds($('prLockedAdds'), cur.addenda);
         }
         $('prCopyLast').hidden = lk || !lastOther();
-        renderStrip(); recRender();
-      }
-      // "Em resumo" da aba Consulta (recalculado quando o prontuário muda)
-      function renderStrip() {
-        if (!ctx) { $('gcGlance').hidden = true; return; }
-        renderGlance();
+        recRender();
       }
       function lastOther() { return notes.filter(function (n) { return n !== cur && !isLabRec(n) && (n.content || '').trim(); })[0] || null; }
       $('prCopyLast').addEventListener('click', function () {
@@ -4730,7 +4637,7 @@
           var tm = el('span', null, mmss(recSecs(r))); tm.id = 'rcTime'; lab.appendChild(tm);
           lab.appendChild(el('span', 'rc-r', r.st === 'live' ? 'Transcrevendo ao vivo' : 'Continue quando quiser'));
           box.appendChild(rcBtn('hc-btn rc-b', r.st === 'live' ? RI.pause : RI.mic, r.st === 'live' ? 'Pausar a gravação' : 'Continuar gravando', function () {
-            if (r.st === 'live') recPause(r); else recResume(r); recRender(); renderStrip();
+            if (r.st === 'live') recPause(r); else recResume(r); recRender();
           }));
           box.appendChild(rcBtn('rc-go', RI.stop + '<span>Encerrar</span>', 'Encerrar a gravação e gerar a evolução', function () { recEnd(r); }));
         } else {
@@ -4797,7 +4704,7 @@
       }
       function recStart() {
         var r = recCur(); if (!r || !recDemo() || !ready || locked() || r.st !== 'idle') return;
-        r.open = true; recResume(r); recRender(); renderStrip();
+        r.open = true; recResume(r); recRender();
       }
       function recResume(r) {
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);
@@ -4818,12 +4725,12 @@
         while (r.si < RC_SCRIPT.length) { var s = RC_SCRIPT[r.si++]; at += 2 + s[2].split(' ').length * 0.35; r.u.push({ k: s[0], who: s[1], at: at, t: s[2] }); }
         r.ms = Math.max(r.ms, (at + 3) * 1000);
         r.st = 'proc'; r.open = false; r.pw = '0'; r.step = 'Transcrevendo o áudio…';
-        recRender(); renderStrip();
+        recRender();
         var steps = ['Organizando em SOAP…', 'Sugerindo CID-10…'], k = 0;
         var iv = setInterval(function () { r.step = steps[k++] || ''; var e = $('rcStep'); if (e && recCur() === r) e.textContent = r.step; if (k >= steps.length) clearInterval(iv); }, 870);
         setTimeout(function () {
           clearInterval(iv); r.st = 'done'; r.pos = 0;
-          if (recCur() === r) { recApply(r); recRender(); renderStrip(); } else r.pending = true;
+          if (recCur() === r) { recApply(r); recRender(); } else r.pending = true;
         }, 2600);
       }
       // preenche a evolução (SOAP + sinais vitais + CID-10) com o que a gravação gerou; dá para desfazer
@@ -5742,7 +5649,7 @@
 
       // ===== Visão geral (referência: novo Google Finance) =====
       // Barra "Perspectiva", cartões dos sinais vitais (índices), gráfico com períodos, mira e barras de
-      // consultas (volume), "Resumo do paciente" em sanfona, grade de indicadores, próximas consultas,
+      // consultas (volume),
       // resumo clínico, diagnósticos e evoluções recentes. Tudo calculado aqui: nada sai do navegador
       // (o botão "Perguntar ao assistente" só preenche a pergunta — quem envia é o médico).
       var visits = null, calOn = null;                     // consultas na agenda (null = carregando) / agenda conectada
@@ -5790,10 +5697,6 @@
       var ARROW = { up: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 8.6V1.6M1.9 4.6L5 1.5l3.1 3.1" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
                     down: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 1.4v7M1.9 5.4L5 8.5l3.1-3.1" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
                     flat: '<svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M1.8 5h6.4" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>' };
-      var ICON = { chart: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2.5 13.5l4-4.1 2.9 2.9 6.1-6.3" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-                   ask: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M8 3.2a4.8 4.8 0 1 0 2.9 8.6l3.4 3.4" fill="none" stroke="#1F1F1F" stroke-width="1.6" stroke-linecap="round"/><path d="M13.4 1.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6z" fill="#1F1F1F"/></svg>',
-                   open: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2.5h6.5l3.5 3.5v9.5H4z" fill="none" stroke="#1F1F1F" stroke-width="1.5" stroke-linejoin="round"/><path d="M6.5 9.5h5M6.5 12h3.5" stroke="#1F1F1F" stroke-width="1.5" stroke-linecap="round"/></svg>',
-                   chev: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z" fill="#444746"/></svg>' };
       var ov = { metric: null, range: 0, hover: -1, S: null, dirty: true, cmp: [], ind: { ref: true, cons: true }, ser: [], times: [] };
       try {
         ov.metric = localStorage.getItem('od_pr_metric'); ov.range = +(localStorage.getItem('od_pr_range') || 0) || 0;
@@ -5829,10 +5732,6 @@
         if (days < 45) return days <= 1 ? 'em 1 dia' : 'em ' + days + ' dias';
         if (mo < 24) return mo < 2 ? 'em 1 mês' : 'em ' + mo + ' meses';
         return 'em ' + Math.round(mo / 12) + ' anos';
-      }
-      function untilTxt(d) {
-        var days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(new Date().toDateString())) / 864e5);
-        return days <= 0 ? 'hoje' : days === 1 ? 'amanhã' : 'em ' + days + ' dias';
       }
       function agoTxt(d) {
         var days = Math.round((Date.now() - d) / 864e5), mo = Math.floor(days / 30.44);
@@ -5878,14 +5777,14 @@
       function ovVisible() { var p = document.querySelector('.pr-panel[data-panel=geral]'); return isOpen() && p && !p.hidden; }
       // chamado ao carregar, salvar, finalizar e ao chegar a agenda (o gráfico fica acima das abas: sempre à vista)
       function anaVisible() { var p = document.querySelector('.pr-panel[data-panel=analise]'); return isOpen() && p && !p.hidden; }
-      function renderKpis() { ov.dirty = true; if (isOpen()) { renderOverview(); renderStrip(); if (anaVisible()) renderCs(); } }
+      function renderKpis() { ov.dirty = true; if (isOpen()) { renderOverview(); if (anaVisible()) renderCs(); } }
       function renderOverview() {
         ov.dirty = false;
         var S = ov.S = series(), avail = METRICS.filter(function (m) { return S[m.k].length; }), any = avail.length > 0;
         if (!MBY[ov.metric] || !S[ov.metric].length) ov.metric = any ? avail[0].k : null;
         ov.cmp = ov.cmp.filter(function (k) { return k !== ov.metric && S[k] && S[k].length; });
         $('ovTop').hidden = !patient;
-        $('ovChart').hidden = !any; $('gqTable').hidden = !any; $('gqQuote').hidden = !any;
+        $('ovChart').hidden = !any; $('gqQuote').hidden = !any;
         var vitA = avail.filter(function (m) { return !m.g; }), labA = avail.filter(function (m) { return m.g; });
         $('ovTilesWrap').hidden = avail.length < 2 || !vitA.length; $('ovLabWrap').hidden = !patient;
         $('ovLabTiles').parentElement.hidden = !labA.length; renderFiles();
@@ -5894,7 +5793,7 @@
         $('ovEmptyGo').textContent = ctx && ctx.event_id ? 'Abrir a consulta' : 'Nova evolução';
         if (any) { renderTiles(S, vitA, 'ovTiles'); renderTiles(S, labA, 'ovLabTiles'); drawChart(); } else $('gqWhy').hidden = true;
 
-        renderAcc(S); renderPan(S); renderAnalysis(S); renderStats(S); renderNext(); renderDx(); renderFeed();
+        renderPan(S); renderAnalysis(S); renderDx(); renderFeed();
       }
 
       // ----- séries do gráfico: o sinal principal (PA = sistólica + diastólica) e os comparados -----
@@ -5913,7 +5812,6 @@
         return out;
       }
       function pctTxt(x) { var r = Math.round(x * 100) / 100; return (r > 0 ? '+' : r < 0 ? '−' : '') + fmtN(Math.abs(r), 2) + '%'; }
-      function sgn(x, dec) { var r = Math.round(x * Math.pow(10, dec)) / Math.pow(10, dec); return (r > 0 ? '+' : r < 0 ? '−' : '') + fmtN(Math.abs(r), dec); }
 
       // ----- cartões "Sinais vitais" (como "Ativos relacionados") -----
       function spark(a, t) {
@@ -5942,7 +5840,7 @@
           if (a.length > 1) { ch.appendChild(document.createTextNode(pctTxt((last.v / first.v - 1) * 100))); var ar = arrow(dir(first, last), t); ar.className = 'gq-ar' + (t ? ' ' + t : ''); ch.appendChild(ar); }
           else ch.appendChild(document.createTextNode('1 medida'));
           inn.appendChild(ch); b.appendChild(inn); b.appendChild(spark(a, t));
-          b.addEventListener('click', function () { pickMetric(m.k); $('ovTop').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+          b.addEventListener('click', function () { pickMetric(m.k); goChart(); });
           box.appendChild(b);
         });
         tilesNav(id);
@@ -5969,7 +5867,7 @@
       // ----- menu Comparar da barra do gráfico -----
       var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#0B57D0"/></svg>';
       function closeMenus() {
-        [['gqCmp', 'gqCmpM'], ['csMetric', 'csMetricM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
+        [['gqCmp', 'gqCmpM'], ['csMetric', 'csMetricM'], ['prMore', 'prMoreM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
       }
       function mi(label, on, fn, opts) {
         var b = el('button', 'gq-mi'); b.type = 'button'; b.setAttribute('role', opts && opts.radio ? 'menuitemradio' : 'menuitemcheckbox'); b.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -6069,25 +5967,6 @@
           box.appendChild(c);
         });
       }
-      function renderTable(ser) {
-        var tb = $('gqTBody'); tb.innerHTML = '';
-        ser.forEach(function (s) {
-          var tr = el('tr'), m = s.m, all = s.all;
-          var td0 = el('td', 'mk'); td0.appendChild(marker(s.shape, s.color)); tr.appendChild(td0);
-          var tdl = el('td', 'l'); tdl.appendChild(el('b', null, s.name)); tdl.appendChild(el('small', null, s.sub)); tr.appendChild(tdl);
-          var pts = s.pts, last = all[all.length - 1], a = pts.length ? pts[0] : null, lv = s.get(last);
-          var bad = s.ref && dist(lv, s.ref) > 0;
-          tr.appendChild(el('td', bad ? 'bad' : null, fmtN(lv, m.dec)));
-          function chg(txt, t, d) { var td = el('td'), w = el('span', 'ch' + (t ? ' ' + t : '')); w.appendChild(document.createTextNode(txt)); var ar = arrow(d, t); ar.className = 'gq-ar s12' + (t ? ' ' + t : ''); w.appendChild(ar); td.appendChild(w); return td; }
-          if (a && pts.length > 1) {
-            var av = s.get(a), d = lv > av ? 'up' : lv < av ? 'down' : 'flat';
-            var t = s.ref ? (dist(lv, s.ref) < dist(av, s.ref) - 1e-9 ? 'up' : dist(lv, s.ref) > dist(av, s.ref) + 1e-9 ? 'down' : '') : '';
-            tr.appendChild(chg(sgn(lv - av, m.dec), t, d)); tr.appendChild(chg(pctTxt((lv / av - 1) * 100), t, d));
-            tr.appendChild(el('td', null, fmtN(av, m.dec)));
-          } else { tr.appendChild(el('td', null, '—')); tr.appendChild(el('td', null, '—')); tr.appendChild(el('td', null, a ? fmtN(s.get(a), m.dec) : '—')); }
-          tb.appendChild(tr);
-        });
-      }
       function drawChart() {
         var m = MBY[ov.metric]; if (!m || !ov.S) return;
         var now = new Date(), from = ov.range ? new Date(now.getFullYear(), now.getMonth() - ov.range, now.getDate()) : null;
@@ -6095,7 +5974,7 @@
         ser.forEach(function (s) { s.pts = from ? s.all.filter(function (p) { return p.t >= from; }) : s.all.slice(); s.base = s.pts.length ? s.get(s.pts[0]) : null; });
         var prim = ser[0];
         [].forEach.call($('ovRanges').children, function (b) { var on = +b.getAttribute('data-r') === ov.range; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
-        renderQuote(prim, prim.pts); renderChips(ser); renderTable(ser); renderGaRange(prim);
+        renderQuote(prim, prim.pts); renderChips(ser); renderGaRange(prim);
         ov.hover = -1;
         var svg = $('ovSvg'); svg.innerHTML = '';
         var W = svg.clientWidth || 600, H = svg.clientHeight || 161;
@@ -6379,170 +6258,6 @@
           if (q.length <= (i ? QMAX : 1400) || i === versions.length - 1) return q.length <= QMAX ? q : q.slice(0, QMAX);
         }
       }
-      function reviewQ(S) {
-        var ask = 'O que priorizar nesta consulta e no retorno: metas ainda não atingidas, ajustes de tratamento, exames de acompanhamento e de rastreamento indicados para esse perfil (com a periodicidade recomendada), vacinas e orientações ao paciente?';
-        return fitQ([[profile(), signalsTxt(S), overdueTxt(S), ask], [profile(), signalsTxt(S, true), overdueTxt(S), ask], [profile(), signalsTxt(S, true), ask]]);
-      }
-
-      // ----- "Resumo do paciente": frases que abrem em detalhe (como "Resumo do mercado") -----
-      function renderAcc(S) {
-        var items = [], c = { good: 0, bad: 0, worse: 0, todo: 0 };
-        var accK = ['pa', 'imc', 'glicemia', 'fc', 'spo2', 'temp', 'fr', 'hba1c', 'ldl', 'hdl', 'tg', 'ct', S.tfg.length ? 'tfg' : 'creat', 'rac', 'pot', 'sod', 'au', 'tsh', 'hb', 'alt'];
-        accK.forEach(function (k) {
-          var m = MBY[k], a = S[k]; if (!a.length) return;
-          var first = a[0], last = a[a.length - 1], n = a.length, t = n > 1 ? trend(m, first, last) : '', o = off(m, last);
-          if (m.g && !o && t !== 'down' && !(t === 'up' && /^(hba1c|ldl)$/.test(k))) return;   // exame: só o que pede atenção
-          var fv = fmtV(m, first), lv = fmtV(m, last), u = ' ' + m.unit, verb = dir(first, last) === 'down' ? V(m, 'caiu', 'caíram') : V(m, 'subiu', 'subiram');
-          if (t === 'up') c.good++; if (t === 'down') c.worse++; if (o) c.bad++;
-          var title, cls;
-          var est = V(m, 'está', 'estão'), seg = V(m, 'segue', 'seguem');
-          if (t === 'up' && !o) { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + ' e ' + est + ' dentro da referência'; cls = 'up'; }
-          else if (t === 'up') { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + ', mas ' + seg + ' ' + side(m, last) + ' da referência'; cls = 'warn'; }
-          else if (t === 'down') { title = m.label + ' ' + verb + ' de ' + fv + ' para ' + lv + u + (o ? ' e ' + est + ' ' + side(m, last) + ' da referência' : ''); cls = 'down'; }
-          else if (o) { title = 'Última medida de ' + lower1(m.label) + ' ' + side(m, last) + ' da referência: ' + lv + u; cls = 'down'; }
-          else return;                                     // estável e dentro da faixa: não precisa de destaque
-          var nOff = a.filter(function (p) { return off(m, p); }).length;
-          var body = 'Primeira medida registrada em ' + dayMon(first.t) + ': ' + fv + u + '. Última, em ' + dayMon(last.t) + ' (' + lower1(eventTitle(last.n.event_title)) + '): ' + lv + u +
-                     (n > 1 ? ' — variação de ' + deltaTxt(m, first, last) + ' ' + spanTxt(first.t, last.t) + '.' : '.') +
-                     ' ' + (nOff ? nOff + ' de ' + n + (n === 1 ? ' medida ficou' : ' medidas ficaram') + ' fora da referência' : 'Todas as ' + n + ' medidas ficaram dentro da referência') +
-                     ' (' + lower1(m.refTxt) + ').';
-          if (k === 'imc') {
-            body += ' Classificação atual: ' + imcClass(last.v) + '.';
-            if (S.peso.length > 1) body += ' Peso de ' + fmtN(S.peso[0].v, 1) + ' para ' + fmtN(S.peso[S.peso.length - 1].v, 1) + ' kg (' + signed(S.peso[S.peso.length - 1].v - S.peso[0].v, 1) + ' kg).';
-          }
-          if (k === 'glicemia') body += ' Confira se cada medida foi feita em jejum.';
-          items.push({ cls: cls, title: title, body: body, rank: cls === 'down' ? 0 : cls === 'warn' ? 1 : 2,
-            acts: [{ t: 'Ver no gráfico', i: ICON.chart, f: function () { pickMetric(k); $('ovChart').scrollIntoView({ behavior: 'smooth', block: 'center' }); } },
-                   { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(deepQ(k, first, last, n)); } }] });
-        });
-        // exames de acompanhamento atrasados ou nunca registrados
-        var fu = followups(S).filter(function (x) { return x.st !== 'ok'; });
-        if (fu.length) {
-          c.todo++;
-          items.push({ cls: 'todo', rank: 3, title: fu.length === 1 ? '1 exame de acompanhamento atrasado ou sem registro' : fu.length + ' exames de acompanhamento atrasados ou sem registro',
-            body: fu.map(function (x) { return x.f.label + (x.last ? ' — último em ' + dayMon(x.last) : ' — sem registro') + ' (' + freqTxt(x.months) + '; ' + x.why.join(', ') + ')'; }).join('. ') + '. Sugestão a partir dos problemas e medicações registrados; ajuste ao caso.',
-            acts: [{ t: 'Ver na Análise', i: ICON.chart, f: function () { setTab('analise'); $('gaFuSec').scrollIntoView({ behavior: 'smooth', block: 'start' }); } },
-                   { t: 'Perguntar ao assistente', i: ICON.ask, f: function () { askAssistant(reviewQ(S)); } }] });
-        }
-        // pendências
-        var drafts = notes.filter(function (n) { return !n.signed_at && !isLabRec(n) && (n.content || '').trim() && n !== cur; });
-        if (drafts.length) {
-          var dd = drafts.map(function (n) { return { n: n, d: noteDate(n) }; }).filter(function (x) { return x.d; }).sort(function (a, b) { return b.d - a.d; });
-          c.todo++;
-          items.push({ cls: 'todo', rank: 3, title: drafts.length === 1 ? '1 evolução em rascunho, ainda não finalizada' : drafts.length + ' evoluções em rascunho, ainda não finalizadas',
-            body: (dd.length ? 'A mais recente é de ' + dayMon(dd[0].d) + '. ' : '') + 'Rascunhos ainda podem ser alterados; finalize para que valham como registro do prontuário. Correções depois disso entram como adendo.',
-            acts: dd.length ? [{ t: 'Abrir rascunho', i: ICON.open, f: function () { openNote(dd[0].n); } }] : [] });
-        }
-        if (patient && !patient.birth_date) {
-          c.todo++;
-          items.push({ cls: 'todo', rank: 3, title: 'Cadastro sem data de nascimento', body: 'A data de nascimento é necessária para calcular a idade e diferenciar pacientes com o mesmo nome.',
-            acts: [{ t: 'Completar cadastro', i: ICON.open, f: function () { $('prEditBtn').click(); } }] });
-        }
-        var fut = (visits || []).filter(function (v) { return parseStart(v.start) >= Date.now(); });
-        if (calOn && visits && visits.length && !fut.length) {
-          var lastV = visits[visits.length - 1];
-          c.todo++;
-          items.push({ cls: 'todo', rank: 3, title: 'Nenhum retorno agendado', body: 'A última consulta na agenda foi ' + agoTxt(parseStart(lastV.start)) + ' (' + dayMon(parseStart(lastV.start)) + ').', acts: [] });
-        }
-        items.sort(function (a, b) { return a.rank - b.rank; });
-        var box = $('ovAcc'); box.innerHTML = '';
-        $('ovSumSec').hidden = !items.length || !patient;
-        items.forEach(function (it, i) {
-          var w = el('div', 'ov-ai'), id = 'ovAi' + i;
-          var h = el('button', 'ov-ai-h'); h.type = 'button'; h.setAttribute('aria-expanded', 'false'); h.setAttribute('aria-controls', id);
-          h.appendChild(el('i', 'ov-ai-dot ' + it.cls)); h.appendChild(el('span', 'ov-ai-t', it.title));
-          var cv = el('span', 'ov-ai-chev'); cv.innerHTML = ICON.chev; h.appendChild(cv);
-          var b = el('div', 'ov-ai-b'); b.id = id; b.hidden = true;
-          b.appendChild(el('p', null, it.body));
-          if (it.acts.length) {
-            var acts = el('div', 'ov-ai-acts');
-            it.acts.forEach(function (a) { var pb = el('button', 'ov-pill'); pb.type = 'button'; pb.innerHTML = a.i; pb.appendChild(document.createTextNode(a.t)); pb.addEventListener('click', a.f); acts.appendChild(pb); });
-            b.appendChild(acts);
-          }
-          h.addEventListener('click', function () { var on = h.getAttribute('aria-expanded') !== 'true'; h.setAttribute('aria-expanded', on ? 'true' : 'false'); b.hidden = !on; });
-          w.appendChild(h); w.appendChild(b); box.appendChild(w);
-        });
-        return c;
-      }
-
-      // ----- grade de indicadores -----
-      function renderStats(S) {
-        var box = $('ovStats'); box.innerHTML = '';
-        function col() { var c = el('div', 'ov-col'); box.appendChild(c); return c; }
-        function row(c, label, val, cls, tip) {
-          var r = el('div', 'ov-row'); r.appendChild(el('span', null, label));
-          var b = typeof val === 'string' ? el('b', cls || null, val) : val; if (tip) b.title = tip;
-          r.appendChild(b); c.appendChild(r);
-        }
-        var p = patient || {}, now = Date.now();
-        var c1 = col('Paciente');
-        if (p.birth_date) { var bd = parseStart(p.birth_date); row(c1, 'Idade', age(p.birth_date)); row(c1, 'Nascimento', pad(bd.getDate()) + '/' + pad(bd.getMonth() + 1) + '/' + bd.getFullYear()); }
-        else {
-          var bb = el('b'), lk = el('button', null, 'Completar cadastro'); lk.type = 'button';
-          lk.addEventListener('click', function () { $('prEditBtn').click(); }); bb.appendChild(lk);
-          row(c1, 'Idade', patient ? bb : '—'); row(c1, 'Nascimento', '—', 'muted');
-        }
-        row(c1, 'Sexo', p.sex ? SEX[p.sex] : '—', p.sex ? '' : 'muted');
-        var alt = lastAltura();
-        row(c1, 'Altura', alt ? fmtN(alt, 2) + ' m' : '—', alt ? '' : 'muted');
-        var pw = S.peso[S.peso.length - 1], im = S.imc[S.imc.length - 1];
-        row(c1, 'Peso', pw ? fmtN(pw.v, 1) + ' kg' : '—', pw ? '' : 'muted', pw ? 'Em ' + dayMon(pw.t) : '');
-        row(c1, 'IMC', im ? fmtN(im.v, 1) + ' · ' + imcClass(im.v).replace(' grau', '').replace('peso adequado', 'adequado') : '—', im ? (off(MBY.imc, im) ? 'bad' : '') : 'muted', im ? 'Em ' + dayMon(im.t) : '');
-
-        var c2 = col('Consultas');
-        var vs = visits || [], past = vs.filter(function (v) { return parseStart(v.start) < now; }), fut = vs.filter(function (v) { return parseStart(v.start) >= now; });
-        var wt = withText(), nd = wt.map(noteDate).filter(Boolean);
-        var dates = (past.length ? past.map(function (v) { return parseStart(v.start); }) : nd).sort(function (a, b) { return a - b; });
-        var lastD = dates[dates.length - 1];
-        row(c2, 'Primeira consulta', dates.length ? MON[dates[0].getMonth()] + ' ' + dates[0].getFullYear() : '—', dates.length ? '' : 'muted', dates.length ? dayMon(dates[0]) : '');
-        row(c2, 'Última consulta', lastD ? agoTxt(lastD) : (visits === null ? 'Carregando…' : '—'), lastD ? '' : 'muted', lastD ? dayMon(lastD) : '');
-        var nx = fut[0];
-        row(c2, 'Próxima consulta', nx ? untilTxt(parseStart(nx.start)) : (visits === null ? 'Carregando…' : 'Nenhuma'), nx ? '' : 'muted', nx ? dayMon(parseStart(nx.start)) + (nx.allDay ? '' : ' · ' + hm(parseStart(nx.start))) : '');
-        var yearAgo = now - 365 * 864e5, n12 = dates.filter(function (d) { return d >= yearAgo; }).length;
-        row(c2, 'Em 12 meses', n12 + (n12 === 1 ? ' consulta' : ' consultas'));
-        if (dates.length > 1) {
-          var gap = (dates[dates.length - 1] - dates[0]) / (dates.length - 1) / 864e5;
-          row(c2, 'Intervalo médio', gap < 45 ? Math.round(gap) + ' dias' : fmtN(gap / 30.44, gap / 30.44 < 10 ? 1 : 0) + ' meses', '', 'Tempo médio entre as consultas');
-        } else row(c2, 'Intervalo médio', '—', 'muted');
-        row(c2, 'Consultas', dates.length + (dates.length === 1 ? ' consulta' : ' consultas'));
-
-        var c3 = col('Prontuário');
-        var fin = wt.filter(function (n) { return n.signed_at; }).length, dr = wt.length - fin;
-        var adds = notes.reduce(function (s2, n) { return s2 + ((n.addenda || []).length); }, 0);
-        var cids = {}; notes.forEach(function (n) { ((n.data && n.data.cid) || []).forEach(function (x) { cids[(x.code || x.desc || '').toUpperCase()] = 1; }); });
-        var upd = notes.map(function (n) { return n.updated_at ? new Date(n.updated_at) : null; }).filter(Boolean).sort(function (a, b) { return b - a; })[0];
-        row(c3, 'Evoluções', String(wt.length));
-        row(c3, 'Finalizadas', String(fin), fin ? '' : 'muted');
-        row(c3, 'Rascunhos', String(dr), dr ? 'warn' : 'muted', dr ? 'Evoluções ainda não finalizadas' : '');
-        row(c3, 'Adendos', String(adds), adds ? '' : 'muted');
-        row(c3, 'Diagnósticos', String(Object.keys(cids).length), Object.keys(cids).length ? '' : 'muted', 'CID-10 diferentes registrados');
-        row(c3, 'Atualizado em', upd ? dayMon(upd) : '—', upd ? '' : 'muted');
-      }
-
-      // ----- próximas consultas (como "Próximos resultados") -----
-      var DOW3 = ['dom.', 'seg.', 'ter.', 'qua.', 'qui.', 'sex.', 'sáb.'];
-      function renderNext() {
-        var sec = $('ovNextSec'), box = $('ovNext'); box.innerHTML = '';
-        sec.hidden = !patient || visits === null;
-        if (sec.hidden) return;
-        if (!calOn) { box.innerHTML = '<div class="ov-nmsg"><a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para ver as próximas consultas deste paciente.</div>'; return; }
-        var fut = visits.filter(function (v) { return parseStart(v.start) >= Date.now(); });
-        if (!fut.length) { box.appendChild(el('div', 'ov-nmsg', 'Nenhuma consulta agendada.')); return; }
-        fut.slice(0, 3).forEach(function (v) {
-          var d = parseStart(v.start), b = el('button', 'ov-nrow'); b.type = 'button';
-          var db = el('span', 'ov-date'); db.appendChild(el('small', null, DOW3[d.getDay()])); db.appendChild(el('b', null, String(d.getDate()))); b.appendChild(db);
-          var tx = el('span', 'ov-nt'); tx.appendChild(el('b', null, eventTitle(v.title)));
-          tx.appendChild(el('span', null, MON[d.getMonth()] + ' ' + d.getFullYear() + (v.allDay ? ' · dia todo' : ' · ' + hm(d)) + (v.location ? ' · ' + v.location : ''))); b.appendChild(tx);
-          b.appendChild(el('span', 'ov-nwhen', untilTxt(d)));
-          b.addEventListener('click', function () { setTab('atual'); switchTo({ event_id: v.id, title: eventTitle(v.title), start: v.start, end: v.end, all_day: v.allDay, location: v.location }); });
-          box.appendChild(b);
-        });
-        if (fut.length > 3) {
-          var mb = el('button', 'ov-link', 'Ver todas as consultas (' + fut.length + ')'); mb.type = 'button';
-          mb.addEventListener('click', function () { setTab('consultas'); }); box.appendChild(mb);
-        }
-      }
-
       // ----- diagnósticos (CID-10 das evoluções) -----
       function renderDx() {
         var map = {}, list = [];
@@ -6611,8 +6326,6 @@
         if (!off(m, last)) return 'ok';
         return a.length > 1 && trend(m, a[0], last) === 'up' ? 'melhora' : 'fora';
       }
-      var SPARKB = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0B57D0"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0B57D0"/></svg>';
-      var ICONQ = ICON.ask.replace(/#1F1F1F/g, '#5E5E5E');
 
 
       // ----- exames de acompanhamento: o que os problemas e as medicações pedem, e quando foi o último -----
@@ -6683,7 +6396,7 @@
           return lower1(x.f.label) + ' (' + (x.last ? 'último em ' + MON[x.last.getMonth()] + ' ' + x.last.getFullYear() : 'sem registro') + '; ' + freqTxt(x.months) + ')'; }).join(', ') + '.' : '';
       }
 
-      // ----- Panorama (como "Outlook": barra + pontos positivos / de atenção) -----
+      // ----- pontos positivos / de atenção (como "Outlook") -----
       function cntTxt(ms) {                               // "6 sinais vitais e 9 exames"
         var v = ms.filter(function (m) { return !m.g; }).length, l = ms.length - v;
         return [v ? v + (v === 1 ? ' sinal vital' : ' sinais vitais') : '', l ? l + (l === 1 ? ' exame' : ' exames') : ''].filter(Boolean).join(' e ');
@@ -6692,15 +6405,6 @@
         var ms = METRICS.filter(function (m) { return m.ref && S[m.k].length; });
         $('ovPanSec').hidden = !ms.length || !patient;
         if ($('ovPanSec').hidden) return;
-        var c = { ok: 0, melhora: 0, fora: 0 }, n = ms.length;
-        ms.forEach(function (m) { c[stat(m, S[m.k])]++; });
-        $('ovPanS').textContent = 'Última medida de ' + cntTxt(ms) + ' com faixa de referência';
-        var bar = $('ovPanBar'), lg = $('ovPanLg'); bar.innerHTML = ''; lg.innerHTML = '';
-        [['ok', '#046E00', 'na referência', '#046E00'], ['melhora', '#DADCE0', 'melhorando', '#747B8C'], ['fora', '#C0151D', 'fora da referência', '#C0151D']].forEach(function (g) {
-          var k = c[g[0]], pc = Math.round(k / n * 100);
-          if (k) { var sp = el('span'); sp.style.flex = String(k); sp.style.background = g[1]; sp.title = k + ' de ' + n + ' ' + g[2]; bar.appendChild(sp); }
-          var l = el('span', null, pc + '% ' + g[2]); l.style.color = g[3]; lg.appendChild(l);
-        });
         var pos = $('ovPanPos'), neg = $('ovPanNeg'); pos.innerHTML = ''; neg.innerHTML = '';
         function li(ul, lead, txt) { var x = el('li'); x.appendChild(el('b', null, lead + ': ')); x.appendChild(document.createTextNode(txt)); ul.appendChild(x); }
         ms.forEach(function (m) {
@@ -6719,6 +6423,8 @@
       }
 
       // ----- aba Análise: rosca (como "Analyst ratings") + tabela (como a lista de analistas) -----
+      // a tabela usa os nomes curtos da tabela de evoluções (renderCs); o nome inteiro fica na dica da linha
+      var TNAME = { pa: 'PA', fc: 'FC', fr: 'FR', spo2: 'SpO₂', hba1c: 'HbA1c', ldl: 'LDL', hdl: 'HDL', tfg: 'TFG', rac: 'RAC', alt: 'TGP' };
       function renderAnalysis(S) {
         var avail = METRICS.filter(function (m) { return S[m.k].length; }), ms = avail.filter(function (m) { return m.ref; }), any = avail.length > 0;
         $('gaCards').hidden = !any; $('gaTable').hidden = !any; $('gaEmpty').hidden = any || !patient;
@@ -6749,17 +6455,15 @@
         var tb = $('gaTBody'), grp = null, both = avail.some(function (m) { return m.g; }) && avail.some(function (m) { return !m.g; }); tb.innerHTML = '';
         renderFollowups(S);
         avail.forEach(function (m) {
-          if (both && grp !== (m.g || 'vit')) { grp = m.g || 'vit'; var gr = el('tr', 'ga-grp'), gd = el('td', null, grp === 'lab' ? 'Exames' : 'Sinais vitais'); gd.colSpan = 6; gr.appendChild(gd); tb.appendChild(gr); }
+          if (both && grp !== (m.g || 'vit')) { grp = m.g || 'vit'; var gr = el('tr', 'gf-grp'), gd = el('td'); gd.appendChild(el('span', 'gf-grpl', grp === 'lab' ? 'Exames' : 'Sinais vitais')); gd.colSpan = 5; gr.appendChild(gd); tb.appendChild(gr); }
           var a = S[m.k], first = a[0], last = a[a.length - 1], st = stat(m, a), t = a.length > 1 ? trend(m, first, last) : '', d = a.length > 1 ? dir(first, last) : 'flat';
-          var tr = el('tr'), td = el('td'); td.appendChild(el('b', null, m.label));
-          var sm = el('small', null, m.unit); sm.appendChild(el('span', 'ga-subd', ' · ' + dayMon(last.t))); td.appendChild(sm); tr.appendChild(td);
-          var tp = el('td'); tp.appendChild(el('span', 'ga-pill ' + (!m.ref ? 'na' : st === 'ok' ? 'ok' : 'bad'),
-            !m.ref ? 'Sem faixa' : st === 'ok' ? 'Na referência' : side(m, last) === 'acima' ? 'Acima' : 'Abaixo')); tr.appendChild(tp);
+          var tr = el('tr'), td = el('td', null, TNAME[m.k] || m.label);
+          td.appendChild(el('small', null, m.unit)); tr.appendChild(td);
+          tr.appendChild(el('td', !m.ref ? null : st === 'ok' ? 'ok' : 'bad', !m.ref ? 'Sem faixa' : st === 'ok' ? 'Na referência' : side(m, last) === 'acima' ? 'Acima' : 'Abaixo'));
           tr.appendChild(el('td', 'ga-tr', a.length < 2 ? '1 medida' : !m.ref ? (d === 'up' ? 'Subindo' : d === 'down' ? 'Caindo' : 'Estável') :
             t === 'up' ? 'Melhorando' : t === 'down' ? 'Piorando' : 'Estável'));
           tr.appendChild(el('td', null, fmtV(m, last) + ' ' + m.unit));
           tr.appendChild(el('td', t || null, a.length > 1 ? pctTxt((last.v / first.v - 1) * 100) : '—'));
-          tr.appendChild(el('td', 'ga-dt', pad(last.t.getDate()) + '/' + pad(last.t.getMonth() + 1) + '/' + last.t.getFullYear()));
           tr.title = 'Ver ' + lower1(m.label) + ' no gráfico';
           tr.addEventListener('click', function () { pickMetric(m.k); $('ovTop').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
           tb.appendChild(tr);
@@ -6788,48 +6492,11 @@
       }
       $('gqWhy').addEventListener('click', function () { if (this._q) askAssistant(this._q); });
       $('gaAsk').addEventListener('click', function () { if (this._q) askAssistant(this._q); });
-      $('gaSee').addEventListener('click', function () { $('ovTop').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
-
-      // ----- "Em resumo" da aba Consulta (como "At a glance" da aba Ganhos) -----
-      function renderGlance() {
-        var box = $('gcGlance');
-        if (!ctx || !patient) { box.hidden = true; return; }
-        var S = series(), items = [], here = METRICS.some(function (m) { return cur && S[m.k].some(function (p) { return p.n === cur; }); });
-        METRICS.forEach(function (m) {
-          var a = S[m.k]; if (!a.length) return;
-          var i = a.length - 1;
-          if (here) {
-            i = -1; for (var j = a.length - 1; j >= 0; j--) if (a[j].n === cur) { i = j; break; }
-            var ref = ctx.start ? parseStart(ctx.start) : new Date();
-            if (i < 0 && m.g && Math.abs(a[a.length - 1].t - ref) <= 60 * 864e5) i = a.length - 1;   // exame recente
-            if (i < 0) return;
-          }
-          var p = a[i], prev = a[i - 1], o = !!m.ref && off(m, p), u = ' ' + m.unit;
-          var txt = fmtV(m, p) + u + (here && p.n === cur ? ' nesta consulta' : ' em ' + dayMon(p.t));
-          if (prev) txt += dir(prev, p) === 'flat' ? ', igual à medida de ' + dayMon(prev.t) : '; ' + deltaTxt(m, prev, p) + u + ' desde ' + dayMon(prev.t) + ' (' + fmtV(m, prev) + ')';
-          if (m.k === 'imc') txt += ', ' + imcClass(p.v);
-          items.push({ lead: m.label + (m.ref ? (o ? ' ' + side(m, p) + ' da referência' : ' na referência') : '') + ': ', txt: txt + '.', r: o ? 0 : 1, k: m.k, o: o, p: p, prev: prev, side: o ? side(m, p) : '' });
-        });
-        var cid = cur && cur.data && cur.data.cid ? cur.data.cid : [];
-        if (cid.length) items.push({ lead: (cid.length === 1 ? 'Diagnóstico' : 'Diagnósticos') + ' desta consulta: ', r: 1,
-          txt: cid.map(function (x) { return (x.code ? x.code + ' ' : '') + (x.desc || ''); }).join(' · ') + '.' });
-        items.sort(function (a, b) { return a.r - b.r; }); items = items.slice(0, 8);
-        box.hidden = !items.length; if (!items.length) return;
-        $('gcGlanceS').textContent = (here ? 'Sinais desta consulta comparados com a medida anterior' : 'Últimas medidas registradas no prontuário') + ' · calculado aqui, sem IA';
-        var L = $('gcGlanceL'); L.innerHTML = '';
-        items.forEach(function (it) {
-          var d = el('div', 'gl-it'); d.innerHTML = SPARKB;
-          var sp = el('span'); sp.appendChild(el('b', null, it.lead)); sp.appendChild(document.createTextNode(it.txt)); d.appendChild(sp); L.appendChild(d);
-        });
-        var Q = $('gcGlanceQ'); Q.innerHTML = '';
-        var qs = [], fo = items.filter(function (x) { return x.o; })[0];
-        if (fo) qs.push({ t: cap(art(MBY[fo.k]) + ' ' + lower1(MBY[fo.k].label)) + ' ' + V(MBY[fo.k], 'está', 'estão') + ' ' + fo.side + ' da referência: o que explica e qual a conduta para este perfil?',
-                          q: deepQ(fo.k, fo.prev, fo.p, 2) });
-        qs.push({ t: 'O que priorizar nesta consulta e no retorno: metas, ajustes, exames e orientações?', q: reviewQ(S) });
-        qs.forEach(function (x) {
-          var b = el('button', 'gl-q'); b.type = 'button'; b.title = 'Preenche a pergunta completa no assistente'; b.innerHTML = ICONQ;
-          b.appendChild(document.createTextNode(x.t)); b.addEventListener('click', function () { askAssistant(x.q); }); Q.appendChild(b);
-        });
+      $('gaSee').addEventListener('click', goChart);
+      // o gráfico dos sinais fica na aba Análise: abre a aba e rola até ele
+      function goChart() {
+        setTab('analise');
+        requestAnimationFrame(function () { $('ovTop').scrollIntoView({ behavior: 'smooth', block: 'start' }); });
       }
 
       // ----- gráfico de barras dos sinais por consulta (como o gráfico da aba Finanças) -----
@@ -6937,12 +6604,21 @@
       }
       function setTab(t) {
         tabs.forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+        $('prMain').setAttribute('data-tab', t); navPill();
         [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { p.hidden = p.getAttribute('data-panel') !== t; });
-        if (t === 'acessos') loadAccess();
+        if (t === 'consultas') loadAccess();              // o registro de acessos fica no fim do Histórico
         if ((t === 'geral' || t === 'analise') && ov.dirty) renderOverview();
         if (t === 'analise') renderCs();                  // sinais e exames por consulta (precisa da largura visível)
       }
       tabs.forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
+      // a aba escolhida ganha a pílula branca, do tamanho da aba
+      function navPill() {
+        var nav = $('prTabs'), b = nav.querySelector('button.on'), pill = nav.querySelector('.pr-nav-pill');
+        if (!b || !nav.clientWidth) { pill.hidden = !b; return; }
+        pill.hidden = false; pill.style.left = b.offsetLeft + 'px'; pill.style.width = b.offsetWidth + 'px';
+      }
+      window.addEventListener('resize', navPill);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(navPill);
 
       // ===== consultas do paciente na agenda =====
       function eventTitle(t) { return (t || '').split(' — ')[0] || 'Consulta'; }
@@ -7213,7 +6889,7 @@
       function vkey() { return 'od_visit_' + (ctx && (ctx.event_id || ctx.patient_id || ctx.patient) || ''); }
       function visitStart() { try { return +sessionStorage.getItem(vkey()) || 0; } catch (_) { return 0; } }
       function renderVisit() {
-        clearInterval(tick); renderStrip();
+        clearInterval(tick);
         var t0 = visitStart();
         visitBtn.textContent = t0 ? 'Encerrar consulta' : 'Iniciar consulta';
         visitBtn.classList.toggle('live', !!t0);
@@ -7244,6 +6920,7 @@
 
       // ===== exportar (imprimir/PDF) e registro de acessos =====
       $('prExport').addEventListener('click', function () {
+        closeMenus();
         if (!patient) return;
         save();
         $('prPrintCur').textContent = locked() ? '' : (rrMeta() ? 'Transcrição automática (IA), revisada pelo médico.\n\n' : '') + compose().content;
@@ -7310,7 +6987,7 @@
             ready = true; setEditable(true); setStatus('');
             $('prExport').hidden = false;
             renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); renderKpis(); updCount(compose().content.length);
-            if (!$('prAccess').hidden) loadAccess();
+            if (!document.querySelector('.pr-panel[data-panel=consultas]').hidden) loadAccess();
             // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva
             var d = draftRead();
             if (d && !locked() && d.s !== saved && (d.base === saved || (!cur && !d.base))) {
