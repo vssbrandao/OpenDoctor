@@ -1896,13 +1896,8 @@
               <!-- ===== bloco do gráfico, na estrutura da página de cotação do Google Finance
                    (google.com/finance/quote/RUT:INDEXRUSSELL?comparison=…&type=line): número + variação + data,
                    cartão do gráfico (barra com Comparar, chips das séries, gráfico, períodos)
-                   e tabela de comparação. Fica no começo da Análise. ===== -->
+                   e, embaixo, a pergunta pronta para o assistente. Fica no começo da Análise. ===== -->
               <section class="gq" id="ovTop" hidden>
-                <!-- "Why is NVDA down 3.16%? · Dive deeper": só preenche a pergunta no assistente -->
-                <button class="gb" type="button" id="gqWhy" hidden>
-                  <span class="gb-l"><span class="gb-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg></span><span class="gb-t" id="gqWhyT"></span></span>
-                  <span class="gb-r">Perguntar ao assistente<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="#0A0A0A"/></svg></span>
-                </button>
                 <div class="gq-quote" id="gqQuote">
                   <div class="gq-price"><span class="gq-val" id="ovVal">—</span><span class="gq-unit" id="ovUnit"></span><span class="gq-chg" id="ovDelta"></span></div>
                   <div class="gq-date" id="ovWhen"></div>
@@ -1925,6 +1920,11 @@
                     <button type="button" role="tab" data-r="6">6M</button><button type="button" role="tab" data-r="12">1A</button><button type="button" role="tab" data-r="24">2A</button><button type="button" role="tab" data-r="60">5A</button><button type="button" role="tab" data-r="0" class="on">MÁX</button>
                   </div></div>
                 </div>
+                <!-- "Why is NVDA down 3.16%? · Dive deeper": só preenche a pergunta no assistente -->
+                <button class="gb" type="button" id="gqWhy" hidden>
+                  <span class="gb-l"><span class="gb-i"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3.5l1.7 4.8 4.8 1.7-4.8 1.7L10 16.5l-1.7-4.8L3.5 10l4.8-1.7z" fill="#0A0A0A"/><path d="M17.5 13.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#0A0A0A"/></svg></span><span class="gb-t" id="gqWhyT"></span></span>
+                  <span class="gb-r">Perguntar ao assistente<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" fill="#0A0A0A"/></svg></span>
+                </button>
                 <div class="ov-empty" id="ovEmpty" hidden>
                   <div class="ov-empty-t">Ainda não há sinais vitais registrados</div>
                   <div class="ov-empty-s">Pressão, peso, glicemia e os outros sinais aparecem aqui, em gráfico, quando a evolução é feita no modo <b>SOAP</b>.</div>
