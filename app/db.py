@@ -800,21 +800,27 @@ def delete_file(user_id, file_id):
 
 
 # --- gravação da consulta: só o texto de cada trecho (o áudio nunca chega aqui) ---
+def _ligar(conn, user_id, patient_id, rec_ids, note_id, trocar=False):
+    """A regra (única) de ligar gravação e evolução: só evolução deste médico e deste paciente (id inexistente ou de
+    outro é ignorado); sem trocar, só a gravação que ainda não tem evolução ganha esta — a que já tem fica com a dela.
+    trocar=True: a evolução que a gravação gerou (data.scribe.rec_ids) passa a ser a dela."""
+    ids = [str(x) for x in rec_ids or ()][:20]
+    if note_id is None or not ids or not conn.execute(
+            "select 1 from clinical_notes where id = %s and user_id = %s and patient_id = %s",
+            (note_id, user_id, patient_id)).fetchone():
+        return
+    conn.execute("update recordings set note_id = %s where user_id = %s and patient_id = %s and id::text = any(%s::text[])"
+                 + ("" if trocar else " and note_id is null"), (note_id, user_id, patient_id, ids))
+
+
 def rec_open(user_id, patient_id, rec_id, event_id=None, note_id=None, consent_at=None):
     """Garante a gravação rec_id deste médico e paciente. Devolve False se o id já é de outro médico ou
-    paciente (não mistura), True se existe ou foi criada. A evolução só é ligada se for deste médico e paciente
-    (id inexistente ou de outro não derruba o envio), e uma gravação ainda sem evolução ganha a que chegar."""
+    paciente (não mistura), True se existe ou foi criada. A evolução vem pela regra de _ligar."""
     with connection() as conn:
-        if note_id is not None and not conn.execute(
-                "select 1 from clinical_notes where id = %s and user_id = %s and patient_id = %s",
-                (note_id, user_id, patient_id)).fetchone():
-            note_id = None
-        conn.execute("""insert into recordings (id, user_id, patient_id, event_id, note_id, consent_at)
-                        values (%s,%s,%s,%s,%s,coalesce(%s::timestamptz, now())) on conflict (id) do nothing""",
-                     (rec_id, user_id, patient_id, event_id, note_id, consent_at))
-        if note_id is not None:
-            conn.execute("""update recordings set note_id = %s where id = %s and user_id = %s and patient_id = %s
-                            and note_id is null""", (note_id, rec_id, user_id, patient_id))
+        conn.execute("""insert into recordings (id, user_id, patient_id, event_id, consent_at)
+                        values (%s,%s,%s,%s,coalesce(%s::timestamptz, now())) on conflict (id) do nothing""",
+                     (rec_id, user_id, patient_id, event_id, consent_at))
+        _ligar(conn, user_id, patient_id, [rec_id], note_id)
         r = conn.execute("select user_id::text, patient_id from recordings where id = %s", (rec_id,)).fetchone()
         conn.commit()
     return bool(r) and r[0] == str(user_id) and r[1] == patient_id
@@ -883,37 +889,29 @@ def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=(), orpha
             for r in rows]
 
 
-def rec_generated(user_id, rec_ids, meta, note_id=None):
+def rec_generated(user_id, patient_id, rec_ids, meta, note_id=None):
     """Marca as gravações como geradas. meta: versão do prompt, modelo, contagem dos pontos e a saída conferida
     ("saida": evolução e pontos para conferir), para a revisão continuar depois de recarregar ou noutro dia."""
     from psycopg.types.json import Jsonb
     with connection() as conn:
-        if note_id is not None and not conn.execute("select 1 from clinical_notes where id = %s and user_id = %s",
-                                                    (note_id, user_id)).fetchone():
-            note_id = None
-        conn.execute("""update recordings set status = 'gerada', scribe = %s, note_id = coalesce(note_id, %s), updated_at = now()
-                        where user_id = %s and id::text = any(%s::text[])""", (Jsonb(meta), note_id, user_id, [str(x) for x in rec_ids]))
+        conn.execute("""update recordings set status = 'gerada', scribe = %s, updated_at = now()
+                        where user_id = %s and patient_id = %s and id::text = any(%s::text[])""",
+                     (Jsonb(meta), user_id, patient_id, [str(x) for x in rec_ids]))
+        _ligar(conn, user_id, patient_id, rec_ids, note_id)
         conn.commit()
 
 
 def rec_link_note(user_id, patient_id, rec_ids, note_id):
-    """A evolução salva passa a apontar para as gravações que a geraram (consulta avulsa não tem event_id)."""
-    if not rec_ids:
-        return
+    """A evolução salva com data.scribe passa a ser a das gravações que a geraram (_ligar com trocar)."""
     with connection() as conn:
-        conn.execute("""update recordings set note_id = %s where user_id = %s and patient_id = %s and id::text = any(%s::text[])""",
-                     (note_id, user_id, patient_id, [str(x) for x in rec_ids][:20]))
+        _ligar(conn, user_id, patient_id, rec_ids, note_id, trocar=True)
         conn.commit()
 
 
 def rec_link_orphans(user_id, patient_id, rec_ids, note_id):
-    """A evolução avulsa acabou de ser salva: a gravação desta consulta que ainda não tinha evolução passa a ter
-    (sem tirar de outra evolução a que já estiver ligada)."""
-    if not rec_ids:
-        return
+    """A evolução avulsa acabou de ser salva: a gravação desta consulta que ainda não tinha evolução passa a ter."""
     with connection() as conn:
-        conn.execute("""update recordings set note_id = %s where user_id = %s and patient_id = %s and note_id is null
-                        and id::text = any(%s::text[])""", (note_id, user_id, patient_id, [str(x) for x in rec_ids][:20]))
+        _ligar(conn, user_id, patient_id, rec_ids, note_id)
         conn.commit()
 
 

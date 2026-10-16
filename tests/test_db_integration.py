@@ -142,7 +142,7 @@ def test_gravacao_da_consulta(novo_usuario):
     assert db.rec_list(beto, p["id"], event_id="ev1") == [] and db.rec_list(ana, p["id"]) == []
     assert db.delete_patient(ana, p["id"]) == "has_notes"            # só a transcrição já é prontuário
     nid = db.upsert_note(ana, p["id"], p["key"], p["name"], "ev1", "Consulta", None, "S: teste")
-    db.rec_generated(ana, [rid], {"prompt": "x"}, None)
+    db.rec_generated(ana, p["id"], [rid], {"prompt": "x"}, None)
     db.rec_link_note(ana, p["id"], [rid], nid)
     r = db.rec_list(ana, p["id"], note_id=nid)[0]
     assert r["status"] == "gerada" and r["note_id"] == nid
@@ -164,7 +164,7 @@ def test_gravacao_liga_a_evolucao_certa_e_acha_a_avulsa(novo_usuario):
     assert db.rec_open(ana, p["id"], rid, None, nota)                                   # a evolução salva entra na gravação
     r = db.rec_list(ana, p["id"], note_id=nota)[0]
     assert r["rec_id"] == rid and r["note_id"] == nota and db.rec_list(ana, p["id"], orphans=True) == []
-    db.rec_generated(ana, [rid], {"prompt": "x", "saida": {"flags": [{"tipo": "alergia"}]}}, nota_beto)   # nota de outro: não liga
+    db.rec_generated(ana, p["id"], [rid], {"prompt": "x", "saida": {"flags": [{"tipo": "alergia"}]}}, nota_beto)   # nota de outro: não liga
     r = db.rec_list(ana, p["id"], note_id=nota)[0]
     assert r["status"] == "gerada" and r["note_id"] == nota and r["scribe"]["saida"]["flags"] == [{"tipo": "alergia"}]
     with db.connection() as c:

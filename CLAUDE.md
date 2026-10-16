@@ -50,8 +50,9 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
   primeiro no banco de testes.
 - Mudou rota, página ou login: conferir em produção sem login (`curl` deve dar 401/302) e logado.
 - Mudou a gravação da consulta (gravador na página, rotas `/prontuario/transcribe|scribe|recordings`, `app/stt.py`,
-  `app/scribe.py`): rodar o teste ponta a ponta `node tests/e2e/gravacao.mjs` contra o preview local
-  (`.venv/bin/uvicorn scripts.preview_gravacao:app --port 8770`; `PREVIEW=` se a porta for outra).
+  `app/scribe.py`, `app/data/`): rodar o teste ponta a ponta `node tests/e2e/gravacao.mjs` contra o preview local
+  (`.venv/bin/uvicorn scripts.preview_gravacao:app --port 8770`; `PREVIEW=` se a porta for outra). Como a gravação
+  funciona e as decisões tomadas: `docs/gravacao.md` (manter em dia junto com o código).
 - O CI (`.github/workflows/ci.yml`) roda os testes a cada push; `tests/test_security.py` percorre
   todas as rotas, páginas, migrações e arquivos sozinho. Se ele falhar, **não ajuste o teste para
   passar**: entenda o que abriu.

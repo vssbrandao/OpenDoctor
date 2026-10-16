@@ -847,15 +847,11 @@
     .rc-pill .go{margin-left:8px;font-weight:500;color:#0B57D0}
     .rc-final{display:flex;align-items:center;gap:12px;padding:10px 8px 10px 16px;border-radius:12px;background:#FEF7E0;font-family:var(--disp);font-size:14px;line-height:20px;color:#3D2E00}
     .rc-final[hidden]{display:none}
+    .rc-t.err{color:#C0151D}
+    .rc-t.wait{color:#80868B}
     .rc-final .t{flex:1;min-width:0}
     .rc-final .t b{font-weight:500}
     .rc-final .pr-ghost,.rc-final .pr-save{height:32px;border-radius:16px}
-    .rc-mockbar{position:fixed;left:50%;bottom:16px;z-index:90;transform:translateX(-50%);display:flex;flex-wrap:wrap;gap:4px;max-width:calc(100% - 32px);
-      padding:6px;border-radius:14px;background:#1F1F1F;box-shadow:0 4px 16px rgba(0,0,0,.25);font-family:var(--disp)}
-    .rc-mockbar b{padding:6px 8px;font-weight:500;font-size:12px;color:#9AA0A6}
-    .rc-mockbar button{height:28px;padding:0 10px;border:0;border-radius:8px;background:none;color:#E8EAED;font-family:var(--disp);font-size:12px;cursor:pointer}
-    .rc-mockbar button:hover{background:#3C4043}
-    .rc-mockbar button.on{background:#E8EAED;color:#1F1F1F}
     @media (prefers-reduced-motion:reduce){.rc-pill i,.rc-live::after,.rc-u.typing .rc-t::after,.rc-step.rc-now i{animation:none}.hc-played.rc-run{transition:none}}
     .gcard{padding:16px;border-radius:16px;background:#F7F8FA}
     .gcard .pr-h2{font-size:16px;line-height:24px}
@@ -4588,6 +4584,93 @@
       });
 
       // ===== gravação da consulta: grava, transcreve ao vivo e, ao encerrar, preenche a evolução em SOAP =====
+      // Três partes: os componentes da tela do gravador (logo abaixo), a demonstração da paciente de exemplo e a gravação
+      // real (contas liberadas: captura, fila, servidor, revisão). recRender decide qual aparece. docs/gravacao.md descreve tudo.
+      // ----- componentes da tela do gravador (a demonstração e a gravação real usam os mesmos) -----
+      var RI = {
+        mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3m5.3-3a5.3 5.3 0 0 1-10.6 0H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72z" fill="currentColor"/></svg>',
+        stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>',
+        pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6zm8-14v14h4V5z" fill="currentColor"/></svg>',
+        play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>',
+        vol: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77" fill="currentColor"/></svg>',
+        mute: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63m2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a9 9 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9zM12 4 9.91 6.09 12 8.18z" fill="currentColor"/></svg>'
+      };
+      var RCI = {
+        warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2zm12-3h-2v-2h2zm0-4h-2v-4h2z" fill="currentColor"/></svg>',
+        off: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4c-1.48 0-2.85.43-4.01 1.17l1.46 1.46A5.5 5.5 0 0 1 17.5 11.5v.5H19a3 3 0 0 1 3 3c0 1.13-.64 2.11-1.56 2.62l1.45 1.45A4.99 4.99 0 0 0 24 15c0-2.64-2.05-4.78-4.65-4.96M3 5.27l2.75 2.74C2.56 8.15 0 10.77 0 14c0 3.31 2.69 6 6 6h11.73l2 2L21 20.73 4.27 4zM7.73 10l8 8H6c-2.21 0-4-1.79-4-4s1.79-4 4-4z" fill="currentColor"/></svg>',
+        info: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8" fill="currentColor"/></svg>',
+        err: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m1 15h-2v-2h2zm0-4h-2V7h2z" fill="currentColor"/></svg>',
+        micoff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28m-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18zM4.27 3 3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73z" fill="currentColor"/></svg>',
+        caret: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="currentColor"/></svg>'
+      };
+      function recDemo() { return !!(patient && patient.example); }
+      function mmss(x) { x = Math.max(0, Math.floor(x)); return Math.floor(x / 60) + ':' + pad(x % 60); }
+      function rcBtn(cls, html, label, f) {
+        var b = el('button', cls); b.type = 'button'; b.innerHTML = html; b.setAttribute('aria-label', label); b.title = label;
+        b.addEventListener('click', function (e) { e.stopPropagation(); f(b); }); return b;
+      }
+      // ondas: uma barra a cada 100 ms, a mais nova encostada no ponto vermelho (agora)
+      function recDraw(r) {
+        var cv = $('prRec').querySelector('.rc-cv'); if (!cv || !cv.clientWidth) return;
+        var w = cv.clientWidth, h = 44, dpr = window.devicePixelRatio || 1, cy = 24;
+        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+        var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+        var right = w - 19, n = Math.min(r.amps.length, Math.floor(right / 5)), x0 = right - n * 5;
+        g.fillStyle = '#CCCFD9'; g.fillRect(0, cy - 1.5, Math.max(0, x0), 3);
+        g.fillStyle = r.st === 'live' ? '#0B57D0' : '#A3A7AE'; g.beginPath();
+        for (var i = 0; i < n; i++) {
+          var bh = Math.max(3, Math.round(r.amps[r.amps.length - 1 - i] * 24)), x = right - (i + 1) * 5 + 1;
+          if (g.roundRect) g.roundRect(x, cy - bh / 2, 3, bh, 1.5); else g.rect(x, cy - bh / 2, 3, bh);
+        }
+        g.fill();
+      }
+      function rcPlayer(kind, time, right, buttons) {
+        var box = $('prRec'); box.innerHTML = ''; box.hidden = false;
+        var tk = el('div', 'hc-trk'), lab = el('div', 'hc-lab'); box.appendChild(tk);
+        if (kind === 'live' || kind === 'paused') {
+          tk.appendChild(el('canvas', 'rc-cv')); tk.appendChild(el('span', 'rc-live' + (kind === 'live' ? '' : ' off')));
+          lab.appendChild(el('span', 'hc-chip' + (kind === 'live' ? ' rec' : ''), kind === 'live' ? 'Gravando' : (time.chip || 'Pausada')));
+        } else if (kind === 'meter') {
+          tk.appendChild(el('canvas', 'rc-cv'));
+          var mic = el('button', 'rc-mic'); mic.type = 'button'; mic.id = 'rcMicBtn';
+          mic.innerHTML = '<span>Microfone: ' + (time.mic || 'padrão do computador').replace(/</g, '&lt;') + '</span>' + RCI.caret; lab.appendChild(mic);
+        } else {
+          var line = el('div', 'hc-line'), played = el('i', 'hc-played'), rest = el('i', 'hc-rest'), thumb = el('span', 'hc-thumb');
+          line.appendChild(played); line.appendChild(rest); tk.appendChild(line); tk.appendChild(thumb);
+          played.style.width = kind === 'gen' ? 'calc((100% - 13px) * .62)' : '0'; rest.style.left = kind === 'gen' ?
+            'calc((100% - 13px) * .62 + 13px)' : '13px';
+          thumb.style.left = kind === 'gen' ? 'calc((100% - 13px) * .62)' : '0'; if (kind === 'gen') thumb.hidden = true;
+          lab.appendChild(el('span', 'hc-chip' + (kind === 'gen' ? ' gen' : ''), time.chip || 'Gravação'));
+        }
+        if (time.t) { var tt = el('span', null, time.t); tt.id = 'rcTime'; lab.appendChild(tt); }
+        if (right) { var r = el('span', 'rc-r'); r.id = 'rcRight'; r.innerHTML = right; lab.appendChild(r); }
+        tk.appendChild(lab);
+        (buttons || []).forEach(function (b) { box.appendChild(b); });
+        if (kind === 'live' || kind === 'paused') recDraw({ amps: time.amps || [], st: kind });
+        if (kind === 'meter') rcMeter(time.level == null ? 0.62 : time.level);
+      }
+      function rcMeter(level) {               // medidor do microfone: 24 barras (verde, laranja no alto)
+        var cv = $('prRec').querySelector('.rc-cv'); if (!cv || !cv.clientWidth) return;
+        var w = cv.clientWidth, dpr = window.devicePixelRatio || 1, on = Math.round(Math.max(0, Math.min(1, level)) * 24);
+        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(44 * dpr); }
+        var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, 44);
+        for (var i = 0; i < 24; i++) { g.fillStyle = i < on ? (i < 17 ? '#137333' : '#E37400') : '#CCCFD9'; g.beginPath(); (g.roundRect ?
+          g.roundRect(i * 9, 16, 6, 16, 2) : g.rect(i * 9, 16, 6, 16)); g.fill(); }
+      }
+      function rcAlert(kind, icon, html, acts) {
+        var a = $('rcAlert'); a.className = 'rc-alert ' + kind; a.innerHTML = RCI[icon] + '<span class="t">' + html + '</span>'; a.hidden = false;
+        if (acts && acts.length) { var w = el('span', 'a'); acts.forEach(function (b) { var x = el('button', b[1] ? 'pr-save' : 'pr-ghost', b[0]);
+          x.type = 'button'; w.appendChild(x); }); a.appendChild(w); }
+      }
+      // qual gravador aparece: a paciente de exemplo (Maria Silva, fictícia) sempre com a demonstração; conta com a
+      // gravação liberada, a real; as outras, a demonstração desativada ("em breve")
+      function recRender() {
+        if (RR && RR.on && recDemo() && RR.live && RR.live.st === 'live') rrPause(RR.live); // abriu a de exemplo gravando outra
+        if (rrActive()) { rrShow(); return; }
+        recDemoRender();
+      }
+
+      // ===== demonstração (paciente de exemplo): roteiro fictício, nenhum áudio captado =====
       // Demonstração: roda só na paciente de exemplo, com o roteiro fictício abaixo. Nenhum áudio é captado e
       // nenhum texto inventado entra no prontuário de paciente real (para eles o botão fica desativado).
       var RC_SCRIPT = [                                       // [trecho do SOAP, quem fala (v = você, p = paciente), fala]
@@ -4619,14 +4702,6 @@
               { code: 'E66', desc: 'Obesidade' }, { code: 'R42', desc: 'Tontura e instabilidade' }]
       };
       var RC_WORD = 170, RC_TICK = 100, RC_SPD = [1, 1.5, 2];
-      var RI = {
-        mic: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3m5.3-3a5.3 5.3 0 0 1-10.6 0H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72z" fill="currentColor"/></svg>',
-        stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>',
-        pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19h4V5H6zm8-14v14h4V5z" fill="currentColor"/></svg>',
-        play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>',
-        vol: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77" fill="currentColor"/></svg>',
-        mute: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63m2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.8 8.8 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71M4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a9 9 0 0 0 3.69-1.81L19.73 21 21 19.73l-9-9zM12 4 9.91 6.09 12 8.18z" fill="currentColor"/></svg>'
-      };
       var recs = new Map(), recLive = null, recIv = null, recPb = null;   // uma gravação por consulta (nesta aba do navegador)
       function recCur() {
         if (!ctx) return null;
@@ -4634,19 +4709,10 @@
         if (!recs.has(k)) recs.set(k, { st: 'idle', ms: 0, t0: 0, amps: [], u: [], si: 0, wi: 0, acc: 0, gap: 1200, pos: 0, spd: 0, mute: false, open: false, applied: false, undo: null });
         return recs.get(k);
       }
-      function recDemo() { return !!(patient && patient.example); }
       function recSecs(r) { return (r.ms + (r.st === 'live' ? performance.now() - r.t0 : 0)) / 1000; }
       function recDur(r) { return Math.max(1, r.ms / 1000); }
-      function mmss(x) { x = Math.max(0, Math.floor(x)); return Math.floor(x / 60) + ':' + pad(x % 60); }
-      function rcBtn(cls, html, label, f) {
-        var b = el('button', cls); b.type = 'button'; b.innerHTML = html; b.setAttribute('aria-label', label); b.title = label;
-        b.addEventListener('click', function (e) { e.stopPropagation(); f(b); }); return b;
-      }
       // player: parado → gravando/pausado (ondas) → gerando (barra azul) → gravação pronta (trilha com S, O, A, P)
-      function recRender() {
-        if (rcMockState() && ready && !locked()) { rcMock(rcMockState()); return; }      // preview das telas (etapa 2)
-        if (RR && RR.on && recDemo() && RR.live && RR.live.st === 'live') rrPause(RR.live); // abriu a de exemplo gravando outra
-        if (rrActive()) { rrShow(); return; }                                        // gravação real (contas liberadas)
+      function recDemoRender() {
         var box = $('prRec'), r = recCur(), lk = locked();
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);      // trocou de consulta gravando: pausa
         if (recPb && recPb.r !== r) recStopPb();
@@ -4707,21 +4773,6 @@
         tk.appendChild(lab);
         if (live) recDraw(r); else if (r.st !== 'proc') recSeekUi(r);
         recTxAll(r); recTransS(r); recOpenTx(r, r.open); recNote(r);
-      }
-      // ondas: uma barra a cada 100 ms, a mais nova encostada no ponto vermelho (agora)
-      function recDraw(r) {
-        var cv = $('prRec').querySelector('.rc-cv'); if (!cv || !cv.clientWidth) return;
-        var w = cv.clientWidth, h = 44, dpr = window.devicePixelRatio || 1, cy = 24;
-        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-        var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-        var right = w - 19, n = Math.min(r.amps.length, Math.floor(right / 5)), x0 = right - n * 5;
-        g.fillStyle = '#CCCFD9'; g.fillRect(0, cy - 1.5, Math.max(0, x0), 3);
-        g.fillStyle = r.st === 'live' ? '#0B57D0' : '#A3A7AE'; g.beginPath();
-        for (var i = 0; i < n; i++) {
-          var bh = Math.max(3, Math.round(r.amps[r.amps.length - 1 - i] * 24)), x = right - (i + 1) * 5 + 1;
-          if (g.roundRect) g.roundRect(x, cy - bh / 2, 3, bh, 1.5); else g.rect(x, cy - bh / 2, 3, bh);
-        }
-        g.fill();
       }
       function recTick() {
         var r = recLive; if (!r || r.st !== 'live') return;
@@ -4892,187 +4943,30 @@
       window.addEventListener('resize', function () { if (recLive && recLive === recCur()) recDraw(recLive); });
 
 
-      // ===== gravação real: estados da tela (etapa 2 — só o visual, com dados fictícios; aparece só no preview) =====
-      // Cada estado usa os mesmos lugares do cartão: player (#prRec), autorização, aviso, etapas, transcrição,
-      // aviso "preenchida", pontos para conferir e a confirmação de finalizar. A lógica entra na etapa 3.
-      var RCM_STATES = [['antes', 'Antes de gravar'], ['sem-microfone', 'Sem microfone'], ['gravando', 'Gravando'],
-        ['sem-internet', 'Sem internet'], ['silencio', 'Silêncio'], ['microfone-desligado', 'Microfone desligado'],
-        ['pausada', 'Pausada'], ['gerando', 'Gerando'], ['pronta', 'Pronta'], ['finalizar', 'Finalizar com pendências'],
-        ['falha', 'Falha da IA'], ['interrompida', 'Interrompida']];
-      var RCI = {
-        warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 21h22L12 2zm12-3h-2v-2h2zm0-4h-2v-4h2z" fill="currentColor"/></svg>',
-        off: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.35 10.04A7.49 7.49 0 0 0 12 4c-1.48 0-2.85.43-4.01 1.17l1.46 1.46A5.5 5.5 0 0 1 17.5 11.5v.5H19a3 3 0 0 1 3 3c0 1.13-.64 2.11-1.56 2.62l1.45 1.45A4.99 4.99 0 0 0 24 15c0-2.64-2.05-4.78-4.65-4.96M3 5.27l2.75 2.74C2.56 8.15 0 10.77 0 14c0 3.31 2.69 6 6 6h11.73l2 2L21 20.73 4.27 4zM7.73 10l8 8H6c-2.21 0-4-1.79-4-4s1.79-4 4-4z" fill="currentColor"/></svg>',
-        info: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8" fill="currentColor"/></svg>',
-        err: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2m1 15h-2v-2h2zm0-4h-2V7h2z" fill="currentColor"/></svg>',
-        micoff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28m-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18zM4.27 3 3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73z" fill="currentColor"/></svg>',
-        caret: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5z" fill="currentColor"/></svg>'
-      };
-      function rcMockState() { try { return sessionStorage.getItem('od_rc_mock') || ''; } catch (_) { return ''; } }
-      // transcrição fictícia (consulta da Maria) em trechos de 15–30 s; palavras ouvidas com dúvida marcadas
-      var RCM_TX = [[0, 'Bom dia, dona Maria. Como a senhora passou desde a última consulta? Bem, graças a Deus. Estou tomando os remédios certinho: a losartana, a metformina e o do colesterol. Ótimo. E a caminhada, a senhora conseguiu manter?', []],
-        [26, 'Quatro vezes por semana, uns trinta minutos. Só que essa semana, duas vezes, eu levantei da cama e fiquei tonta. Essa tontura passa rápido? Chegou a desmaiar, teve falta de ar ou dor no peito?', []],
-        [52, 'Passa em menos de um minuto, sentada. Não desmaiei e não tive dor nem falta de ar. E as glicemias em casa, como estão? Em jejum, entre 110 e 130. Não tive nenhuma baixa de açúcar.', ['110']],
-        [79, 'Vou examinar a senhora agora. A pressão está 128 por 82, e a frequência, 74. Peso 86 quilos e 800 gramas, glicemia agora de 108. Coração e pulmões sem alterações.', []],
-        [104, 'Os pés estão bem: pulsos presentes e a sensibilidade preservada no monofilamento. A hemoglobina glicada veio 6,9: o diabetes está na meta.', ['monofilamento']],
-        [130, 'Vamos manter os três remédios. Levante devagar: sente na cama um minuto antes de ficar em pé. Vou pedir o exame de urina para os rins e o ácido úrico. Retorno em três meses, com os exames.', []]];
-      function rcmTx(n, hl) {
-        var tx = $('rcTx'); tx.innerHTML = '';
-        RCM_TX.slice(0, n).forEach(function (p, i) {
-          var d = el('div', 'rc-u' + (hl === i ? ' hl' : '')), h = el('div', 'rc-h', mmss(p[0]));
-          d.appendChild(h);
-          var t = el('div', 'rc-t'), html = p[1].replace(/&/g, '&amp;').replace(/</g, '&lt;');
-          p[2].forEach(function (w) { html = html.replace(new RegExp('\\b' + w + '\\b'), '<mark class="rc-dv" title="Ouvido com dúvida: confira">' + w + '</mark>'); });
-          t.innerHTML = html; d.appendChild(t); tx.appendChild(d);
-        });
-        return tx;
-      }
-      function rcmWave(box, on) {               // ondas paradas (no preview não há microfone)
-        var cv = box.querySelector('.rc-cv'); if (!cv) return;
-        var amps = [], seed = 7; for (var i = 0; i < 200; i++) { seed = (seed * 9301 + 49297) % 233280; var q = seed / 233280; amps.push((i % 23 < 4) ? 0.06 : 0.25 + q * 0.7); }
-        recDraw({ amps: amps, st: on ? 'live' : 'paused' });
-      }
-      function rcmAlert(kind, icon, html, acts) {
-        var a = $('rcAlert'); a.className = 'rc-alert ' + kind; a.innerHTML = RCI[icon] + '<span class="t">' + html + '</span>'; a.hidden = false;
-        if (acts && acts.length) { var w = el('span', 'a'); acts.forEach(function (b) { var x = el('button', b[1] ? 'pr-save' : 'pr-ghost', b[0]); x.type = 'button'; w.appendChild(x); }); a.appendChild(w); }
-      }
-      function rcmPlayer(kind, time, right, buttons) {
-        var box = $('prRec'); box.innerHTML = ''; box.hidden = false;
-        var tk = el('div', 'hc-trk'), lab = el('div', 'hc-lab'); box.appendChild(tk);
-        if (kind === 'live' || kind === 'paused') {
-          tk.appendChild(el('canvas', 'rc-cv')); tk.appendChild(el('span', 'rc-live' + (kind === 'live' ? '' : ' off')));
-          lab.appendChild(el('span', 'hc-chip' + (kind === 'live' ? ' rec' : ''), kind === 'live' ? 'Gravando' : (time.chip || 'Pausada')));
-        } else if (kind === 'meter') {
-          tk.appendChild(el('canvas', 'rc-cv'));
-          var mic = el('button', 'rc-mic'); mic.type = 'button'; mic.id = 'rcMicBtn';
-          mic.innerHTML = '<span>Microfone: ' + (time.mic || 'MacBook Pro (embutido)').replace(/</g, '&lt;') + '</span>' + RCI.caret; lab.appendChild(mic);
-        } else {
-          var line = el('div', 'hc-line'), played = el('i', 'hc-played'), rest = el('i', 'hc-rest'), thumb = el('span', 'hc-thumb');
-          line.appendChild(played); line.appendChild(rest); tk.appendChild(line); tk.appendChild(thumb);
-          played.style.width = kind === 'gen' ? 'calc((100% - 13px) * .62)' : '0'; rest.style.left = kind === 'gen' ? 'calc((100% - 13px) * .62 + 13px)' : '13px';
-          thumb.style.left = kind === 'gen' ? 'calc((100% - 13px) * .62)' : '0'; if (kind === 'gen') thumb.hidden = true;
-          lab.appendChild(el('span', 'hc-chip' + (kind === 'gen' ? ' gen' : ''), time.chip || 'Gravação'));
-        }
-        if (time.t) { var tt = el('span', null, time.t); tt.id = 'rcTime'; lab.appendChild(tt); }
-        if (right) { var r = el('span', 'rc-r'); r.id = 'rcRight'; r.innerHTML = right; lab.appendChild(r); }
-        tk.appendChild(lab);
-        (buttons || []).forEach(function (b) { box.appendChild(b); });
-        if (kind === 'live' || kind === 'paused') { if (time.amps) recDraw({ amps: time.amps, st: kind }); else rcmWave(box, kind === 'live'); }
-        if (kind === 'meter') rcmMeter(time.level == null ? 0.62 : time.level);
-      }
-      function rcmMeter(level) {               // medidor do microfone: 24 barras (verde, laranja no alto)
-        var cv = $('prRec').querySelector('.rc-cv'); if (!cv || !cv.clientWidth) return;
-        var w = cv.clientWidth, dpr = window.devicePixelRatio || 1, on = Math.round(Math.max(0, Math.min(1, level)) * 24);
-        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(44 * dpr); }
-        var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, 44);
-        for (var i = 0; i < 24; i++) { g.fillStyle = i < on ? (i < 17 ? '#137333' : '#E37400') : '#CCCFD9'; g.beginPath(); (g.roundRect ? g.roundRect(i * 9, 16, 6, 16, 2) : g.rect(i * 9, 16, 6, 16)); g.fill(); }
-      }
-      function rcmBtn(cls, html, label) { var b = rcBtn(cls, html, label, function () {}); return b; }
-      function rcmReview(n) {
-        var items = [['alto', 'Número ouvido com dúvida: glicemias em jejum "entre 110 e 130 mg/dL"', 'Confira o 110 na transcrição (trecho 0:52).', 2],
-          ['medio', 'Frase deduzida, não dita: "Tontura postural: suspeita de hipotensão ortostática"', 'O médico disse "pode ser a pressão caindo"; a avaliação foi resumida.', 4],
-          ['medio', 'Palavra ouvida com dúvida: "monofilamento"', 'Exame dos pés (trecho 1:44).', 4],
-          ['info', 'Doses vieram do cadastro: losartana 50 mg 12/12h, metformina 850 mg 2x/dia, atorvastatina 20 mg', 'Na consulta foi dito só "vamos manter os três remédios". Confirme se não mudaram.', 5]];
-        var box = $('rcReview'); box.innerHTML = ''; box.hidden = false;
-        var h = el('div', 'rc-rv-h'); h.appendChild(document.createTextNode('Para conferir antes de finalizar')); h.appendChild(el('span', null, String(items.length)));
-        h.appendChild(el('small', null, 'os mais importantes primeiro')); box.appendChild(h);
-        items.forEach(function (it, i) {
-          var row = el('div', 'rc-pt ' + it[0] + (i < n ? ' ok' : '')), t = el('div', 't');
-          row.appendChild(el('i')); t.appendChild(document.createTextNode(it[1])); t.appendChild(el('small', null, it[2])); row.appendChild(t);
-          var a = el('div', 'a'), ver = el('button', 'pr-ghost lk', 'Ver na transcrição'), ok = el('button', 'pr-ghost', i < n ? 'Conferido ✓' : 'Conferido');
-          ver.type = ok.type = 'button';
-          ver.addEventListener('click', function () { rcmTx(6, it[3]); $('rcTx').hidden = false; $('gcTransBtn').setAttribute('aria-expanded', 'true');
-            var u = $('rcTx').children[it[3]]; if (u) $('rcTx').scrollTop = u.offsetTop - $('rcTx').offsetTop - 16; });
-          ok.addEventListener('click', function () { row.classList.toggle('ok'); ok.textContent = row.classList.contains('ok') ? 'Conferido ✓' : 'Conferido'; });
-          a.appendChild(ver); a.appendChild(ok); row.appendChild(a); box.appendChild(row);
-        });
-      }
-      function rcmFill() {
-        if (locked()) return;
-        fillEditor({ content: '', data: Object.assign({ mode: 'soap' }, RC_SOAP, { vitals: Object.assign({}, RC_SOAP.vitals), cid: RC_SOAP.cid.slice() }) });
-        [].forEach.call($('prSoap').querySelectorAll('.pr-soapf'), function (f) { f.classList.add('rc-from'); });
-      }
-      function rcMock(st) {
-        ['rcConsent', 'rcAlert', 'rcSteps', 'rcTx', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
-        $('gcTrans').hidden = false; $('gcTransBtn').hidden = true; $('gcTrans').classList.remove('can');
-        var S = $('gcTransS'), stopB = rcmBtn('rc-go', RI.stop + '<span>Encerrar</span>', 'Encerrar a gravação e gerar a evolução'),
-            pauseB = rcmBtn('hc-btn rc-b', RI.pause, 'Pausar a gravação'), resumeB = rcmBtn('hc-btn rc-b', RI.mic, 'Continuar gravando');
-        var live = function (n) { rcmTx(n); $('rcTx').hidden = false; $('gcTransBtn').hidden = false; $('gcTransBtn').setAttribute('aria-expanded', 'true');
-          S.innerHTML = '<span class="rc-dot"></span>Ao vivo · ' + n + (n === 1 ? ' trecho' : ' trechos'); $('rcTx').scrollTop = 1e6; };
-        if (st === 'antes') {
-          var go = rcmBtn('rc-go', RI.mic + '<span>Gravar consulta</span>', 'Gravar a consulta'); go.disabled = !$('rcConsentIn').checked;
-          rcmPlayer('meter', {}, '<span class="ok">Ouvindo bem</span>', [go]);
-          $('rcConsent').hidden = false; $('rcConsentIn').onchange = function () { go.disabled = !this.checked; };
-          S.textContent = 'Aparece aqui, ao vivo, enquanto você grava';
-        } else if (st === 'sem-microfone') {
-          var again = rcmBtn('rc-go', RI.mic + '<span>Tentar de novo</span>', 'Tentar de novo'); again.disabled = false;
-          rcmPlayer('idle', { chip: 'Sem microfone', t: '' }, 'O navegador bloqueou o microfone', [again]);
-          rcmAlert('warn', 'micoff', '<b>O navegador não deixou usar o microfone.</b> Clique no cadeado ao lado do endereço do site, escolha <b>Permitir</b> em Microfone e toque em Tentar de novo.');
-          S.textContent = 'A evolução pode ser escrita à mão enquanto isso.';
-        } else if (st === 'gravando') {
-          rcmPlayer('live', { t: '2:36' }, 'Transcrevendo ao vivo · tudo enviado', [pauseB, stopB]); live(6);
-        } else if (st === 'sem-internet') {
-          rcmPlayer('live', { t: '2:36' }, '3 trechos esperando envio', [pauseB, stopB]); live(3);
-          rcmAlert('info', 'off', '<b>Sem internet. A gravação continua.</b> 3 trechos estão guardados neste computador e são enviados assim que a conexão voltar.');
-        } else if (st === 'silencio') {
-          rcmPlayer('live', { t: '4:10' }, '<span class="low">Sem som há 20 s</span>', [pauseB, stopB]); live(6);
-          rcmAlert('warn', 'warn', '<b>Não estamos ouvindo nada há 20 segundos.</b> Confira se o microfone certo está ligado e perto de vocês.', [['Trocar microfone']]);
-        } else if (st === 'microfone-desligado') {
-          resumeB.disabled = true;                                        // só volta depois de escolher um microfone
-          rcmPlayer('paused', { t: '2:36', chip: 'Pausada' }, 'Microfone desconectado', [resumeB, stopB]); rcmTx(6); $('rcTx').hidden = true;
-          S.textContent = 'Pausada · 6 trechos';
-          rcmAlert('bad', 'micoff', '<b>O microfone foi desconectado e a gravação foi pausada.</b> O que já foi gravado está salvo.', [['Escolher microfone', 1]]);
-        } else if (st === 'pausada') {
-          rcmPlayer('paused', { t: '2:36' }, 'Continue quando quiser', [resumeB, stopB]); live(6); S.innerHTML = 'Pausada · 6 trechos';
-        } else if (st === 'gerando') {
-          var w8 = rcmBtn('rc-go', '<span>Gerando…</span>', 'Gerando a evolução'); w8.disabled = true;
-          rcmPlayer('gen', { chip: 'Gerando evolução', t: '2:36' }, 'Leva uns 10 segundos', [w8]);
-          var st8 = $('rcSteps'); st8.innerHTML = ''; st8.hidden = false;
-          [['rc-done', 'Transcrição completa', '6 trechos · 2:36'], ['rc-now', 'Escrevendo a evolução em SOAP', ''], ['rc-wait', 'Conferindo doses, alergias e números', '']].forEach(function (x) {
-            var r = el('div', 'rc-step ' + x[0]); r.appendChild(el('i')); r.appendChild(el('span', null, x[1])); if (x[2]) r.appendChild(el('small', null, x[2])); st8.appendChild(r); });
-          S.textContent = '6 trechos · 2:36';
-        } else if (st === 'pronta' || st === 'finalizar') {
-          var box = $('prRec'); box.innerHTML = ''; box.hidden = false;
-          var sm = el('div', 'rc-sum'); sm.innerHTML = RI.mic; var tt = el('div', 't');
-          tt.appendChild(el('b', null, 'Consulta gravada · 2:36')); tt.appendChild(el('small', null, 'O áudio foi descartado; a transcrição fica guardada com a evolução.'));
-          sm.appendChild(tt); var more = el('button', 'pr-ghost', 'Gravar mais um trecho'); more.type = 'button'; sm.appendChild(more); box.appendChild(sm);
-          rcmTx(6); $('gcTransBtn').hidden = false; $('gcTrans').classList.add('can'); S.textContent = '6 trechos · 2:36 · 2 palavras com dúvida';
-          $('rcNoteT').textContent = 'Evolução preenchida pela gravação: revise antes de finalizar.'; $('rcNoteBtn').textContent = 'Desfazer'; $('rcNote').hidden = false;
-          rcmReview(st === 'finalizar' ? 1 : 0); rcmFill();
-          if (st === 'finalizar') {
-            var f = $('rcFinal'); f.innerHTML = ''; f.hidden = false; f.appendChild(el('span', 't')).innerHTML = '<b>Ainda há 3 pontos para conferir</b>, 1 importante. Finalizar mesmo assim?';
-            var b1 = el('button', 'pr-ghost', 'Voltar e conferir'), b2 = el('button', 'pr-save', 'Finalizar mesmo assim'); b1.type = b2.type = 'button'; f.appendChild(b1); f.appendChild(b2);
-          }
-        } else if (st === 'falha') {
-          var again2 = rcmBtn('rc-go', '<span>Gerar de novo</span>', 'Gerar a evolução de novo');
-          rcmPlayer('idle', { chip: 'Gravação', t: '2:36' }, 'Transcrição guardada', [again2]);
-          rcmTx(6); $('gcTransBtn').hidden = false; $('gcTrans').classList.add('can'); S.textContent = '6 trechos · 2:36';
-          rcmAlert('bad', 'err', '<b>Não foi possível gerar a evolução agora:</b> o serviço de IA não respondeu. A transcrição está guardada; tente de novo ou escreva a evolução à mão.', [['Escrever à mão']]);
-        } else if (st === 'interrompida') {
-          rcmPlayer('paused', { t: '8:12', chip: 'Interrompida' }, '1 trecho deste computador enviado agora',
-                    [rcmBtn('rc-go', RI.mic + '<span>Continuar gravando</span>', 'Continuar gravando')]);
-          rcmTx(6); $('gcTransBtn').hidden = false; $('gcTrans').classList.add('can'); S.textContent = 'Pausada · 6 trechos já transcritos';
-          rcmAlert('info', 'info', '<b>A gravação foi interrompida às 10:42</b> (a aba foi fechada). 8 min já estão transcritos. Continue gravando ou gere a evolução com o que já foi transcrito.', [['Gerar evolução agora']]);
-        }
-        rcMockBar(st);
-      }
-      function rcMockBar(cur) {
-        var bar = document.querySelector('.rc-mockbar');
-        if (!bar) { bar = el('div', 'rc-mockbar'); document.body.appendChild(bar); }
-        bar.innerHTML = ''; bar.appendChild(el('b', null, 'Telas da gravação:'));
-        RCM_STATES.forEach(function (x) {
-          var b = el('button', x[0] === cur ? 'on' : '', x[1]); b.type = 'button';
-          b.addEventListener('click', function () { try { sessionStorage.setItem('od_rc_mock', x[0]); } catch (_) {} if (x[0] !== 'pronta' && x[0] !== 'finalizar') fillEditor(null); rcMock(x[0]); });
-          bar.appendChild(b);
-        });
-      }
-
-      // ===== gravação real (etapa 3): captura sem perda, trechos no aparelho até o servidor confirmar, fila de envio,
+      // ===== gravação real: captura sem perda, trechos no aparelho até o servidor confirmar, fila de envio,
       // avisos e recuperação. Só liga para contas com a gravação liberada (/me → scribe); as outras veem a demonstração.
       // O áudio vira trechos de 15–30 s (cortados no silêncio, entre blocos inteiros de 100 ms: nada se perde), cada um
       // vai para o IndexedDB ANTES de subir e só é apagado quando o servidor devolve o texto. O trecho em andamento
       // também é guardado a cada 2 s: se a aba fechar ou o computador travar, perde-se no máximo isso.
+      //
+      // Estado. RR.by[k] é a gravação de uma consulta (k = ctx._rk: a consulta da agenda ou a avulsa), criada em rrCur.
+      //   st (situação): idle (antes de gravar) · nomic (o navegador negou o microfone) · live (gravando) · paused ·
+      //     interrupted (a aba fechou no meio; volta pelo rrLoad) · ending (encerrou; esperando os trechos subirem) ·
+      //     gen (gerando a evolução) · fail (a geração falhou) · done (evolução gerada, revisão) · saved (gerada noutra
+      //     sessão, sem a saída guardada).
+      //   segs[i].st (cada trecho): local (no aparelho) · sending · ok (transcrito) · err (recusado pelo servidor) · silent.
+      //   Captura: blocos/blocosRms (o trecho em andamento), samples, seq, floor/hist (piso de ruído), quiet, level, amps.
+      //   Ligação: cx (a consulta, o mesmo objeto do ctx), pid, recId, consent/consentAt.
+      //   Geração: result, flags, segTable (a numeração dos trechos para o modelo), meta (o rastreio), genStep, genS,
+      //     endAt, doneAt; revisão: checked (pontos conferidos), applied/ins/undo/appliedSnap/kept/undone (o texto que entrou
+      //     na evolução e como desfazer), genWords (para o "% mantido"), finalOk, pending (gerou com a consulta fechada).
+      //   Avisos: warn (micoff, silencio, longa), err, testing/testPeak (teste do microfone), stoppedAt, loaded/loading.
       var RR = { on: false, uid: '', by: {}, live: null, dev: '', devs: [], lock: null };
-      var SEG = { min: 150, max: 300, sil: 3, warnAt: 80 * 600, stopAt: 90 * 600 };   // em blocos de 100 ms
+      // corte dos trechos, em blocos de 100 ms (os mesmos números de app/scribe_eval.CORTE: tests/test_scribe_eval.py confere):
+      // de 15 a 30 s; corta depois de 3 blocos de silêncio ou, aos 30 s, no mais baixo dos últimos 20; piso de ruído = 10º
+      // percentil dos últimos 300 blocos; limiar = piso × 2,5, entre 0,004 e 0,03; menos de 2 blocos acima do limiar = silêncio
+      var SEG = { min: 150, max: 300, sil: 3, janela: 20, piso: 300, thrMin: 0.004, thrMul: 2.5, thrMax: 0.03, voz: 2,
+                  warnAt: 80 * 600, stopAt: 90 * 600 };
       var SR16 = 16000;
       api('GET', '/me').then(function (res) {
         RR.on = !!(res.ok && res.j && res.j.scribe); RR.uid = (res.j && res.j.user && res.j.user.id) || '';
@@ -5090,7 +4984,7 @@
         // cx: a consulta desta gravação (o mesmo objeto: ganha o note_id quando a evolução avulsa é salva). Trecho, envio e
         // geração usam cx e pid, nunca a consulta aberta na tela — trocar de paciente não mistura nem perde nada
         return RR.by[k] || (RR.by[k] = { k: k, cx: ctx, pid: ctx.patient_id, st: 'idle', recId: '', seq: 0, samples: 0, segs: [], amps: [],
-          hist: [], cur: [], curRms: [], floor: 0, quiet: 0, consent: false, consentAt: '', warn: '', flags: [], checked: {}, loaded: false,
+          hist: [], blocos: [], blocosRms: [], floor: 0, quiet: 0, consent: false, consentAt: '', warn: '', flags: [], checked: {}, loaded: false,
           level: 0, testing: false });
       }
       function uuid() {
@@ -5155,10 +5049,12 @@
         var m = el('div', 'gq-menu rc-devmenu'); m.setAttribute('role', 'menu');
         var named = RR.devs.filter(function (d) { return d.label; });    // sem permissão ainda, o navegador não diz os nomes
         (named.length ? named : [{ deviceId: '', label: 'Padrão do computador' }]).forEach(function (d) {
-          var it = el('button', 'gq-mi' + (d.deviceId === RR.dev ? ' on' : ''), d.label || 'Microfone sem nome'); it.type = 'button'; it.setAttribute('role', 'menuitem');
+          var it = el('button', 'gq-mi' + (d.deviceId === RR.dev ? ' on' : ''), d.label || 'Microfone sem nome'); it.type = 'button';
+            it.setAttribute('role', 'menuitem');
           it.addEventListener('click', function (e) {
             e.stopPropagation(); m.remove(); RR.dev = d.deviceId; var r = rrCur();
-            if (r && r.st === 'live') { rrCutAll(r); aeStart(function (p, v) { rrBlock(r, p, v); }, function () { rrMicLost(r); }).then(function () { rrRender(r); }, function () { rrMicLost(r); }); }
+            if (r && r.st === 'live') { rrCutAll(r); aeStart(function (p, v) { rrBlock(r, p, v); }, function () { rrMicLost(r);
+              }).then(function () { rrRender(r); }, function () { rrMicLost(r); }); }
             else if (r) { r.warn = ''; rrTest(r); }
           });
           m.appendChild(it);
@@ -5171,20 +5067,20 @@
       function rrBlock(r, pcm, rms) {
         var db = rms > 0 ? 20 * Math.log10(rms) : -100;                // medidor em dB (-60 a -10), com queda suave
         r.level = Math.max(Math.max(0, Math.min(1, (db + 60) / 50)), (r.level || 0) * 0.8);
-        if (r.testing) { r.testPeak = Math.max(r.testPeak || 0, rms); if (rrMine(r)) rcmMeter(r.level); return; }
+        if (r.testing) { r.testPeak = Math.max(r.testPeak || 0, rms); if (rrMine(r)) rcMeter(r.level); return; }
         if (r.st !== 'live') return;
-        r.cur.push(pcm); r.curRms.push(rms); r.samples += pcm.length;
-        if (r.cur.length % 20 === 0) rrSavePart(r);
+        r.blocos.push(pcm); r.blocosRms.push(rms); r.samples += pcm.length;
+        if (r.blocos.length % 20 === 0) rrSavePart(r);
         r.amps.push(Math.min(1, rms * 7)); if (r.amps.length > 900) r.amps.splice(0, 300);
-        r.hist.push(rms); if (r.hist.length > 300) r.hist.shift();
+        r.hist.push(rms); if (r.hist.length > SEG.piso) r.hist.shift();
         if (r.hist.length % 10 === 0) { var srt = r.hist.slice().sort(function (a, b) { return a - b; }); r.floor = srt[Math.floor(srt.length * 0.1)] || 0; }
         r.quiet = rms < 0.001 ? r.quiet + 1 : 0;
         if (r.quiet === 200 && r.warn !== 'silencio') { r.warn = 'silencio'; rrRender(r); }
         else if (r.quiet === 0 && r.warn === 'silencio') { r.warn = ''; rrRender(r); }
-        var thr = Math.min(Math.max(0.004, r.floor * 2.5), 0.03), n = r.curRms.length;
+        var thr = rrThr(r), n = r.blocosRms.length;
         if (n >= SEG.min) {
-          if (r.curRms.slice(-SEG.sil).every(function (v) { return v < thr; })) rrCut(r, n - 1);
-          else if (n >= SEG.max) { var w = r.curRms.slice(-20); rrCut(r, n - 20 + w.indexOf(Math.min.apply(null, w)) + 1); }
+          if (r.blocosRms.slice(-SEG.sil).every(function (v) { return v < thr; })) rrCut(r, n - 1);
+          else if (n >= SEG.max) { var w = r.blocosRms.slice(-SEG.janela); rrCut(r, n - SEG.janela + w.indexOf(Math.min.apply(null, w)) + 1); }
         }
         var blocks = Math.round(r.samples / 1600);
         if (blocks === SEG.warnAt) { r.warn = 'longa'; rrRender(r); }
@@ -5200,13 +5096,15 @@
         if (!p) {
           p = el('button', 'rc-pill'); p.id = 'rcPill'; p.type = 'button'; p.setAttribute('aria-label', 'Gravando a consulta. Voltar à consulta');
           p.innerHTML = '<i></i><b>Gravando</b><span class="t" aria-hidden="true"></span><span class="go">Voltar à consulta</span>';
-          p.addEventListener('click', function () { setTab('atual'); setTimeout(function () { $('prRec').scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 50); });
+          p.addEventListener('click', function () { setTab('atual'); setTimeout(function () { $('prRec').scrollIntoView({ behavior: 'smooth',
+            block: 'center' }); }, 50); });
           document.body.appendChild(p);
         }
         p.hidden = false; p.querySelector('.t').textContent = mmss(r.samples / SR16);
       }
-      function rrMine(r) { return r === rrCur() && !rcMockState(); }
-      function rrCutAll(r) { if (r.cur.length) rrCut(r, r.cur.length); }
+      function rrMine(r) { return r === rrCur(); }
+      function rrThr(r) { return Math.min(Math.max(SEG.thrMin, r.floor * SEG.thrMul), SEG.thrMax); }   // volume que conta como fala
+      function rrCutAll(r) { if (r.blocos.length) rrCut(r, r.blocos.length); }
       function rrJoin(blocks) {
         var pcm = new Int16Array(blocks.reduce(function (a, b) { return a + b.length; }, 0)), o = 0;
         blocks.forEach(function (b) { pcm.set(b, o); o += b.length; }); return pcm;
@@ -5217,21 +5115,21 @@
       }
       function rrPauseLive() { if (RR && RR.live && RR.live.st === 'live') rrPause(RR.live); }   // antes de trocar ou fechar a consulta
       function rrSavePart(r) {                 // trecho em andamento (substitui o anterior; some quando o trecho é cortado)
-        if (!r.cur.length || !r.recId) return;
-        var pcm = rrJoin(r.cur), row = rrRow(r, r.seq + 1, (r.samples - pcm.length) / SR16, pcm);
+        if (!r.blocos.length || !r.recId) return;
+        var pcm = rrJoin(r.blocos), row = rrRow(r, r.seq + 1, (r.samples - pcm.length) / SR16, pcm);
         row.k = r.recId + ':parte'; row.part = true;
         idbPut(row).catch(function () {});
       }
       window.addEventListener('pagehide', function () { if (RR.live && RR.live.st === 'live') rrSavePart(RR.live); });
       function rrCut(r, idx) {                 // trecho = blocos [0, idx); o resto começa o próximo trecho
-        var blocks = r.cur.slice(0, idx), rmss = r.curRms.slice(0, idx);
-        r.cur = r.cur.slice(idx); r.curRms = r.curRms.slice(idx);
+        var blocks = r.blocos.slice(0, idx), rmss = r.blocosRms.slice(0, idx);
+        r.blocos = r.blocos.slice(idx); r.blocosRms = r.blocosRms.slice(idx);
         if (!blocks.length) return;
         var pcm = rrJoin(blocks), len = pcm.length;
-        var thr = Math.min(Math.max(0.004, r.floor * 2.5), 0.03);
+        var thr = rrThr(r);
         var loud = rmss.filter(function (v) { return v > thr; }).length;
-        var at = (r.samples - len - r.cur.reduce(function (a, b) { return a + b.length; }, 0)) / SR16;
-        var seg = { seq: ++r.seq, at: Math.max(0, at), dur: len / SR16, st: loud < 2 ? 'silent' : 'local', text: '', duvidas: [] };
+        var at = (r.samples - len - r.blocos.reduce(function (a, b) { return a + b.length; }, 0)) / SR16;
+        var seg = { seq: ++r.seq, at: Math.max(0, at), dur: len / SR16, st: loud < SEG.voz ? 'silent' : 'local', text: '', duvidas: [] };
         r.segs.push(seg);
         var row = rrRow(r, seg.seq, seg.at, pcm), pk = r.recId + ':parte';
         // o trecho entra e o "em andamento" sai na mesma transação (nunca ficam os dois, nem nenhum)
@@ -5272,7 +5170,7 @@
       }
 
       // ----- fila de envio: um trecho por vez, do mais antigo; espera crescente; volta sozinha com a internet -----
-      // Erro de rede (fetch falhou): espera crescente para todos. Erro do servidor (5xx/429) num trecho: tenta de novo e,
+      // Erro de rede (fetch falhou): espera crescente para todos. Erro do servidor (5xx, 429 e 403) num trecho: tenta de novo e,
       // depois de 3 falhas, deixa esse trecho para depois (até 10 min) e segue com os outros — um trecho com problema
       // não trava a fila. Trecho que o navegador não conseguiu guardar (disco cheio, cota) fica na memória (RR.mem) e
       // sobe igual; nesse caso a aba não pode fechar antes de tudo subir.
@@ -5301,7 +5199,8 @@
           if (seg) { seg.st = 'sending'; }
           return fetch('/prontuario/transcribe', { method: 'POST', credentials: 'same-origin', body: next.wav,
             headers: { 'Content-Type': 'audio/wav', 'X-Patient-Id': String(next.pid || ''), 'X-Rec-Id': next.recId, 'X-Seq': String(next.seq),
-                       'X-At': String(Math.round(next.at * 10) / 10), 'X-Event-Id': next.eid, 'X-Note-Id': String(next.nid || ''), 'X-Consent': next.consentAt } })
+                       'X-At': String(Math.round(next.at * 10) / 10), 'X-Event-Id': next.eid, 'X-Note-Id': String(next.nid || ''),
+                         'X-Consent': next.consentAt } })
             .then(function (resp) {
               return resp.json().catch(function () { return {}; }).then(function (j) {
                 Q.down = false;
@@ -5349,7 +5248,7 @@
         r.testing = false; r.warn = '';
         aeStart(function (p, v) { rrBlock(r, p, v); }, function () { rrMicLost(r); }).then(function () {
           if (!r.recId) { r.recId = uuid(); r.consentAt = new Date().toISOString(); }
-          r.st = 'live'; RR.live = r; r.cur = []; r.curRms = [];
+          r.st = 'live'; RR.live = r; r.blocos = []; r.blocosRms = [];
           rrWake(); rrRender(r);
         }, function (e) {
           r.err = (e && e.name) || '';
@@ -5395,7 +5294,8 @@
           body: JSON.stringify({ patient_id: r.pid, event_id: r.cx.event_id || null, note_id: r.cx.note_id || null,
                                  rec_id: r.recId, mode: mode, espera_s: r.endAt ? Math.round((Date.now() - r.endAt) / 1000) : 0 }) })
           .then(function (resp) {
-            if (!resp.ok || !resp.body) return resp.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('http ' + resp.status)); });
+            if (!resp.ok || !resp.body) return resp.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ('http ' +
+              resp.status)); });
             var rd = resp.body.getReader(), dec = new TextDecoder();
             function take(l) {                         // uma linha: {step} enquanto escreve; no fim {ok, result…} ou {error}
               if (!l.trim()) return;
@@ -5436,7 +5336,8 @@
         return Object.assign({}, r.meta, { conferidos: idx.length, conf_idx: idx });
       }
       function rrWords(t) { return norm(t).match(/[a-z0-9]+/g) || []; }
-      function rrGenWords(res) { var f = (res && res.fields) || {}; return rrWords(SOAPK.map(function (k) { return f[k] || ''; }).concat([f.livre || '']).join(' ')); }
+      function rrGenWords(res) { var f = (res && res.fields) || {}; return rrWords(SOAPK.map(function (k) { return f[k] || ''; }).concat([f.livre ||
+        '']).join(' ')); }
       function rrKept(r) {                     // % das palavras geradas que ficaram, na mesma ordem, no texto final (LCS)
         var a = r.genWords || [], b = rrWords(compose().content), prev = [], i, j;
         if (!a.length) return 0;
@@ -5474,7 +5375,8 @@
           Object.keys(res.vitals || {}).forEach(function (k) {     // campo vazio recebe o valor (rrFill); diferente vai no O
             var v = String(res.vitals[k]).replace('.', ','), inp = rrVit(k);
             if (!inp) extra.push((VITN[k] || [k])[0] + ' ' + v + ' ' + ((VITN[k] || [])[1] || ''));
-            else if (inp.value.trim() && num(inp.value) !== num(v)) extra.push(((VITN[k] || [k])[0] + ' na gravação: ' + v + ' ' + ((VITN[k] || [])[1] || '')).trim());
+            else if (inp.value.trim() && num(inp.value) !== num(v)) extra.push(((VITN[k] || [k])[0] + ' na gravação: ' + v + ' ' + ((VITN[k] ||
+              [])[1] || '')).trim());
           });
           SOAPK.forEach(function (k) {
             var txt = parts[k] || '';
@@ -5482,7 +5384,8 @@
             if (txt) out[k] = txt;
           });
         } else {
-          var txt = isSoap ? SOAPK.filter(function (k) { return f[k]; }).map(function (k) { return k.toUpperCase() + ': ' + f[k]; }).join('\n\n') : (f.livre || '');
+          var txt = isSoap ? SOAPK.filter(function (k) { return f[k]; }).map(function (k) { return k.toUpperCase() + ': ' + f[k]; }).join('\n\n') :
+            (f.livre || '');
           var cidT = (res.cid || []).map(function (c) { return (c.code + ' ' + (c.desc || '')).trim(); }).join('; ');
           txt += cidT ? '\n\nCID-10: ' + cidT : '';
           if (txt) out.livre = txt;
@@ -5495,7 +5398,8 @@
           var inp = rrVit(k); if (inp && !inp.value.trim()) { inp.value = String(res.vitals[k]).replace('.', ','); checkVital(inp); marks.o = 1; }
         });
         updImc();
-        (res.cid || []).forEach(function (c) { if (!cids.some(function (y) { return y.code === c.code; })) { cids.push({ code: c.code, desc: c.desc }); marks.a = 1; } });
+        (res.cid || []).forEach(function (c) { if (!cids.some(function (y) { return y.code === c.code; })) { cids.push({ code: c.code,
+          desc: c.desc }); marks.a = 1; } });
         renderCids();
       }
       function rrApply(r) {
@@ -5545,7 +5449,8 @@
         var open = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; }), falta = rrFaltam(r).length;
         if (!open.length && !falta) return false;
         var hi = open.filter(function (f) { return f.nivel === 'alto'; }).length, box = $('rcFinal'); box.innerHTML = ''; box.hidden = false;
-        box.appendChild(el('span', 't')).innerHTML = (open.length ? '<b>Ainda há ' + open.length + (open.length === 1 ? ' ponto' : ' pontos') + ' para conferir</b>' +
+        box.appendChild(el('span', 't')).innerHTML = (open.length ? '<b>Ainda há ' + open.length + (open.length === 1 ? ' ponto' : ' pontos') +
+          ' para conferir</b>' +
           (hi ? ', ' + hi + (hi === 1 ? ' importante' : ' importantes') : '') : '') +
           (falta ? (open.length ? ' e ' : '<b>') + falta + (falta === 1 ? ' trecho da gravação não entrou' : ' trechos da gravação não entraram') +
                    ' na evolução' + (open.length ? '' : '</b>') : '') + '. Finalizar mesmo assim?';
@@ -5566,7 +5471,8 @@
           var ids = rows.filter(function (x) { return x.rk === my.k || orfa(x); }).map(function (x) { return x.recId; })
                         .filter(function (x, i, a) { return a.indexOf(x) === i; });
           return api('POST', '/prontuario/recordings/state', { patient_id: my.pid, event_id: cx.event_id || null,
-                                                               note_id: cx.note_id || null, rec_ids: ids, orfas: !cx.event_id && !cx.note_id }).then(function (res) {
+                                                               note_id: cx.note_id || null, rec_ids: ids, orfas: !cx.event_id &&
+                                                                 !cx.note_id }).then(function (res) {
             if (!(res.ok && res.j)) throw new Error('estado ' + res.status);      // sem internet: tenta de novo na próxima vez
             my.loaded = true;
             var recs = res.j.recordings || [], last = recs[recs.length - 1];
@@ -5576,14 +5482,17 @@
               if (my.st !== 'idle') return;
               var rid = last ? last.rec_id : mine[0].recId;
               my.recId = rid; my.consent = true; my.consentAt = (last && last.consent_at) || (mine[0] && mine[0].consentAt) || '';
-              my.segs = ((last && last.segments) || []).map(function (s) { return { seq: s.seq, at: s.at, dur: s.dur || 0, st: 'ok', text: s.text || '', duvidas: s.duvidas || [] }; });
+              my.segs = ((last && last.segments) || []).map(function (s) { return { seq: s.seq, at: s.at, dur: s.dur || 0, st: 'ok', text: s.text ||
+                '', duvidas: s.duvidas || [] }; });
               var promote = [];
               mine.filter(function (x) { return x.recId === rid; }).forEach(function (x) {
                 if (my.segs.some(function (s) { return s.seq === x.seq; })) { if (x.part) promote.push([null, x.k]); return; }
-                if (x.part) { if (x.dur < 0.3) { promote.push([null, x.k]); return; } promote.push([Object.assign({}, x, { k: rid + ':' + x.seq, part: false }), x.k]); }
+                if (x.part) { if (x.dur < 0.3) { promote.push([null, x.k]); return; } promote.push([Object.assign({}, x, { k: rid + ':' + x.seq,
+                  part: false }), x.k]); }
                 my.segs.push({ seq: x.seq, at: x.at, dur: x.dur, st: x.dead ? 'err' : 'local', text: '', duvidas: [] });
               });
-              if (promote.length) idbTx('readwrite', function (st) { promote.forEach(function (q) { if (q[0]) st.put(q[0]); st.delete(q[1]); }); }).then(qKick, function () {});
+              if (promote.length) idbTx('readwrite', function (st) { promote.forEach(function (q) { if (q[0]) st.put(q[0]); st.delete(q[1]); });
+                }).then(qKick, function () {});
               my.segs.sort(function (a, b) { return a.seq - b.seq; });
               my.seq = my.segs.reduce(function (m, s) { return Math.max(m, s.seq); }, 0);
               var end = my.segs.reduce(function (m, s) { return Math.max(m, s.at + (s.dur || 0)); }, 0);
@@ -5615,8 +5524,9 @@
         if (r.st === 'live') { e.preventDefault(); rrPause(r); } else if (r.st === 'paused' || r.st === 'interrupted') { e.preventDefault(); rrStart(r); }
       });
 
-      // ----- tela (os estados aprovados na etapa 2) -----
-      var FLAGTXT = { alergia: 'Alergia registrada', numero: 'Número que não está na fala', remedio: 'Remédio que não aparece na fala',
+      // ----- tela: o cartão do gravador em cada situação -----
+      var FLAGTXT = { alergia: 'Alergia registrada', pa_coloquial: 'PA dita de forma coloquial', numero: 'Número que não está na fala',
+        remedio: 'Remédio que não aparece na fala',
         remedio_nome: 'Nome de remédio não reconhecido', remedio_desconhecido: 'Remédio fora da lista',
         vital: 'Sinal vital impossível', dose_incomum: 'Dose fora do usual', duvida_grave: 'Ouvido com dúvida', privacidade: 'Dado pessoal retirado',
         dose_longe: 'Número longe do remédio', vital_longe: 'Valor longe do rótulo', sem_origem: 'Frase sem trecho de origem',
@@ -5631,21 +5541,25 @@
             var html = (sg.text || '(sem fala)').replace(/&/g, '&amp;').replace(/</g, '&lt;');
             (sg.duvidas || []).forEach(function (w) {
               var esc = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              html = html.replace(new RegExp('(^|[^\\wÀ-ÿ])(' + esc + ')(?![\\wÀ-ÿ])', 'g'), '$1<mark class="rc-dv" title="Ouvido com dúvida: confira">$2</mark>');
+              html = html.replace(new RegExp('(^|[^\\wÀ-ÿ])(' + esc + ')(?![\\wÀ-ÿ])', 'g'),
+                '$1<mark class="rc-dv" title="Ouvido com dúvida: confira">$2</mark>');
             });
             t.innerHTML = html;
           } else {
-            t.textContent = sg.st === 'err' ? 'Trecho com erro: ' + (sg.err || 'não foi transcrito') : Q.down || Q.auth ? 'Guardado neste computador: é transcrito quando a conexão voltar'
+            t.textContent = sg.st === 'err' ? 'Trecho com erro: ' + (sg.err || 'não foi transcrito') : Q.down || Q.auth ?
+              'Guardado neste computador: é transcrito quando a conexão voltar'
               : Q.erro ? 'Guardado neste computador: o servidor falhou e ele é enviado de novo' : 'Transcrevendo…';
-            t.style.color = sg.st === 'err' ? '#C0151D' : '#80868B';
+            t.classList.add(sg.st === 'err' ? 'err' : 'wait');
           }
           d.appendChild(t); tx.appendChild(d);
         });
         return tx;
       }
       function rrSummary(r) {
-        var n = r.segs.filter(function (s) { return s.st !== 'silent'; }).length, dv = r.segs.reduce(function (a, s) { return a + (s.duvidas || []).length; }, 0);
-        return n + (n === 1 ? ' trecho' : ' trechos') + ' · ' + mmss(r.samples / SR16) + (dv ? ' · ' + dv + (dv === 1 ? ' palavra' : ' palavras') + ' com dúvida' : '');
+        var n = r.segs.filter(function (s) { return s.st !== 'silent'; }).length, dv = r.segs.reduce(function (a, s) { return a + (s.duvidas ||
+          []).length; }, 0);
+        return n + (n === 1 ? ' trecho' : ' trechos') + ' · ' + mmss(r.samples / SR16) + (dv ? ' · ' + dv + (dv === 1 ? ' palavra' : ' palavras') +
+          ' com dúvida' : '');
       }
       function rrReview(r) {
         var box = $('rcReview'); box.innerHTML = '';
@@ -5658,7 +5572,8 @@
           var row = el('div', 'rc-pt ' + f.nivel + (r.checked[i] ? ' ok' : '')), t = el('div', 't');
           row.appendChild(el('i')); t.appendChild(document.createTextNode(f.texto));
           var refs = (f.src || []).map(function (q) { return rrRef(r, q); }), at = refs.filter(function (x) { return x.at != null; });
-          t.appendChild(el('small', null, (FLAGTXT[f.tipo] || f.tipo) + (at.length ? ' · trecho ' + at.map(function (x) { return mmss(x.at); }).join(', ') : '')));
+          t.appendChild(el('small', null, (FLAGTXT[f.tipo] || f.tipo) + (at.length ? ' · trecho ' + at.map(function (x) { return mmss(x.at);
+            }).join(', ') : '')));
           row.appendChild(t);
           var a = el('div', 'a'), ok = el('button', 'pr-ghost', r.checked[i] ? 'Conferido ✓' : 'Conferido'); ok.type = 'button';
           var go = refs.filter(function (x) { return x.seq != null; })[0];
@@ -5676,7 +5591,7 @@
         });
       }
       function rrRender(r) {
-        if (!r || r !== rrCur() || rcMockState() || recDemo()) return;
+        if (!r || r !== rrCur() || recDemo()) return;
         ['rcConsent', 'rcAlert', 'rcSteps', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
         var lk = locked(), S = $('gcTransS'), txOpen = !$('rcTx').hidden;
         $('gcTrans').hidden = false; $('gcTransBtn').hidden = true; $('gcTrans').classList.remove('can');
@@ -5695,86 +5610,104 @@
         if (r.st === 'idle' || r.st === 'nomic') {
           if (r.st === 'nomic') {
             var again = rcBtn('rc-go', RI.mic + '<span>Tentar de novo</span>', 'Tentar de novo', function () { r.st = 'idle'; rrTest(r); });
-            rcmPlayer('idle', { chip: 'Sem microfone' }, r.err === 'NotFoundError' ? 'Nenhum microfone encontrado' : 'O navegador bloqueou o microfone', [again]);
-            rcmAlert('warn', 'micoff', r.err === 'NotFoundError' ? '<b>Nenhum microfone encontrado.</b> Conecte um microfone e toque em Tentar de novo.'
+            rcPlayer('idle', { chip: 'Sem microfone' }, r.err === 'NotFoundError' ? 'Nenhum microfone encontrado' :
+              'O navegador bloqueou o microfone', [again]);
+            rcAlert('warn', 'micoff', r.err === 'NotFoundError' ? '<b>Nenhum microfone encontrado.</b> Conecte um microfone e toque em Tentar de novo.'
               : '<b>O navegador não deixou usar o microfone.</b> Clique no cadeado ao lado do endereço do site, escolha <b>Permitir</b> em Microfone e toque em Tentar de novo.');
             S.textContent = 'A evolução pode ser escrita à mão enquanto isso.';
           } else {
             var go = rcBtn('rc-go', RI.mic + '<span>Gravar consulta</span>', 'Gravar a consulta', function () { rrStart(r); });
             go.disabled = !r.consent;
             var right = r.testing ? 'Fale algo para testar…' : r.testPeak == null ? '<button class="pr-link2 rc-test" type="button">Testar microfone</button>'
-              : r.testPeak > 0.02 ? '<span class="ok">Ouvindo bem</span>' : r.testPeak > 0.005 ? '<span class="low">Volume baixo: aproxime o microfone</span>' : '<span class="low">Não chegou som</span>';
-            rcmPlayer('meter', { mic: devLabel(), level: r.testing ? r.level : 0 }, right, [go]);
+              : r.testPeak > 0.02 ? '<span class="ok">Ouvindo bem</span>' : r.testPeak > 0.005 ?
+                '<span class="low">Volume baixo: aproxime o microfone</span>' : '<span class="low">Não chegou som</span>';
+            rcPlayer('meter', { mic: devLabel(), level: r.testing ? r.level : 0 }, right, [go]);
             var tb = $('prRec').querySelector('.rc-test'); if (tb) tb.addEventListener('click', function () { rrTest(r); });
-            var mb = $('rcMicBtn'); if (mb) mb.addEventListener('click', function (e) { e.stopPropagation(); if (!RR.devs.length) listDevices(); pickDevice(mb); });
+            var mb = $('rcMicBtn'); if (mb) mb.addEventListener('click', function (e) { e.stopPropagation(); if (!RR.devs.length) listDevices();
+              pickDevice(mb); });
             $('rcConsent').hidden = false; $('rcConsentIn').checked = r.consent;
             $('rcConsentIn').onchange = function () { r.consent = this.checked; go.disabled = !this.checked; };
             S.textContent = 'Aparece aqui, ao vivo, enquanto você grava';
           }
         } else if (r.st === 'live') {
-          rcmPlayer('live', { t: t, amps: r.amps }, r.warn === 'silencio' ? '<span class="low">Sem som há 20 s</span>' : (Q.down || Q.auth || Q.erro) && pend ? sendTxt
+          rcPlayer('live', { t: t, amps: r.amps }, r.warn === 'silencio' ? '<span class="low">Sem som há 20 s</span>' : (Q.down || Q.auth ||
+            Q.erro) && pend ? sendTxt
                     : 'Transcrevendo ao vivo' + (pend ? '' : ' · tudo enviado'), [pauseB, stopB]);
           txLive('<span class="rc-dot"></span>Ao vivo · ' + rrSummary(r));
         } else if (r.st === 'paused' || r.st === 'interrupted') {
-          var res2 = r.st === 'interrupted' ? rcBtn('rc-go', RI.mic + '<span>Continuar gravando</span>', 'Continuar gravando', function () { r.consent = true; rrStart(r); }) : resumeB;
+          var res2 = r.st === 'interrupted' ? rcBtn('rc-go', RI.mic + '<span>Continuar gravando</span>', 'Continuar gravando',
+            function () { r.consent = true; rrStart(r); }) : resumeB;
           if (r.warn === 'micoff') res2.disabled = false;
-          rcmPlayer('paused', { t: t, amps: r.amps, chip: r.st === 'interrupted' ? 'Interrompida' : 'Pausada' },
-                    r.warn === 'micoff' ? 'Microfone desconectado' : pend ? sendTxt : 'Continue quando quiser', r.st === 'interrupted' ? [res2] : [res2, stopB]);
+          rcPlayer('paused', { t: t, amps: r.amps, chip: r.st === 'interrupted' ? 'Interrompida' : 'Pausada' },
+                    r.warn === 'micoff' ? 'Microfone desconectado' : pend ? sendTxt : 'Continue quando quiser', r.st === 'interrupted' ? [res2] :
+                      [res2, stopB]);
           txLive((r.st === 'interrupted' ? 'Interrompida · ' : 'Pausada · ') + rrSummary(r));
           if (r.st === 'interrupted') {
             var when = r.stoppedAt ? hm(new Date(r.stoppedAt)) : '';
-            rcmAlert('info', 'info', '<b>A gravação foi interrompida' + (when ? ' às ' + when : '') + '.</b> ' + mmss(r.samples / SR16) + ' já gravados' +
+            rcAlert('info', 'info', '<b>A gravação foi interrompida' + (when ? ' às ' + when : '') + '.</b> ' + mmss(r.samples / SR16) + ' já gravados' +
               (pend ? ', ' + pend + (pend === 1 ? ' trecho deste computador sendo enviado' : ' trechos deste computador sendo enviados') : '') +
               '. Continue gravando ou gere a evolução com o que já foi transcrito.', [['Gerar evolução agora']]);
             $('rcAlert').querySelector('button').addEventListener('click', function () { rrEnd(r); });
           }
         } else if (r.st === 'ending') {
           var w8 = rcBtn('rc-go', '<span>Enviando…</span>', 'Enviando os últimos trechos', function () {}); w8.disabled = true;
-          rcmPlayer('paused', { t: t, amps: r.amps, chip: 'Encerrada' }, pend ? sendTxt : 'Tudo enviado', [w8]);
+          rcPlayer('paused', { t: t, amps: r.amps, chip: 'Encerrada' }, pend ? sendTxt : 'Tudo enviado', [w8]);
           txLive('Encerrada · ' + rrSummary(r));
         } else if (r.st === 'gen') {
           var g8 = rcBtn('rc-go', '<span>Gerando…</span>', 'Gerando a evolução', function () {}); g8.disabled = true;
-          rcmPlayer('gen', { chip: 'Gerando evolução', t: t }, 'Leva uns 10 segundos', [g8]);
+          rcPlayer('gen', { chip: 'Gerando evolução', t: t }, 'Leva uns 10 segundos', [g8]);
           var st8 = $('rcSteps'); st8.innerHTML = ''; st8.hidden = false;
           var conf = r.genStep === 'conferindo';
           [['rc-done', 'Transcrição completa', rrSummary(r)], [conf ? 'rc-done' : 'rc-now', 'Escrevendo a evolução' + (mode === 'soap' ? ' em SOAP' : ''), ''],
            [conf ? 'rc-now' : 'rc-wait', 'Conferindo doses, alergias e números', '']].forEach(function (x) {
-            var row = el('div', 'rc-step ' + x[0]); row.appendChild(el('i')); row.appendChild(el('span', null, x[1])); if (x[2]) row.appendChild(el('small', null, x[2])); st8.appendChild(row); });
+            var row = el('div', 'rc-step ' + x[0]); row.appendChild(el('i')); row.appendChild(el('span', null, x[1]));
+              if (x[2]) row.appendChild(el('small', null, x[2])); st8.appendChild(row); });
           S.textContent = rrSummary(r);
         } else if (r.st === 'fail') {
           var ag = rcBtn('rc-go', '<span>Gerar de novo</span>', 'Gerar a evolução de novo', function () { rrGenerate(r); });
-          rcmPlayer('idle', { chip: 'Gravação', t: t }, 'Transcrição guardada', [ag]);
+          rcPlayer('idle', { chip: 'Gravação', t: t }, 'Transcrição guardada', [ag]);
           txLive(rrSummary(r));
-          rcmAlert('bad', 'err', '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');
+          rcAlert('bad', 'err', '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');
         } else if (r.st === 'done' || r.st === 'saved') {
           var box = $('prRec'); box.innerHTML = ''; box.hidden = false;
           var sm = el('div', 'rc-sum'); sm.innerHTML = RI.mic; var tt = el('div', 't');
-          tt.appendChild(el('b', null, 'Consulta gravada · ' + t)); tt.appendChild(el('small', null, 'O áudio foi descartado; a transcrição fica guardada com a evolução.'));
+          tt.appendChild(el('b', null, 'Consulta gravada · ' + t)); tt.appendChild(el('small', null,
+            'O áudio foi descartado; a transcrição fica guardada com a evolução.'));
           sm.appendChild(tt);
-          if (!lk) { var more = el('button', 'pr-ghost', 'Gravar mais um trecho'); more.type = 'button'; more.addEventListener('click', function () { rrMore(r); }); sm.appendChild(more); }
+          if (!lk) { var more = el('button', 'pr-ghost', 'Gravar mais um trecho'); more.type = 'button'; more.addEventListener('click',
+            function () { rrMore(r); }); sm.appendChild(more); }
           box.appendChild(sm);
           txLive(rrSummary(r));
           if (r.st === 'done' && !lk) {
             $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise antes de finalizar.' +
-              (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') : 'A evolução gerada pela gravação não está no texto.';
+              (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') :
+                'A evolução gerada pela gravação não está no texto.';
             $('rcNoteBtn').textContent = r.applied ? 'Desfazer' : 'Preencher a evolução'; $('rcNote').hidden = false;
             $('rcNoteBtn').hidden = !!(r.applied && !r.undo);           // revisão noutra sessão: o texto anterior já não existe
             rrReview(r);
           }
         }
+        rrAlert(r, pend, lk);
+      }
+      // o aviso do cartão (um de cada vez, do mais grave): microfone, silêncio, gravação longa, armazenamento, trechos fora
+      // da evolução, servidor, sessão, internet
+      function rrAlert(r, pend, lk) {
         if (r.warn === 'micoff') {
-          rcmAlert('bad', 'micoff', '<b>' + (r.err === 'NotFoundError' || r.err === 'NotAllowedError' ? 'O microfone não está disponível' : 'O microfone foi desconectado') +
+          rcAlert('bad', 'micoff', '<b>' + (r.err === 'NotFoundError' || r.err === 'NotAllowedError' ? 'O microfone não está disponível' :
+            'O microfone foi desconectado') +
             ' e a gravação foi pausada.</b> O que já foi gravado está salvo.', [['Escolher microfone', 1]]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); });
-        } else if (r.warn === 'silencio' && r.st === 'live') { rcmAlert('warn', 'warn', '<b>Não estamos ouvindo nada há 20 segundos.</b> Confira se o microfone certo está ligado e perto de vocês.', [['Trocar microfone']]);
+        } else if (r.warn === 'silencio' && r.st === 'live') { rcAlert('warn', 'warn',
+          '<b>Não estamos ouvindo nada há 20 segundos.</b> Confira se o microfone certo está ligado e perto de vocês.', [['Trocar microfone']]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); }); }
-        else if (r.warn === 'longa' && r.st === 'live') rcmAlert('warn', 'warn', '<b>A gravação passou de 80 minutos.</b> Ela para sozinha aos 90 e gera a evolução com o que foi gravado.');
+        else if (r.warn === 'longa' && r.st === 'live') rcAlert('warn', 'warn',
+          '<b>A gravação passou de 80 minutos.</b> Ela para sozinha aos 90 e gera a evolução com o que foi gravado.');
         else if (RR.mem.length && ['live', 'paused', 'ending', 'interrupted'].indexOf(r.st) >= 0)
-          rcmAlert('bad', 'err', '<b>Este navegador não está conseguindo guardar a gravação no computador.</b> Os trechos estão só na memória ' +
+          rcAlert('bad', 'err', '<b>Este navegador não está conseguindo guardar a gravação no computador.</b> Os trechos estão só na memória ' +
             'e são enviados direto: não feche esta aba até aparecer "tudo enviado".');
         else if (r.st === 'done' && rrFaltam(r).length) {
           var fl = rrFaltam(r), prontos = fl.every(function (x) { return x.st === 'ok'; });
-          rcmAlert('bad', 'err', '<b>' + fl.length + (fl.length === 1 ? ' trecho da gravação não entrou' : ' trechos da gravação não entraram') +
+          rcAlert('bad', 'err', '<b>' + fl.length + (fl.length === 1 ? ' trecho da gravação não entrou' : ' trechos da gravação não entraram') +
             ' na evolução</b> (' + fl.map(function (x) { return mmss(x.at); }).join(', ') + '). ' +
             (prontos ? (fl.length === 1 ? 'Ele já foi transcrito' : 'Eles já foram transcritos') + ': gere de novo para incluir.'
                      : 'Confira se falta algo na evolução.'), prontos && !lk ? [['Gerar de novo']] : null);
@@ -5782,23 +5715,26 @@
         }
         else if (Q.erro && pend && ['live', 'paused', 'ending', 'interrupted'].indexOf(r.st) >= 0) {
           var ne = Q.erro;
-          rcmAlert('warn', 'warn', '<b>O servidor não conseguiu transcrever ' + (ne === 1 ? '1 trecho' : ne + ' trechos') + ' agora.</b> ' +
+          rcAlert('warn', 'warn', '<b>O servidor não conseguiu transcrever ' + (ne === 1 ? '1 trecho' : ne + ' trechos') + ' agora.</b> ' +
             (ne === 1 ? 'Ele está guardado' : 'Eles estão guardados') + ' neste computador e ' + (ne === 1 ? 'é enviado' : 'são enviados') +
             ' de novo sozinho' + (ne === 1 ? '' : 's') + '.', r.st === 'ending' ? [['Gerar com o que já foi transcrito']] : null);
           if (r.st === 'ending') $('rcAlert').querySelector('button').addEventListener('click', function () { rrGenerate(r); });
         }
         else if (Q.auth && pend && ['live', 'paused', 'ending', 'interrupted'].indexOf(r.st) >= 0)
-          rcmAlert('bad', 'err', '<b>Sua sessão expirou.</b> ' + pend + (pend === 1 ? ' trecho está guardado' : ' trechos estão guardados') +
+          rcAlert('bad', 'err', '<b>Sua sessão expirou.</b> ' + pend + (pend === 1 ? ' trecho está guardado' : ' trechos estão guardados') +
             ' neste computador e ' + (pend === 1 ? 'é enviado' : 'são enviados') + ' assim que você entrar de novo. Não feche esta aba.');
         else if ((Q.down || !navigator.onLine) && pend && ['live', 'paused', 'ending', 'interrupted'].indexOf(r.st) >= 0)
-          rcmAlert('info', 'off', '<b>Sem internet' + (r.st === 'live' ? '. A gravação continua.' : '.') + '</b> ' + pend + (pend === 1 ? ' trecho está guardado' : ' trechos estão guardados') +
-            ' neste computador e ' + (pend === 1 ? 'é enviado' : 'são enviados') + ' assim que a conexão voltar' + (r.st === 'ending' ? '; a evolução é gerada em seguida.' : '.'));
+          rcAlert('info', 'off', '<b>Sem internet' + (r.st === 'live' ? '. A gravação continua.' : '.') + '</b> ' + pend + (pend === 1 ?
+            ' trecho está guardado' : ' trechos estão guardados') +
+            ' neste computador e ' + (pend === 1 ? 'é enviado' : 'são enviados') + ' assim que a conexão voltar' + (r.st === 'ending' ?
+              '; a evolução é gerada em seguida.' : '.'));
       }
       // chamado pelo recRender: uma gravação por consulta; trocar de consulta gravando pausa a anterior
       function rrShow() {
         var r = rrCur();
         if (RR.live && RR.live !== r && RR.live.st === 'live') rrPause(RR.live);
-        if (!r) { ['prRec', 'gcTrans', 'rcTx', 'rcConsent', 'rcAlert', 'rcSteps', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; }); return; }
+        if (!r) { ['prRec', 'gcTrans', 'rcTx', 'rcConsent', 'rcAlert', 'rcSteps', 'rcNote', 'rcReview',
+          'rcFinal'].forEach(function (id) { $(id).hidden = true; }); return; }
         if (locked() && r.st === 'live') rrPause(r);
         if (r.pending && ready && !locked()) { r.pending = false; rrApply(r); }
         rrLoad(r); rrRender(r);

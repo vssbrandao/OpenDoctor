@@ -1,0 +1,35 @@
+# Marcas cujo nome não diz o princípio ativo ("Dorflex" leva dipirona): marca<TAB>princípios ativos separados por "; ".
+# Usado no aviso de alergia (scribe.allergy_hits). Conferido na bula de cada uma.
+dorflex	dipirona; orfenadrina
+neosaldina	dipirona; isometepteno
+lisador	dipirona; prometazina
+buscopan composto	dipirona; butilescopolamina
+anador	dipirona
+magnopyrol	dipirona
+benegrip	dipirona; clorfeniramina
+torsilax	diclofenaco; carisoprodol; paracetamol
+tandrilax	diclofenaco; carisoprodol; paracetamol
+cataflam	diclofenaco
+voltaren	diclofenaco
+profenid	cetoprofeno
+nisulid	nimesulida
+advil	ibuprofeno
+alivium	ibuprofeno
+buscofem	ibuprofeno
+flanax	naproxeno
+arcoxia	etoricoxibe
+celebra	celecoxibe
+toragesic	cetorolaco
+aspirina	aas
+somalgin	aas
+ecasil	aas
+doril	aas
+melhoral	aas
+engov	aas
+amoxil	amoxicilina
+clavulin	amoxicilina; clavulanato
+benzetacil	benzilpenicilina
+bactrim	sulfametoxazol; trimetoprima
+keflex	cefalexina
+rocefin	ceftriaxona
+zinnat	cefuroxima

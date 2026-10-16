@@ -1,6 +1,7 @@
 """Avaliação da gravação: o gabarito de cada consulta fictícia é coerente com a própria conversa — uma resposta
 perfeita (transcrição = conversa) passa em todos os critérios e não levanta aviso grave. Pega gabarito com
 número que ninguém falou, remédio com nome diferente da fala, e conferências que acusam o que está certo."""
+import os
 import pytest
 
 from app import scribe as s
@@ -53,22 +54,6 @@ def test_resposta_perfeita_passa(caso):
     assert (sc["vit_certo"], sc["cid_certo"], sc["fatos_ok"]) == (sc["vit_total"], sc["cid_total"], sc["fatos_total"]), sc["detalhe"]
 
 
-def test_cortes_nao_perdem_amostra_e_silencio_nao_vai_para_transcricao():
-    import numpy as np
-    rng = np.random.default_rng(1)
-    fala = lambda sec: (np.sin(np.arange(int(e.SR * sec)) / 7) * 0.3).astype(np.float32)
-    ruido = lambda sec: rng.normal(0, 0.004, int(e.SR * sec)).astype(np.float32)
-    a = np.concatenate([fala(12), ruido(1), fala(9), ruido(40), fala(20)])
-    cs = e.cuts(a)
-    assert cs[0][0] == 0 and cs[-1][1] == len(a) and all(cs[i][1] == cs[i + 1][0] for i in range(len(cs) - 1))
-    assert all((y - x) / e.SR <= 30 for x, y in cs)
-    floor = e.noise_floor(a)
-    ratios = [e.speech_ratio(a[x:y], floor) for x, y in cs]
-    assert any(r < 0.02 for r in ratios) and ratios[0] > 0.5            # silêncio puro sai; fala contínua fica
-    assert e.speech_ratio(fala(5)) > 0.5                                 # mesmo sem piso da gravação
-    assert e.speech_ratio(ruido(20) * 10) > 0.02                         # ruído acima do teto: na dúvida, transcreve
-
-
 def test_erro_de_palavra_compara_numeros_por_extenso():
     assert e.wer("A pressão está 128 por 82.", "a pressão está cento e vinte e oito por oitenta e dois") == 0
 
@@ -110,11 +95,15 @@ def test_cortes_iguais_aos_da_pagina():
     assert all((y - x) / e.SR <= 30.0001 for x, y, _ in cs) and all((y - x) / e.SR >= 14.9 for x, y, _ in cs[:-1])   # 150 blocos, menos o silencioso
     assert abs(cs[0][1] / e.SR - 18.2) < 0.15                           # 18 s de fala + 2 blocos de pausa
     assert any(m for _, _, m in cs) and not cs[0][2]                     # o trecho só de pausa é silêncio; o primeiro não
-    e.FONTE["cortes"] = "antigo"
-    try:
-        assert all(len(t) == 3 for t in e.trechos(a)[0]) and e.trechos(a)[1] is False
-    finally:
-        e.FONTE["cortes"] = "navegador"
+
+
+def test_cortes_da_avaliacao_usam_os_numeros_da_pagina():
+    """A avaliação mede o que a página faz: os números do corte (SEG em web/opendoctor-agenda.html) são os mesmos."""
+    import re
+    html = open(os.path.join(e.config.ROOT, "web", "opendoctor-agenda.html"), encoding="utf-8").read()
+    seg = re.search(r"var SEG = \{([^}]*)\}", html).group(1)
+    pagina = {k: float(v) for k, v in re.findall(r"(\w+):\s*([\d.]+)(?=\s*[,}]|\s*$)", seg)}
+    assert {k: pagina.get(k) for k in e.CORTE} == {k: float(v) for k, v in e.CORTE.items()}
 
 
 def test_vazamento_confere_o_nome_inteiro_e_apelidos():

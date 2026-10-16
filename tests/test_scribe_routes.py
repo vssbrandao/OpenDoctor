@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app import auth, config, db, scribe, server, stt
+from tests.fake_gravacao import FakeGravacao
 
 UID = "00000000-0000-0000-0000-0000000000aa"
 REC = "6dff997e-a076-444e-9db4-403c512c010c"
@@ -22,63 +23,22 @@ def wav(seconds, rate=16000, channels=1):
             + b"data" + struct.pack("<I", len(data)) + data)
 
 
-class FakeDB:
+class FakeDB(FakeGravacao):
+    """O banco da gravação em memória (tests/fake_gravacao.py, o mesmo do preview) + o resto que as rotas leem."""
     def __init__(self):
-        self.recs, self.segs, self.log, self.today, self.linked = {}, {}, [], 0.0, []
+        super().__init__()
+        self.log, self.today = [], 0.0
 
     def install(self, mp):
-        for name in ("get_patient", "rec_open", "rec_segment", "rec_prev_text", "rec_add_segment", "rec_seconds_today",
-                     "rec_list", "rec_generated", "rec_link_note", "rec_delete", "recent_notes", "list_notes", "log_access",
-                     "last_note_content"):
+        super().install(mp.setattr)
+        for name in ("get_patient", "rec_seconds_today", "recent_notes", "list_notes", "log_access", "last_note_content"):
             mp.setattr(db, name, getattr(self, name))
 
     def get_patient(self, uid, pid):
         return dict(PAC) if uid == UID and pid == PAC["id"] else None
 
-    def rec_open(self, uid, pid, rid, eid=None, nid=None, consent=None):
-        r = self.recs.setdefault(rid, {"uid": uid, "pid": pid, "event_id": eid, "note_id": nid, "consent_at": consent,
-                                       "status": "gravando", "seconds": 0, "scribe": None})
-        return r["uid"] == uid and r["pid"] == pid
-
-    def rec_segment(self, uid, rid, seq):
-        s = self.segs.get((rid, seq))
-        return {"text": s["text"], "duvidas": s["duvidas"]} if s and self.recs[rid]["uid"] == uid else None
-
-    def rec_prev_text(self, uid, rid, seq):
-        prev = [s for (r, q), s in sorted(self.segs.items()) if r == rid and q < seq]
-        return prev[-1]["text"] if prev else ""
-
-    def rec_add_segment(self, uid, rid, seq, at, dur, text, duvidas):
-        self.segs.setdefault((rid, seq), {"seq": seq, "at": at, "dur": dur, "text": text, "duvidas": list(duvidas)})
-        self.recs[rid]["seconds"] = max(self.recs[rid]["seconds"], at + dur)
-
-    def rec_seconds_today(self, uid):
+    def rec_seconds_today(self, uid):              # o teto diário é testado mexendo direto neste número
         return self.today
-
-    def rec_list(self, uid, pid, eid=None, nid=None, ids=(), orphans=False):
-        out = []
-        for rid, r in self.recs.items():
-            if r["uid"] == uid and r["pid"] == pid and ((eid and r["event_id"] == eid) or (nid and r["note_id"] == nid) or rid in ids
-                                                       or (orphans and not r["event_id"] and not r["note_id"])):
-                segs = [s for (q, _), s in sorted(self.segs.items()) if q == rid]
-                out.append({"rec_id": rid, "status": r["status"], "consent_at": r["consent_at"], "seconds": r["seconds"],
-                            "updated_at": "2026-10-15T10:00:00+00:00", "event_id": r["event_id"], "note_id": r["note_id"],
-                            "scribe": r.get("scribe"), "segments": segs})
-        return out
-
-    def rec_generated(self, uid, rids, meta, nid=None):
-        for rid in rids:
-            self.recs[rid].update(status="gerada", scribe=meta)
-
-    def rec_link_note(self, uid, pid, rids, nid):
-        self.linked.append((tuple(rids), nid))
-
-    def rec_delete(self, uid, rid):
-        r = self.recs.get(rid)
-        if not r or r["uid"] != uid:
-            return None
-        self.recs.pop(rid)
-        return r["pid"]
 
     def recent_notes(self, uid, limit=30):
         return [{"content": "S: HAS controlada. PA 130x80. Mantido.", "data": {"mode": "soap"}}]

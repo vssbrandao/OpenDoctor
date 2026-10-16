@@ -1,0 +1,8 @@
+# Famílias de alergia: o texto da alergia no cadastro (expressão regular, sem acento, minúsculas)<TAB>remédios da
+# família, separados por "; ". Alergia a "penicilina" avisa também amoxicilina, ampicilina… (scribe.allergy_hits).
+penicilin|betalact|amoxicil	penicilina; amoxicilina; ampicilina; benzilpenicilina; benzetacil; oxacilina; piperacilina; amoxil; clavulin
+sulfa(?!to)|sulfonamid|bactrim	sulfametoxazol; sulfadiazina; sulfassalazina; sulfadoxina; bactrim
+dipiron|metamizol|novalgina	dipirona; metamizol; novalgina; anador
+\baines?\b|anti.?inflamat	ibuprofeno; diclofenaco; naproxeno; cetoprofeno; nimesulida; meloxicam; piroxicam; tenoxicam; indometacina; celecoxibe; etoricoxibe; cetorolaco; aceclofenaco; aas; acido acetilsalicilico
+\baas\b|acido acetilsalicilico|aspirina	aas; acido acetilsalicilico; aspirina
+cefalosporin|cefalexin|ceftriax	cefalexina; ceftriaxona; cefuroxima; cefazolina; cefadroxila

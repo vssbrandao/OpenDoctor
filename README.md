@@ -28,6 +28,12 @@ FastAPI serve a página: `uvicorn app.server:app --port 8000` → http://127.0.0
 
 Testes: `python -m pytest tests/ -q`  ·  Eval: `python -m app.eval`  ·  Gate: `python -m app.eval --check`
 
+### Gravação da consulta (prontuário)
+Grava a consulta no navegador, transcreve e escreve um rascunho da evolução para o médico revisar. Liga só para
+as contas em `SCRIBE_EMAILS` / `SCRIBE_ALL` (`SCRIBE_OFF=1` desliga). Como funciona, formatos, testes, avaliação e
+decisões: [`docs/gravacao.md`](docs/gravacao.md). Privacidade: [`docs/ripd-gravacao.md`](docs/ripd-gravacao.md).
+Histórico da avaliação: [`docs/eval-gravacao.md`](docs/eval-gravacao.md).
+
 ### Secrets do CI (para o gate de eval rodar)
 Em GitHub → Settings → Secrets and variables → Actions, adicione:
 - `OPENAI_API_KEY`

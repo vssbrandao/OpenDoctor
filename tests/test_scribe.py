@@ -1,5 +1,7 @@
 """Gravação → evolução: máscara, leitor de números, identidade de remédio, alergia, conferências e limpeza da
 transcrição (nenhuma chamada à OpenAI)."""
+import os
+
 from app import scribe as s
 from app import stt
 
@@ -361,3 +363,24 @@ def test_grafia_internacional_e_marcas_brasileiras():
     for n in ("Losartan", "amlodipine", "omeprazole", "Torsilax", "Neosoro", "Apracur", "Benegrip"):
         assert s.drug_lookup(n) == ("ok", None), n
     assert s.drug_lookup("omeprasol") == ("parecido", "omeprazol")
+
+
+# ===== o que precisa andar junto =====
+def test_todo_ponto_para_conferir_tem_rotulo_na_tela():
+    """O tipo de cada ponto (scribe.NIVEL) aparece na revisão com um rótulo (FLAGTXT da página), nunca o nome interno."""
+    import re
+    html = open(os.path.join(os.path.dirname(s.__file__), "..", "web", "opendoctor-agenda.html"), encoding="utf-8").read()
+    rotulos = set(re.findall(r"(\w+):\s*'", re.search(r"var FLAGTXT = \{(.*?)\};", html, re.S).group(1)))
+    assert set(s.NIVEL) <= rotulos, sorted(set(s.NIVEL) - rotulos)
+
+
+# versão → impressão digital do texto do prompt (app/data/escriba_prompt.txt). A versão vai em cada evolução gerada
+# (rastreio): texto novo com versão velha confundiria a auditoria e a avaliação.
+PROMPTS = {"2026-10-15.7": "1b866f523f01cb24"}
+
+
+def test_mudou_o_prompt_sobe_a_versao():
+    import hashlib
+    h = hashlib.sha256(s.SYSTEM.encode()).hexdigest()[:16]
+    assert PROMPTS.get(s.PROMPT_VERSION) == h, (
+        f"o texto do prompt mudou ({h}): suba scribe.PROMPT_VERSION e registre a versão nova em PROMPTS")

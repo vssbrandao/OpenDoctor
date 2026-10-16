@@ -1,0 +1,26 @@
+# Termos de exame físico que o transcritor costuma errar ("abaulado" → "abalado"). Vão como palavras-chave da
+# transcrição só com SCRIBE_KW_EXAME=1 (desligado: a marcação de dúvida piora, ver app/config.py).
+abaulado
+hiperemiado
+otoscopia
+membrana timpânica
+crepitações
+estertores
+sibilos
+roncos
+murmúrio vesicular
+bulhas rítmicas
+sopro sistólico
+cacifo
+turgência jugular
+hepatomegalia
+Blumberg
+Giordano
+punho-percussão
+Lasègue
+linfonodomegalia
+orofaringe
+exsudato
+monofilamento
+glicemia capilar
+hemoglobina glicada

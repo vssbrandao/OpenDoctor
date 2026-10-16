@@ -1280,19 +1280,26 @@ def _note_data(v):
     cid = v.get("cid") if isinstance(v.get("cid"), list) else []
     out["cid"] = [{"code": str(c.get("code") or "")[:10], "desc": str(c.get("desc") or "")[:200]}
                   for c in cid[:20] if isinstance(c, dict) and (c.get("code") or c.get("desc"))]
-    sc = v.get("scribe") if isinstance(v.get("scribe"), dict) else None
-    if sc:                                              # evolução gerada pela gravação: rastreio, sem texto
-        pts = sc.get("pontos") if isinstance(sc.get("pontos"), dict) else {}
-        out["scribe"] = {"rec_ids": [str(x).lower() for x in (sc.get("rec_ids") or [])[:20] if _UUID.match(str(x).lower())],
-                         "prompt": str(sc.get("prompt") or "")[:40], "model": str(sc.get("model") or "")[:40],
-                         "consent_at": _iso_or_none(sc.get("consent_at")), "generated_at": _iso_or_none(sc.get("generated_at")),
-                         "pontos": {k: pts[k] for k in ("alto", "medio", "info") if isinstance(pts.get(k), int) and 0 <= pts[k] < 1000},
-                         "segundos": sc["segundos"] if isinstance(sc.get("segundos"), int) and 0 <= sc["segundos"] <= 6 * 3600 else 0,
-                         "conferidos": sc["conferidos"] if isinstance(sc.get("conferidos"), int) and 0 <= sc["conferidos"] < 1000 else 0,
-                         "gen_s": sc["gen_s"] if isinstance(sc.get("gen_s"), int) and not isinstance(sc["gen_s"], bool) and 0 <= sc["gen_s"] <= 3600 else 0,
-                         "conf_idx": sorted({i for i in (sc.get("conf_idx") or [])[:300]
-                                             if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < 1000})}
+    if isinstance(v.get("scribe"), dict):              # evolução gerada pela gravação: rastreio, sem texto
+        out["scribe"] = _scribe_rastreio(v["scribe"])
     return out if len(json.dumps(out)) <= MAX_DATA_CHARS else None
+
+
+def _scribe_rastreio(sc):
+    """O rastreio da evolução gerada pela gravação (data.scribe e recordings.scribe), sem texto. A ÚNICA definição dos
+    campos: o servidor monta com ela ao gerar, e ela filtra o que a página manda ao salvar (a página só acrescenta
+    conferidos e conf_idx — os pontos que o médico marcou)."""
+    def inteiro(k, top):
+        x = sc.get(k)
+        return x if isinstance(x, int) and not isinstance(x, bool) and 0 <= x <= top else 0
+    pts = sc.get("pontos") if isinstance(sc.get("pontos"), dict) else {}
+    return {"rec_ids": [str(x).lower() for x in (sc.get("rec_ids") or [])[:20] if _UUID.match(str(x).lower())],
+            "prompt": str(sc.get("prompt") or "")[:40], "model": str(sc.get("model") or "")[:40],
+            "consent_at": _iso_or_none(sc.get("consent_at")), "generated_at": _iso_or_none(sc.get("generated_at")),
+            "pontos": {k: pts[k] for k in ("alto", "medio", "info") if isinstance(pts.get(k), int) and 0 <= pts[k] < 1000},
+            "segundos": inteiro("segundos", 6 * 3600), "conferidos": inteiro("conferidos", 999),
+            "gen_s": inteiro("gen_s", 3600),                  # do "Encerrar" à evolução pronta (critério 5)
+            "conf_idx": sorted({i for i in (sc.get("conf_idx") or [])[:300] if isinstance(i, int) and not isinstance(i, bool) and 0 <= i < 1000})}
 
 
 def _patient_fields(payload, partial=True):
@@ -1710,7 +1717,11 @@ async def prontuario_transcribe(request: Request):
         return JSONResponse({"error": "autorização do paciente obrigatória"}, status_code=400)
     # o servidor tem um processo só: o banco (no Canadá) roda fora do laço de eventos, para um trecho não segurar os outros
     seq = int(seq)
-    p, done = await run_in_threadpool(lambda: (lambda pt: (pt, pt and db.rec_segment(u["id"], rid, seq)))(db.get_patient(u["id"], int(pid))))
+
+    def paciente_e_trecho():                 # o paciente do médico e, se este trecho já subiu, o texto dele
+        pt = db.get_patient(u["id"], int(pid))
+        return pt, pt and db.rec_segment(u["id"], rid, seq)
+    p, done = await run_in_threadpool(paciente_e_trecho)
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     if done:
@@ -1862,15 +1873,16 @@ async def prontuario_scribe(request: Request):
         if not any(v.strip() for v in fields.values()):
             yield _line({"error": "a IA não devolveu uma evolução válida"})
             return
-        meta = {"rec_ids": [r["rec_id"] for r in recs], "prompt": scribe.PROMPT_VERSION, "model": config.OPENAI_SCRIBE_MODEL,
-                "segundos": int(sum(r["seconds"] or 0 for r in recs)),
-                "consent_at": recs[0]["consent_at"], "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")},
-                "gen_s": min(3600, espera + round(time.monotonic() - t0))}   # guardado: volta ao recarregar a página
+        meta = _scribe_rastreio({
+            "rec_ids": [r["rec_id"] for r in recs], "prompt": scribe.PROMPT_VERSION, "model": config.OPENAI_SCRIBE_MODEL,
+            "segundos": int(sum(r["seconds"] or 0 for r in recs)),
+            "consent_at": recs[0]["consent_at"], "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")},
+            "gen_s": min(3600, espera + round(time.monotonic() - t0))})       # guardado: volta ao recarregar a página
         result = dict(res, fields=fields)
 
         def save():
-            db.rec_generated(u["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table}), nid)
+            db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table}), nid)
             db.log_access(u["id"], "scribe", p["id"], nid)
         await run_in_threadpool(save)
         yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta})

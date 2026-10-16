@@ -29,6 +29,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from app import auth, config, db, scribe, server, stt  # noqa: E402
+from tests.fake_gravacao import EPOCA, FakeGravacao  # noqa: E402
 
 UID = "00000000-0000-0000-0000-000000000000"
 auth.current_user = lambda request: {"id": UID, "email": "teste@example.invalid", "name": "Dra. Teste", "sv": 0}
@@ -159,61 +160,12 @@ def _ctl_js():
     return Response(js, media_type="application/javascript")
 
 
-# ----- banco em memória para a gravação (mesmos contratos de app/db.py) -----
-REC, SEG, _LAST = {}, {}, {}
-
-
-def _rec_open(uid, pid, rid, eid=None, nid=None, consent=None):
-    if nid is not None and not (nid in NOTES and NOTES[nid]["pid"] == pid):
-        nid = None
-    r = REC.setdefault(rid, {"uid": uid, "pid": pid, "event_id": eid, "note_id": nid, "consent_at": consent or dt.datetime.now().isoformat(),
-                             "status": "gravando", "seconds": 0.0, "scribe": None, "created": time.time(),
-                             "updated_at": dt.datetime.now().astimezone().isoformat()})
-    if nid is not None and r["note_id"] is None and r["pid"] == pid:
-        r["note_id"] = nid
-    return r["uid"] == uid and r["pid"] == pid
-
-
-def _rec_add(uid, rid, seq, at, dur, text, duvidas):
-    if rid not in REC:                       # o /_preview/reset limpou no meio de um envio: descarta
-        return
-    if (rid, seq) not in SEG:
-        SEG[(rid, seq)] = dict({"seq": seq, "at": at, "dur": dur, "text": text, "duvidas": list(duvidas)}, **_LAST.pop("x", {}))
-    REC[rid].update(seconds=max(REC[rid]["seconds"], at + dur), status="gravando", updated_at=dt.datetime.now().astimezone().isoformat())
-
-
-def _rec_list(uid, pid, eid=None, nid=None, ids=(), orphans=False):
-    out = []
-    for rid, r in sorted(REC.items(), key=lambda kv: kv[1]["created"]):
-        if r["uid"] == uid and r["pid"] == pid and ((eid and r["event_id"] == eid) or (nid and r["note_id"] == nid) or rid in ids
-                                                   or (orphans and not r["event_id"] and not r["note_id"])):
-            segs = [{k: s[k] for k in ("seq", "at", "dur", "text", "duvidas")} for (q, _), s in sorted(SEG.items()) if q == rid]
-            out.append({"rec_id": rid, "status": r["status"], "consent_at": r["consent_at"], "seconds": r["seconds"],
-                        "updated_at": r["updated_at"], "event_id": r["event_id"], "note_id": r["note_id"], "scribe": r["scribe"],
-                        "segments": segs})
-    return out
-
-
-def _rec_generated(uid, rids, meta, nid=None):
-    for rid in rids:
-        if rid in REC:
-            REC[rid].update(status="gerada", scribe=meta)
-            if REC[rid]["note_id"] is None and nid in NOTES:
-                REC[rid]["note_id"] = nid
-
-
+# ----- banco em memória para a gravação: o mesmo dos testes das rotas (tests/fake_gravacao.py) -----
+_LAST = {}                                  # amostras e volume do último trecho transcrito (o teste confere que nada se perde)
+GRAV = FakeGravacao(nota_ok=lambda uid, pid, nid: nid in NOTES and NOTES[nid]["pid"] == pid,
+                    extra_trecho=lambda: _LAST.pop("x", {}))
+GRAV.install(setattr)
 db.get_patient = lambda uid, pid: dict(PATS[pid]) if pid in PATS else None
-db.rec_open = _rec_open
-db.rec_segment = lambda uid, rid, seq: ({"text": SEG[(rid, seq)]["text"], "duvidas": SEG[(rid, seq)]["duvidas"]} if (rid, seq) in SEG else None)
-db.rec_prev_text = lambda uid, rid, seq: next((s["text"] for (q, n), s in sorted(SEG.items(), reverse=True) if q == rid and n < seq), "")
-db.rec_add_segment = _rec_add
-db.rec_seconds_today = lambda uid: sum(s["dur"] for s in SEG.values())
-db.rec_list = _rec_list
-db.rec_generated = _rec_generated
-db.rec_link_note = lambda uid, pid, rids, nid: [REC[r].update(note_id=nid) for r in rids if r in REC and REC[r]["pid"] == pid]
-db.rec_link_orphans = lambda uid, pid, rids, nid: [REC[r].update(note_id=nid) for r in rids
-                                                   if r in REC and REC[r]["pid"] == pid and REC[r]["note_id"] is None]
-db.rec_delete = lambda uid, rid: (REC.pop(rid)["pid"] if rid in REC else None)
 db.recent_notes = lambda uid, limit=30: [{"content": n["content"], "data": n["data"]} for n in NOTES.values()][:limit]
 db.list_notes = lambda uid, pid, key: [_note_out(n) for n in NOTES.values() if n["pid"] == pid]
 db.last_note_content = lambda uid, pid, nid=None, eid=None: next(
@@ -247,7 +199,7 @@ async def _fake_stt(audio, mime="audio/wav", prompt="", keywords=None, model=Non
     await asyncio.sleep(SIM["lento"])
     n = (len(audio) - 44) // 2
     pcm = struct.unpack("<%dh" % n, audio[44:44 + 2 * n])
-    k = len(SEG) % len(FALAS)
+    k = len(GRAV.segs) % len(FALAS)
     _LAST["x"] = {"samples": n, "rms": round((sum(x * x for x in pcm[::4]) / max(1, len(pcm[::4]))) ** 0.5 / 32768, 4), "k": k}
     return {"text": FALAS[k][0], "raw": "", "usage": {}, "duvidas": FALAS[k][1], "confianca": 0.9}
 
@@ -281,6 +233,7 @@ scribe.ask_model = _fake_model
 class _Rede(BaseHTTPMiddleware):
     """'Internet caiu' só para as rotas da gravação (o preview roda no próprio computador)."""
     async def dispatch(self, request, call_next):
+        EPOCA.set(GRAV.epoca)            # pedido que começou antes de um /_preview/reset não grava nada depois dele
         if SIM["rede"] and request.url.path.startswith(("/prontuario/transcribe", "/prontuario/recordings", "/prontuario/scribe")):
             return JSONResponse({"error": "internet simulada fora"}, status_code=503)
         if request.url.path == "/prontuario/transcribe":            # para o teste: um trecho que o servidor sempre erra / recusa
@@ -315,15 +268,15 @@ def _sim(rede: str = "", ia: str = "", lento: str = "", erro_seq: str = None, re
 def _estado():
     """Para o teste: gravações (com paciente, consulta e trechos) e evoluções salvas."""
     return {"gravacoes": {rid: {"pid": r["pid"], "event_id": r["event_id"], "note_id": r["note_id"], "status": r["status"],
-                                "trechos": [{k: s.get(k) for k in ("seq", "at", "dur", "samples")} for (q, _), s in sorted(SEG.items()) if q == rid]}
-                          for rid, r in REC.items()},
+                                "trechos": [{k: s.get(k) for k in ("seq", "at", "dur", "samples")} for (q, _), s in sorted(GRAV.segs.items()) if q == rid]}
+                          for rid, r in GRAV.recs.items()},
             "evolucoes": {i: {"pid": n["pid"], "event_id": n["event_id"], "content": n["content"],
                               "scribe": (n["data"] or {}).get("scribe"), "timing": n.get("timing")} for i, n in NOTES.items()}}
 
 
 @mock.get("/_preview/reset")
 def _reset():
-    REC.clear(); SEG.clear(); NOTES.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
+    GRAV.reset(); NOTES.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
     return {"ok": True}
 
 

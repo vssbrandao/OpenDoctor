@@ -159,93 +159,53 @@ def wav_bytes(a):
     b = io.BytesIO(); _write_wav(b, a); return b.getvalue()
 
 
-def _frames(a, f=int(SR * 0.02)):
-    return np.sqrt(np.mean(a[: len(a) // f * f].reshape(-1, f).astype(np.float64) ** 2, axis=1)) if len(a) >= f else np.zeros(0)
-
-
-def noise_floor(a):
-    """Piso de ruído da gravação INTEIRA (no navegador: média móvel desde o começo)."""
-    rms = _frames(a)
-    return float(np.percentile(rms, 10)) if len(rms) else 0.0
-
-
-def speech_ratio(a, floor=None):
-    """Fração de quadros de 20 ms com voz. Trecho só de silêncio não vai para a transcrição: é aí que o modelo
-    inventa "Legendas pela comunidade Amara.org". O piso vem da gravação inteira (o piso do próprio trecho
-    faria fala contínua parecer silêncio) e o limiar tem teto: na dúvida, o trecho é transcrito."""
-    rms = _frames(a)
-    if not len(rms):
-        return 0.0
-    floor = float(np.percentile(rms, 10)) if floor is None else floor
-    return float(np.mean(rms > min(max(0.01, floor * 3), 0.03)))
-
-
 # ===== cortes =====
+# Os MESMOS números do SEG da página (web/opendoctor-agenda.html); tests/test_scribe_eval.py confere que são iguais.
+# Em blocos de 100 ms: trecho de 15 a 30 s; corta depois de 3 blocos de silêncio ou, aos 30 s, no mais baixo dos últimos
+# 20; piso de ruído = 10º percentil dos últimos 300 blocos; limiar = piso × 2,5, entre 0,004 e 0,03; trecho com menos
+# de 2 blocos acima do limiar é silêncio.
+CORTE = {"min": 150, "max": 300, "sil": 3, "janela": 20, "piso": 300, "thrMin": 0.004, "thrMul": 2.5, "thrMax": 0.03, "voz": 2}
+
+
 def cortes_navegador(a):
-    """Os MESMOS cortes da página (rrBlock/rrCut em web/opendoctor-agenda.html): blocos de 100 ms; piso = 10º
-    percentil do volume dos últimos 30 s (refeito a cada 10 blocos); limiar = piso × 2,5, entre 0,004 e 0,03;
-    depois de 15 s corta quando os 3 últimos blocos estão abaixo do limiar (o último fica para o trecho seguinte);
-    aos 30 s corta logo depois do bloco mais baixo dos últimos 20. Trecho com menos de 2 blocos acima do limiar é
-    silêncio (não vai para a transcrição). Devolve [(início, fim, silêncio)] em amostras; nenhuma se perde.
-    Diferença que fica: a página recebe o áudio já tratado pelo navegador (eco, ruído e ganho automático)."""
-    b = SR // 10
+    """Os cortes da página (rrBlock/rrCut): o piso é refeito a cada 10 blocos até juntar 30 s e, depois, a cada bloco
+    (como lá). Devolve [(início, fim, silêncio)] em amostras; nenhuma se perde. Diferença que fica: a página recebe o
+    áudio já tratado pelo navegador (eco, ruído e ganho automático)."""
+    C, b = CORTE, SR // 10
     n = len(a) // b
     rms = np.sqrt(np.mean(a[: n * b].reshape(n, b).astype(np.float64) ** 2, axis=1)) if n else np.zeros(0)
     out, start, cur, hist, floor = [], 0, [], [], 0.0
-    thr = lambda: min(max(0.004, floor * 2.5), 0.03)
+    thr = lambda: min(max(C["thrMin"], floor * C["thrMul"]), C["thrMax"])
 
     def cut(idx):
         nonlocal start, cur
         blocks, cur = cur[:idx], cur[idx:]
-        out.append((start, start + idx * b, sum(1 for v in blocks if v > thr()) < 2))
+        out.append((start, start + idx * b, sum(1 for v in blocks if v > thr()) < C["voz"]))
         start += idx * b
     for v in rms:
         cur.append(float(v)); hist.append(float(v))
-        if len(hist) > 300:
+        if len(hist) > C["piso"]:
             hist.pop(0)
         if len(hist) % 10 == 0:
             srt = sorted(hist); floor = srt[int(len(srt) * 0.1)]
-        if len(cur) >= 150:
-            if all(x < thr() for x in cur[-3:]):
+        if len(cur) >= C["min"]:
+            if all(x < thr() for x in cur[-C["sil"]:]):
                 cut(len(cur) - 1)
-            elif len(cur) >= 300:
-                w = cur[-20:]; cut(len(cur) - 20 + w.index(min(w)) + 1)
+            elif len(cur) >= C["max"]:
+                w = cur[-C["janela"]:]; cut(len(cur) - C["janela"] + w.index(min(w)) + 1)
     if start < len(a):                                  # o fim (ao encerrar, a página corta o que sobrou)
-        out.append((start, len(a), sum(1 for v in cur if v > thr()) < 2))
+        out.append((start, len(a), sum(1 for v in cur if v > thr()) < C["voz"]))
     return out
 
 
-def trechos(a):
-    """[(início, fim, silêncio)] e a marca para o cache: os cortes do navegador (padrão) ou os antigos (--cortes
-    antigo), para refazer a pontuação das rodadas de 15/10/2026 a partir do cache."""
-    if FONTE.get("cortes") == "antigo":
-        floor = noise_floor(a)
-        return [(s0, s1, speech_ratio(a[s0:s1], floor) < 0.02) for s0, s1 in cuts(a)], False
-    return cortes_navegador(a), True
+def _chave_trecho(caso, akey, i, modelo, prev, kwtag, s0, s1):
+    """Chave do cache de um trecho transcrito: o áudio, o corte, o modelo, o contexto e as palavras-chave."""
+    return f"{caso['id']}|{akey}|{i}|{modelo}|{prev[-300:]}{kwtag}|{s0}-{s1}"
 
 
-def cuts(a, min_s=15, max_s=30, frame_ms=20, sil_ms=250):
-    """Cortes ANTIGOS da avaliação (até 15/10/2026): entre 15 e 30 s no meio do primeiro silêncio (≥ 250 ms) depois
-    dos 15 s; aos 30 s, no quadro mais baixo dos últimos 2 s. Não são os da página: use cortes_navegador."""
-    f = int(SR * frame_ms / 1000)
-    rms = np.sqrt(np.convolve(a.astype(np.float64) ** 2, np.ones(f) / f, mode="same"))[::f]
-    thr = max(0.01, float(np.percentile(rms, 20)) * 1.8)
-    out, start, n = [], 0, len(a)
-    while n - start > max_s * SR:
-        lo, hi = start + min_s * SR, start + max_s * SR
-        fi, need, run, cut = lo // f, sil_ms // frame_ms, 0, None
-        while fi < hi // f:
-            run = run + 1 if rms[fi] < thr else 0
-            if run >= need:
-                cut = (fi - run // 2) * f
-                break
-            fi += 1
-        if cut is None:
-            seg = rms[(hi - 2 * SR) // f: hi // f]
-            cut = ((hi - 2 * SR) // f + int(np.argmin(seg))) * f
-        out.append((start, cut)); start = cut
-    out.append((start, n))
-    return out
+def _transcreve(a, s0, s1, prev, kw, modelo):
+    """O trecho como a produção manda: contexto = fim do trecho anterior, sem CPF, telefone e e-mail."""
+    return stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=scribe.mask_docs(prev), keywords=kw, model=modelo)
 
 
 # ===== custo de verdade (tokens que a OpenAI cobrou) e teto da rodada =====
@@ -339,14 +299,13 @@ def calibrate_doubt(cases, stt_model, limites=(0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.
         pac = caso.get("paciente") or {}
         kw, kwtag = palavras_chave(pac)
         akey, prev, segs = hashlib.sha1(a.tobytes()).hexdigest()[:16], "", []
-        cortes, nav = trechos(a)
-        for i, (s0, s1, mudo) in enumerate(cortes, 1):
+        for i, (s0, s1, mudo) in enumerate(cortes_navegador(a), 1):
             if mudo:
                 continue
             if SPENT["usd"] >= TETO["usd"]:
                 raise RuntimeError("teto de gasto atingido")
-            r, hit = _cache("sttw", f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}" + (f"|{s0}-{s1}" if nav else ""),
-                            lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
+            r, hit = _cache("sttw", _chave_trecho(caso, akey, i, stt_model, scribe.mask_docs(prev), kwtag, s0, s1),
+                            lambda: _transcreve(a, s0, s1, prev, kw, stt_model))
             if not hit:
                 _add_cost((s1 - s0) / SR / 60 * STT_MIN.get(stt_model, 0.006))
             segs.append(r); prev = r["text"] or prev
@@ -519,7 +478,7 @@ def palavras_chave(pac):
         kw += [x.strip() for x in re.split(r"[\n,;]+", pac.get("problemas", "")) if x.strip()]
         return kw, ""
     kw = scribe.keywords({"medications": pac.get("medicacoes", ""), "problems": pac.get("problemas", ""),
-                          "allergies": pac.get("alergias", "")}, exame=True if modo in ("exame", "app") else None)
+                          "allergies": pac.get("alergias", "")}, exame=True if modo == "exame" else None)
     return kw, "|kw:" + hashlib.sha1("|".join(kw).encode()).hexdigest()[:8]
 
 
@@ -546,13 +505,12 @@ def run_case(caso, stt_model, llm_model):
     segs, prev, t0 = [], "", time.time()
     akey = hashlib.sha1(a.tobytes()).hexdigest()[:16]
     silent = 0
-    cortes, nav = trechos(a)
-    for i, (s0, s1, mudo) in enumerate(cortes, 1):
+    for i, (s0, s1, mudo) in enumerate(cortes_navegador(a), 1):
         if mudo:                                       # só silêncio: não transcreve (nem cobra)
             silent += 1; segs.append({"seq": i, "at": s0 / SR, "text": ""}); continue
         kind = "sttw" if FONTE.get("duvida") else "stt"   # sttw: com a confiança por palavra (--calibrar-duvida)
-        r, hit = _cache(kind, f"{caso['id']}|{akey}|{i}|{stt_model}|{prev[-300:]}{kwtag}" + (f"|{s0}-{s1}" if nav else ""),
-                        lambda: stt.transcribe(wav_bytes(a[s0:s1]), "audio/wav", prompt=prev, keywords=kw, model=stt_model))
+        r, hit = _cache(kind, _chave_trecho(caso, akey, i, stt_model, scribe.mask_docs(prev), kwtag, s0, s1),
+                        lambda: _transcreve(a, s0, s1, prev, kw, stt_model))
         if FONTE.get("duvida"):                              # dúvidas refeitas com outro limite
             present = stt.present_words(r["text"])
             r = dict(r, duvidas=sorted({w for w, p in r.get("palavras") or [] if p < FONTE["duvida"] and w in present}))
@@ -620,15 +578,12 @@ def main():
                     help="transcreve guardando a confiança por palavra e mede o limite de dúvida (só transcrição)")
     ap.add_argument("--duvida", type=float, default=None,
                     help="limite de dúvida (usa as transcrições com confiança por palavra do --calibrar-duvida com o mesmo --kw)")
-    ap.add_argument("--kw", choices=("producao", "exame", "cadastro", "app"), default="producao",
+    ap.add_argument("--kw", choices=("producao", "exame", "cadastro"), default="producao",
                     help="palavras-chave da transcrição: as da produção (padrão), + exame físico, ou só do cadastro (antigas)")
-    ap.add_argument("--cortes", choices=("navegador", "antigo"), default="navegador",
-                    help="cortes dos trechos: os da página (padrão) ou os antigos (para refazer rodadas antigas do cache)")
     a = ap.parse_args()
     FONTE["voz"] = a.voz
     FONTE["kw"] = a.kw
     FONTE["duvida"] = a.duvida
-    FONTE["cortes"] = a.cortes
     if a.comparar:
         return compare()
     cases = load_cases([x.strip() for x in a.casos.split(",") if x.strip()])
@@ -683,6 +638,7 @@ def main():
             "nome_e_documentos_nao_vazaram": not any(r["nome_vazou"] or r["dado_vazou"] for r in rows),   # terceiros: só informativo
             "todos_os_casos_rodaram": not erros}
     resumo = {"data": datetime.date.today().isoformat(), "stt": a.stt, "modelo": a.modelo, "prompt": scribe.PROMPT_VERSION,
+              "kw": a.kw, "duvida": a.duvida,
               "voz": a.voz, "duvida_cobre_erros": round(tot("duvida_pega_erro") / max(1, tot("tok_errados")), 3),
               "duvida_precisao": round(tot("duvida_pega_erro") / max(1, tot("tok_duvidosos")), 3),
               "geracao_s_media": round(statistics.mean([r["t_gen"] for r in rows if r["t_gen"]]), 1) if any(r["t_gen"] for r in rows) else None,
@@ -693,8 +649,14 @@ def main():
               "geracao_s_max": round(max(gens), 1) if gens else None, "criterios": crit, "erros": erros,
               "gasto_usd_nesta_rodada": round(SPENT["usd"], 3)}
     os.makedirs(REL, exist_ok=True)
-    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}" + {"app": "-kw-app", "exame": "-kw-app", "cadastro": "-kw-cad"}.get(a.kw, "") \
-        + ("-cortes-antigos" if a.cortes == "antigo" else "") + (f"-d{a.duvida}" if a.duvida else "") + f"-p{scribe.PROMPT_VERSION.split('.')[-1]}"
+    name = f"{resumo['data']}-{a.voz}-{a.stt}-{a.modelo}" + {"exame": "-kw-exame", "cadastro": "-kw-cad"}.get(a.kw, "") \
+        + (f"-d{a.duvida}" if a.duvida else "") + f"-p{scribe.PROMPT_VERSION.split('.')[-1]}"
+    # repontuar do cache não apaga o que a rodada original gastou: o gasto acumula no mesmo relatório
+    try:
+        antes = json.load(open(os.path.join(REL, name + ".json"), encoding="utf-8"))["resumo"]
+        resumo["gasto_usd_acumulado"] = round(antes.get("gasto_usd_acumulado", antes.get("gasto_usd_nesta_rodada", 0)) + SPENT["usd"], 3)
+    except (OSError, ValueError, KeyError):
+        resumo["gasto_usd_acumulado"] = round(SPENT["usd"], 3)
     json.dump({"resumo": resumo, "casos": rows}, open(os.path.join(REL, name + ".json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=1)
     md = [f"# Avaliação da gravação — {resumo['data']} · {a.stt} + {a.modelo} · prompt {scribe.PROMPT_VERSION}", "",
@@ -708,26 +670,52 @@ def main():
         md += ["", "```", *[f"{k.upper()}: {v}" for k, v in r["texto"].items()], "```", ""]
     md += [f"- ERRO {e}" for e in erros]
     open(os.path.join(REL, name + ".md"), "w", encoding="utf-8").write("\n".join(md))
+    historico(resumo, name, a.kw, a.duvida)
     print(json.dumps(resumo, ensure_ascii=False, indent=1))
+
+
+HIST = os.path.join(config.ROOT, "docs", "eval-gravacao.md")
+_HIST_CAB = ("# Histórico da avaliação da gravação\n\nUma linha por rodada de `python -m app.scribe_eval` (31 consultas fictícias, voz "
+             "sintética). Gasto = o que a rodada pagou à OpenAI (repontuar do cache não paga). Relatórios em "
+             "`evals/scribe/relatorios/`.\n\n| Data | Transcritor | Evolução | Prompt | Palavras-chave | Dúvida | Critérios | "
+             "Remédio errado sem aviso / inventado / faltando | Fatos | Sinais | CID | Geração média/máx (s) | Gasto (US$) | Relatório |\n"
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+
+
+def historico(r, nome, kw="producao", duvida=None):
+    """Acrescenta a rodada ao histórico (docs/eval-gravacao.md), como o do assistente (docs/eval-history.md)."""
+    rm, c = r["remedios"], r["criterios"]
+    linha = (f"| {r['data']} | {r['stt']} | {r['modelo']} | {r['prompt']} | {kw} | {duvida or stt.DUVIDA} | "
+             f"{sum(bool(v) for v in c.values())}/{len(c)} | {rm['rem_sem_aviso']} / {rm['rem_inventado']} / {rm['rem_falta']} | "
+             f"{r['fatos']} | {r['sinais']} | {r['cid']} | {r.get('geracao_s_media')}/{r.get('geracao_s_max')} | "
+             f"{r.get('gasto_usd_nesta_rodada', 0):.3f} | {nome} |\n")
+    novo = not os.path.exists(HIST)
+    with open(HIST, "a", encoding="utf-8") as f:
+        f.write((_HIST_CAB if novo else "") + linha)
 
 
 def compare():
     """Tabela das rodadas do dia (uma por transcritor × modelo) em relatorios/comparacao-<data>.md."""
     day = datetime.date.today().isoformat()
-    rs = [json.load(open(os.path.join(REL, f), encoding="utf-8"))["resumo"] for f in sorted(os.listdir(REL))
+    rs = [dict(json.load(open(os.path.join(REL, f), encoding="utf-8"))["resumo"], arquivo=f[:-5]) for f in sorted(os.listdir(REL))
           if f.startswith(day) and f.endswith(".json")]
     rs = [r for r in rs if r.get("voz")]
+    for r in rs:                          # rodadas antigas não guardavam palavras-chave e limite no resumo: vêm do nome
+        m = re.search(r"-d([\d.]+)-", r["arquivo"])
+        r.setdefault("kw", "exame" if "-kw-app" in r["arquivo"] or "-kw-exame" in r["arquivo"] else "cadastro" if "-kw-cad" in r["arquivo"] else "producao")
+        r.setdefault("duvida", float(m.group(1)) if m else None)
     if not rs:
         sys.exit("nenhum relatório de hoje")
-    head = ("| Voz | Transcritor | Evolução | Prompt | Dose errada sem aviso | Remédio inventado | Remédio faltando | Fatos | Sinais | CID | "
-            "WER | Dúvida pega erro | Precisão da dúvida | Geração (média/máx s) | Critérios |")
-    lines = [f"# Comparação — {day}", "", head, "|" + "---|" * 15]
-    for r in sorted(rs, key=lambda r: (r["voz"], r["stt"], r["modelo"])):
+    head = ("| Voz | Transcritor | Evolução | Prompt | Palavras-chave | Dúvida | Dose errada sem aviso | Remédio inventado | "
+            "Remédio faltando | Fatos | Sinais | CID | WER | Dúvida pega erro | Precisão da dúvida | Geração (média/máx s) | Critérios | Relatório |")
+    lines = [f"# Comparação — {day}", "", head, "|" + "---|" * 18]
+    for r in sorted(rs, key=lambda r: (r["voz"], r["stt"], r["modelo"], r["prompt"], r["kw"], str(r["duvida"]))):
         rm = r["remedios"]; c = r["criterios"]
-        lines.append(f"| {r['voz']} | {r['stt']} | {r['modelo']} | {r['prompt']} | {rm['rem_sem_aviso']} | {rm['rem_inventado']} | {rm['rem_falta']} | "
+        lines.append(f"| {r['voz']} | {r['stt']} | {r['modelo']} | {r['prompt']} | {r['kw']} | {r['duvida'] or '—'} | "
+                     f"{rm['rem_sem_aviso']} | {rm['rem_inventado']} | {rm['rem_falta']} | "
                      f"{r['fatos']} | {r['sinais']} | {r['cid']} | {r['wer_medio']} | {r.get('duvida_cobre_erros')} | "
                      f"{r.get('duvida_precisao')} | {r.get('geracao_s_media')}/{r.get('geracao_s_max')} | "
-                     f"{sum(bool(v) for v in c.values())}/{len(c)} |")
+                     f"{sum(bool(v) for v in c.values())}/{len(c)} | {r['arquivo']} |")
     out = os.path.join(REL, f"comparacao-{day}.md")
     open(out, "w", encoding="utf-8").write("\n".join(lines) + "\n")
     print("\n".join(lines))
