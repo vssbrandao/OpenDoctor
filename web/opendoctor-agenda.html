@@ -153,22 +153,22 @@
     .gf-table.rx-table th,.gf-table.rx-table td{text-align:left;white-space:normal}
     .gf-table.rx-table td{height:auto;padding-top:10px;padding-bottom:10px;vertical-align:top}
     .gf-table.rx-table th:first-child,.gf-table.rx-table td:first-child{position:static;background:none}
-    .gf-table.rx-table td:first-child{font-weight:400}
     .gf-table.rx-table th,.gf-table.rx-table td{padding-left:12px;padding-right:12px}
     .gf-table.rx-table th:first-child,.gf-table.rx-table td:first-child{padding-left:0}
     .rx-table .c-nome{width:26%}.rx-table .c-dose{width:14%}.rx-table .c-pos{width:31%}.rx-table .c-qtd{width:22%}
-    .gf-table.rx-table th:last-child,.gf-table.rx-table td:last-child{width:28px;padding-left:0;padding-right:0}
-    .rx-in{display:block;width:100%;box-sizing:border-box;min-height:20px;padding:2px 0;border:0;border-bottom:1px solid transparent;border-radius:0;
-      background:none;resize:none;overflow:hidden;font:inherit;line-height:16px;color:#0A0A0A;outline:0}
-    .rx-in.n{font-weight:500}
-    .rx-in:hover:not(:disabled){border-bottom-color:#CCCFD9}
-    .rx-in:focus{border-bottom-color:#0B57D0}
-    .rx-in:disabled{color:#0A0A0A;-webkit-text-fill-color:#0A0A0A}
-    .rx-table td small{display:block;margin-top:2px;font-weight:400;color:#56595E;white-space:normal}
-    .rx-del{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:14px;background:none;cursor:pointer}
-    .rx-del:hover{background:#F0F2F5}
-    .rx-del svg{width:18px;height:18px}
-    .rx-del:disabled{opacity:.35;cursor:default;background:none}
+    .gf-table.rx-table th:last-child,.gf-table.rx-table td:last-child{width:64px;padding-left:0;padding-right:0}
+    .gf-table.rx-table td small{display:block;margin-top:2px;font-weight:400;color:#56595E}
+    .rx-acts-c{white-space:nowrap;text-align:right}
+    .rx-ic{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:14px;background:none;cursor:pointer;vertical-align:middle}
+    .rx-ic:hover{background:#E9EBF0}
+    .rx-ic svg{width:18px;height:18px}
+    .gf-table.rx-table tr.rx-edit td{padding:12px 0 16px}
+    .rx-ef{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,2fr) minmax(0,1.4fr);gap:12px 16px}
+    .rx-ef-foot{grid-column:1 / -1;display:flex;align-items:center;justify-content:flex-end;gap:8px}
+    .rx-ef-foot .pr-err{margin-right:auto}
+    @container pr (max-width:640px){
+      .rx-ef{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+    }
     .rx-acts{display:flex;justify-content:flex-end;gap:12px}
     .rx-acts[hidden]{display:none}
     .rn-list{display:flex;flex-direction:column;gap:20px}
@@ -7028,7 +7028,8 @@
       var ACAO = { manter: 'Manter', ajustar: 'Ajustar', iniciar: 'Iniciar', suspender: 'Suspender' };
       var RXI = { plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="#0A0A0A"/></svg>',
                   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#046E00"/></svg>',
-                  x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#56595E"/></svg>' };
+                  x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#56595E"/></svg>',
+                  edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z" fill="#56595E"/></svg>' };
       function rnNum(x) { return String(x).replace('.', ','); }
       function rxCan() { return ready && !locked(); }
       function rxSame(a, b) { var k = function (n) { return norm(n).replace(/\s+/g, ' ').trim(); }; return k(a.nome) === k(b.nome); }
@@ -7041,36 +7042,65 @@
                  origem: ia ? 'ia' : 'uso', fonte: f ? f.titulo + (f.ano ? ' (' + f.ano + ')' : '') : '', ia: ia ? sg.ia : '' };
       }
       function rxChanged() { changed(); renderRx(); drawSg(); }
+      var rxEd = -1, rxNovo = false;                      // linha aberta para editar (e se é um item novo, ainda vazio)
+      var RXF = [['nome', 'Remédio', 'Ex.: losartana'], ['dose', 'Dose', 'Ex.: 50 mg'], ['posologia', 'Posologia', 'Ex.: 1 comprimido de 12/12 h'],
+                 ['quantidade', 'Quantidade', 'Ex.: 60 comprimidos']];
       function renderRx() {
         var tb = $('rxBody'), can = rxCan(); tb.innerHTML = '';
-        $('rxWrap').hidden = !rx.length; $('rxEmpty').hidden = !!rx.length; $('rxActs').hidden = !rx.length; $('rxAdd').disabled = !can;
+        if (!can) { rxEd = -1; rxNovo = false; }
+        $('rxWrap').hidden = !rx.length; $('rxEmpty').hidden = !!rx.length; $('rxActs').hidden = !rx.length || rxNovo; $('rxAdd').disabled = !can || rxNovo;
         rx.forEach(function (x, i) {
-          var tr = el('tr');
-          [['nome', 'Remédio'], ['dose', 'Dose'], ['posologia', 'Posologia'], ['quantidade', 'Quantidade']].forEach(function (c) {
-            var td = el('td'), inp = el('textarea', 'rx-in' + (c[0] === 'nome' ? ' n' : '')); inp.rows = 1; inp.value = x[c[0]] || ''; inp.disabled = !can;
-            inp.setAttribute('aria-label', c[1] + (x.nome ? ' de ' + x.nome : ''));
-            inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') e.preventDefault(); });   // uma linha só; quebra sozinho
-            inp.addEventListener('input', function () { x[c[0]] = inp.value.replace(/\n/g, ' '); rxFit(inp); changed(); });
-            inp.addEventListener('change', drawSg);
-            td.appendChild(inp);
-            if (c[0] === 'nome' && (x.fonte || x.origem === 'ia')) td.appendChild(el('small', null, 'Sugestão da IA' + (x.fonte ? ' · ' + x.fonte : '')));
-            tr.appendChild(td);
-          });
-          var td = el('td'), b = el('button', 'rx-del'); b.type = 'button'; b.innerHTML = RXI.x; b.disabled = !can;
-          b.setAttribute('aria-label', 'Tirar ' + (x.nome || 'o item') + ' da receita');
-          b.addEventListener('click', function () { if (rxCan()) { rx.splice(i, 1); rxChanged(); } });
-          td.appendChild(b); tr.appendChild(td); tb.appendChild(tr);
+          if (i === rxEd) { tb.appendChild(rxForm(x, i)); return; }
+          var tr = el('tr'), td0 = el('td', null, x.nome);
+          if (x.fonte || x.origem === 'ia') td0.appendChild(el('small', null, 'Sugestão da IA' + (x.fonte ? ' · ' + x.fonte : '')));
+          tr.appendChild(td0);
+          ['dose', 'posologia', 'quantidade'].forEach(function (k) { tr.appendChild(el('td', null, x[k] || '—')); });
+          var td = el('td', 'rx-acts-c');
+          if (can) {
+            var ed = el('button', 'rx-ic'); ed.type = 'button'; ed.innerHTML = RXI.edit; ed.title = 'Editar'; ed.setAttribute('aria-label', 'Editar ' + x.nome);
+            ed.addEventListener('click', function () { rxOpen(i); });
+            var del = el('button', 'rx-ic'); del.type = 'button'; del.innerHTML = RXI.x; del.title = 'Tirar da receita'; del.setAttribute('aria-label', 'Tirar ' + x.nome + ' da receita');
+            del.addEventListener('click', function () {
+              if (!rxCan()) return;
+              if (rxNovo && rxEd >= 0) rx.splice(rxEd, 1);      // o item novo (sempre o último) ainda vazio sai junto
+              rx.splice(rx.indexOf(x), 1); rxEd = -1; rxNovo = false; rxChanged();
+            });
+            td.appendChild(ed); td.appendChild(del);
+          }
+          tr.appendChild(td); tb.appendChild(tr);
         });
-        [].forEach.call(tb.querySelectorAll('.rx-in'), rxFit);
       }
-      function rxFit(t) {                                 // a caixa cresce com o texto (com a aba escondida, a medida daria 0)
-        if (!t.offsetParent) { t.style.height = ''; return; }
-        t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px';
+      function rxForm(x, i) {                              // os campos do formulário de cadastro, na linha que está sendo editada
+        var tr = el('tr', 'rx-edit'), td = el('td'), box = el('div', 'rx-ef'), ins = {}; td.colSpan = 5;
+        RXF.forEach(function (c) {
+          var lb = el('label', 'pr-field'), inp = el('input', 'pr-in'); inp.type = 'text'; inp.value = x[c[0]] || ''; inp.placeholder = c[2]; inp.maxLength = c[0] === 'posologia' ? 160 : 120;
+          lb.appendChild(el('span', null, c[1])); lb.appendChild(inp); box.appendChild(lb); ins[c[0]] = inp;
+          inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ok(); } else if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
+        });
+        var foot = el('div', 'rx-ef-foot'), err = el('span', 'pr-err', 'Escreva o nome do remédio.'); err.hidden = true;
+        var bc = el('button', 'pr-ghost', 'Cancelar'), bo = el('button', 'pr-save', 'Salvar'); bc.type = bo.type = 'button';
+        function ok() {
+          var nome = ins.nome.value.trim(); if (!nome) { err.hidden = false; ins.nome.focus(); return; }
+          RXF.forEach(function (c) { x[c[0]] = ins[c[0]].value.replace(/\s+/g, ' ').trim(); });
+          if (rxNovo) x.origem = 'manual';
+          rxEd = -1; rxNovo = false; rxChanged();
+        }
+        function cancel() { if (rxNovo) rx.splice(i, 1); rxEd = -1; rxNovo = false; renderRx(); drawSg(); }
+        bc.addEventListener('click', cancel); bo.addEventListener('click', ok);
+        foot.appendChild(err); foot.appendChild(bc); foot.appendChild(bo); box.appendChild(foot);
+        td.appendChild(box); tr.appendChild(td);
+        setTimeout(function () { ins.nome.focus(); if (!rxNovo) ins.nome.select(); }, 0);
+        return tr;
+      }
+      function rxOpen(i) {
+        if (!rxCan()) return;
+        if (rxNovo && rxEd >= 0) rx.splice(rxEd, 1);        // um item novo deixado vazio não fica
+        rxNovo = false; rxEd = Math.min(i, rx.length - 1); renderRx();
       }
       $('rxAdd').addEventListener('click', function () {
-        if (!rxCan()) return;
-        rx.push({ nome: '', dose: '', posologia: '', quantidade: '', origem: 'manual', fonte: '', ia: '' }); renderRx();
-        var ins = $('rxBody').querySelectorAll('tr:last-child .rx-in'); if (ins[0]) ins[0].focus();   // o nome do item novo
+        if (!rxCan() || rxNovo) return;
+        rx.push({ nome: '', dose: '', posologia: '', quantidade: '', origem: 'manual', fonte: '', ia: '' });
+        rxEd = rx.length - 1; rxNovo = true; renderRx();
       });
       function rxText() {
         return rx.filter(function (x) { return x.nome.trim(); }).map(function (x, i) {
