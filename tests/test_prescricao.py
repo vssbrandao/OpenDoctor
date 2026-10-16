@@ -199,3 +199,13 @@ def test_receita_fica_na_evolucao_com_limites():
                      "fonte": "F1 · artigo", "ia": "2026-10-16.1/gpt-5.4"}
     assert len(rx[1]["nome"]) == 120 and rx[1]["origem"] == "manual" and len(rx) == 19
     assert "receita" not in server._note_data({"mode": "free", "receita": "não é lista"})
+    assert server._note_data({"mode": "free", "receita": [{"nome": "X", "origem": "anterior"}]})["receita"][0]["origem"] == "anterior"
+
+
+def test_exemplo_tem_uma_receita_por_consulta():
+    import datetime as dt
+    from app import exemplo
+    cs = exemplo.consultas(dt.datetime(2026, 10, 16, 10, 0))
+    assert len(exemplo.RECEITAS) == len(exemplo.CONSULTAS) == len(cs)
+    assert all(server._note_data(c["data"])["receita"] == c["data"]["receita"] for c in cs)   # passa pelo filtro do servidor
+    assert [x["nome"] for x in cs[-1]["data"]["receita"]] == [l.split(" ")[0] for l in exemplo.MEDICATIONS.split("\n")]

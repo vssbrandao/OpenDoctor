@@ -166,6 +166,8 @@
     .rx-q{font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A;margin-bottom:4px}
     .rx-o{font-size:12px;line-height:16px;color:#56595E}
     .rx-o.ia{color:#0B57D0}
+    .rh-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+    #rhMore[hidden]{display:none}
     /* edição: os mesmos campos em pílula (borda #CCCFD9 das etiquetas do gráfico), título 12/16 em cima */
     .rx-edit{padding:4px 0 16px;border-bottom:1px solid rgba(0,0,0,.08)}
     .rx-ef{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,2fr) minmax(0,1.4fr);gap:12px 16px}
@@ -2149,6 +2151,17 @@
                 <div class="rn-list" id="rnList"></div>
                 <div class="rn-obs" id="rnObs" hidden></div>
                 <div class="rn-foot" id="rnFoot"></div>
+              </div>
+              <!-- receitas anteriores: as das outras evoluções desta paciente (data.receita), da mais nova para a mais velha -->
+              <div class="pr-bigcard gcard" id="rhBox" hidden>
+                <div class="pr-cardhead">
+                  <div>
+                    <div class="pr-h2">Receitas anteriores</div>
+                    <div class="pr-cardsub">Das evoluções desta paciente</div>
+                  </div>
+                </div>
+                <div class="rn-list" id="rhList"></div>
+                <button class="ga-btn" type="button" id="rhMore" hidden>Mostrar mais</button>
               </div>
             </section>
 
@@ -7044,7 +7057,7 @@
         return { nome: it.nome, dose: it.dose || '', posologia: it.posologia || '', quantidade: it.quantidade || '',
                  origem: ia ? 'ia' : 'uso', fonte: f ? f.titulo + (f.ano ? ' (' + f.ano + ')' : '') : '', ia: ia ? sg.ia : '' };
       }
-      function rxChanged() { changed(); renderRx(); drawSg(); }
+      function rxChanged() { changed(); renderRx(); drawSg(); renderRh(); }
       var rxEd = -1, rxNovo = false;                      // linha aberta para editar (e se é um item novo, ainda vazio)
       var RXF = [['nome', 'Remédio', 'Ex.: losartana'], ['dose', 'Dose', 'Ex.: 50 mg'], ['posologia', 'Posologia', 'Ex.: 1 comprimido de 12/12 h'],
                  ['quantidade', 'Quantidade', 'Ex.: 60 comprimidos']];
@@ -7059,7 +7072,7 @@
           l.appendChild(el('span', 'rx-n', [x.nome, x.dose].filter(Boolean).join(' ')));
           l.appendChild(el('span', 'rx-d', x.posologia || 'Sem posologia'));
           r.appendChild(el('span', 'rx-q', x.quantidade || '—'));
-          r.appendChild(el('span', 'rx-o' + (x.origem === 'ia' ? ' ia' : ''), x.origem === 'ia' ? 'Sugestão da IA' : x.origem === 'uso' ? 'Em uso' : 'Adicionado'));
+          r.appendChild(el('span', 'rx-o' + (x.origem === 'ia' ? ' ia' : ''), { ia: 'Sugestão da IA', uso: 'Em uso', anterior: 'Receita anterior' }[x.origem] || 'Adicionado'));
           if (x.fonte) r.title = x.fonte;
           b.appendChild(l); b.appendChild(r);
           b.addEventListener('click', function () { rxOpen(i); });
@@ -7111,13 +7124,13 @@
         var t = rxText(); if (!t) return;
         try { navigator.clipboard.writeText(t).then(function () { toast('Receita copiada'); }); } catch (_) {}
       });
-      $('rxPrintBtn').addEventListener('click', function () {
-        if (!patient || !rxText()) return;
-        save();
-        $('rxpName').textContent = patient.name; var d = new Date();
-        $('rxpDate').textContent = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+      // a folha da receita (#rxPrint) com estes itens e esta data; também a segunda via de uma receita anterior
+      function rxGerar(itens, quando) {
+        if (!patient || !itens.length) return;
+        var d = quando || new Date();
+        $('rxpName').textContent = patient.name; $('rxpDate').textContent = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
         var ol = $('rxpList'); ol.innerHTML = '';
-        rx.filter(function (x) { return x.nome.trim(); }).forEach(function (x) {
+        itens.forEach(function (x) {
           var li = el('li'); if (x.quantidade) li.appendChild(el('span', 'q', x.quantidade));
           li.appendChild(el('b', null, [x.nome, x.dose].filter(Boolean).join(' ')));
           if (x.posologia) li.appendChild(el('div', null, x.posologia));
@@ -7128,7 +7141,43 @@
         // window.print(): desligar logo depois imprimiria o prontuário inteiro. Desliga quando a impressão termina.
         if (!document.body.classList.contains('rxp')) { rxTitle = document.title; document.title = 'Receita'; document.body.classList.add('rxp'); }
         window.print();
+      }
+      $('rxPrintBtn').addEventListener('click', function () {
+        var itens = rx.filter(function (x) { return (x.nome || '').trim(); }); if (!itens.length) return;
+        save(); rxGerar(itens, null);
       });
+
+      // ----- receitas anteriores: as das outras evoluções (data.receita), da mais nova para a mais velha -----
+      var rhAll = false;
+      function renderRh() {
+        var list = notes.filter(function (n) { return n !== cur && n.data && Array.isArray(n.data.receita) && n.data.receita.length; })
+                        .sort(function (a, b) { return (noteDate(b) || 0) - (noteDate(a) || 0); });
+        var L = $('rhList'), can = rxCan(); L.innerHTML = ''; $('rhBox').hidden = !list.length;
+        (rhAll ? list : list.slice(0, 5)).forEach(function (n) {
+          var d = noteDate(n), its = n.data.receita, r = el('div', 'sg'), tx = el('div', 'sg-tx'), src = el('span', 'ov-post-src');
+          src.appendChild(el('i', n.signed_at ? null : 'draft'));
+          src.appendChild(document.createTextNode(eventTitle(n.event_title || (n.event_id ? '' : 'Evolução avulsa'))));
+          src.appendChild(el('small', null, '· ' + (d ? dayMon(d) : '') + (n.signed_at ? '' : ' · rascunho')));
+          tx.appendChild(src);
+          tx.appendChild(el('span', 'ov-post-t', its.map(function (x) { return [x.nome, x.dose].filter(Boolean).join(' '); }).join(' · ')));
+          tx.appendChild(el('span', 'sg-why', its.map(function (x) { return x.nome + (x.posologia ? ': ' + x.posologia : ''); }).join(' · ')));
+          var acts = el('div', 'rh-acts'), novos = its.filter(function (x) { return !rxHas(x); });
+          var u = el('button', 'gq-chip sg-add' + (novos.length ? '' : ' on')); u.type = 'button'; u.disabled = !can || !novos.length;
+          u.innerHTML = (novos.length ? RXI.plus : RXI.ok) + (novos.length ? 'Usar nesta consulta' : 'Já na receita');
+          u.title = novos.length ? 'Copia os itens para a receita de hoje' : 'Todos os itens já estão na receita de hoje';
+          u.addEventListener('click', function () {
+            if (!rxCan()) return;
+            its.forEach(function (x) { if (!rxHas(x)) rx.push({ nome: x.nome, dose: x.dose || '', posologia: x.posologia || '', quantidade: x.quantidade || '',
+                                                                 origem: 'anterior', fonte: '', ia: '' }); });
+            rxChanged(); renderRh(); toast('Itens na receita de hoje');
+          });
+          var g = el('button', 'gq-chip sg-add', 'Gerar receita'); g.type = 'button'; g.title = 'Segunda via, com a data da consulta';
+          g.addEventListener('click', function () { rxGerar(its, d); });
+          acts.appendChild(u); acts.appendChild(g); tx.appendChild(acts); r.appendChild(tx); L.appendChild(r);
+        });
+        $('rhMore').hidden = rhAll || list.length <= 5;
+      }
+      $('rhMore').addEventListener('click', function () { rhAll = true; renderRh(); });
       var rxTitle = '';
       function rxPrintEnd() {
         if (!document.body.classList.contains('rxp')) return;
@@ -7139,7 +7188,7 @@
       function renderRn() {                                // ao abrir a aba e quando o resumo clínico muda
         var pane = document.querySelector('.pr-panel[data-panel=prescricoes]');
         if (!isOpen() || !pane || pane.hidden) return;
-        var p = patient; $('rnBox').hidden = !p; renderRx(); if (!p) return;
+        var p = patient; $('rnBox').hidden = !p; renderRx(); renderRh(); if (!p) return;
         var key = [p.id, p.medications, p.allergies, p.problems, p.birth_date, p.sex].join('|');   // sinais novos: "Gerar de novo"
         if (key !== sgKey) sgLoad(key, false); else drawSg();
       }

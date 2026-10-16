@@ -1,9 +1,9 @@
 # Prescrições: receita da consulta e possíveis prescrições
 
-A aba Prescrições do prontuário tem dois cartões:
+A aba Prescrições do prontuário tem três cartões:
 
 1. **Prescrições:** a receita da consulta aberta. É um rascunho salvo junto com a evolução, em `data.receita`.
-   - Cada item tem remédio, dose, posologia, quantidade e a origem: `ia`, `uso` ou `manual`. Itens da IA levam também
+   - Cada item tem remédio, dose, posologia, quantidade e a origem: `ia`, `uso`, `manual` ou `anterior`. Itens da IA levam também
      a fonte e a versão do prompt e do modelo.
    - Clicar na linha abre a edição. Dá para copiar o texto e "Gerar receita": a folha da receita, para imprimir ou
      salvar em PDF, com espaço para carimbo e assinatura (o app ainda não guarda o CRM).
@@ -12,6 +12,10 @@ A aba Prescrições do prontuário tem dois cartões:
 2. **Possíveis prescrições:** a IA propõe, para cada remédio em uso, manter, ajustar ou suspender, e pode sugerir
    iniciar remédios novos. Cada sugestão traz o artigo da base do assistente que a sustenta. O "+" leva o item à
    receita; nada entra sem esse clique.
+3. **Receitas anteriores:** as receitas das outras evoluções desta paciente (`data.receita`), da mais nova para a mais
+   velha (rascunhos aparecem marcados). "Usar nesta consulta" copia os itens para a receita de hoje (origem
+   `anterior`); "Gerar receita" faz a segunda via com a data daquela consulta. A paciente de exemplo vem com uma
+   receita por consulta (`app/exemplo.RECEITAS`).
 
 ## Fluxo (`app/prescricao.py`, `POST /prontuario/prescricao/sugerir`)
 

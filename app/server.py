@@ -1285,7 +1285,7 @@ def _note_data(v):
     rx = v.get("receita") if isinstance(v.get("receita"), list) else []   # rascunho da receita (aba Prescrições)
     rx = [{"nome": str(i.get("nome") or "")[:120], "dose": str(i.get("dose") or "")[:60],
            "posologia": str(i.get("posologia") or "")[:160], "quantidade": str(i.get("quantidade") or "")[:60],
-           "origem": i.get("origem") if i.get("origem") in ("ia", "uso", "manual") else "manual",
+           "origem": i.get("origem") if i.get("origem") in ("ia", "uso", "manual", "anterior") else "manual",
            "fonte": str(i.get("fonte") or "")[:240], "ia": str(i.get("ia") or "")[:60]}
           for i in rx[:20] if isinstance(i, dict) and str(i.get("nome") or "").strip()]
     if rx:

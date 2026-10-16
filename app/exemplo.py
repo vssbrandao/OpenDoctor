@@ -32,6 +32,16 @@ CONSULTAS = [
     (2, 128, 82, 72, "87,9", 112, 98, "36,6", [_HAS, _OBES], "Retorno"),
     (0.5, 132, 84, 76, "87,2", 116, 98, "36,5", [_HAS], "Retorno"),
 ]
+# receita de cada consulta (aba Prescrições → Receitas anteriores): a metformina sobe de 500 para 850 mg, a
+# atorvastatina entra com o LDL alto e a urgência leva só sintomático (alergia a dipirona: paracetamol)
+_LOS1 = ("Losartana", "50 mg", "1 comprimido 1x/dia", "30 comprimidos")
+_LOS2 = ("Losartana", "50 mg", "1 comprimido de 12/12 h", "60 comprimidos")
+_MET5 = ("Metformina", "500 mg", "1 comprimido 2x/dia", "60 comprimidos")
+_MET8 = ("Metformina", "850 mg", "1 comprimido 2x/dia", "60 comprimidos")
+_ATO = ("Atorvastatina", "20 mg", "1 comprimido à noite", "30 comprimidos")
+RECEITAS = [[_LOS1, _MET5], [_LOS2, _MET5], [_LOS2, _MET8], [_LOS2, _MET8, _ATO], [_LOS2, _MET8, _ATO],
+            [("Paracetamol", "750 mg", "1 comprimido de 6/6 h se dor ou febre", "12 comprimidos")],
+            [_LOS2, _MET8, _ATO], [_LOS2, _MET8, _ATO], [_LOS2, _MET8, _ATO], [_LOS2, _MET8, _ATO], [_LOS2, _MET8, _ATO]]
 # resultados de laboratório (coleta 5 dias antes da consulta do mesmo mês); RAC e ácido úrico atrasados de propósito
 EXAMES = {
     23: {"hba1c": "8,4", "ct": "236", "ldl": "152", "hdl": "41", "tg": "215", "creat": "0,88", "pot": "4,3", "sod": "139",
@@ -59,7 +69,7 @@ def _br(d):
 def consultas(now):
     """Evoluções SOAP finalizadas (mesmo formato que a tela grava)."""
     out = []
-    for m, s, d, fc, peso, gli, spo, tmp, cid, title in CONSULTAS:
+    for i, (m, s, d, fc, peso, gli, spo, tmp, cid, title) in enumerate(CONSULTAS):
         w = _when(now, m)
         urg = title == "Consulta de urgência"
         S = ("Coriza, odinofagia e febre há 2 dias. Nega dispneia." if urg else
@@ -71,7 +81,9 @@ def consultas(now):
         content = (f"S: {S}\n\nO: Sinais vitais: PA {s}x{d} mmHg · FC {fc} bpm · SpO₂ {spo}% · Temp. {tmp} °C · "
                    f"Peso {peso} kg · Altura 162 cm · Glicemia {gli} mg/dL\n\n"
                    "A: CID-10: " + "; ".join(f"{c} {t}" for c, t in cid) + f"\n\nP: {P}")
-        data = {"mode": "soap", "s": S, "o": "", "a": "", "p": P, "vitals": vit, "cid": [{"code": c, "desc": t} for c, t in cid]}
+        data = {"mode": "soap", "s": S, "o": "", "a": "", "p": P, "vitals": vit, "cid": [{"code": c, "desc": t} for c, t in cid],
+                "receita": [{"nome": n, "dose": dz, "posologia": po, "quantidade": q, "origem": "manual", "fonte": "", "ia": ""}
+                            for n, dz, po, q in RECEITAS[i]]}
         out.append({"title": title, "start": w, "content": content, "data": data, "signed_at": w + dt.timedelta(minutes=40)})
     return out
 
