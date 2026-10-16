@@ -451,6 +451,23 @@ def dose_incomum(nome, dose):
     return None if lo / 1.01 <= mg <= hi * 1.01 else (mg, (lo, hi))
 
 
+# ----- renovação do uso contínuo (aba Prescrições): as medicações em uso como itens de receita -----
+def renovacao(medications, allergies):
+    """Cada linha de "Medicações em uso" separada em nome, dose e posologia, com os mesmos avisos da gravação:
+    alergia do cadastro (inclusive da família) e dose fora da faixa usual por tomada. Não sugere remédio nem dose:
+    só repete o que o médico registrou."""
+    out = []
+    for line in [x.strip()[:200] for x in (medications or "").split("\n") if x.strip()][:30]:
+        m = _UNIT.search(line)
+        nome = (line[:m.start()] if m else re.split(r"\s(?=\d)", line, maxsplit=1)[0]).strip(" -–,;") or line
+        dose = m.group(0) if m else ""
+        posologia = (line[m.end():] if m else line[len(nome):]).strip(" -–,;")
+        odd = dose_incomum(nome, dose) if dose else None
+        out.append({"texto": line, "nome": nome, "dose": dose, "posologia": posologia,
+                    "alergias": allergy_hits(line, allergies), "faixa": list(odd[1]) if odd else None})
+    return out
+
+
 # ===== perfil de escrita (sem IA; nenhum texto de outro paciente sai) =====
 _SIGLAS = set(_linhas("siglas.txt"))                 # só estas saem das evoluções do médico
 

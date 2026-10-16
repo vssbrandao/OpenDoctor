@@ -145,6 +145,25 @@
     .pr-dots.warn::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#C0151D}
     .gq-mi[hidden]{display:none}
     .gq-mi.warn{color:#C0151D}
+    /* possíveis prescrições (aba Prescrições): renovação do uso contínuo, uma linha por remédio */
+    .rn-card .pr-cardhead{flex-wrap:nowrap;align-items:flex-start}   /* "Adicionar todas" fica à direita; o subtítulo quebra */
+    .rn-card .pr-cardhead > div{min-width:0}
+    .rn-card .pr-cardhead .pr-ghost{flex:none}
+    .rn-list{display:flex;flex-direction:column}
+    .rn-it{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid rgba(0,0,0,.08)}
+    .rn-it:first-child{border-top:0;padding-top:0}
+    .rn-tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .rn-n{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
+    .rn-d{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .rn-w{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#C0151D}
+    .rn-w.dose{color:#B06000}
+    .rn-b{flex:none;height:32px;padding:0 14px;border:1px solid #CCCFD9;border-radius:16px;background:#fff;cursor:pointer;white-space:nowrap;
+      font-family:var(--disp);font-weight:500;font-size:13px;line-height:20px;color:#0A0A0A}
+    .rn-b:hover{background:#F0F2F5}
+    .rn-b.on{border-color:transparent;background:#E6F4EA;color:#046E00}
+    .rn-b:disabled{opacity:.45;cursor:default;background:#fff}
+    .rn-foot{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .rn-foot:empty{display:none}
     /* Iniciar consulta e o cronômetro: no cartão da Consulta, ao lado de Texto livre / SOAP */
     .pr-cardacts{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
     .pr-head .pr-avatar{grid-column:1;grid-row:1}
@@ -2057,6 +2076,18 @@
                   <button class="pr-save" type="button" disabled title="Prescrição — em breve">Nova prescrição</button>
                 </div>
                 <div class="pr-empty">Nenhuma prescrição emitida. <span class="pr-rec-chip">Em breve</span></div>
+              </div>
+              <!-- possíveis prescrições: renovação do uso contínuo (as medicações em uso, conferidas; sem IA) -->
+              <div class="pr-bigcard gcard rn-card" id="rnBox" hidden>
+                <div class="pr-cardhead">
+                  <div>
+                    <div class="pr-h2">Possíveis prescrições</div>
+                    <div class="pr-cardsub">Renovação do uso contínuo, a partir das medicações em uso · sem IA</div>
+                  </div>
+                  <button class="pr-ghost" type="button" id="rnAll" hidden>Adicionar todas</button>
+                </div>
+                <div class="rn-list" id="rnList"></div>
+                <div class="rn-foot" id="rnFoot"></div>
               </div>
             </section>
 
@@ -4440,6 +4471,7 @@
         var pt = $('prProbTags'), pl = lines(patient && patient.problems); pt.innerHTML = '';
         pl.slice(0, 4).forEach(function (x) { pt.appendChild(el('span', 'pr-tag', x)); });
         if (pl.length > 4) pt.appendChild(el('span', 'pr-tag', '+' + (pl.length - 4)));
+        renderRn();                                       // as possíveis prescrições seguem as medicações em uso
       }
       function saveSummary(k, list) {
         if (!patient) return;
@@ -6609,6 +6641,7 @@
         if (t === 'consultas') loadAccess();              // o registro de acessos fica no fim do Histórico
         if ((t === 'geral' || t === 'analise') && ov.dirty) renderOverview();
         if (t === 'analise') renderCs();                  // sinais e exames por consulta (precisa da largura visível)
+        if (t === 'prescricoes') renderRn();
       }
       tabs.forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
       // a aba escolhida ganha a pílula branca, do tamanho da aba
@@ -6916,6 +6949,81 @@
         t.value = t.value.replace(/\s+$/, '') + (t.value.trim() ? '\n' : '') + line;
         try { sessionStorage.removeItem(vkey()); } catch (_) {}
         renderVisit(); changed(); save();
+      });
+
+      // ===== Prescrições: possíveis prescrições (renovação do uso contínuo, sem IA) =====
+      // As medicações em uso do cadastro, separadas e conferidas no servidor (alergia do cadastro e dose fora da faixa
+      // usual: as mesmas tabelas da gravação). Um clique leva "Mantém …" ao Plano (ou ao texto livre) da evolução aberta.
+      var rnKey = null, rnItems = null;
+      function rnTarget() { return mode === 'soap' ? soapEls[3] : note; }
+      function rnLine(it) { return 'Mantém ' + it.texto; }
+      function rnHas(it) { return rnTarget().value.split('\n').some(function (l) { return l.trim() === rnLine(it); }); }
+      function rnPlain(meds) { return lines(meds).map(function (t) { return { texto: t, nome: t, dose: '', posologia: '', alergias: [], faixa: null, semConf: true }; }); }
+      function rnNum(x) { return String(x).replace('.', ','); }
+      function rnWarn(it) { return it.alergias.length > 0 || !!it.faixa; }
+      function renderRn() {
+        var pane = document.querySelector('.pr-panel[data-panel=prescricoes]');
+        if (!isOpen() || !pane || pane.hidden) return;
+        var p = patient; $('rnBox').hidden = !p; if (!p) return;
+        var meds = p.medications || '', key = p.id + '|' + meds + '|' + (p.allergies || '');
+        if (key !== rnKey) {
+          rnKey = key; rnItems = meds.trim() ? null : [];
+          if (meds.trim()) api('POST', '/prontuario/renovacao', { patient_id: p.id }).then(function (res) {
+            if (rnKey !== key) return;
+            rnItems = res.ok && res.j.itens ? res.j.itens : rnPlain(meds); drawRn();
+          }).catch(function () { if (rnKey === key) { rnItems = rnPlain(meds); drawRn(); } });
+        }
+        drawRn();
+      }
+      function rnAdd(list) {
+        var t = rnTarget();
+        list.forEach(function (it) { if (!rnHas(it)) t.value = t.value.replace(/\s+$/, '') + (t.value.trim() ? '\n' : '') + rnLine(it); });
+        changed(); drawRn();
+      }
+      function rnDel(it) {
+        var t = rnTarget(), ls = t.value.split('\n');
+        for (var i = 0; i < ls.length; i++) if (ls[i].trim() === rnLine(it)) { ls.splice(i, 1); t.value = ls.join('\n'); changed(); break; }
+        drawRn();
+      }
+      function drawRn() {
+        var L = $('rnList'), can = ready && !locked(), soap = mode === 'soap'; L.innerHTML = '';
+        $('rnAll').hidden = !rnItems || !rnItems.length;
+        if (!rnItems) { L.appendChild(el('div', 'pr-empty', 'Conferindo as medicações em uso…')); $('rnFoot').textContent = ''; return; }
+        if (!rnItems.length) {
+          var e = el('div', 'pr-empty', 'Nenhuma medicação em uso registrada. '), go = el('button', 'pr-link', 'Registrar no Resumo'); go.type = 'button';
+          go.addEventListener('click', function () {
+            setTab('geral');
+            var c = document.querySelector('.pr-sumcol[data-k=medications]');
+            if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); var i = c.querySelector('.pr-chipin'); if (i) i.focus({ preventScroll: true }); }
+          });
+          e.appendChild(go); L.appendChild(e); $('rnFoot').textContent = ''; return;
+        }
+        var todo = 0;
+        rnItems.forEach(function (it) {
+          var r = el('div', 'rn-it'), tx = el('div', 'rn-tx'), on = rnHas(it);
+          tx.appendChild(el('div', 'rn-n', it.nome));
+          var det = [it.dose, it.posologia].filter(Boolean).join(' · '); if (det) tx.appendChild(el('div', 'rn-d', det));
+          it.alergias.forEach(function (a) { tx.appendChild(el('div', 'rn-w', 'Alergia registrada: ' + a)); });
+          if (it.faixa) tx.appendChild(el('div', 'rn-w dose', 'Dose fora da usual por tomada (' + rnNum(it.faixa[0]) + '–' + rnNum(it.faixa[1]) + ' mg): confira'));
+          var b = el('button', 'rn-b' + (on ? ' on' : ''), on ? (soap ? 'No Plano' : 'Na evolução') + ' · tirar' : (soap ? 'Adicionar ao Plano' : 'Adicionar à evolução'));
+          b.type = 'button'; b.disabled = !can;
+          b.addEventListener('click', function () {
+            if (!ready || locked()) return;
+            if (rnHas(it)) { rnDel(it); return; }
+            if (it.alergias.length && !confirm('Alergia registrada a ' + it.alergias.join(', ') + '. Adicionar ' + it.nome + ' mesmo assim?')) return;
+            rnAdd([it]);
+          });
+          if (!on && !rnWarn(it)) todo++;
+          r.appendChild(tx); r.appendChild(b); L.appendChild(r);
+        });
+        $('rnAll').disabled = !can || !todo;                // "todas" deixa de fora quem tem aviso: esses vão um a um
+        $('rnFoot').textContent = (!ready ? 'Carregando a evolução…' : locked() ? 'A evolução aberta já foi finalizada: mudanças entram como adendo, no Histórico.' :
+          (soap ? 'Vai para o Plano da evolução aberta (aba Consulta).' : 'Vai para o texto da evolução aberta (aba Consulta).') + ' Confira indicação, dose e alergias antes de prescrever.') +
+          (rnItems.some(function (x) { return x.semConf; }) ? ' Não foi possível conferir alergia e dose agora.' : '');
+      }
+      $('rnAll').addEventListener('click', function () {
+        if (!ready || locked() || !rnItems) return;
+        rnAdd(rnItems.filter(function (it) { return !rnHas(it) && !rnWarn(it); }));
       });
 
       // ===== exportar (imprimir/PDF) e registro de acessos =====

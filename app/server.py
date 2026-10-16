@@ -1546,6 +1546,20 @@ async def prontuario_audit(request: Request):
     return {"ok": True}
 
 
+@app.post("/prontuario/renovacao")
+async def prontuario_renovacao(request: Request):
+    """Aba Prescrições: as medicações em uso do cadastro como itens de receita, com os avisos de alergia e de
+    dose (mesmas tabelas da gravação, sem IA). Lê só o cadastro deste médico; nada é gravado."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    pid = (await _json(request)).get("patient_id")
+    p = await run_in_threadpool(db.get_patient, u["id"], int(pid)) if str(pid or "").isdigit() else None
+    if not p:
+        return JSONResponse({"error": "inválido"}, status_code=400)
+    return {"itens": scribe.renovacao(p.get("medications"), p.get("allergies"))}
+
+
 @app.post("/prontuario/access")
 async def prontuario_access(request: Request):
     """Registro de acessos do paciente (quem viu/alterou e quando)."""
