@@ -601,6 +601,10 @@ def delete_patient(user_id, patient_id):
                            where r.user_id = %s and r.patient_id = %s limit 1""", (user_id, patient_id))
             if cur.fetchone():                          # transcrição de consulta também (gravação vazia sai junto)
                 return "has_notes"
+            cur.execute("""select 1 from receitas where user_id = %s and patient_id = %s and status <> 'rascunho'
+                           limit 1""", (user_id, patient_id))
+            if cur.fetchone():                          # receita emitida também (rascunho sai junto, em cascata)
+                return "has_notes"
             cur.execute("delete from clinical_notes where user_id = %s and patient_id = %s", (user_id, patient_id))
             cur.execute("delete from patients where user_id = %s and id = %s", (user_id, patient_id))
         conn.commit()
@@ -752,17 +756,21 @@ def notes_by_event(user_id, event_ids):
 
 
 def add_example_notes(user_id, patient_id, pkey, patient_name, rows):
-    """Histórico da paciente de exemplo: rows = (título, início, texto, dados, finalizada_em, atualizada_em)."""
+    """Histórico da paciente de exemplo: rows = (título, início, texto, dados, finalizada_em, atualizada_em).
+    Devolve os ids, na mesma ordem."""
     from psycopg.types.json import Jsonb
     with connection() as conn:
         with conn.cursor() as cur:
+            ids = []
             for title, start, content, data, signed_at, updated_at in rows:
                 cur.execute("""insert into clinical_notes (user_id, patient_id, patient_key, patient_name, event_title,
                                  event_start, content, data, signed_at, created_at, updated_at)
-                               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
                             (user_id, patient_id, pkey, patient_name, title, start, content, Jsonb(data), signed_at,
                              updated_at, updated_at))
+                ids.append(cur.fetchone()[0])
         conn.commit()
+    return ids
 
 
 # --- exames anexados (PDF/imagem), sempre filtrados pelo médico ---
@@ -788,6 +796,129 @@ def get_file(user_id, file_id):
         r = conn.execute("select patient_id, name, mime, data from patient_files where user_id = %s and id = %s",
                          (user_id, file_id)).fetchone()
     return {"patient_id": r[0], "name": r[1], "mime": r[2], "data": bytes(r[3])} if r else None
+
+
+# --- receitas (aba Prescrições): rascunho → emitida (não muda mais) → cancelada (com motivo); sempre do médico ---
+_RX_COLS = ("id, patient_id, note_id, event_id, tipo, status, itens, emitida_em, cancelada_em, motivo_cancelamento, "
+            "created_at, updated_at")
+
+
+def _receita(r):
+    iso = lambda d: d.isoformat() if d else None  # noqa: E731
+    return {"id": str(r[0]), "patient_id": r[1], "note_id": r[2], "event_id": r[3], "tipo": r[4], "status": r[5],
+            "itens": r[6] or [], "emitida_em": iso(r[7]), "cancelada_em": iso(r[8]), "motivo_cancelamento": r[9],
+            "created_at": iso(r[10]), "updated_at": iso(r[11])}
+
+
+def list_receitas(user_id, patient_id):
+    """Receitas do paciente, da mais nova para a mais velha (rascunhos, emitidas e canceladas)."""
+    with connection() as conn:
+        rows = conn.execute(f"""select {_RX_COLS} from receitas where user_id = %s and patient_id = %s
+                                order by coalesce(emitida_em, created_at) desc limit 300""", (user_id, patient_id)).fetchall()
+    return [_receita(r) for r in rows]
+
+
+def get_receita(user_id, receita_id):
+    with connection() as conn:
+        r = conn.execute(f"select {_RX_COLS} from receitas where user_id = %s and id = %s", (user_id, receita_id)).fetchone()
+    return _receita(r) if r else None
+
+
+def create_receita(user_id, patient_id, itens, tipo="simples", note_id=None, event_id=None):
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        r = conn.execute(f"""insert into receitas (user_id, patient_id, note_id, event_id, tipo, itens)
+                             values (%s,%s,%s,%s,%s,%s) returning {_RX_COLS}""",
+                         (user_id, patient_id, note_id, event_id, tipo, Jsonb(itens))).fetchone()
+        conn.commit()
+    return _receita(r)
+
+
+def update_receita(user_id, receita_id, itens):
+    """Só o rascunho muda. None se não existe, é de outro médico ou já foi emitida."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        r = conn.execute(f"""update receitas set itens = %s, updated_at = now()
+                             where user_id = %s and id = %s and status = 'rascunho' returning {_RX_COLS}""",
+                         (Jsonb(itens), user_id, receita_id)).fetchone()
+        conn.commit()
+    return _receita(r) if r else None
+
+
+def delete_receita(user_id, receita_id):
+    """Só o rascunho sai de verdade (a emitida se cancela). Devolve o patient_id ou None."""
+    with connection() as conn:
+        r = conn.execute("""delete from receitas where user_id = %s and id = %s and status = 'rascunho'
+                            returning patient_id""", (user_id, receita_id)).fetchone()
+        conn.commit()
+    return r[0] if r else None
+
+
+def emit_receita(user_id, receita_id, grupos):
+    """Emite o rascunho já conferido. grupos = [(tipo, itens)]: o primeiro fica nesta receita; os outros (controle
+    especial, antimicrobiano) viram receitas próprias da mesma consulta, emitidas juntas. Tudo ou nada.
+    Devolve a lista de receitas emitidas ou None (não é rascunho deste médico)."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"""update receitas set tipo = %s, itens = %s, status = 'emitida', emitida_em = now(), updated_at = now()
+                            where user_id = %s and id = %s and status = 'rascunho' returning {_RX_COLS}""",
+                        (grupos[0][0], Jsonb(grupos[0][1]), user_id, receita_id))
+            r = cur.fetchone()
+            if not r:
+                return None
+            out = [_receita(r)]
+            for tipo, itens in grupos[1:]:
+                cur.execute(f"""insert into receitas (user_id, patient_id, note_id, event_id, tipo, itens, status, emitida_em)
+                                values (%s,%s,%s,%s,%s,%s,'emitida',now()) returning {_RX_COLS}""",
+                            (user_id, r[1], r[2], r[3], tipo, Jsonb(itens)))
+                out.append(_receita(cur.fetchone()))
+        conn.commit()
+    return out
+
+
+def cancel_receita(user_id, receita_id, motivo):
+    """Cancela uma receita emitida (fica no prontuário com o motivo e a hora). None se não for emitida deste médico."""
+    with connection() as conn:
+        r = conn.execute(f"""update receitas set status = 'cancelada', cancelada_em = now(), motivo_cancelamento = %s,
+                             updated_at = now() where user_id = %s and id = %s and status = 'emitida' returning {_RX_COLS}""",
+                         (motivo, user_id, receita_id)).fetchone()
+        conn.commit()
+    return _receita(r) if r else None
+
+
+def add_example_receitas(user_id, patient_id, rows):
+    """Receitas da paciente de exemplo, já emitidas: rows = (note_id, emitida_em, itens)."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        with conn.cursor() as cur:
+            for note_id, emitida_em, itens in rows:
+                cur.execute("""insert into receitas (user_id, patient_id, note_id, tipo, status, itens, emitida_em, created_at, updated_at)
+                               values (%s,%s,%s,'simples','emitida',%s,%s,%s,%s)""",
+                            (user_id, patient_id, note_id, Jsonb(itens), emitida_em, emitida_em, emitida_em))
+        conn.commit()
+
+
+# --- dados do médico para a receita (Configurações) ---
+MEDICO_CAMPOS = ("name", "crm", "crm_uf", "especialidade", "consultorio_endereco", "consultorio_telefone")
+
+
+def get_medico(user_id):
+    with connection() as conn:
+        r = conn.execute(f"select {', '.join(MEDICO_CAMPOS)} from users where id = %s", (user_id,)).fetchone()
+    return dict(zip(MEDICO_CAMPOS, r)) if r else None
+
+
+def update_medico(user_id, campos):
+    """Atualiza só os campos conhecidos (o servidor já limpou e limitou os valores)."""
+    campos = {k: v for k, v in campos.items() if k in MEDICO_CAMPOS}
+    if not campos:
+        return get_medico(user_id)
+    sets = ", ".join(f"{k} = %s" for k in campos)
+    with connection() as conn:
+        conn.execute(f"update users set {sets} where id = %s", (*campos.values(), user_id))
+        conn.commit()
+    return get_medico(user_id)
 
 
 def delete_file(user_id, file_id):

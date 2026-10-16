@@ -1282,14 +1282,6 @@ def _note_data(v):
                   for c in cid[:20] if isinstance(c, dict) and (c.get("code") or c.get("desc"))]
     if isinstance(v.get("scribe"), dict):              # evolução gerada pela gravação: rastreio, sem texto
         out["scribe"] = _scribe_rastreio(v["scribe"])
-    rx = v.get("receita") if isinstance(v.get("receita"), list) else []   # rascunho da receita (aba Prescrições)
-    rx = [{"nome": str(i.get("nome") or "")[:120], "dose": str(i.get("dose") or "")[:60],
-           "posologia": str(i.get("posologia") or "")[:160], "quantidade": str(i.get("quantidade") or "")[:60],
-           "origem": i.get("origem") if i.get("origem") in ("ia", "uso", "manual", "anterior") else "manual",
-           "fonte": str(i.get("fonte") or "")[:240], "ia": str(i.get("ia") or "")[:60]}
-          for i in rx[:20] if isinstance(i, dict) and str(i.get("nome") or "").strip()]
-    if rx:
-        out["receita"] = rx
     return out if len(json.dumps(out)) <= MAX_DATA_CHARS else None
 
 
@@ -1619,6 +1611,189 @@ async def prontuario_prescricao_sugerir(request: Request):
               "s=", round(time.monotonic() - t0), flush=True)
         yield _line(dict(res, ok=True))
     return StreamingResponse(run(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
+
+
+# --- receitas (aba Prescrições; app/prescricao.py confere e separa; app/db.py guarda) ---
+_UFS = ("AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+        "RS", "RO", "RR", "SC", "SP", "SE", "TO")
+
+
+def _receita_do_medico(u, rid):
+    """A receita deste médico (id em UUID) ou None."""
+    return db.get_receita(u["id"], rid.lower()) if _UUID.match(rid.lower()) else None
+
+
+def _faltam_medico(m):
+    """O que falta para identificar o médico na receita (nome, CRM e UF)."""
+    return [rot for k, rot in (("name", "nome"), ("crm", "CRM"), ("crm_uf", "UF do CRM")) if not (m or {}).get(k)]
+
+
+@app.get("/prontuario/receitas")
+async def prontuario_receitas(request: Request, patient_id: str = ""):
+    """Receitas do paciente (rascunhos, emitidas e canceladas), da mais nova para a mais velha."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    p = await run_in_threadpool(db.get_patient, u["id"], int(patient_id)) if patient_id.isdigit() else None
+    if not p:
+        return JSONResponse({"error": "inválido"}, status_code=400)
+    return {"receitas": await run_in_threadpool(db.list_receitas, u["id"], p["id"])}
+
+
+@app.post("/prontuario/receitas")
+async def prontuario_receita_nova(request: Request):
+    """Novo rascunho: da consulta aberta (note_id/event_id) ou sem consulta (renovação)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    b = await _json(request)
+    pid, nid = b.get("patient_id"), b.get("note_id")
+    p = await run_in_threadpool(db.get_patient, u["id"], int(pid)) if str(pid or "").isdigit() else None
+    if not p:
+        return JSONResponse({"error": "inválido"}, status_code=400)
+    if nid is not None:
+        n = await run_in_threadpool(db.get_note, u["id"], int(nid)) if str(nid).isdigit() else None
+        if not n or n.get("patient_id") != p["id"]:
+            return JSONResponse({"error": "evolução inválida"}, status_code=400)
+    eid = str(b.get("event_id") or "")[:200] or None
+    r = await run_in_threadpool(db.create_receita, u["id"], p["id"], prescricao.itens_limpos(b.get("itens")), "simples",
+                                int(nid) if nid is not None else None, eid)
+    return {"receita": r}
+
+
+@app.patch("/prontuario/receitas/{rid}")
+async def prontuario_receita_muda(rid: str, request: Request):
+    """Itens do rascunho. Emitida não muda (409)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    r = await run_in_threadpool(_receita_do_medico, u, rid)
+    if not r:
+        return JSONResponse({"error": "receita não encontrada"}, status_code=404)
+    novo = await run_in_threadpool(db.update_receita, u["id"], r["id"], prescricao.itens_limpos((await _json(request)).get("itens")))
+    if not novo:
+        return JSONResponse({"error": "receita já emitida"}, status_code=409)
+    return {"receita": novo}
+
+
+@app.delete("/prontuario/receitas/{rid}")
+async def prontuario_receita_apaga(rid: str, request: Request):
+    """Só rascunho sai; emitida se cancela."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    r = await run_in_threadpool(_receita_do_medico, u, rid)
+    if not r:
+        return JSONResponse({"error": "receita não encontrada"}, status_code=404)
+    if not await run_in_threadpool(db.delete_receita, u["id"], r["id"]):
+        return JSONResponse({"error": "receita já emitida: cancele em vez de apagar"}, status_code=409)
+    return {"ok": True}
+
+
+async def _conferencia(u, p, itens):
+    """Avisos de cada item, com a TFG das evoluções (como as possíveis prescrições)."""
+    notes = await run_in_threadpool(db.list_notes, u["id"], p["id"], p.get("key"))
+    _, nums = prescricao.perfil(p, notes)
+    return prescricao.conferir(itens, p.get("allergies") or "", nums["tfg"])
+
+
+@app.post("/prontuario/receitas/conferir")
+async def prontuario_receitas_conferir(request: Request):
+    """Avisos de cada item (alergia, dose, função renal, repetido, nome, controle especial, antimicrobiano, talão).
+    Nada é gravado."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    b = await _json(request)
+    pid = b.get("patient_id")
+    p = await run_in_threadpool(db.get_patient, u["id"], int(pid)) if str(pid or "").isdigit() else None
+    if not p:
+        return JSONResponse({"error": "inválido"}, status_code=400)
+    return {"avisos": await _conferencia(u, p, prescricao.itens_limpos(b.get("itens")))}
+
+
+@app.post("/prontuario/receitas/{rid}/emitir")
+async def prontuario_receita_emite(rid: str, request: Request):
+    """Emite o rascunho (com os itens mandados, conferidos de novo aqui). Exige nome, CRM e UF do médico. O que pede
+    Notificação de Receita (talão) não sai pelo app. Controle especial e antimicrobiano viram receitas próprias."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    r = await run_in_threadpool(_receita_do_medico, u, rid)
+    if not r:
+        return JSONResponse({"error": "receita não encontrada"}, status_code=404)
+    if r["status"] != "rascunho":
+        return JSONResponse({"error": "receita já emitida"}, status_code=409)
+    b = await _json(request)
+    itens = prescricao.itens_limpos(b["itens"]) if isinstance(b.get("itens"), list) else r["itens"]
+    if not itens:
+        return JSONResponse({"error": "receita sem itens"}, status_code=400)
+    faltam = _faltam_medico(await run_in_threadpool(db.get_medico, u["id"]))
+    if faltam:
+        return JSONResponse({"error": "faltam dados do médico", "faltam": faltam}, status_code=409)
+    p = await run_in_threadpool(db.get_patient, u["id"], r["patient_id"])
+    conf = await _conferencia(u, p, itens)
+    talao = [f"{it['nome']}: {c['talao']}" for it, c in zip(itens, conf) if c["talao"]]
+    if talao:
+        return JSONResponse({"error": "exige Notificação de Receita (talão)", "talao": talao}, status_code=409)
+    out = await run_in_threadpool(db.emit_receita, u["id"], r["id"], prescricao.grupos(itens, conf))
+    if not out:
+        return JSONResponse({"error": "receita já emitida"}, status_code=409)
+    await run_in_threadpool(db.log_access, u["id"], "receita_emitida", p["id"], r["note_id"])
+    return {"receitas": out}
+
+
+@app.post("/prontuario/receitas/{rid}/cancelar")
+async def prontuario_receita_cancela(rid: str, request: Request):
+    """Cancela uma emitida (fica no prontuário com o motivo). Motivo obrigatório."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    r = await run_in_threadpool(_receita_do_medico, u, rid)
+    if not r:
+        return JSONResponse({"error": "receita não encontrada"}, status_code=404)
+    motivo = re.sub(r"\s+", " ", str((await _json(request)).get("motivo") or "")).strip()[:300]
+    if not motivo:
+        return JSONResponse({"error": "diga o motivo do cancelamento"}, status_code=400)
+    out = await run_in_threadpool(db.cancel_receita, u["id"], r["id"], motivo)
+    if not out:
+        return JSONResponse({"error": "só uma receita emitida pode ser cancelada"}, status_code=409)
+    await run_in_threadpool(db.log_access, u["id"], "receita_cancelada", r["patient_id"], r["note_id"])
+    return {"receita": out}
+
+
+@app.get("/me/medico")
+async def me_medico(request: Request):
+    """Dados do médico para a receita (Configurações)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    m = await run_in_threadpool(db.get_medico, u["id"])
+    return {"medico": m, "faltam": _faltam_medico(m)}
+
+
+@app.patch("/me/medico")
+async def me_medico_muda(request: Request):
+    """Nome, CRM/UF, especialidade, endereço e telefone do consultório."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    b = await _json(request)
+    limpo = lambda k, n: re.sub(r"\s+", " ", str(b.get(k) or "")).strip()[:n]  # noqa: E731
+    campos = {k: limpo(k, n) for k, n in (("name", 120), ("especialidade", 80), ("consultorio_endereco", 200),
+                                          ("consultorio_telefone", 40)) if k in b}
+    if "crm" in b:
+        crm = re.sub(r"\D", "", str(b.get("crm") or ""))[:10]
+        campos["crm"] = crm
+    if "crm_uf" in b:
+        uf = str(b.get("crm_uf") or "").strip().upper()
+        if uf and uf not in _UFS:
+            return JSONResponse({"error": "UF inválida"}, status_code=400)
+        campos["crm_uf"] = uf
+    if "name" in campos and not campos["name"]:
+        return JSONResponse({"error": "o nome não pode ficar vazio"}, status_code=400)
+    m = await run_in_threadpool(db.update_medico, u["id"], campos)
+    return {"medico": m, "faltam": _faltam_medico(m)}
 
 
 @app.post("/prontuario/access")

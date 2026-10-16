@@ -235,6 +235,61 @@ def finish(raw, p, fts, tfg_=None):
             "prompt": PROMPT_VERSION, "modelo": config.OPENAI_PRESC_MODEL}
 
 
+# ----- a receita: cada item limpo e conferido (inclusive os digitados à mão) e separado por tipo para emitir -----
+# app/data/controlados.tsv (Portaria 344) e antimicrobianos.tsv (RDC 471/2021): só avisam e separam; revisão médica.
+_CONTROLE = [(k, *(c.strip() for c in v.split("\t")[:2])) for k, v in scribe._pares("controlados.tsv")]
+_ANTIMICROB = scribe._linhas("antimicrobianos.tsv")
+TALAO = {"notificacao_a": "Notificação de Receita A (amarela)", "notificacao_b": "Notificação de Receita B (azul)",
+         "notificacao_b2": "Notificação de Receita B2 (azul)", "notificacao_c2": "Notificação de Receita de retinoide"}
+TIPOS = ("simples", "especial", "antimicrobiano")
+VIAS = ("oral", "sublingual", "tópica", "inalatória", "nasal", "oftálmica", "otológica", "vaginal", "retal", "subcutânea",
+        "intramuscular", "intravenosa", "transdérmica")
+ORIGENS = ("ia", "uso", "manual", "anterior", "gravacao")
+MAX_ITENS = 20
+
+
+def item_limpo(it):
+    """Um item da receita só com os campos conhecidos e tamanhos limitados. None sem nome."""
+    if not isinstance(it, dict) or not _txt(it.get("nome"), 120):
+        return None
+    return {"nome": _txt(it.get("nome"), 120), "dose": _txt(it.get("dose"), 60), "posologia": _txt(it.get("posologia"), 160),
+            "quantidade": _txt(it.get("quantidade"), 60), "via": it.get("via") if it.get("via") in VIAS else "",
+            "continuo": bool(it.get("continuo")), "origem": it.get("origem") if it.get("origem") in ORIGENS else "manual",
+            "fonte": _txt(it.get("fonte"), 240), "ia": _txt(it.get("ia"), 60)}
+
+
+def itens_limpos(itens):
+    return [x for x in (item_limpo(i) for i in (itens if isinstance(itens, list) else [])[:MAX_ITENS]) if x]
+
+
+def conferir(itens, alergias, tfg_=None):
+    """Avisos de cada item: alergia (família e marca), dose fora da faixa usual, função renal, remédio repetido, nome
+    fora da lista conhecida e o tipo de receita: simples, controle especial (2 vias) ou antimicrobiano (2 vias); o que
+    pede Notificação de Receita (talão) vem em "talao" e não é emitido pelo app."""
+    out = []
+    for i, it in enumerate(itens):
+        nome = it["nome"]
+        ctl = next(((lista, rec) for k, lista, rec in _CONTROLE if scribe.same_drug(k, nome)), None)
+        anti = any(scribe.same_drug(k, nome) for k in _ANTIMICROB)
+        st, sug = scribe.drug_lookup(nome)
+        odd = scribe.dose_incomum(nome, it.get("dose") or "")
+        rep = any(scribe.same_drug(nome, o["nome"]) or scribe.same_drug(o["nome"], nome) for j, o in enumerate(itens) if j != i)
+        out.append({"alergias": scribe.allergy_hits(nome, alergias), "faixa": list(odd[1]) if odd else None,
+                    "renal": aviso_renal(nome, tfg_), "repetido": rep,
+                    "nome": "" if st == "ok" else (f"Seria {sug}?" if sug else "Remédio fora da lista conhecida: confira o nome."),
+                    "tipo": "especial" if ctl and ctl[1] == "especial" else "antimicrobiano" if anti else "simples",
+                    "lista": ctl[0] if ctl else "", "talao": TALAO.get(ctl[1], "") if ctl else ""})
+    return out
+
+
+def grupos(itens, conf):
+    """Separa para emitir: simples, controle especial e antimicrobiano, cada um na sua receita (nesta ordem)."""
+    g = {}
+    for it, c in zip(itens, conf):
+        g.setdefault(c["tipo"], []).append(it)
+    return [(t, g[t]) for t in TIPOS if t in g]
+
+
 # ----- guarda o resultado enquanto o perfil não muda: abrir a aba de novo não gasta crédito -----
 _CACHE, _LOCK, _TTL, _MAX = collections.OrderedDict(), threading.Lock(), 24 * 3600, 300
 

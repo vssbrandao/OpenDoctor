@@ -208,3 +208,40 @@ def test_evolucao_anterior_ignora_a_atual_e_os_exames(novo_usuario):
     assert db.last_note_content(ana, p["id"], atual, "ev2") == "S: consulta de setembro"
     assert db.last_note_content(ana, p["id"], antiga, "ev1") == "S: consulta de hoje"
     assert db.last_note_content(novo_usuario("Beto")["id"], p["id"]) == ""        # de outro médico: nada
+
+
+def test_receitas_rascunho_emitida_cancelada(novo_usuario):
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p = db.create_patient(ana, "Paciente da Receita")
+    r = db.create_receita(ana, p["id"], [{"nome": "Losartana"}])
+    assert r["status"] == "rascunho" and r["note_id"] is None
+    assert db.get_receita(beto, r["id"]) is None and db.update_receita(beto, r["id"], []) is None
+    assert db.update_receita(ana, r["id"], [{"nome": "Losartana", "dose": "50 mg"}])["itens"][0]["dose"] == "50 mg"
+    out = db.emit_receita(ana, r["id"], [("simples", [{"nome": "Losartana"}]), ("especial", [{"nome": "Sertralina"}])])
+    assert [(x["tipo"], x["status"]) for x in out] == [("simples", "emitida"), ("especial", "emitida")] and out[0]["id"] == r["id"]
+    assert db.emit_receita(ana, r["id"], [("simples", [])]) is None                     # emitida não emite de novo
+    assert db.update_receita(ana, r["id"], []) is None and db.delete_receita(ana, r["id"]) is None
+    assert db.cancel_receita(beto, out[1]["id"], "x") is None
+    c = db.cancel_receita(ana, out[1]["id"], "Dose errada")
+    assert c["status"] == "cancelada" and c["motivo_cancelamento"] == "Dose errada" and c["cancelada_em"]
+    assert len(db.list_receitas(ana, p["id"])) == 2 and db.list_receitas(beto, p["id"]) == []
+    assert db.delete_patient(ana, p["id"]) == "has_notes"                               # receita emitida é prontuário
+    p2 = db.create_patient(ana, "Só rascunho")
+    db.create_receita(ana, p2["id"], [])
+    assert db.delete_patient(ana, p2["id"]) == "ok"                                      # o rascunho sai junto
+
+
+def test_dados_do_medico(novo_usuario):
+    uid = novo_usuario("Dra. Ana")["id"]
+    assert db.get_medico(uid)["crm"] is None
+    m = db.update_medico(uid, {"crm": "123456", "crm_uf": "SP", "consultorio_endereco": "Rua A, 1", "invadir": "x"})
+    assert (m["name"], m["crm"], m["crm_uf"], m["consultorio_endereco"]) == ("Dra. Ana", "123456", "SP", "Rua A, 1")
+
+
+def test_exemplo_vem_com_as_receitas(novo_usuario):
+    from app import exemplo
+    uid = novo_usuario()["id"]
+    pid = exemplo.seed(uid)
+    rs = db.list_receitas(uid, pid)
+    assert len(rs) == len(exemplo.CONSULTAS) and all(r["status"] == "emitida" and r["note_id"] for r in rs)
+    assert [i["nome"] for i in rs[0]["itens"]] == ["Losartana", "Metformina", "Atorvastatina"]   # a mais nova

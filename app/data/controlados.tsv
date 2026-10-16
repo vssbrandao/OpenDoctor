@@ -1,0 +1,68 @@
+# Substâncias controladas (Portaria SVS/MS 344/98) comuns na atenção primária: substância<TAB>lista<TAB>receituário.
+# Receituário: "especial" = Receita de Controle Especial em 2 vias (o app emite numa receita própria);
+# "notificacao_a" / "notificacao_b" / "notificacao_b2" / "notificacao_c2" = Notificação de Receita (talão numerado da
+# vigilância sanitária): o app não emite, só avisa. Só para AVISAR e separar (prescricao.conferir); não substitui a
+# consulta à lista vigente da Anvisa. Revisão: médico revisor (pendente).
+amitriptilina	C1	especial
+nortriptilina	C1	especial
+clomipramina	C1	especial
+imipramina	C1	especial
+fluoxetina	C1	especial
+sertralina	C1	especial
+paroxetina	C1	especial
+citalopram	C1	especial
+escitalopram	C1	especial
+fluvoxamina	C1	especial
+venlafaxina	C1	especial
+desvenlafaxina	C1	especial
+duloxetina	C1	especial
+bupropiona	C1	especial
+trazodona	C1	especial
+mirtazapina	C1	especial
+vortioxetina	C1	especial
+carbamazepina	C1	especial
+oxcarbazepina	C1	especial
+valproato	C1	especial
+divalproato	C1	especial
+lamotrigina	C1	especial
+topiramato	C1	especial
+gabapentina	C1	especial
+pregabalina	C1	especial
+fenitoina	C1	especial
+quetiapina	C1	especial
+risperidona	C1	especial
+olanzapina	C1	especial
+haloperidol	C1	especial
+aripiprazol	C1	especial
+clorpromazina	C1	especial
+levomepromazina	C1	especial
+clozapina	C1	especial
+litio	C1	especial
+biperideno	C1	especial
+tramadol	A2 (adendo)	especial
+codeina	A2 (adendo)	especial
+testosterona	C5	especial
+nandrolona	C5	especial
+oxandrolona	C5	especial
+alprazolam	B1	notificacao_b
+bromazepam	B1	notificacao_b
+clonazepam	B1	notificacao_b
+clobazam	B1	notificacao_b
+diazepam	B1	notificacao_b
+lorazepam	B1	notificacao_b
+midazolam	B1	notificacao_b
+nitrazepam	B1	notificacao_b
+cloxazolam	B1	notificacao_b
+zolpidem	B1	notificacao_b
+sibutramina	B2	notificacao_b2
+anfepramona	B2	notificacao_b2
+femproporex	B2	notificacao_b2
+morfina	A1	notificacao_a
+metadona	A1	notificacao_a
+oxicodona	A1	notificacao_a
+fentanil	A1	notificacao_a
+petidina	A1	notificacao_a
+metilfenidato	A3	notificacao_a
+lisdexanfetamina	A3	notificacao_a
+isotretinoina	C2	notificacao_c2
+acitretina	C2	notificacao_c2
