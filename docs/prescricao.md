@@ -5,9 +5,9 @@ A aba Prescrições do prontuário tem dois cartões:
 1. **Prescrições:** a receita da consulta aberta. É um rascunho salvo junto com a evolução, em `data.receita`.
    - Cada item tem remédio, dose, posologia, quantidade e a origem: `ia`, `uso` ou `manual`. Itens da IA levam também
      a fonte e a versão do prompt e do modelo.
-   - O médico edita direto na tabela. Dá para copiar o texto e imprimir a receita, com espaço para carimbo e
-     assinatura (o app ainda não guarda o CRM).
-   - A impressão fica registrada nos acessos como exportação.
+   - Clicar na linha abre a edição. Dá para copiar o texto e "Gerar receita": a folha da receita, para imprimir ou
+     salvar em PDF, com espaço para carimbo e assinatura (o app ainda não guarda o CRM).
+   - Gerar a receita fica registrado nos acessos como exportação.
    - Evolução finalizada: a receita não muda mais.
 2. **Possíveis prescrições:** a IA propõe, para cada remédio em uso, manter, ajustar ou suspender, e pode sugerir
    iniciar remédios novos. Cada sugestão traz o artigo da base do assistente que a sustenta. O "+" leva o item à
