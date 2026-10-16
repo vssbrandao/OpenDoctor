@@ -30,6 +30,7 @@ from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
 from app import auth, config, db, prescricao, scribe, server, stt  # noqa: E402
 from tests.fake_gravacao import EPOCA, FakeGravacao  # noqa: E402
+from tests.fake_receitas import FakeReceitas  # noqa: E402
 
 UID = "00000000-0000-0000-0000-000000000000"
 auth.current_user = lambda request: {"id": UID, "email": "teste@example.invalid", "name": "Dra. Teste", "sv": 0}
@@ -109,6 +110,10 @@ def _exemplo():
         NOTES[i] = {"id": i, "pid": 9001, "event_id": None, "event_title": title, "event_start": start and start.isoformat(),
                     "content": content, "updated_at": upd.isoformat(), "data": server._note_data(data),
                     "signed_at": signed and signed.isoformat(), "addenda": [], "exemplo": True}
+    RX.rx = {k: r for k, r in RX.rx.items() if r["patient_id"] != 9001}      # as receitas emitidas de cada consulta
+    ids = sorted(k for k, n in NOTES.items() if n.get("exemplo") and n["event_title"])
+    cs = exemplo.consultas(now)
+    RX.add_example_receitas(UID, 9001, [(ids[i], c["signed_at"], exemplo.receita_itens(i)) for i, c in enumerate(cs)])
     recente = min(exemplo.EXAMES)                    # o laudo da coleta mais recente, como na conta nova
     coleta = (exemplo._when(now, recente) - dt.timedelta(days=5)).date()
     pdf = exemplo.laudo_pdf(coleta, exemplo.EXAMES[recente])
@@ -213,6 +218,11 @@ db.last_note_content = lambda uid, pid, nid=None, eid=None: next(
     (n["content"] for n in sorted(NOTES.values(), key=lambda n: n["updated_at"], reverse=True)
      if n["pid"] == pid and n["content"].strip() and n["id"] != nid and (eid is None or n["event_id"] != eid)), "")
 db.log_access = lambda *a, **k: None
+# receitas e dados do médico em memória (os mesmos contratos de app/db.py); o médico do preview começa sem CRM, para o
+# "Emitir receita" mostrar o caminho de completar os dados em Configurações
+RX = FakeReceitas({UID: {"name": "Dra. Teste"}})
+RX.install(setattr)
+db.get_note = lambda uid, nid: dict(_note_out(NOTES[nid]), patient_id=NOTES[nid]["pid"]) if nid in NOTES else None
 
 # ----- transcritor e modelo simulados: consulta FICTÍCIA -----
 SIM = {"rede": False, "ia": False, "lento": 1.2, "erro_seq": set(), "recusar_seq": set()}
@@ -342,7 +352,7 @@ def _estado():
 
 @mock.get("/_preview/reset")
 def _reset():
-    GRAV.reset(); NOTES.clear(); FILES.clear(); prescricao._CACHE.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
+    GRAV.reset(); NOTES.clear(); FILES.clear(); RX.reset(); prescricao._CACHE.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
     return {"ok": True}
 
 

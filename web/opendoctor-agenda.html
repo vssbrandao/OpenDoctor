@@ -153,12 +153,26 @@
        a origem; linha de 4+10 / 10 px com divisória; a linha toda abre a edição */
     .rx-list{display:flex;flex-direction:column}
     .rx-list:empty{display:none}
-    .rx-row{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:14px 0 10px;border:0;
-      border-bottom:1px solid rgba(0,0,0,.08);background:none;cursor:pointer;text-align:left;font-family:var(--disp)}
+    .rx-row{display:flex;align-items:center;gap:8px;padding:14px 0 10px;border-bottom:1px solid rgba(0,0,0,.08)}
     .rx-row:first-child{padding-top:4px}
-    .rx-row:hover .rx-n{text-decoration:underline}
-    .rx-row:disabled{cursor:default}
-    .rx-row:disabled:hover .rx-n{text-decoration:none}
+    .rx-main{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0;border:0;background:none;
+      cursor:pointer;text-align:left;font-family:var(--disp)}
+    .rx-main:hover .rx-n{text-decoration:underline}
+    .rx-main:disabled{cursor:default}
+    .rx-main:disabled:hover .rx-n{text-decoration:none}
+    .rx-x{flex:none;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:16px;background:none;cursor:pointer}
+    .rx-x:hover{background:#E9EBF0}
+    .rx-x svg{width:18px;height:18px}
+    .rx-l .rn-w{margin-top:4px}
+    .rx-tipo{margin-top:4px;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#0B57D0}
+    .rx-ck{display:flex;align-items:center;gap:8px;align-self:end;height:40px;font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A;cursor:pointer}
+    .rx-ck input{width:16px;height:16px;margin:0;accent-color:#0B57D0}
+    .rx-msg{font-family:var(--disp);font-size:12px;line-height:16px;color:#C0151D}
+    .rx-msg[hidden]{display:none}
+    .rx-msg .pr-link{font-size:12px}
+    .pr-toast.act{display:flex;align-items:center;gap:16px}
+    .pr-toast.act button{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:#A8C7FA}
+    .ov-post-src i.cx::before{background:#C0151D}
     .rx-l,.rx-r{display:flex;flex-direction:column;min-width:0}
     .rx-r{flex:none;align-items:flex-end;text-align:right}
     .rx-n{font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A;margin-bottom:4px}
@@ -1325,13 +1339,23 @@
     @media print{
       body.rxp > *{display:none!important}
       body.rxp > #rxPrint{display:block!important;font-family:var(--disp),Helvetica,Arial,sans-serif;color:#000}
+      .rx-folha{break-after:page;page-break-after:always}
+      .rx-folha:last-child{break-after:auto;page-break-after:auto}
+      .rx-med{display:flex;flex-direction:column;gap:2px;padding-bottom:12px;margin-bottom:20px;border-bottom:1px solid #000;font-size:12px;line-height:16px}
+      .rx-med b{font-size:15px;line-height:20px;font-weight:500}
       .rx-print h1{margin:0 0 4px;font-size:20px;font-weight:500}
-      .rx-print .rx-ph{display:flex;justify-content:space-between;margin-bottom:24px;font-size:13px}
-      .rx-print ol{margin:0;padding-left:20px;font-size:14px;line-height:20px}
+      .rx-print .rx-via{margin-bottom:8px;font-size:12px;font-weight:500}
+      .rx-print .rx-ph{display:flex;justify-content:space-between;margin-bottom:16px;font-size:13px}
+      .rx-print .rx-line{margin:0 0 16px;font-size:12px}
+      .rx-print ol{margin:8px 0 0;padding-left:20px;font-size:14px;line-height:20px}
       .rx-print li{margin-bottom:14px}
+      .rx-print li.rx-uso{list-style:none;margin:16px 0 8px -20px;font-size:13px;font-weight:500;text-decoration:underline}
       .rx-print li b{font-weight:500}
       .rx-print li .q{float:right}
-      .rx-print .rx-sign{margin:72px 0 0 auto;width:280px;padding-top:6px;border-top:1px solid #000;text-align:center;font-size:12px}
+      .rx-print .rx-sign{margin:64px 0 0 auto;width:280px;padding-top:6px;border-top:1px solid #000;text-align:center;font-size:12px}
+      .rx-print .rx-id{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:32px 2px 0 0;font-size:11px;line-height:18px}   /* 2px: a borda direita não cai fora da área de impressão */
+      .rx-print .rx-id div{display:flex;flex-direction:column;box-sizing:border-box;min-width:0;padding:8px;border:1px solid #000}
+      .rx-print .rx-2via{margin-top:24px;font-size:11px;color:#444}
       @page{margin:16mm}
       body{background:#fff}
       .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.rc-tx,.rc-note,.pr-foot,.pr-chipin,.pr-tabs,
@@ -1820,7 +1844,7 @@
         </div>
         <div class="nav-sec">
           <div class="item" data-href="opendoctor-integracao.html" title="Integrações"><span class="ico"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.4112 13.722C0.823661 13.722 0.000489983 12.9061 0.000489983 11.3333V2.38867C0.000489983 0.815821 0.823661 0 2.4112 0H12.5244C14.112 0 14.9352 0.815821 14.9352 2.38867V6.51187C14.7 6.47512 14.4574 6.45307 14.2222 6.45307C13.9797 6.45307 13.7372 6.47512 13.4946 6.51187V4.52744C13.4946 3.88066 13.1492 3.56462 12.5318 3.56462H2.38916C1.77913 3.56462 1.44104 3.88066 1.44104 4.52744V11.3186C1.44104 11.958 1.77913 12.2814 2.38916 12.2814H9.52575C9.61395 12.7959 9.80504 13.281 10.0696 13.722H2.4112ZM6.04932 6.11498C5.78473 6.11498 5.69654 6.03414 5.69654 5.76954V5.34326C5.69654 5.07867 5.78473 4.99782 6.04932 4.99782H6.48296C6.7402 4.99782 6.8284 5.07867 6.8284 5.34326V5.76954C6.8284 6.03414 6.7402 6.11498 6.48296 6.11498H6.04932ZM8.45269 6.11498C8.1881 6.11498 8.0999 6.03414 8.0999 5.76954V5.34326C8.0999 5.07867 8.1881 4.99782 8.45269 4.99782H8.88632C9.14356 4.99782 9.23176 5.07867 9.23176 5.34326V5.76954C9.23176 6.03414 9.14356 6.11498 8.88632 6.11498H8.45269ZM10.8561 6.11498C10.5915 6.11498 10.5033 6.03414 10.5033 5.76954V5.34326C10.5033 5.07867 10.5915 4.99782 10.8561 4.99782H11.2897C11.5543 4.99782 11.6425 5.07867 11.6425 5.34326V5.76954C11.6425 6.03414 11.5543 6.11498 11.2897 6.11498H10.8561ZM3.64596 8.4816C3.38137 8.4816 3.29317 8.40075 3.29317 8.13616V7.70988C3.29317 7.44529 3.38137 7.36444 3.64596 7.36444H4.07225C4.33684 7.36444 4.42503 7.44529 4.42503 7.70988V8.13616C4.42503 8.40075 4.33684 8.4816 4.07225 8.4816H3.64596ZM6.04932 8.4816C5.78473 8.4816 5.69654 8.40075 5.69654 8.13616V7.70988C5.69654 7.44529 5.78473 7.36444 6.04932 7.36444H6.48296C6.7402 7.36444 6.8284 7.44529 6.8284 7.70988V8.13616C6.8284 8.40075 6.7402 8.4816 6.48296 8.4816H6.04932ZM8.45269 8.4816C8.1881 8.4816 8.0999 8.40075 8.0999 8.13616V7.70988C8.0999 7.44529 8.1881 7.36444 8.45269 7.36444H8.88632C9.14356 7.36444 9.23176 7.44529 9.23176 7.70988V8.13616C9.23176 8.40075 9.14356 8.4816 8.88632 8.4816H8.45269ZM14.2222 15.0596C12.1496 15.0596 10.4371 13.3545 10.4371 11.2745C10.4371 9.20187 12.1496 7.49673 14.2222 7.49673C16.2949 7.49673 18 9.20187 18 11.2745C18 13.3398 16.2728 15.0596 14.2222 15.0596ZM14.2222 13.6705C14.5236 13.6705 14.722 13.4721 14.722 13.1781V11.7743H16.1111C16.4125 11.7743 16.6109 11.5832 16.6109 11.2745C16.6109 10.9732 16.4125 10.7747 16.1111 10.7747H14.722V9.38562C14.722 9.08428 14.5236 8.88583 14.2222 8.88583C13.9135 8.88583 13.7225 9.09163 13.7225 9.38562V10.7747H12.326C12.0247 10.7747 11.8262 10.9732 11.8262 11.2745C11.8262 11.5832 12.0247 11.7743 12.326 11.7743H13.7225V13.1781C13.7225 13.4721 13.9135 13.6705 14.2222 13.6705ZM3.64596 10.8482C3.38137 10.8482 3.29317 10.7674 3.29317 10.5028V10.0765C3.29317 9.8119 3.38137 9.73105 3.64596 9.73105H4.07225C4.33684 9.73105 4.42503 9.8119 4.42503 10.0765V10.5028C4.42503 10.7674 4.33684 10.8482 4.07225 10.8482H3.64596ZM6.04932 10.8482C5.78473 10.8482 5.69654 10.7674 5.69654 10.5028V10.0765C5.69654 9.8119 5.78473 9.73105 6.04932 9.73105H6.48296C6.7402 9.73105 6.8284 9.8119 6.8284 10.0765V10.5028C6.8284 10.7674 6.7402 10.8482 6.48296 10.8482H6.04932ZM8.45269 10.8482C8.1881 10.8482 8.0999 10.7674 8.0999 10.5028V10.0765C8.0999 9.8119 8.1881 9.73105 8.45269 9.73105H8.88632C9.14356 9.73105 9.23176 9.8119 9.23176 10.0765V10.5028C9.23176 10.7674 9.14356 10.8482 8.88632 10.8482H8.45269Z" fill="#071216"/></svg></span><span>Integrações</span></div>
-          <div class="item" title="Configurações"><span class="ico"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 15.7712C8.32619 15.7712 8.15238 15.7637 7.97857 15.7486L7.5705 16.5194C7.44959 16.731 7.26067 16.8368 7.01885 16.7914C6.79214 16.7461 6.63345 16.5874 6.60322 16.3456L6.48231 15.4916C6.14225 15.3934 5.8173 15.2725 5.50747 15.1289L4.85757 15.7108C4.67621 15.8695 4.45706 15.8997 4.24547 15.7788C4.04143 15.6579 3.9583 15.4539 4.00365 15.2196L4.18501 14.3732C3.90541 14.1692 3.63336 13.95 3.38398 13.7007L2.58295 14.0256C2.35624 14.1163 2.14465 14.0709 1.98595 13.882C1.83482 13.7007 1.8197 13.474 1.94817 13.2699L2.40914 12.5445C2.21266 12.2497 2.03885 11.9475 1.88771 11.6376L1.02623 11.6603C0.776849 11.6679 0.595484 11.5545 0.512358 11.3278C0.436789 11.1011 0.489687 10.8819 0.686166 10.7384L1.36629 10.2094C1.28316 9.86931 1.22271 9.52925 1.18492 9.17408L0.36122 8.90958C0.126956 8.83401 -0.00151138 8.65265 -0.00151138 8.41839C-0.00151138 8.17656 0.126956 7.9952 0.36122 7.92719L1.18492 7.6627C1.22271 7.30752 1.28316 6.96746 1.36629 6.6274L0.686166 6.09842C0.489687 5.94728 0.429232 5.73569 0.512358 5.51654C0.595484 5.28983 0.776849 5.16136 1.02623 5.16892L1.88771 5.2067C2.03885 4.88931 2.21266 4.58704 2.40914 4.29988L1.94817 3.56686C1.8197 3.36282 1.82726 3.13611 1.98595 2.95475C2.14465 2.77338 2.35624 2.71293 2.58295 2.81117L3.38398 3.13611C3.63336 2.89429 3.89785 2.66759 4.18501 2.46355L4.00365 1.61718C3.9583 1.38291 4.03387 1.17132 4.24547 1.05797C4.45706 0.944612 4.68377 0.959726 4.85757 1.12598L5.49235 1.7003C5.8173 1.56428 6.13469 1.44337 6.47475 1.34513L6.60322 0.483642C6.641 0.249378 6.78458 0.0831259 7.0264 0.0453414C7.26067 0.0075569 7.45715 0.105797 7.5705 0.31739L7.97857 1.08819C8.15238 1.07308 8.32619 1.06552 8.5 1.06552C8.67381 1.06552 8.84762 1.07308 9.02143 1.08819L9.4295 0.31739C9.54285 0.105797 9.73933 0 9.9736 0.0453414C10.2079 0.0906828 10.359 0.249378 10.3968 0.491198L10.5101 1.34513C10.8502 1.44337 11.1827 1.55672 11.4925 1.7003L12.1424 1.12598C12.3162 0.967283 12.5429 0.929499 12.7545 1.05797C12.9586 1.17888 13.0417 1.37536 12.9964 1.61718L12.8074 2.45599C13.0946 2.66003 13.3666 2.88674 13.616 3.13611L14.4171 2.81117C14.6362 2.72048 14.8554 2.76583 15.014 2.95475C15.1576 3.13611 15.1803 3.36282 15.0518 3.56686L14.5909 4.29232C14.7798 4.57948 14.9611 4.88176 15.1123 5.19915L15.9738 5.17648C16.2156 5.16892 16.4045 5.27472 16.4876 5.50898C16.5632 5.73569 16.5103 5.95484 16.3138 6.09842L15.6262 6.6274C15.7168 6.9599 15.7773 7.30752 15.8151 7.6627L16.6388 7.92719C16.8655 7.9952 17.0015 8.17656 17.0015 8.41839C17.0015 8.65265 16.8655 8.83401 16.6388 8.90958L15.8151 9.17408C15.7773 9.52925 15.7168 9.86931 15.6262 10.2094L16.3138 10.7384C16.5103 10.8895 16.5708 11.1011 16.4876 11.3202C16.4045 11.5469 16.2156 11.6754 15.9738 11.6679L15.1123 11.6301C14.9611 11.9475 14.7798 12.2497 14.5909 12.5369L15.0518 13.2699C15.1803 13.474 15.1727 13.7007 15.014 13.882C14.8554 14.0634 14.6438 14.1163 14.4095 14.0256L13.616 13.7007C13.3666 13.9425 13.1022 14.1692 12.8074 14.3657L12.9888 15.2196C13.0417 15.4539 12.9586 15.6579 12.747 15.7788C12.5429 15.8922 12.3162 15.877 12.1424 15.7108L11.5001 15.1289C11.1827 15.2725 10.8578 15.3934 10.5177 15.4916L10.3892 16.3456C10.359 16.5874 10.2154 16.7536 9.9736 16.7914C9.73933 16.8217 9.54285 16.731 9.4295 16.5194L9.02143 15.7486C8.84762 15.7637 8.67381 15.7712 8.5 15.7712ZM8.5 6.31001C9.44461 6.31001 10.2456 6.92968 10.5177 7.79116H14.3566C14.0468 4.82886 11.5454 2.524 8.5 2.524C7.63096 2.524 6.80725 2.71293 6.05912 3.05299L7.99369 6.37047C8.15994 6.33268 8.32619 6.31001 8.5 6.31001ZM2.60562 8.41839C2.60562 10.3378 3.52 12.0381 4.9407 13.1188L6.94328 9.83908C6.60322 9.46124 6.39163 8.96248 6.39163 8.41839C6.39163 7.87429 6.60322 7.38309 6.93572 7.00525L4.9936 3.68021C3.54267 4.75329 2.60562 6.47626 2.60562 8.41839ZM8.5 9.27232C8.97608 9.27232 9.35393 8.88691 9.35393 8.41839C9.35393 7.9423 8.97608 7.56446 8.5 7.56446C8.03147 7.56446 7.64607 7.9423 7.64607 8.41839C7.64607 8.88691 8.03147 9.27232 8.5 9.27232ZM8.5 14.3128C11.553 14.3128 14.0543 11.9928 14.3642 9.02294H10.5252C10.2608 9.89198 9.45217 10.5268 8.5 10.5268C8.32619 10.5268 8.15994 10.5041 8.00124 10.4663L5.99867 13.7536C6.76191 14.1087 7.60829 14.3128 8.5 14.3128Z" fill="#071216"/></svg></span><span>Configurações</span></div>
+          <div class="item" data-href="opendoctor-configuracoes.html" title="Configurações"><span class="ico"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 15.7712C8.32619 15.7712 8.15238 15.7637 7.97857 15.7486L7.5705 16.5194C7.44959 16.731 7.26067 16.8368 7.01885 16.7914C6.79214 16.7461 6.63345 16.5874 6.60322 16.3456L6.48231 15.4916C6.14225 15.3934 5.8173 15.2725 5.50747 15.1289L4.85757 15.7108C4.67621 15.8695 4.45706 15.8997 4.24547 15.7788C4.04143 15.6579 3.9583 15.4539 4.00365 15.2196L4.18501 14.3732C3.90541 14.1692 3.63336 13.95 3.38398 13.7007L2.58295 14.0256C2.35624 14.1163 2.14465 14.0709 1.98595 13.882C1.83482 13.7007 1.8197 13.474 1.94817 13.2699L2.40914 12.5445C2.21266 12.2497 2.03885 11.9475 1.88771 11.6376L1.02623 11.6603C0.776849 11.6679 0.595484 11.5545 0.512358 11.3278C0.436789 11.1011 0.489687 10.8819 0.686166 10.7384L1.36629 10.2094C1.28316 9.86931 1.22271 9.52925 1.18492 9.17408L0.36122 8.90958C0.126956 8.83401 -0.00151138 8.65265 -0.00151138 8.41839C-0.00151138 8.17656 0.126956 7.9952 0.36122 7.92719L1.18492 7.6627C1.22271 7.30752 1.28316 6.96746 1.36629 6.6274L0.686166 6.09842C0.489687 5.94728 0.429232 5.73569 0.512358 5.51654C0.595484 5.28983 0.776849 5.16136 1.02623 5.16892L1.88771 5.2067C2.03885 4.88931 2.21266 4.58704 2.40914 4.29988L1.94817 3.56686C1.8197 3.36282 1.82726 3.13611 1.98595 2.95475C2.14465 2.77338 2.35624 2.71293 2.58295 2.81117L3.38398 3.13611C3.63336 2.89429 3.89785 2.66759 4.18501 2.46355L4.00365 1.61718C3.9583 1.38291 4.03387 1.17132 4.24547 1.05797C4.45706 0.944612 4.68377 0.959726 4.85757 1.12598L5.49235 1.7003C5.8173 1.56428 6.13469 1.44337 6.47475 1.34513L6.60322 0.483642C6.641 0.249378 6.78458 0.0831259 7.0264 0.0453414C7.26067 0.0075569 7.45715 0.105797 7.5705 0.31739L7.97857 1.08819C8.15238 1.07308 8.32619 1.06552 8.5 1.06552C8.67381 1.06552 8.84762 1.07308 9.02143 1.08819L9.4295 0.31739C9.54285 0.105797 9.73933 0 9.9736 0.0453414C10.2079 0.0906828 10.359 0.249378 10.3968 0.491198L10.5101 1.34513C10.8502 1.44337 11.1827 1.55672 11.4925 1.7003L12.1424 1.12598C12.3162 0.967283 12.5429 0.929499 12.7545 1.05797C12.9586 1.17888 13.0417 1.37536 12.9964 1.61718L12.8074 2.45599C13.0946 2.66003 13.3666 2.88674 13.616 3.13611L14.4171 2.81117C14.6362 2.72048 14.8554 2.76583 15.014 2.95475C15.1576 3.13611 15.1803 3.36282 15.0518 3.56686L14.5909 4.29232C14.7798 4.57948 14.9611 4.88176 15.1123 5.19915L15.9738 5.17648C16.2156 5.16892 16.4045 5.27472 16.4876 5.50898C16.5632 5.73569 16.5103 5.95484 16.3138 6.09842L15.6262 6.6274C15.7168 6.9599 15.7773 7.30752 15.8151 7.6627L16.6388 7.92719C16.8655 7.9952 17.0015 8.17656 17.0015 8.41839C17.0015 8.65265 16.8655 8.83401 16.6388 8.90958L15.8151 9.17408C15.7773 9.52925 15.7168 9.86931 15.6262 10.2094L16.3138 10.7384C16.5103 10.8895 16.5708 11.1011 16.4876 11.3202C16.4045 11.5469 16.2156 11.6754 15.9738 11.6679L15.1123 11.6301C14.9611 11.9475 14.7798 12.2497 14.5909 12.5369L15.0518 13.2699C15.1803 13.474 15.1727 13.7007 15.014 13.882C14.8554 14.0634 14.6438 14.1163 14.4095 14.0256L13.616 13.7007C13.3666 13.9425 13.1022 14.1692 12.8074 14.3657L12.9888 15.2196C13.0417 15.4539 12.9586 15.6579 12.747 15.7788C12.5429 15.8922 12.3162 15.877 12.1424 15.7108L11.5001 15.1289C11.1827 15.2725 10.8578 15.3934 10.5177 15.4916L10.3892 16.3456C10.359 16.5874 10.2154 16.7536 9.9736 16.7914C9.73933 16.8217 9.54285 16.731 9.4295 16.5194L9.02143 15.7486C8.84762 15.7637 8.67381 15.7712 8.5 15.7712ZM8.5 6.31001C9.44461 6.31001 10.2456 6.92968 10.5177 7.79116H14.3566C14.0468 4.82886 11.5454 2.524 8.5 2.524C7.63096 2.524 6.80725 2.71293 6.05912 3.05299L7.99369 6.37047C8.15994 6.33268 8.32619 6.31001 8.5 6.31001ZM2.60562 8.41839C2.60562 10.3378 3.52 12.0381 4.9407 13.1188L6.94328 9.83908C6.60322 9.46124 6.39163 8.96248 6.39163 8.41839C6.39163 7.87429 6.60322 7.38309 6.93572 7.00525L4.9936 3.68021C3.54267 4.75329 2.60562 6.47626 2.60562 8.41839ZM8.5 9.27232C8.97608 9.27232 9.35393 8.88691 9.35393 8.41839C9.35393 7.9423 8.97608 7.56446 8.5 7.56446C8.03147 7.56446 7.64607 7.9423 7.64607 8.41839C7.64607 8.88691 8.03147 9.27232 8.5 9.27232ZM8.5 14.3128C11.553 14.3128 14.0543 11.9928 14.3642 9.02294H10.5252C10.2608 9.89198 9.45217 10.5268 8.5 10.5268C8.32619 10.5268 8.15994 10.5041 8.00124 10.4663L5.99867 13.7536C6.76191 14.1087 7.60829 14.3128 8.5 14.3128Z" fill="#071216"/></svg></span><span>Configurações</span></div>
         </div>
       </div>
       <div class="nav-hist" id="navHist"></div>
@@ -2121,22 +2145,23 @@
             </section>
 
             <!-- Resumo clínico (vale para todas as consultas) -->
-            <!-- Prescrições: espaço reservado para o módulo próprio de prescrição (próxima etapa) -->
+            <!-- Prescrições: receita da consulta (tabela receitas), possíveis prescrições e receitas anteriores (docs/prescricao.md) -->
             <section class="pr-panel" data-panel="prescricoes" hidden>
-              <!-- receita da consulta aberta: rascunho salvo com a evolução (data.receita) -->
+              <!-- receita da consulta aberta: o rascunho (salvo sozinho) até emitir -->
               <div class="pr-bigcard gcard rx-card" id="rxBox">
                 <div class="pr-cardhead">
                   <div>
                     <div class="pr-h2">Prescrições</div>
-                    <div class="pr-cardsub">Receita da consulta aberta · rascunho salvo com a evolução</div>
+                    <div class="pr-cardsub">Receita da consulta aberta · <span id="rxSt">rascunho</span></div>
                   </div>
                 </div>
                 <div class="rx-list" id="rxBody"></div>
                 <div class="pr-empty" id="rxEmpty">Nenhum item na receita. Escolha nas possíveis prescrições abaixo ou adicione um item.</div>
                 <button class="ga-btn" type="button" id="rxAdd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="#0A0A0A"/></svg>Adicionar item</button>
+                <div class="rx-msg" id="rxMsg" role="status" hidden></div>
                 <div class="rx-acts" id="rxActs" hidden>
                   <button class="pr-ghost" type="button" id="rxCopy">Copiar</button>
-                  <button class="pr-save" type="button" id="rxPrintBtn">Gerar receita</button>
+                  <button class="pr-save" type="button" id="rxEmit">Emitir receita</button>
                 </div>
               </div>
               <!-- possíveis prescrições: a IA propõe a partir do perfil, com artigos da base do assistente (lista de notícias do Finance) -->
@@ -2152,12 +2177,12 @@
                 <div class="rn-obs" id="rnObs" hidden></div>
                 <div class="rn-foot" id="rnFoot"></div>
               </div>
-              <!-- receitas anteriores: as das outras evoluções desta paciente (data.receita), da mais nova para a mais velha -->
+              <!-- receitas anteriores: emitidas, canceladas e rascunhos de outras consultas, da mais nova para a mais velha -->
               <div class="pr-bigcard gcard" id="rhBox" hidden>
                 <div class="pr-cardhead">
                   <div>
                     <div class="pr-h2">Receitas anteriores</div>
-                    <div class="pr-cardsub">Das evoluções desta paciente</div>
+                    <div class="pr-cardsub">Emitidas para este paciente</div>
                   </div>
                 </div>
                 <div class="rn-list" id="rhList"></div>
@@ -2487,12 +2512,7 @@
 
   </div>
 
-  <div class="rx-print" id="rxPrint" aria-hidden="true">
-    <h1>Receita</h1>
-    <div class="rx-ph"><span>Paciente: <b id="rxpName"></b></span><span id="rxpDate"></span></div>
-    <ol id="rxpList"></ol>
-    <div class="rx-sign">Carimbo e assinatura do médico</div>
-  </div>
+  <div class="rx-print" id="rxPrint" aria-hidden="true"></div>   <!-- folhas montadas por rxFolha ao emitir / 2ª via -->
   <script>
     // itens do menu que levam a outra tela (data-href: a política de segurança não aceita onclick no HTML)
     document.querySelectorAll('[data-href]').forEach(function (el) {
@@ -3761,7 +3781,8 @@
                      file_add: 'Anexou exame', file_view: 'Abriu exame anexado', file_delete: 'Excluiu exame anexado',
                      addendum: 'Adicionou adendo', patient_create: 'Cadastrou o paciente', patient_update: 'Alterou cadastro ou resumo clínico',
                      export: 'Exportou / imprimiu', recording: 'Gravou a consulta (paciente autorizou)',
-                     scribe: 'Gerou a evolução pela gravação', recording_delete: 'Apagou a transcrição' };
+                     scribe: 'Gerou a evolução pela gravação', recording_delete: 'Apagou a transcrição',
+                     receita_emitida: 'Emitiu receita', receita_cancelada: 'Cancelou receita' };
 
       function pad(n) { return String(n).padStart(2, '0'); }
       function parseStart(v) {
@@ -4019,7 +4040,7 @@
       }
       function soapText() { return soapEls.some(function (e) { return e.value.trim(); }) || Object.keys(vitals()).length || Object.keys(labs()).length || cids.length; }
       function compose() {
-        if (mode === 'free') return rxTag(rrTag({ content: note.value, data: { mode: 'free' } }));
+        if (mode === 'free') return rrTag({ content: note.value, data: { mode: 'free' } });
         var f = {}; soapEls.forEach(function (e) { f[e.getAttribute('data-f')] = e.value; });
         var v = vitals(), old = cur && cur.data && cur.data.labs && cur.data.labs.v ? cur.data.labs : null, parts = [];
         if (f.s.trim()) parts.push('S: ' + f.s.trim());
@@ -4027,13 +4048,8 @@
         var a = [f.a.trim(), cids.length ? 'CID-10: ' + cids.map(function (c) { return (c.code + ' ' + c.desc).trim(); }).join('; ') : '']
                   .filter(Boolean).join('\n'); if (a) parts.push('A: ' + a);
         if (f.p.trim()) parts.push('P: ' + f.p.trim());
-        return rxTag(rrTag({ content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v,
-                 labs: old || undefined, cid: cids.slice() } }));
-      }
-      function rxTag(x) {                                  // rascunho da receita (aba Prescrições), sem as linhas vazias
-        var r = rx.filter(function (i) { return (i.nome || '').trim(); });
-        if (r.length) x.data.receita = r.map(function (i) { return Object.assign({}, i); });
-        return x;
+        return rrTag({ content: parts.join('\n\n'), data: { mode: 'soap', s: f.s, o: f.o, a: f.a, p: f.p, vitals: v,
+                 labs: old || undefined, cid: cids.slice() } });
       }
       function rrTag(x) {                                  // evolução gerada pela gravação: o rastreio vai junto em data.scribe
         var m = rrMeta();
@@ -4073,7 +4089,6 @@
         soapEls.forEach(function (e) { e.value = soap ? (d[e.getAttribute('data-f')] || '') : ''; });
         vitEls.forEach(function (e) { e.value = soap && d.vitals ? (d.vitals[e.getAttribute('data-v')] || '') : ''; checkVital(e); });
         cids = soap && d.cid ? d.cid.slice() : []; renderCids(); updImc();
-        rx = d && Array.isArray(d.receita) ? d.receita.map(function (i) { return Object.assign({}, i); }) : []; renderRx();
       }
       function setMode(m, silent) {
         if (!silent && m !== mode) {
@@ -6957,6 +6972,10 @@
         }
         var tx = el('div', 'hc-tx');
         secs.forEach(function (sc) { tx.appendChild(el('div', 'hc-sp' + (sc.add ? ' add' : ''), sc.h)); tx.appendChild(el('div', 'hc-p', sc.t)); });
+        rxDaEvolucao(n).forEach(function (r) {
+          tx.appendChild(el('div', 'hc-sp', TIPO[r.tipo] + ' · emitida em ' + rxDia(r.emitida_em) + (r.status === 'cancelada' ? ' · cancelada' : '')));
+          tx.appendChild(el('div', 'hc-p', rxLinhas(r.itens) + (r.status === 'cancelada' && r.motivo_cancelamento ? '\nMotivo do cancelamento: ' + r.motivo_cancelamento : '')));
+        });
         body.appendChild(tx); it.appendChild(body);
         function expand(on) {
           body.hidden = !on; tr.setAttribute('aria-expanded', on ? 'true' : 'false'); it.classList.toggle('open', on);
@@ -7037,49 +7056,156 @@
         renderVisit(); changed(); save();
       });
 
-      // ===== Prescrições: receita da consulta aberta + possíveis prescrições =====
-      // A receita é um rascunho salvo com a evolução (data.receita). As sugestões vêm de /prontuario/prescricao/sugerir
-      // (contas liberadas, as mesmas da gravação): o servidor monta o perfil sem nome, busca nas fontes do assistente, gera e
-      // confere (fonte, remédio conhecido, alergia, dose usual, função renal). Sem acesso, ou se a IA falhar, a lista mostra só
-      // a renovação do uso contínuo (/prontuario/renovacao, sem IA). Nada entra na receita sem o clique do médico.
-      var rx = [], sgKey = null, sg = null;               // sg: {st: carregando|pronto|renovacao, passo, itens, fontes, obs, ia, falhou}
+      // ===== Prescrições: receitas (tabela própria) + possíveis prescrições =====
+      // A receita vem de /prontuario/receitas: o rascunho desta consulta → emitida (não muda mais) → cancelada (com motivo).
+      // Cada mudança no rascunho salva sozinha e passa pela conferência do servidor (/prontuario/receitas/conferir: alergia,
+      // dose, função renal, repetido, nome, controle especial, antimicrobiano, talão). Emitir separa controle especial e
+      // antimicrobiano em receitas próprias, impressas em 2 vias, com os dados do médico (Configurações). As sugestões vêm de
+      // /prontuario/prescricao/sugerir (contas da gravação) ou, sem IA, da renovação (/prontuario/renovacao).
+      var rxs = [], rxKey = null, rxDraft = null, rxItems = [], medico = null;
+      var sgKey = null, sg = null;                        // sg: {st: carregando|pronto|renovacao, passo, itens, fontes, obs, ia, falhou}
       var ACAO = { manter: 'Manter', ajustar: 'Ajustar', iniciar: 'Iniciar', suspender: 'Suspender' };
+      var TIPO = { simples: 'Receita simples', especial: 'Controle especial', antimicrobiano: 'Antimicrobiano' };
+      var VIAS = ['oral', 'sublingual', 'tópica', 'inalatória', 'nasal', 'oftálmica', 'otológica', 'vaginal', 'retal', 'subcutânea',
+                  'intramuscular', 'intravenosa', 'transdérmica'];
+      var USO = { oral: 'Uso oral', sublingual: 'Uso sublingual', 'tópica': 'Uso tópico', 'inalatória': 'Uso inalatório', nasal: 'Uso nasal',
+                  'oftálmica': 'Uso oftálmico', 'otológica': 'Uso otológico', vaginal: 'Uso vaginal', retal: 'Uso retal',
+                  'subcutânea': 'Uso subcutâneo', intramuscular: 'Uso intramuscular', intravenosa: 'Uso intravenoso', 'transdérmica': 'Uso transdérmico' };
       var RXI = { plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="#0A0A0A"/></svg>',
-                  ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#046E00"/></svg>' };
+                  ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#046E00"/></svg>',
+                  x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#56595E"/></svg>' };
       function rnNum(x) { return String(x).replace('.', ','); }
-      function rxCan() { return ready && !locked(); }
+      function rxCan() { return !!patient && ready; }      // a receita não depende de a evolução estar aberta (dá para emitir depois)
       function rxSame(a, b) { var k = function (n) { return norm(n).replace(/\s+/g, ' ').trim(); }; return k(a.nome) === k(b.nome); }
-      function rxHas(it) { return rx.some(function (x) { return rxSame(x, it); }); }
+      function rxHas(it) { return rxItems.some(function (x) { return rxSame(x, it); }); }
+      function rxCheios() { return rxItems.filter(function (x) { return (x.nome || '').trim(); }); }
       function sgWarn(it) { return (it.alergias || []).length > 0 || !!it.faixa || !!it.renal; }
       function sgFonte(it) { return it.fontes && it.fontes[0] && sg && sg.fontes ? sg.fontes[it.fontes[0]] || null : null; }
       function rxFrom(it) {
         var f = sgFonte(it), ia = sg && sg.st === 'pronto' && (it.acao !== 'manter' || f);
-        return { nome: it.nome, dose: it.dose || '', posologia: it.posologia || '', quantidade: it.quantidade || '',
+        return { nome: it.nome, dose: it.dose || '', posologia: it.posologia || '', quantidade: it.quantidade || '', via: '', continuo: it.acao !== 'iniciar',
                  origem: ia ? 'ia' : 'uso', fonte: f ? f.titulo + (f.ano ? ' (' + f.ano + ')' : '') : '', ia: ia ? sg.ia : '' };
       }
-      function rxChanged() { changed(); renderRx(); drawSg(); renderRh(); }
+      function rxDia(iso) { var d = iso ? new Date(iso) : new Date(); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); }
+      function rxSt(t) { $('rxSt').textContent = t; }
+      function rxMsg(t, dados) {                           // recado acima de "Emitir" (falta dado do médico, talão, erro)
+        var m = $('rxMsg'); m.innerHTML = ''; m.hidden = !t; if (!t) return;
+        m.appendChild(document.createTextNode(t + ' '));
+        if (dados) { var a = el('a', 'pr-link', 'Completar meus dados'); a.href = 'opendoctor-configuracoes.html?volta=1'; m.appendChild(a); }
+      }
+      function toastAct(t, label, fn) {                    // aviso com uma ação (ex.: Desfazer)
+        var x = el('div', 'pr-toast act'), b = el('button', null, label), tm; b.type = 'button';
+        function fim() { clearTimeout(tm); x.classList.add('out'); setTimeout(function () { x.remove(); }, 300); }
+        b.addEventListener('click', function () { fn(); fim(); });
+        x.appendChild(el('span', null, t)); x.appendChild(b); document.body.appendChild(x); tm = setTimeout(fim, 6000);
+      }
+
+      // ----- carregar: as receitas do paciente e o rascunho desta consulta -----
+      function rxDaConsulta(r) {
+        if (r.status !== 'rascunho') return false;
+        if (ctx && ctx.event_id) return r.event_id === ctx.event_id;
+        return (cur && r.note_id === cur.id) || (!r.note_id && !r.event_id);   // avulsa: o rascunho dela (ou o sem consulta)
+      }
+      function rxLoad(force) {
+        if (!patient) return;
+        var key = patient.id + '|' + ((ctx && ctx.event_id) || 'avulsa'), pid = patient.id;
+        if (!force && key === rxKey) return;
+        rxKey = key;
+        api('GET', '/prontuario/receitas?patient_id=' + pid).then(function (res) {
+          if (!patient || patient.id !== pid || rxKey !== key) return;
+          rxs = res.ok ? res.j.receitas || [] : [];
+          rxDraft = rxs.filter(rxDaConsulta)[0] || null;
+          rxItems = rxDraft ? rxDraft.itens.map(function (x) { return Object.assign({}, x); }) : [];
+          rxEd = -1; rxNovo = false; rxSt(rxDraft ? 'rascunho salvo' : 'rascunho'); rxMsg('');
+          renderRx(); renderRh(); drawSg(); rxConferir();
+        });
+        if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) medico = res.j.medico; });
+      }
+      // ----- salvar o rascunho (uma gravação por vez: a primeira cria, vazio sai) -----
+      var rxFila = Promise.resolve(), rxSaveT = null;
+      function rxSalvar() { clearTimeout(rxSaveT); rxSaveT = setTimeout(rxPersist, 600); }
+      function rxPersist() {
+        clearTimeout(rxSaveT);
+        rxFila = rxFila.then(function () {
+          if (!patient) return;
+          var itens = rxCheios(), d = rxDraft, req;
+          if (!d && !itens.length) return;
+          rxSt('salvando…');
+          if (!d) req = api('POST', '/prontuario/receitas', { patient_id: patient.id, note_id: cur ? cur.id : null,
+                                                             event_id: (ctx && ctx.event_id) || null, itens: itens })
+            .then(function (res) { if (!res.ok) throw new Error(); rxDraft = res.j.receita; rxs.unshift(rxDraft); });
+          else if (!itens.length) req = api('DELETE', '/prontuario/receitas/' + d.id)
+            .then(function (res) { if (!res.ok) throw new Error(); rxs = rxs.filter(function (r) { return r !== d; }); if (rxDraft === d) rxDraft = null; });
+          else req = api('PATCH', '/prontuario/receitas/' + d.id, { itens: itens })
+            .then(function (res) { if (!res.ok) throw new Error(); d.itens = res.j.receita.itens; });
+          return req.then(function () { rxSt(rxDraft ? 'rascunho salvo' : 'rascunho'); }, function () { rxSt('não foi possível salvar o rascunho'); });
+        });
+        return rxFila;
+      }
+      // ----- conferência de cada item no servidor -----
+      var rxConfT = null, rxConfN = 0;
+      function rxConferir() {
+        clearTimeout(rxConfT);
+        rxConfT = setTimeout(function () {
+          var itens = rxCheios(), n = ++rxConfN;
+          if (!itens.length || !patient) return;
+          api('POST', '/prontuario/receitas/conferir', { patient_id: patient.id, itens: itens }).then(function (res) {
+            if (n !== rxConfN || !res.ok) return;
+            (res.j.avisos || []).forEach(function (a, k) { if (itens[k]) itens[k]._av = a; });
+            renderRx();
+          });
+        }, 350);
+      }
+      function rxChanged() { rxSalvar(); rxConferir(); renderRx(); drawSg(); renderRh(); }
+      function rxAvisos(x) {                               // [classe, texto] de cada aviso de um item
+        var a = x._av, out = []; if (!a) return out;
+        if (a.talao) out.push(['rn-w', 'Exige ' + a.talao + ': não sai por aqui, use o talão']);
+        (a.alergias || []).forEach(function (t) { out.push(['rn-w', 'Alergia registrada: ' + t]); });
+        if (a.faixa) out.push(['rn-w dose', 'Dose fora da usual por tomada (' + rnNum(a.faixa[0]) + '–' + rnNum(a.faixa[1]) + ' mg): confira']);
+        if (a.renal) out.push(['rn-w dose', 'Função renal: ' + a.renal]);
+        if (a.repetido) out.push(['rn-w dose', 'Repetido na receita']);
+        if (a.nome) out.push(['rn-w dose', a.nome]);
+        if (a.tipo !== 'simples' && !a.talao) out.push(['rx-tipo', (a.tipo === 'especial' ? 'Controle especial' + (a.lista ? ' (' + a.lista + ')' : '')
+                                                                     : 'Antimicrobiano') + ': sai numa receita separada, em 2 vias']);
+        return out;
+      }
+
+      // ----- a lista do rascunho (lista "Mais ativas" do Finance) com × e Desfazer; a linha abre a edição -----
       var rxEd = -1, rxNovo = false;                      // linha aberta para editar (e se é um item novo, ainda vazio)
       var RXF = [['nome', 'Remédio', 'Ex.: losartana'], ['dose', 'Dose', 'Ex.: 50 mg'], ['posologia', 'Posologia', 'Ex.: 1 comprimido de 12/12 h'],
                  ['quantidade', 'Quantidade', 'Ex.: 60 comprimidos']];
       function renderRx() {
         var L = $('rxBody'), can = rxCan(); L.innerHTML = '';
         if (!can) { rxEd = -1; rxNovo = false; }
-        $('rxEmpty').hidden = !!rx.length; $('rxActs').hidden = !rx.length || rxNovo; $('rxAdd').hidden = !can || rxEd >= 0;
-        rx.forEach(function (x, i) {
+        var cheios = rxCheios().length;
+        $('rxEmpty').hidden = !!rxItems.length; $('rxActs').hidden = !cheios || rxNovo; $('rxAdd').hidden = !can || rxEd >= 0;
+        rxItems.forEach(function (x, i) {
           if (i === rxEd) { L.appendChild(rxForm(x, i)); return; }
-          var b = el('button', 'rx-row'); b.type = 'button'; b.disabled = !can; if (can) b.title = 'Editar';
+          var row = el('div', 'rx-row'), b = el('button', 'rx-main'); b.type = 'button'; b.disabled = !can; if (can) b.title = 'Editar';
           var l = el('span', 'rx-l'), r = el('span', 'rx-r');
           l.appendChild(el('span', 'rx-n', [x.nome, x.dose].filter(Boolean).join(' ')));
-          l.appendChild(el('span', 'rx-d', x.posologia || 'Sem posologia'));
+          l.appendChild(el('span', 'rx-d', [x.via ? USO[x.via] : '', x.posologia || 'Sem posologia', x.continuo ? 'uso contínuo' : ''].filter(Boolean).join(' · ')));
+          rxAvisos(x).forEach(function (a) { l.appendChild(el('span', a[0], a[1])); });
           r.appendChild(el('span', 'rx-q', x.quantidade || '—'));
-          r.appendChild(el('span', 'rx-o' + (x.origem === 'ia' ? ' ia' : ''), { ia: 'Sugestão da IA', uso: 'Em uso', anterior: 'Receita anterior' }[x.origem] || 'Adicionado'));
+          r.appendChild(el('span', 'rx-o' + (x.origem === 'ia' ? ' ia' : ''),
+                           { ia: 'Sugestão da IA', uso: 'Em uso', anterior: 'Receita anterior', gravacao: 'Da gravação' }[x.origem] || 'Adicionado'));
           if (x.fonte) r.title = x.fonte;
-          b.appendChild(l); b.appendChild(r);
-          b.addEventListener('click', function () { rxOpen(i); });
-          L.appendChild(b);
+          b.appendChild(l); b.appendChild(r); b.addEventListener('click', function () { rxOpen(i); });
+          row.appendChild(b);
+          if (can) {
+            var del = el('button', 'rx-x'); del.type = 'button'; del.innerHTML = RXI.x; del.title = 'Tirar da receita';
+            del.setAttribute('aria-label', 'Tirar ' + x.nome + ' da receita');
+            del.addEventListener('click', function () {
+              if (rxNovo && rxEd >= 0) rxItems.splice(rxEd, 1);   // o item novo (sempre o último) ainda vazio sai junto
+              var at = rxItems.indexOf(x); rxItems.splice(at, 1); rxEd = -1; rxNovo = false; rxChanged();
+              toastAct(x.nome + ' saiu da receita', 'Desfazer', function () { rxItems.splice(Math.min(at, rxItems.length), 0, x); rxChanged(); });
+            });
+            row.appendChild(del);
+          }
+          L.appendChild(row);
         });
       }
-      function rxForm(x, i) {                              // a linha aberta: os quatro campos em pílula, Tirar · Cancelar · Salvar
+      function rxForm(x, i) {                              // a linha aberta: os campos em pílula, via, uso contínuo; Cancelar · Salvar
         var box = el('div', 'rx-edit'), grid = el('div', 'rx-ef'), ins = {};
         RXF.forEach(function (c) {
           var lb = el('label', 'rx-fl'), inp = el('input', 'rx-f'); inp.type = 'text'; inp.value = x[c[0]] || ''; inp.placeholder = c[2];
@@ -7087,19 +7213,20 @@
           lb.appendChild(document.createTextNode(c[1])); lb.appendChild(inp); grid.appendChild(lb); ins[c[0]] = inp;
           inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ok(); } else if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
         });
+        var lv = el('label', 'rx-fl'), sv = el('select', 'rx-f');
+        [''].concat(VIAS).forEach(function (v) { var o = el('option', null, v ? USO[v] : 'Via (não informar)'); o.value = v; sv.appendChild(o); });
+        sv.value = x.via || ''; lv.appendChild(document.createTextNode('Via')); lv.appendChild(sv); grid.appendChild(lv);
+        var lc = el('label', 'rx-ck'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!x.continuo;
+        lc.appendChild(cb); lc.appendChild(document.createTextNode('Uso contínuo')); grid.appendChild(lc);
         var foot = el('div', 'rx-ef-foot'), err = el('span', 'pr-err', 'Escreva o nome do remédio.'); err.hidden = true;
         var bc = el('button', 'pr-ghost', 'Cancelar'), bo = el('button', 'pr-save', 'Salvar'); bc.type = bo.type = 'button';
-        if (!rxNovo) {
-          var bt = el('button', 'pr-ghost rx-rm', 'Tirar da receita'); bt.type = 'button';
-          bt.addEventListener('click', function () { rx.splice(i, 1); rxEd = -1; rxChanged(); });
-          foot.appendChild(bt);
-        }
         function ok() {
           var nome = ins.nome.value.trim(); if (!nome) { err.hidden = false; ins.nome.focus(); return; }
           RXF.forEach(function (c) { x[c[0]] = ins[c[0]].value.replace(/\s+/g, ' ').trim(); });
+          x.via = sv.value; x.continuo = cb.checked; x._av = null;
           rxEd = -1; rxNovo = false; rxChanged();
         }
-        function cancel() { if (rxNovo) rx.splice(i, 1); rxEd = -1; rxNovo = false; renderRx(); drawSg(); }
+        function cancel() { if (rxNovo) rxItems.splice(i, 1); rxEd = -1; rxNovo = false; renderRx(); drawSg(); }
         bc.addEventListener('click', cancel); bo.addEventListener('click', ok);
         foot.appendChild(err); foot.appendChild(bc); foot.appendChild(bo); grid.appendChild(foot); box.appendChild(grid);
         setTimeout(function () { ins.nome.focus(); if (!rxNovo) ins.nome.select(); }, 0);
@@ -7107,77 +7234,100 @@
       }
       function rxOpen(i) {
         if (!rxCan()) return;
-        if (rxNovo && rxEd >= 0) rx.splice(rxEd, 1);        // um item novo deixado vazio não fica (é sempre o último)
-        rxNovo = false; rxEd = Math.min(i, rx.length - 1); renderRx();
+        if (rxNovo && rxEd >= 0) rxItems.splice(rxEd, 1);   // um item novo deixado vazio não fica (é sempre o último)
+        rxNovo = false; rxEd = Math.min(i, rxItems.length - 1); renderRx();
       }
       $('rxAdd').addEventListener('click', function () {
         if (!rxCan() || rxEd >= 0) return;
-        rx.push({ nome: '', dose: '', posologia: '', quantidade: '', origem: 'manual', fonte: '', ia: '' });
-        rxEd = rx.length - 1; rxNovo = true; renderRx();
+        rxItems.push({ nome: '', dose: '', posologia: '', quantidade: '', via: '', continuo: false, origem: 'manual', fonte: '', ia: '' });
+        rxEd = rxItems.length - 1; rxNovo = true; renderRx();
       });
-      function rxText() {
-        return rx.filter(function (x) { return x.nome.trim(); }).map(function (x, i) {
+      function rxLinhas(itens) {
+        return itens.map(function (x, i) {
           return (i + 1) + '. ' + [[x.nome, x.dose].filter(Boolean).join(' '), x.posologia, x.quantidade].filter(Boolean).join(' — ');
         }).join('\n');
       }
       $('rxCopy').addEventListener('click', function () {
-        var t = rxText(); if (!t) return;
+        var t = rxLinhas(rxCheios()); if (!t) return;
         try { navigator.clipboard.writeText(t).then(function () { toast('Receita copiada'); }); } catch (_) {}
       });
-      // a folha da receita (#rxPrint) com estes itens e esta data; também a segunda via de uma receita anterior
-      function rxGerar(itens, quando) {
-        if (!patient || !itens.length) return;
-        var d = quando || new Date();
-        $('rxpName').textContent = patient.name; $('rxpDate').textContent = pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
-        var ol = $('rxpList'); ol.innerHTML = '';
-        itens.forEach(function (x) {
-          var li = el('li'); if (x.quantidade) li.appendChild(el('span', 'q', x.quantidade));
-          li.appendChild(el('b', null, [x.nome, x.dose].filter(Boolean).join(' ')));
-          if (x.posologia) li.appendChild(el('div', null, x.posologia));
-          ol.appendChild(li);
+
+      // ----- emitir: confere, separa por tipo, grava e imprime -----
+      $('rxEmit').addEventListener('click', function () {
+        if (!rxCan()) return;
+        var itens = rxCheios(); if (!itens.length) return;
+        var talao = itens.filter(function (x) { return x._av && x._av.talao; });
+        if (talao.length) { rxMsg('Tire da receita o que exige Notificação de Receita (talão): ' + talao.map(function (x) { return x.nome; }).join(', ') + '.'); return; }
+        var avisos = [], separa = itens.some(function (x) { return x._av && x._av.tipo !== 'simples'; });
+        itens.forEach(function (x) { rxAvisos(x).forEach(function (a) { if (a[0] !== 'rx-tipo') avisos.push(x.nome + ': ' + a[1]); }); });
+        if (!confirm('Emitir a receita?' + (separa ? '\n\nControle especial e antimicrobiano saem em receitas separadas, em 2 vias.' : '') +
+                     (avisos.length ? '\n\nAvisos:\n- ' + avisos.join('\n- ') : '') + '\n\nDepois de emitida a receita não muda mais (dá para cancelar).')) return;
+        rxMsg(''); $('rxEmit').disabled = true;
+        rxPersist().then(function () {
+          if (!rxDraft) throw new Error('sem rascunho');
+          return api('POST', '/prontuario/receitas/' + rxDraft.id + '/emitir', { itens: itens });
+        }).then(function (res) {
+          if (res.status === 409 && res.j.faltam) { rxMsg('Para emitir, complete seus dados de médico (' + res.j.faltam.join(', ') + ').', true); return; }
+          if (res.status === 409 && res.j.talao) { rxMsg('Tire da receita o que exige Notificação de Receita (talão): ' + res.j.talao.join('; ') + '.'); return; }
+          if (!res.ok) { rxMsg('Não foi possível emitir: ' + ((res.j && res.j.error) || 'tente de novo') + '.'); return; }
+          var em = res.j.receitas || [];
+          toast(em.length > 1 ? em.length + ' receitas emitidas' : 'Receita emitida');
+          rxImprimir(em, false); rxLoad(true);
+        }).catch(function () { rxMsg('Não foi possível emitir agora: tente de novo.'); })
+          .then(function () { $('rxEmit').disabled = false; });
+      });
+      // a folha de cada receita (#rxPrint, fora do app): cabeçalho do médico, tipo, via, paciente, itens por via de uso, assinatura
+      function rxFolha(r, via, segunda) {
+        var f = el('div', 'rx-folha'), m = medico || {}, cab = el('div', 'rx-med');
+        cab.appendChild(el('b', null, m.name || ''));
+        cab.appendChild(el('span', null, [m.crm ? 'CRM ' + m.crm + (m.crm_uf ? '/' + m.crm_uf : '') : '', m.especialidade || ''].filter(Boolean).join(' · ')));
+        cab.appendChild(el('span', null, [m.consultorio_endereco || '', m.consultorio_telefone || ''].filter(Boolean).join(' · ')));
+        f.appendChild(cab);
+        f.appendChild(el('h1', null, r.tipo === 'especial' ? 'Receituário de controle especial' : r.tipo === 'antimicrobiano' ? 'Receita de antimicrobiano' : 'Receita'));
+        if (via) f.appendChild(el('div', 'rx-via', via));
+        var ph = el('div', 'rx-ph'), pn = el('span', null, 'Paciente: '); pn.appendChild(el('b', null, patient.name)); ph.appendChild(pn);
+        ph.appendChild(el('span', null, rxDia(r.emitida_em))); f.appendChild(ph);
+        if (r.tipo === 'especial') f.appendChild(el('div', 'rx-line', 'Endereço do paciente: ________________________________________________'));
+        var grupos = {}, ordem = [];
+        r.itens.forEach(function (x) { var g = x.via ? USO[x.via] : ''; if (!(g in grupos)) { grupos[g] = []; ordem.push(g); } grupos[g].push(x); });
+        var ol = el('ol'), n = 0;
+        ordem.forEach(function (g) {
+          if (g) ol.appendChild(el('li', 'rx-uso', g));
+          grupos[g].forEach(function (x) {
+            var li = el('li'); li.value = ++n; if (x.quantidade) li.appendChild(el('span', 'q', x.quantidade));
+            li.appendChild(el('b', null, [x.nome, x.dose].filter(Boolean).join(' ')));
+            if (x.posologia) li.appendChild(el('div', null, x.posologia + (x.continuo ? ' · uso contínuo' : '')));
+            ol.appendChild(li);
+          });
         });
-        api('POST', '/prontuario/audit', { action: 'export', patient_id: patient.id }).catch(function () {});
-        // só a folha da receita vai para o papel enquanto body.rxp estiver ligado. O Safari não espera a impressão no
-        // window.print(): desligar logo depois imprimiria o prontuário inteiro. Desliga quando a impressão termina.
+        f.appendChild(ol);
+        if (r.tipo === 'antimicrobiano') f.appendChild(el('div', 'rx-line', 'Válida por 10 dias a partir da emissão. A 1ª via fica retida na farmácia.'));
+        f.appendChild(el('div', 'rx-sign', 'Assinatura e carimbo do médico'));
+        if (r.tipo === 'especial') {
+          var id = el('div', 'rx-id');
+          ['Identificação do comprador', 'Identificação do fornecedor'].forEach(function (t) {
+            var c = el('div'); c.appendChild(el('b', null, t)); c.appendChild(el('span', null, 'Nome: ____________________________'));
+            c.appendChild(el('span', null, t === 'Identificação do comprador' ? 'Identidade: ______________ Órgão emissor: ______' : 'Assinatura do farmacêutico: ______________'));
+            c.appendChild(el('span', null, t === 'Identificação do comprador' ? 'Endereço: _________________________ Telefone: _______' : 'Data: ___/___/______'));
+            id.appendChild(c);
+          });
+          f.appendChild(id);
+        }
+        if (segunda) f.appendChild(el('div', 'rx-2via', '2ª via, impressa em ' + rxDia(null)));
+        return f;
+      }
+      function rxImprimir(lista, segunda) {
+        if (!patient || !lista.length) return;
+        var box = $('rxPrint'); box.innerHTML = '';
+        lista.forEach(function (r) {
+          (r.tipo === 'simples' ? [''] : ['1ª via · retida na farmácia', '2ª via · paciente']).forEach(function (v) { box.appendChild(rxFolha(r, v, segunda)); });
+        });
+        if (segunda) api('POST', '/prontuario/audit', { action: 'export', patient_id: patient.id }).catch(function () {});
+        // só a folha vai para o papel enquanto body.rxp estiver ligado. O Safari não espera a impressão no window.print():
+        // desligar logo depois imprimiria o prontuário inteiro. Desliga quando a impressão termina.
         if (!document.body.classList.contains('rxp')) { rxTitle = document.title; document.title = 'Receita'; document.body.classList.add('rxp'); }
         window.print();
       }
-      $('rxPrintBtn').addEventListener('click', function () {
-        var itens = rx.filter(function (x) { return (x.nome || '').trim(); }); if (!itens.length) return;
-        save(); rxGerar(itens, null);
-      });
-
-      // ----- receitas anteriores: as das outras evoluções (data.receita), da mais nova para a mais velha -----
-      var rhAll = false;
-      function renderRh() {
-        var list = notes.filter(function (n) { return n !== cur && n.data && Array.isArray(n.data.receita) && n.data.receita.length; })
-                        .sort(function (a, b) { return (noteDate(b) || 0) - (noteDate(a) || 0); });
-        var L = $('rhList'), can = rxCan(); L.innerHTML = ''; $('rhBox').hidden = !list.length;
-        (rhAll ? list : list.slice(0, 5)).forEach(function (n) {
-          var d = noteDate(n), its = n.data.receita, r = el('div', 'sg'), tx = el('div', 'sg-tx'), src = el('span', 'ov-post-src');
-          src.appendChild(el('i', n.signed_at ? null : 'draft'));
-          src.appendChild(document.createTextNode(eventTitle(n.event_title || (n.event_id ? '' : 'Evolução avulsa'))));
-          src.appendChild(el('small', null, '· ' + (d ? dayMon(d) : '') + (n.signed_at ? '' : ' · rascunho')));
-          tx.appendChild(src);
-          tx.appendChild(el('span', 'ov-post-t', its.map(function (x) { return [x.nome, x.dose].filter(Boolean).join(' '); }).join(' · ')));
-          tx.appendChild(el('span', 'sg-why', its.map(function (x) { return x.nome + (x.posologia ? ': ' + x.posologia : ''); }).join(' · ')));
-          var acts = el('div', 'rh-acts'), novos = its.filter(function (x) { return !rxHas(x); });
-          var u = el('button', 'gq-chip sg-add' + (novos.length ? '' : ' on')); u.type = 'button'; u.disabled = !can || !novos.length;
-          u.innerHTML = (novos.length ? RXI.plus : RXI.ok) + (novos.length ? 'Usar nesta consulta' : 'Já na receita');
-          u.title = novos.length ? 'Copia os itens para a receita de hoje' : 'Todos os itens já estão na receita de hoje';
-          u.addEventListener('click', function () {
-            if (!rxCan()) return;
-            its.forEach(function (x) { if (!rxHas(x)) rx.push({ nome: x.nome, dose: x.dose || '', posologia: x.posologia || '', quantidade: x.quantidade || '',
-                                                                 origem: 'anterior', fonte: '', ia: '' }); });
-            rxChanged(); renderRh(); toast('Itens na receita de hoje');
-          });
-          var g = el('button', 'gq-chip sg-add', 'Gerar receita'); g.type = 'button'; g.title = 'Segunda via, com a data da consulta';
-          g.addEventListener('click', function () { rxGerar(its, d); });
-          acts.appendChild(u); acts.appendChild(g); tx.appendChild(acts); r.appendChild(tx); L.appendChild(r);
-        });
-        $('rhMore').hidden = rhAll || list.length <= 5;
-      }
-      $('rhMore').addEventListener('click', function () { rhAll = true; renderRh(); });
       var rxTitle = '';
       function rxPrintEnd() {
         if (!document.body.classList.contains('rxp')) return;
@@ -7185,10 +7335,61 @@
       }
       window.addEventListener('afterprint', rxPrintEnd);
 
+      // ----- receitas anteriores (da tabela): emitidas, canceladas e rascunhos de outras consultas -----
+      var rhAll = false;
+      function rxConsulta(r) {                             // título e data da consulta da receita
+        var n = notes.filter(function (x) { return (r.note_id && x.id === r.note_id) || (r.event_id && x.event_id === r.event_id); })[0];
+        return n ? eventTitle(n.event_title || (n.event_id ? '' : 'Evolução avulsa')) : r.note_id || r.event_id ? 'Consulta' : 'Sem consulta';
+      }
+      function renderRh() {
+        var list = rxs.filter(function (r) { return r !== rxDraft && (r.status !== 'rascunho' || r.itens.length); });
+        var L = $('rhList'), can = rxCan(); L.innerHTML = ''; $('rhBox').hidden = !list.length;
+        (rhAll ? list : list.slice(0, 5)).forEach(function (r) {
+          var its = r.itens, row = el('div', 'sg'), tx = el('div', 'sg-tx'), src = el('span', 'ov-post-src');
+          src.appendChild(el('i', r.status === 'cancelada' ? 'cx' : r.status === 'rascunho' ? 'draft' : null));
+          src.appendChild(document.createTextNode(TIPO[r.tipo] || 'Receita'));
+          src.appendChild(el('small', null, '· ' + rxDia(r.emitida_em || r.created_at) + ' · ' + rxConsulta(r) +
+                                          (r.status === 'cancelada' ? ' · cancelada' : r.status === 'rascunho' ? ' · rascunho não emitido' : '')));
+          tx.appendChild(src);
+          tx.appendChild(el('span', 'ov-post-t', its.map(function (x) { return [x.nome, x.dose].filter(Boolean).join(' '); }).join(' · ')));
+          tx.appendChild(el('span', 'sg-why', its.map(function (x) { return x.nome + (x.posologia ? ': ' + x.posologia : ''); }).join(' · ')));
+          if (r.status === 'cancelada') tx.appendChild(el('span', 'rn-w', 'Cancelada' + (r.motivo_cancelamento ? ': ' + r.motivo_cancelamento : '')));
+          var acts = el('div', 'rh-acts'), novos = its.filter(function (x) { return !rxHas(x); });
+          var u = el('button', 'gq-chip sg-add' + (novos.length ? '' : ' on')); u.type = 'button'; u.disabled = !can || !novos.length;
+          u.innerHTML = (novos.length ? RXI.plus : RXI.ok) + (novos.length ? 'Usar nesta consulta' : 'Já na receita');
+          u.title = novos.length ? 'Copia os itens para a receita de hoje' : 'Todos os itens já estão na receita de hoje';
+          u.addEventListener('click', function () {
+            if (!rxCan()) return;
+            its.forEach(function (x) { if (!rxHas(x)) rxItems.push(Object.assign({}, x, { origem: 'anterior', fonte: '', ia: '', _av: null })); });
+            rxChanged(); toast('Itens na receita de hoje');
+          });
+          acts.appendChild(u);
+          if (r.status === 'emitida') {
+            var g = el('button', 'gq-chip sg-add', '2ª via'); g.type = 'button'; g.title = 'Imprime de novo, marcada como 2ª via';
+            g.addEventListener('click', function () { rxImprimir([r], true); });
+            var cx = el('button', 'gq-chip sg-add', 'Cancelar'); cx.type = 'button'; cx.disabled = !can;
+            cx.addEventListener('click', function () {
+              var m = prompt('Por que cancelar esta receita? (fica registrado no prontuário)'); if (!m || !m.trim()) return;
+              api('POST', '/prontuario/receitas/' + r.id + '/cancelar', { motivo: m.trim() }).then(function (res) {
+                if (res.ok) { toast('Receita cancelada'); rxLoad(true); } else toast('Não foi possível cancelar');
+              });
+            });
+            acts.appendChild(g); acts.appendChild(cx);
+          }
+          tx.appendChild(acts); row.appendChild(tx); L.appendChild(row);
+        });
+        $('rhMore').hidden = rhAll || list.length <= 5;
+      }
+      $('rhMore').addEventListener('click', function () { rhAll = true; renderRh(); });
+      // receitas emitidas de uma evolução (card do Histórico e PDF do prontuário)
+      function rxDaEvolucao(n) {
+        return rxs.filter(function (r) { return r.status !== 'rascunho' && ((r.note_id && r.note_id === n.id) || (r.event_id && r.event_id === n.event_id)); });
+      }
+
       function renderRn() {                                // ao abrir a aba e quando o resumo clínico muda
         var pane = document.querySelector('.pr-panel[data-panel=prescricoes]');
         if (!isOpen() || !pane || pane.hidden) return;
-        var p = patient; $('rnBox').hidden = !p; renderRx(); renderRh(); if (!p) return;
+        var p = patient; $('rnBox').hidden = !p; rxLoad(); renderRx(); renderRh(); if (!p) return;
         var key = [p.id, p.medications, p.allergies, p.problems, p.birth_date, p.sex].join('|');   // sinais novos: "Gerar de novo"
         if (key !== sgKey) sgLoad(key, false); else drawSg();
       }
@@ -7284,9 +7485,9 @@
             b.setAttribute('aria-label', (on ? 'Tirar ' : 'Adicionar ') + it.nome + (on ? ' da receita' : ' à receita'));
             b.addEventListener('click', function () {
               if (!rxCan()) return;
-              if (rxHas(it)) { rx = rx.filter(function (x) { return !rxSame(x, it); }); rxChanged(); return; }
+              if (rxHas(it)) { rxItems = rxItems.filter(function (x) { return !rxSame(x, it); }); rxChanged(); return; }
               if ((it.alergias || []).length && !confirm('Alergia registrada a ' + it.alergias.join(', ') + '. Adicionar ' + it.nome + ' à receita mesmo assim?')) return;
-              rx.push(rxFrom(it)); rxChanged();
+              rxItems.push(rxFrom(it)); rxChanged();
             });
             r.appendChild(b);
             if (!on && (it.acao === 'manter' || it.acao === 'ajustar') && !sgWarn(it)) todo++;
@@ -7304,7 +7505,7 @@
       }
       $('rnAll').addEventListener('click', function () {
         if (!rxCan() || !sg) return;
-        sg.itens.forEach(function (it) { if ((it.acao === 'manter' || it.acao === 'ajustar') && !sgWarn(it) && !rxHas(it)) rx.push(rxFrom(it)); });
+        sg.itens.forEach(function (it) { if ((it.acao === 'manter' || it.acao === 'ajustar') && !sgWarn(it) && !rxHas(it)) rxItems.push(rxFrom(it)); });
         rxChanged();
       });
 
@@ -7376,7 +7577,7 @@
             fillEditor(cur); saved = snap();
             ready = true; setEditable(true); setStatus('');
             $('prExport').hidden = false;
-            renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); renderKpis(); updCount(compose().content.length);
+            renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); renderKpis(); updCount(compose().content.length); rxLoad();
             if (!document.querySelector('.pr-panel[data-panel=consultas]').hidden) loadAccess();
             // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva
             var d = draftRead();
