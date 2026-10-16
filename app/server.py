@@ -1799,6 +1799,38 @@ async def prontuario_remedios(request: Request):
     return {"nomes": prescricao.nomes_remedios()}
 
 
+@app.post("/prontuario/prescricao/avaliar")
+async def prontuario_prescricao_avaliar(request: Request):
+    """"Útil / não útil" numa possível prescrição da IA, para o médico revisor medir as sugestões por versão do prompt e
+    do modelo. Guarda só a sugestão (sem o perfil); "util": null desmarca."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    b = await _json(request)
+    pid, util = b.get("patient_id"), b.get("util")
+    p = await run_in_threadpool(db.get_patient, u["id"], int(pid)) if str(pid or "").isdigit() else None
+    av = {"ia": prescricao._txt(b.get("ia"), 60), "acao": b.get("acao") if b.get("acao") in prescricao.ACOES else "",
+          "nome": prescricao._txt(b.get("nome"), 120), "dose": prescricao._txt(b.get("dose"), 60),
+          "posologia": prescricao._txt(b.get("posologia"), 160), "motivo": prescricao._txt(b.get("motivo"), 300),
+          "fonte": prescricao._txt(b.get("fonte"), 240)}
+    if not p or not av["ia"] or not av["acao"] or not av["nome"] or util not in (True, False, None):
+        return JSONResponse({"error": "inválido"}, status_code=400)
+    await run_in_threadpool(db.avaliar_sugestao, u["id"], p["id"], av, util)
+    return {"ok": True}
+
+
+@app.get("/prontuario/prescricao/avaliacoes")
+async def prontuario_prescricao_avaliacoes(request: Request, patient_id: str = ""):
+    """As avaliações do médico nas sugestões deste paciente (para a tela marcar o que já foi avaliado)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    p = await run_in_threadpool(db.get_patient, u["id"], int(patient_id)) if patient_id.isdigit() else None
+    if not p:
+        return JSONResponse({"error": "inválido"}, status_code=400)
+    return {"avaliacoes": await run_in_threadpool(db.list_avaliacoes, u["id"], p["id"])}
+
+
 @app.get("/me/medico")
 async def me_medico(request: Request):
     """Dados do médico para a receita (Configurações)."""
@@ -1827,6 +1859,11 @@ async def me_medico_muda(request: Request):
         if uf and uf not in _UFS:
             return JSONResponse({"error": "UF inválida"}, status_code=400)
         campos["crm_uf"] = uf
+    if "receita_papel" in b:
+        papel = str(b.get("receita_papel") or "").strip().upper()
+        if papel and papel not in ("A4", "A5"):
+            return JSONResponse({"error": "papel inválido"}, status_code=400)
+        campos["receita_papel"] = papel or None
     if "name" in campos and not campos["name"]:
         return JSONResponse({"error": "o nome não pode ficar vazio"}, status_code=400)
     m = await run_in_threadpool(db.update_medico, u["id"], campos)

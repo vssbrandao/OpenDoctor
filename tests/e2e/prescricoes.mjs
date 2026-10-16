@@ -44,7 +44,7 @@ const certo = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 async function limpa() {
   recusa = null; sug = null; await send('Fetch.disable');
-  await srv('/_preview/reset'); await medico({ name: 'Dra. Teste', crm: '123456', crm_uf: 'SP', consultorio_endereco: 'Rua A, 1' });
+  await srv('/_preview/reset'); await medico({ name: 'Dra. Teste', crm: '123456', crm_uf: 'SP', consultorio_endereco: 'Rua A, 1', receita_papel: '' });
   await send('Page.navigate', { url: BASE + '/health' }); await sleep(250);
   await ev(`(() => { sessionStorage.clear(); localStorage.clear(); return 1; })()`);
 }
@@ -205,6 +205,48 @@ const cenarios = [
     await ate(`document.getElementById('rnFoot').textContent.includes('O perfil mudou')`, 5000, 'aviso de perfil mudado');
     certo(await ev(n('#rnList .sg')) === antes, 'as sugestões continuam na tela');
     return 'aviso com "Gerar de novo"; ' + antes + ' sugestões mantidas';
+  }],
+  ['útil / não útil: grava, troca, desmarca e volta marcado ao recarregar', async () => {
+    await abre(); await ate(n('#rnList .sg-av') + ' > 0', 5000, 'Útil?');
+    const marca = (nome, qual) => ev(`[...${sg(nome)}.querySelectorAll('.sg-av button')].find((b) => b.textContent === ${JSON.stringify(qual)}).click()`);
+    const api = async () => (await srv('/prontuario/prescricao/avaliacoes?patient_id=9001')).avaliacoes.map((a) => a.acao + ' ' + a.nome.toLowerCase() + ' ' + a.util).join('; ');
+    await marca('Empagliflozina', 'Sim'); await sleep(400); await marca('Losartana', 'Não'); await sleep(400);
+    certo(await api() === 'manter losartana false; iniciar empagliflozina true', 'gravou: ' + await api());
+    await marca('Empagliflozina', 'Não'); await sleep(400); await marca('Losartana', 'Não'); await sleep(400);
+    certo(await api() === 'iniciar empagliflozina false', 'trocou e desmarcou: ' + await api());
+    await send('Page.reload'); await sleep(500); await ate(n('#rnList .sg-av .on') + ' === 1', 20000, 'marcado depois de recarregar');
+    certo(await ev(`${sg('Empagliflozina')}.querySelector('.sg-av .on').textContent === 'Não'`), 'a marcada é a da Empagliflozina');
+    return 'Sim → Não na Empagliflozina; Losartana desmarcada; voltou marcado';
+  }],
+  ['receitas anteriores: busca por remédio e escolha dos itens', async () => {
+    await abre(); await ate(`!document.getElementById('rhQ').hidden`, 5000, 'campo de busca');
+    const busca = (t) => ev(`(() => { const q = document.getElementById('rhQ'); q.value = ${JSON.stringify(t)}; q.dispatchEvent(new Event('input', { bubbles: true }));
+      return document.querySelectorAll('#rhList .sg').length; })()`);
+    certo(await busca('parac') === 1, 'a busca acha só a receita do paracetamol');
+    certo(await busca('xyz') === 0 && (await ev(`document.getElementById('rhList').innerText`)).includes('Nenhuma receita'), 'sem resultado avisa');
+    await busca('');
+    await ev(`[...document.querySelectorAll('#rhList .sg')][0].querySelector('.sg-add').click()`);
+    certo(await ev(n('#rhList .rh-esc input:checked')) === 3, 'escolha com os 3 itens marcados');
+    await ev(`[...document.querySelectorAll('#rhList .rh-esc label')].find((l) => l.textContent.startsWith('Metformina')).querySelector('input').click()`);
+    await ev(`[...document.querySelectorAll('#rhList .rh-esc button')].find((b) => b.textContent === 'Usar os marcados').click()`); await salvo();
+    const l = (await ev(linhas)).map((x) => x.split(' | ')[0]).join(', ');
+    certo(l === 'Losartana 50 mg, Atorvastatina 20 mg' && await ev(n('#rhList .rh-esc')) === 0, 'foram só os marcados: ' + l);
+    return l + ' (sem a Metformina desmarcada)';
+  }],
+  ['remédios ao longo do tempo pelas receitas emitidas', async () => {
+    await abre(); await ate(n('#rtBody tr') + ' > 0', 5000, 'tabela');
+    const t = await ev(`[...document.querySelectorAll('#rtBody tr')].map((r) => r.innerText.replace(/\\s+/g, ' ').trim())`);
+    certo(t.length === 4 && t[0].startsWith('Losartana Em uso · 10 receitas') && t[0].includes('Antes 1 comprimido 1x/dia'), 'losartana: ' + t[0]);
+    certo(t[1].includes('Antes 500 mg') && t[3].startsWith('Paracetamol Não está em uso · 1 receita'), 'metformina e paracetamol: ' + t.join(' / '));
+    return t.length + ' remédios; mudanças de dose e posologia mostradas';
+  }],
+  ['receita em A5 quando escolhido em Configurações', async () => {
+    await medico({ receita_papel: 'A5' }); await abre(); await item('Losartana', '50 mg', '1 comprimido de 12/12 h', '60 comprimidos'); await salvo();
+    await emite(); await ate(`window.__folhas !== null`, 8000, 'folha');
+    certo(await ev(`document.getElementById('rxPapel').textContent.includes('size:A5') && document.getElementById('rxPrint').classList.contains('a5')`), 'folha em A5');
+    await ev(`(() => { window.dispatchEvent(new Event('afterprint')); return 1; })()`);
+    certo(await ev(`document.getElementById('rxPapel').textContent === '' && !document.body.classList.contains('rxp')`), 'o A5 sai depois de imprimir (o PDF do prontuário continua A4)');
+    return 'A5 na receita; volta ao normal depois';
   }],
 ];
 

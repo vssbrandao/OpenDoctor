@@ -1,11 +1,12 @@
 # Prescrições: receitas, possíveis prescrições e receitas anteriores
 
-A aba Prescrições do prontuário tem três cartões (fases 1 e 2 do plano; a fase 3 está em "Pendências"):
+A aba Prescrições do prontuário tem quatro cartões (fases 1, 2 e 3 do plano; o que falta está em "Pendências"):
 
 1. **Prescrições:** a receita da consulta aberta, que fica no rascunho até ser emitida.
 2. **Possíveis prescrições:** sugestões da IA (ou só a renovação, sem IA). O "+" leva o item à receita; nada entra sem
    esse clique.
 3. **Receitas anteriores:** as emitidas, as canceladas e os rascunhos de outras consultas.
+4. **Remédios ao longo do tempo:** um remédio por linha, pelas receitas emitidas.
 
 ## Receitas (tabela própria, migração `0014_receitas.sql`)
 - **Ciclo:** `rascunho` → `emitida` (não muda mais) → `cancelada`, com o motivo e a hora.
@@ -29,7 +30,9 @@ A aba Prescrições do prontuário tem três cartões (fases 1 e 2 do plano; a f
   - separa controle especial e antimicrobiano em receitas próprias, emitidas juntas;
   - entra no registro de acessos.
 - `POST /prontuario/receitas/{id}/cancelar`: só emitida, com motivo; entra no registro de acessos.
-- `GET` e `PATCH /me/medico`: dados do médico (`web/opendoctor-configuracoes.html`).
+- `GET` e `PATCH /me/medico`: dados do médico e o papel da receita, A4 ou A5 (`web/opendoctor-configuracoes.html`).
+- `POST /prontuario/prescricao/avaliar` e `GET /prontuario/prescricao/avaliacoes?patient_id=`: o "útil / não útil"
+  das sugestões da IA (veja abaixo).
 
 ### Conferência de cada item (`prescricao.conferir`, inclusive o que o médico digita)
 - Alergia do cadastro, inclusive família e marca (`scribe.allergy_hits`).
@@ -50,7 +53,9 @@ A aba Prescrições do prontuário tem três cartões (fases 1 e 2 do plano; a f
   por via de uso.
 - **Copiar:** copia o texto da receita.
 - **Receitas anteriores:**
-  - "Usar nesta consulta" copia os itens para a receita de hoje;
+  - "Buscar remédio" filtra a lista (aparece a partir de 4 receitas);
+  - "Usar nesta consulta" copia os itens para a receita de hoje; com mais de um item novo, abre a escolha (os que já
+    estão na receita vêm travados);
   - "2ª via" imprime marcada, com a data original;
   - "Cancelar" pede o motivo.
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
@@ -58,8 +63,12 @@ A aba Prescrições do prontuário tem três cartões (fases 1 e 2 do plano; a f
   - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta);
   - "Tirar" o que foi suspenso e o médico quis manter nas em uso aparece desmarcado.
 - **Histórico:** as emitidas aparecem no card da consulta e, com ele, no "Exportar PDF".
+- **Remédios ao longo do tempo:** desde quando, a última receita e a dose de hoje, com a de antes quando mudou
+  (dose ou, sem ela, posologia). Diz se o remédio está nas medicações em uso; as canceladas ficam de fora.
 - **Impressão:** só a folha vai para o papel enquanto `body.rxp` estiver ligado; desliga no `afterprint`. No Safari, o
   `window.print()` não espera a impressão terminar.
+- **Papel:** A4 ou A5 (meia folha), em Configurações. O `<style id="rxPapel">` põe o `@page` só enquanto a receita
+  imprime; o PDF do prontuário continua em A4.
 
 ## Possíveis prescrições (`app/prescricao.py`, `POST /prontuario/prescricao/sugerir`)
 1. **Perfil, sem nome:** sexo, idade, problemas, remédios e alergias, e o último valor de cada sinal e exame, com a
@@ -89,6 +98,10 @@ A aba Prescrições do prontuário tem três cartões (fases 1 e 2 do plano; a f
   envia é o médico.
 - **Não sugerir:** esconde a sugestão neste navegador (`localStorage`, por paciente). "Ver as que você tirou" mostra
   de novo, com "Voltar a sugerir".
+- **Útil? Sim · Não:** a avaliação de cada sugestão da IA vai para a tabela `prescricao_avaliacoes` (migração
+  `0015`), uma por sugestão (versão da IA, ação e remédio). Clicar de novo desmarca. Guarda só a sugestão, sem o
+  perfil. Para o médico revisor, `scripts/avaliacoes_prescricao.py` mostra as contagens por versão da IA, sem médico
+  e sem paciente (ler produção só com o ok do usuário).
 - **Perfil mudou:** abrir a aba com o resumo clínico mudado gera de novo. Com a aba aberta, e quando chega sinal ou
   exame novo, só avisa "O perfil mudou desde estas sugestões", com "Gerar de novo", porque gerar gasta crédito e troca
   a lista. O que o médico muda pela própria aba (suspender, atualizar as em uso) não conta como mudança.
@@ -126,7 +139,11 @@ falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.r
   - ajustar troca a dose; suspender com Desfazer (receita e medicações em uso);
   - atualizar as medicações em uso depois de emitir;
   - "Não sugerir" depois de recarregar, "Perguntar ao assistente" sem o nome e a sugestão do nome do remédio;
-  - sinal novo na consulta: aviso de perfil mudado.
+  - sinal novo na consulta: aviso de perfil mudado;
+  - útil / não útil (grava, troca, desmarca e volta ao recarregar);
+  - busca e escolha dos itens nas receitas anteriores;
+  - remédios ao longo do tempo;
+  - receita em A5.
 
   As sugestões da IA desses cenários são trocadas no próprio Chrome (`Fetch.fulfillRequest`); o servidor nem é
   chamado.
@@ -136,10 +153,9 @@ falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.r
 - **Médico revisor:** `controlados.tsv`, `antimicrobianos.tsv`, `ajuste_renal.tsv` e o prompt. É sugestão de conduta,
   perto da RDC 657/2022 da Anvisa.
 - **Advogado:** modelo de receita, assinatura digital (ICP-Brasil), RIPD e Política, incluindo o envio do perfil à IA.
-- **Produção:** a migração 0014 vai para produção só com o ok do usuário; no banco de testes ela já foi aplicada.
-- **Fase 3 do plano:**
-  - "útil / não útil" nas sugestões, para o médico revisor;
-  - linha do tempo dos remédios;
-  - receita em A5;
-  - enviar ao paciente por WhatsApp ou e-mail (ação externa: pedir antes);
-  - receita digital com assinatura ICP-Brasil (decidir com o advogado).
+- **Produção:** as migrações 0014 e 0015 vão para produção só com o ok do usuário; no banco de testes já foram
+  aplicadas.
+- **Fase 3, o que depende de decisão:**
+  - enviar ao paciente por WhatsApp ou e-mail (dado de saúde saindo do app: decidir com o usuário e o advogado);
+  - receita digital com assinatura ICP-Brasil (integração externa; decidir com o advogado).
+- **Reordenar os itens da receita:** está no plano, sem fase.

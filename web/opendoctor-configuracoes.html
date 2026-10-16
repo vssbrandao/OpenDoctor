@@ -116,6 +116,7 @@
             <label class="cfg-f wide">Especialidade (opcional)<input class="cfg-in" name="especialidade" maxlength="80"></label>
             <label class="cfg-f wide">Endereço do consultório<input class="cfg-in" name="consultorio_endereco" maxlength="200"></label>
             <label class="cfg-f wide">Telefone do consultório<input class="cfg-in" name="consultorio_telefone" maxlength="40" inputmode="tel"></label>
+            <label class="cfg-f">Papel da receita<select class="cfg-in" name="receita_papel"><option value="A4">A4</option><option value="A5">A5 (meia folha)</option></select></label>
           </div>
           <div class="cfg-foot">
             <span class="cfg-st" id="cfgSt" role="status"></span>
@@ -151,13 +152,13 @@
       var UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR',
                  'SC', 'SP', 'SE', 'TO'];
       var f = document.getElementById('cfgMedico'), st = document.getElementById('cfgSt'), save = document.getElementById('cfgSave');
-      var back = document.getElementById('cfgBack'), CAMPOS = ['name', 'crm', 'crm_uf', 'especialidade', 'consultorio_endereco', 'consultorio_telefone'];
+      var back = document.getElementById('cfgBack'), CAMPOS = ['name', 'crm', 'crm_uf', 'especialidade', 'consultorio_endereco', 'consultorio_telefone', 'receita_papel'];
       UFS.forEach(function (u) { var o = document.createElement('option'); o.value = o.textContent = u; f.crm_uf.appendChild(o); });
       // veio do prontuário (falta dado para emitir a receita): depois de salvar, volta para lá
       if (new URLSearchParams(location.search).get('volta')) back.hidden = false;
       back.addEventListener('click', function () { if (history.length > 1) history.back(); else location.href = 'opendoctor-agenda.html#prontuario'; });
       function msg(t, err) { st.textContent = t; st.className = 'cfg-st' + (err ? ' err' : ''); }
-      function fill(m) { CAMPOS.forEach(function (k) { f[k].value = (m && m[k]) || ''; }); }
+      function fill(m) { CAMPOS.forEach(function (k) { f[k].value = (m && m[k]) || (k === 'receita_papel' ? 'A4' : ''); }); }
       function faltam(l) { return l && l.length ? 'Para emitir receita falta: ' + l.join(', ') + '.' : ''; }
       fetch('/me/medico', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (res) { if (res.ok) { fill(res.j.medico); msg(faltam(res.j.faltam)); } else msg('Não foi possível carregar seus dados.', true); })

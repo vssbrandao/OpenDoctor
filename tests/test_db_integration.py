@@ -236,6 +236,24 @@ def test_dados_do_medico(novo_usuario):
     assert db.get_medico(uid)["crm"] is None
     m = db.update_medico(uid, {"crm": "123456", "crm_uf": "SP", "consultorio_endereco": "Rua A, 1", "invadir": "x"})
     assert (m["name"], m["crm"], m["crm_uf"], m["consultorio_endereco"]) == ("Dra. Ana", "123456", "SP", "Rua A, 1")
+    assert db.update_medico(uid, {"receita_papel": "A5"})["receita_papel"] == "A5"
+
+
+def test_avaliacoes_das_sugestoes(novo_usuario):
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p = db.create_patient(ana, "Paciente da Avaliação")
+    av = {"ia": "teste-integracao/x", "acao": "iniciar", "nome": "Empagliflozina", "dose": "10 mg", "posologia": "",
+          "motivo": "", "fonte": ""}
+    db.avaliar_sugestao(ana, p["id"], av, True)
+    db.avaliar_sugestao(ana, p["id"], av, False)                                         # troca, não duplica
+    assert db.list_avaliacoes(ana, p["id"]) == [{"ia": "teste-integracao/x", "acao": "iniciar", "nome": "Empagliflozina", "util": False}]
+    assert db.list_avaliacoes(beto, p["id"]) == []
+    resumo = [r for r in db.resumo_avaliacoes() if r["ia"] == "teste-integracao/x"]
+    assert resumo and resumo[0]["nome"] == "empagliflozina" and resumo[0]["nao_util"] >= 1
+    db.avaliar_sugestao(ana, p["id"], av, None)
+    assert db.list_avaliacoes(ana, p["id"]) == []
+    db.avaliar_sugestao(ana, p["id"], av, True)
+    assert db.delete_patient(ana, p["id"]) == "ok" and db.list_avaliacoes(ana, p["id"]) == []   # sai com o paciente
 
 
 def test_exemplo_vem_com_as_receitas(novo_usuario):
