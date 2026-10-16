@@ -58,6 +58,9 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
   funciona e as decisões tomadas: `docs/gravacao.md` (manter em dia junto com o código).
 - Mudou as possíveis prescrições (`app/prescricao.py`, `app/data/prescricao_prompt.txt`, `ajuste_renal.tsv`): `tests/test_prescricao.py`
   roda sem crédito; a qualidade de verdade é `python -m scripts.presc_try`, que **gasta crédito** — só com o ok do usuário.
+- Mudou as receitas (aba Prescrições, rotas `/prontuario/receitas*`, `/me/medico`, `app/data/controlados.tsv`,
+  `antimicrobianos.tsv`): rodar `node tests/e2e/prescricoes.mjs` contra um preview SÓ DELE (`PREVIEW=`, outra porta —
+  ele limpa os dados do preview). Como funciona: `docs/prescricao.md`.
 - O CI (`.github/workflows/ci.yml`) roda os testes a cada push; `tests/test_security.py` percorre
   todas as rotas, páginas, migrações e arquivos sozinho. Se ele falhar, **não ajuste o teste para
   passar**: entenda o que abriu.
