@@ -7124,11 +7124,17 @@
           ol.appendChild(li);
         });
         api('POST', '/prontuario/audit', { action: 'export', patient_id: patient.id }).catch(function () {});
-        var t = document.title; document.title = 'Receita'; document.body.classList.add('rxp');
+        // só a folha da receita vai para o papel enquanto body.rxp estiver ligado. O Safari não espera a impressão no
+        // window.print(): desligar logo depois imprimiria o prontuário inteiro. Desliga quando a impressão termina.
+        if (!document.body.classList.contains('rxp')) { rxTitle = document.title; document.title = 'Receita'; document.body.classList.add('rxp'); }
         window.print();
-        document.body.classList.remove('rxp'); document.title = t;
       });
-      window.addEventListener('afterprint', function () { document.body.classList.remove('rxp'); });
+      var rxTitle = '';
+      function rxPrintEnd() {
+        if (!document.body.classList.contains('rxp')) return;
+        document.body.classList.remove('rxp'); document.title = rxTitle || document.title;
+      }
+      window.addEventListener('afterprint', rxPrintEnd);
 
       function renderRn() {                                // ao abrir a aba e quando o resumo clínico muda
         var pane = document.querySelector('.pr-panel[data-panel=prescricoes]');
@@ -7255,7 +7261,7 @@
 
       // ===== exportar (imprimir/PDF) e registro de acessos =====
       $('prExport').addEventListener('click', function () {
-        closeMenus();
+        closeMenus(); rxPrintEnd();                        // o PDF do prontuário nunca sai como receita
         if (!patient) return;
         save();
         $('prPrintCur').textContent = locked() ? '' : (rrMeta() ? 'Transcrição automática (IA), revisada pelo médico.\n\n' : '') + compose().content;
