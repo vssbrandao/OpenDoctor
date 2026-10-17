@@ -103,13 +103,19 @@ linha.
 5. **Guarda em memória** por 24 h, enquanto o perfil não muda. "Gerar de novo" força outra geração.
 
 ### Na tela
+- **Cartão enxuto:**
+  - cada sugestão mostra remédio, dose e posologia, e o motivo numa linha (inteiro ao passar o mouse);
+  - os avisos de alergia, dose e função renal aparecem quando houver;
+  - as ações: "Fonte" (o artigo), "Perguntar", "Não sugerir" e os joinhas de útil e não útil;
+  - a observação da IA fica em texto pequeno, em até 2 linhas;
+  - "Gerar de novo" fica no canto do cabeçalho.
 - **Adicionar** leva o item à receita; de novo ("Na receita") tira.
 - **Nada com indicação clara:** a lista vem vazia, com a observação da IA.
 - **Perguntar ao assistente:** põe no campo do assistente o perfil (sem o nome) e a pergunta sobre a sugestão; quem
   envia é o médico.
 - **Não sugerir:** esconde a sugestão neste navegador (`localStorage`, por paciente). "Ver as que você tirou" mostra
   de novo, com "Voltar a sugerir".
-- **Útil? Sim · Não:** a avaliação de cada sugestão da IA vai para a tabela `prescricao_avaliacoes` (migração
+- **Útil e não útil (joinhas):** a avaliação de cada sugestão da IA vai para a tabela `prescricao_avaliacoes` (migração
   `0015`), uma por sugestão (versão da IA, ação e remédio). Clicar de novo desmarca. Guarda só a sugestão, sem o
   perfil. Para o médico revisor, `scripts/avaliacoes_prescricao.py` mostra as contagens por versão da IA, sem médico
   e sem paciente (ler produção só com o ok do usuário).

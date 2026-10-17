@@ -175,7 +175,7 @@ const cenarios = [
     certo(!(await ev(`!!${sg('Semaglutida')}`)), 'continua escondida depois de recarregar');
     await ev(`[...document.querySelectorAll('#rnFoot button')].find((b) => /que você tirou/.test(b.textContent)).click()`);
     certo(await ev(`${sg('Semaglutida')}.classList.contains('oculta') && !!${sg('Semaglutida')}.innerText.includes('Voltar a sugerir')`), 'mostra a escondida');
-    await ev(`[...${sg('Dapagliflozina')}.querySelectorAll('.sg-mais button')].find((b) => b.textContent === 'Perguntar ao assistente').click()`);
+    await ev(`[...${sg('Dapagliflozina')}.querySelectorAll('.sg-mais button')].find((b) => b.textContent === 'Perguntar').click()`);
     const q = await ev(`document.getElementById('biInput').value`);
     certo(q.includes('Sugestão de prescrição: iniciar') && q.toLowerCase().includes('dapagliflozina') && !q.includes('Maria'), 'pergunta: ' + q.slice(0, 160));
     await ev(`document.getElementById('rxAdd').click()`);
@@ -196,14 +196,14 @@ const cenarios = [
   }],
   ['útil / não útil: grava, troca, desmarca e volta marcado ao recarregar', async () => {
     await abre(); await ate(n('#rnList .sg-av') + ' > 0', 5000, 'Útil?');
-    const marca = (nome, qual) => ev(`[...${sg(nome)}.querySelectorAll('.sg-av button')].find((b) => b.textContent === ${JSON.stringify(qual)}).click()`);
+    const marca = (nome, qual) => ev(`[...${sg(nome)}.querySelectorAll('.sg-av button')].find((b) => b.getAttribute('aria-label') === ${JSON.stringify(qual === 'Sim' ? 'Útil' : 'Não útil')}).click()`);
     const api = async () => (await srv('/prontuario/prescricao/avaliacoes?patient_id=9001')).avaliacoes.map((a) => a.acao + ' ' + a.nome.toLowerCase() + ' ' + a.util).join('; ');
     await marca('Dapagliflozina', 'Sim'); await sleep(400); await marca('Semaglutida', 'Não'); await sleep(400);
     certo(await api() === 'iniciar semaglutida false; iniciar dapagliflozina true', 'gravou: ' + await api());
     await marca('Dapagliflozina', 'Não'); await sleep(400); await marca('Semaglutida', 'Não'); await sleep(400);
     certo(await api() === 'iniciar dapagliflozina false', 'trocou e desmarcou: ' + await api());
     await send('Page.reload'); await sleep(500); await ate(n('#rnList .sg-av .on') + ' === 1', 20000, 'marcado depois de recarregar');
-    certo(await ev(`${sg('Dapagliflozina')}.querySelector('.sg-av .on').textContent === 'Não'`), 'a marcada é a da Dapagliflozina');
+    certo(await ev(`${sg('Dapagliflozina')}.querySelector('.sg-av .on').getAttribute('aria-label') === 'Não útil'`), 'a marcada é a da Dapagliflozina');
     return 'Sim → Não na Dapagliflozina; Semaglutida desmarcada; voltou marcado';
   }],
   ['histórico de receitas: busca por remédio e escolha dos itens', async () => {

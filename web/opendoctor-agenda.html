@@ -172,10 +172,14 @@
     .rx-msg .pr-link{font-size:12px}
     .sg-mais{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:2px}
     .sg-mais .pr-link{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .sg-mais .pr-link{text-decoration:none}
     .sg-mais .pr-link:hover{color:#0B57D0;text-decoration:underline}
     .sg.oculta{opacity:.5}
-    .sg-av{display:flex;align-items:center;gap:8px;margin-left:auto;font-family:var(--disp);font-size:12px;line-height:16px;color:#80868B}
-    .sg-mais .sg-av .pr-link.on{color:#0B57D0;font-weight:500}
+    .sg-av{display:flex;align-items:center;gap:4px;margin-left:auto}
+    .sg-th{display:flex;align-items:center;justify-content:center;width:24px;height:24px;padding:4px;border:0;border-radius:12px;background:none;cursor:pointer;color:#80868B}
+    .sg-th svg{width:16px;height:16px}
+    .sg-th:hover{background:rgba(0,0,0,.05);color:#0A0A0A}
+    .sg-th.on{color:#0B57D0}
     .sg-tx:has(.sg-av){flex:1}                                  /* "Útil?" alinhado à direita em todas as sugestões */
     .sg-mudou{color:#B06000;font-weight:500}
     .rx-sync{display:flex;flex-direction:column;gap:4px;padding:16px 20px;border-radius:24px;background:#fff}
@@ -232,7 +236,7 @@
     .ov-post-src i.sg-ajustar::before{background:#E37400}
     .ov-post-src i.sg-iniciar::before{background:#0B57D0}
     .ov-post-src i.sg-suspender::before{background:#C0151D}
-    .sg-why{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .sg-why{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .rn-w{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#C0151D}
     .rn-w.dose{color:#B06000}
     .sg-add{flex:none;gap:4px;padding:0 14px 0 10px;background:#fff;cursor:pointer}    /* etiqueta do gráfico (.gq-chip) */
@@ -241,9 +245,12 @@
     .sg-add.on{border-color:transparent;background:#E6F4EA;color:#046E00}
     .sg-add:disabled{opacity:.45;cursor:default;background:#fff}
     .sg-off{flex:none;padding-top:2px;font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
-    .rn-obs{padding:12px 16px;border-radius:16px;background:#fff;font-family:var(--disp);font-size:12px;line-height:16px;color:#36373A}
+    .rn-obs{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .rn-obs[hidden]{display:none}
     .rn-foot{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .rn-foot[hidden]{display:none}
+    .rn-gen{flex:none;font-family:var(--disp);font-size:12px;line-height:16px}
+    .rn-gen[hidden]{display:none}
     .rn-foot:empty{display:none}
     .rn-foot .pr-link{font-size:12px}
     /* receita impressa: só ela vai para o papel */
@@ -2204,8 +2211,9 @@
                 <div class="pr-cardhead">
                   <div>
                     <div class="pr-h2">Possíveis prescrições</div>
-                    <div class="pr-cardsub" id="rnSub"></div>
+                    <div class="pr-cardsub" id="rnSub">Sugeridas pela IA · confira antes de prescrever</div>
                   </div>
+                  <button class="pr-link rn-gen" type="button" id="rnGen" hidden>Gerar de novo</button>
                 </div>
                 <div class="rn-list" id="rnList"></div>
                 <div class="rn-obs" id="rnObs" hidden></div>
@@ -7544,46 +7552,48 @@
       }
       function rxDoseIgual(linha, dose) { var k = function (t) { return norm(t).replace(/\s+/g, '').replace(/,/g, '.'); }; return !dose || k(linha).indexOf(k(dose)) >= 0; }
 
+      var SGI = {                                         // joinha (útil / não útil), Material outline 24
+        sim: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 21h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.58 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2zM9 9l4.34-4.34L12 10h9v2l-3 7H9V9zM1 9h4v12H1z" fill="currentColor"/></svg>',
+        nao: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm0 12-4.34 4.34L12 14H3v-2l3-7h9v10zm4-12h4v12h-4z" fill="currentColor"/></svg>'
+      };
+      // cartão minimalista: remédio, dose e posologia; o motivo numa linha (inteiro no title); ações curtas
       function drawSg() {
         var L = $('rnList'), can = rxCan(), s = sg || { st: 'carregando', passo: 'buscando', itens: [] }; L.innerHTML = '';
-        $('rnSub').textContent = 'Até 2 remédios que o paciente ainda não usou e talvez façam sentido, sugeridos pela IA com artigos da base do assistente';
-        $('rnObs').hidden = !(s.st === 'pronto' && s.obs); $('rnObs').textContent = s.obs || '';
+        $('rnObs').hidden = !(s.st === 'pronto' && s.obs); $('rnObs').textContent = s.obs || ''; $('rnObs').title = s.obs || '';
+        var gen = $('rnGen'); gen.hidden = !(RR.on && can && (s.st === 'pronto' || s.st === 'falhou'));
+        gen.textContent = s.st === 'falhou' ? 'Tentar de novo' : 'Gerar de novo';
         var foot = $('rnFoot'); foot.innerHTML = '';
         if (s.st === 'carregando') {
-          L.appendChild(el('div', 'pr-empty', { buscando: 'Buscando nas fontes do assistente…', escrevendo: 'Escrevendo as sugestões a partir do perfil (até uns 20 segundos)…' }[s.passo] || 'Carregando…'));
+          L.appendChild(el('div', 'pr-empty', { buscando: 'Buscando nas fontes…', escrevendo: 'Escrevendo as sugestões…' }[s.passo] || 'Carregando…'));
           return;
         }
-        if (!s.itens.length) L.appendChild(el('div', 'pr-empty', s.st === 'falhou' ? 'Não foi possível gerar as sugestões agora.'
-                                                                  : 'Nenhum remédio novo com indicação clara para este perfil agora.'));
+        if (!s.itens.length) L.appendChild(el('div', 'pr-empty', s.st === 'falhou' ? 'Não foi possível gerar as sugestões agora.' : 'Nenhum remédio novo com indicação clara agora.'));
         var ocultas = sgOcultas(), escondidas = 0;
         s.itens.forEach(function (it) {
           var oculta = ocultas.indexOf(sgChave(it)) >= 0;
           if (oculta && !sgVerOcultas) { escondidas++; return; }
-          var r = el('div', 'sg' + (oculta ? ' oculta' : '')), tx = el('div', 'sg-tx'), src = el('span', 'ov-post-src'), f = sgFonte(it);
-          src.appendChild(el('i', 'sg-' + it.acao)); src.appendChild(document.createTextNode(ACAO[it.acao] || it.acao));
-          var sm = el('small', null, '· ');
-          if (f && f.url) { var a = el('a', 'sg-src', f.titulo + (f.ano ? ' · ' + f.ano : '')); a.href = f.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = f.titulo; sm.appendChild(a); }
-          else sm.appendChild(document.createTextNode(f ? f.titulo : it.acao === 'manter' ? 'Em uso' : ''));
-          src.appendChild(sm); tx.appendChild(src);
+          var r = el('div', 'sg' + (oculta ? ' oculta' : '')), tx = el('div', 'sg-tx'), f = sgFonte(it);
           tx.appendChild(el('span', 'ov-post-t', [it.nome, it.dose].filter(Boolean).join(' ') + (it.posologia ? ' · ' + it.posologia : '')));
-          if (it.motivo && it.motivo !== 'Em uso (cadastro).') tx.appendChild(el('span', 'sg-why', it.motivo));
+          if (it.motivo) { var w = el('span', 'sg-why', it.motivo); w.title = it.motivo; tx.appendChild(w); }
           (it.alergias || []).forEach(function (x) { tx.appendChild(el('span', 'rn-w', 'Alergia registrada: ' + x)); });
           if (it.faixa) tx.appendChild(el('span', 'rn-w dose', 'Dose fora da usual por tomada (' + rnNum(it.faixa[0]) + '–' + rnNum(it.faixa[1]) + ' mg): confira'));
           if (it.renal) tx.appendChild(el('span', 'rn-w dose', 'Função renal: ' + it.renal));
-          // ações secundárias, como links: Perguntar ao assistente · Não sugerir
+          // ações curtas: Fonte · Perguntar · Não sugerir · útil (joinhas)
           var mais = el('div', 'sg-mais');
+          if (f && f.url) { var a = el('a', 'pr-link', 'Fonte'); a.href = f.url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.title = f.titulo + (f.ano ? ' (' + f.ano + ')' : ''); mais.appendChild(a); }
           if (s.st === 'pronto') {
-            var pq = el('button', 'pr-link', 'Perguntar ao assistente'); pq.type = 'button';
+            var pq = el('button', 'pr-link', 'Perguntar'); pq.type = 'button'; pq.title = 'Perguntar ao assistente sobre esta sugestão';
             pq.addEventListener('click', function () { askAssistant(sgPergunta(it)); }); mais.appendChild(pq);
           }
           var oc = el('button', 'pr-link', oculta ? 'Voltar a sugerir' : 'Não sugerir'); oc.type = 'button';
           oc.addEventListener('click', function () { sgOcultar(it, !oculta); drawSg(); });
           mais.appendChild(oc);
           if (s.st === 'pronto') {
-            var av = el('span', 'sg-av', 'Útil?'), ak = sgAvalChave(s.ia, it.acao, it.nome), cur = ak in sgAval ? sgAval[ak] : null;
-            [[true, 'Sim'], [false, 'Não']].forEach(function (o) {
-              var ab = el('button', 'pr-link' + (cur === o[0] ? ' on' : ''), o[1]); ab.type = 'button'; ab.setAttribute('aria-pressed', String(cur === o[0]));
-              ab.title = cur === o[0] ? 'Clique de novo para desmarcar' : 'Esta sugestão foi ' + (o[0] ? 'útil' : 'não útil') + ' (vai para o médico revisor, sem o paciente)';
+            var av = el('span', 'sg-av'), ak = sgAvalChave(s.ia, it.acao, it.nome), cur = ak in sgAval ? sgAval[ak] : null;
+            [[true, 'sim', 'Útil'], [false, 'nao', 'Não útil']].forEach(function (o) {
+              var ab = el('button', 'sg-th' + (cur === o[0] ? ' on' : '')); ab.type = 'button'; ab.innerHTML = SGI[o[1]];
+              ab.setAttribute('aria-label', o[2]); ab.setAttribute('aria-pressed', String(cur === o[0]));
+              ab.title = cur === o[0] ? 'Clique de novo para desmarcar' : o[2] + ' (vai para o médico revisor, sem o paciente)';
               ab.addEventListener('click', function () { sgAvaliar(it, o[0]); }); av.appendChild(ab);
             });
             mais.appendChild(av);
@@ -7602,17 +7612,15 @@
           });
           r.appendChild(b); L.appendChild(r);
         });
+        if (!ready) foot.appendChild(document.createTextNode('Carregando a evolução… '));
         if (s.st === 'pronto' && s.assin && s.assin !== sgAssinatura()) foot.appendChild(el('span', 'sg-mudou', 'O perfil mudou desde estas sugestões. '));
-        foot.appendChild(document.createTextNode(!ready ? 'Carregando a evolução… ' : s.st === 'pronto' ? 'Apoio à decisão: confira indicação, dose e alergias antes de prescrever. ' : ''));
-        if (RR.on && can && (s.st === 'pronto' || s.st === 'falhou')) {
-          var g = el('button', 'pr-link', s.st === 'falhou' ? 'Tentar de novo' : 'Gerar de novo'); g.type = 'button';
-          g.addEventListener('click', function () { sgLoad(sgChaveAtual(), true); }); foot.appendChild(g);
-        }
         if (escondidas || sgVerOcultas) {
-          var vo = el('button', 'pr-link', sgVerOcultas ? ' · Esconder as que você tirou' : ' · Ver ' + escondidas + (escondidas === 1 ? ' que você tirou' : ' que você tirou'));
+          var vo = el('button', 'pr-link', sgVerOcultas ? 'Esconder as que você tirou' : 'Ver ' + escondidas + ' que você tirou');
           vo.type = 'button'; vo.addEventListener('click', function () { sgVerOcultas = !sgVerOcultas; drawSg(); }); foot.appendChild(vo);
         }
+        foot.hidden = !foot.childNodes.length;
       }
+      $('rnGen').addEventListener('click', function () { if (rxCan()) sgLoad(sgChaveAtual(), true); });
 
       // ----- depois de emitir: atualizar as medicações em uso (entra o uso contínuo novo, muda a dose) -----
       function rxLinha(x) { return [x.nome, x.dose, x.posologia].filter(Boolean).join(' '); }
