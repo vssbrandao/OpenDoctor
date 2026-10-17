@@ -172,31 +172,8 @@
     .rx-msg .pr-link{font-size:12px}
     .rx-sync{display:flex;flex-direction:column;gap:4px;padding:16px 20px;border-radius:24px;background:#fff}
     .rx-sync[hidden]{display:none}
-    /* a nova receita = a folha impressa: papel branco com sombra, cabeçalho do médico, título, busca, itens numerados
-       por via de uso, assinatura; é o centro da aba */
-    .rx-papel{display:flex;flex-direction:column;gap:20px;padding:40px 48px 32px;border:1px solid #E1E3E1;border-radius:8px;background:#fff;
-      box-shadow:0 1px 3px rgba(60,64,67,.12),0 8px 24px rgba(60,64,67,.12);font-family:var(--disp);color:#0A0A0A}
-    .rxp-med{display:flex;flex-direction:column;gap:2px;padding-bottom:16px;border-bottom:1px solid #0A0A0A;font-size:13px;line-height:18px;color:#36373A}
-    .rxp-med b{font-weight:500;font-size:18px;line-height:24px;color:#0A0A0A}
-    .rxp-med .pr-link{align-self:flex-start;margin-top:2px;font-size:13px}
-    .rxp-tit{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px 24px}
-    .rxp-h{font-weight:500;font-size:28px;line-height:36px;color:#0A0A0A}
-    .rxp-st{margin-left:8px;font-weight:400;font-size:12px;line-height:16px;color:#56595E;vertical-align:middle}
-    .rxp-pac{display:flex;align-items:baseline;gap:4px;font-size:15px;line-height:20px;color:#36373A}
-    .rxp-pac b{font-weight:500;color:#0A0A0A}
-    .rxp-dia{margin-left:16px;color:#56595E}
-    .rxp-uso{margin-top:4px;font-weight:500;font-size:15px;line-height:20px;text-decoration:underline;color:#0A0A0A}
-    .rxp-num{flex:none;width:24px;font-size:16px;line-height:20px;color:#0A0A0A;align-self:flex-start}
-    .rxp-vazio{padding:24px 0;font-size:15px;line-height:20px;color:#80868B;text-align:center}
-    .rxp-vazio[hidden]{display:none}
-    .rxp-ass{align-self:flex-end;width:280px;margin-top:40px;padding-top:6px;border-top:1px solid #0A0A0A;font-size:12px;line-height:16px;color:#56595E;text-align:center}
-    .rx-papel .rx-acts{margin-top:4px}
-    .rx-papel .rx-list{gap:4px}
-    .rx-papel .rx-main{justify-content:flex-start}
-    .rx-papel .rx-l{flex:1}
-    .rx-papel .rx-edit{padding:8px 0 16px;border-bottom:0}
-    .rx-papel .rx-edit .rx-f{height:48px;border:0;border-radius:24px;background:#F0F2F5;font-size:16px}
-    .rx-papel .rx-edit .rx-f:focus{box-shadow:inset 0 0 0 2px #0B57D0}
+    .rx-sec{display:flex;flex-direction:column;gap:16px}
+    .rx-sec .gh{margin-bottom:0}
     .rx-new[hidden]{display:none}
     /* busca da receita = a busca do Google Finance (medida na página): barra 48 px #F0F2F5, painel #E9EBF0 com sombra,
        filtros 36 px (o escolhido #B8D5FF), linhas 8 px de respiro com o branco ao passar, 16/20 + 12/16 */
@@ -2237,21 +2214,13 @@
             <!-- Prescrições: receita da consulta (tabela receitas), possíveis prescrições e receitas anteriores (docs/prescricao.md) -->
             <section class="pr-panel" data-panel="prescricoes" hidden>
               <!-- receita da consulta aberta: o rascunho (salvo sozinho) até emitir -->
-              <!-- a nova receita como a folha que vai ser impressa: cabeçalho do médico, paciente e data, a busca, os remédios
-                   numerados por via de uso, a assinatura e Copiar · Emitir -->
-              <div class="rx-papel" id="rxBox">
-                <div class="rxp-med" id="rxMed"></div>
-                <div class="rxp-tit">
-                  <div class="rxp-h">Receita <span class="rxp-st" id="rxSt">rascunho</span></div>
-                  <div class="rxp-pac" id="rxPac"></div>
-                </div>
+              <div class="gsub rx-sec" id="rxBox">
+                <div class="gh gh-col"><span class="gh-t">Prescrições</span><span class="gh-s">Receita da consulta aberta · <span id="rxSt">rascunho</span></span></div>
                 <div class="fz" id="rxNew" hidden></div>   <!-- novo item: a busca no padrão do Google Finance (barra + painel) -->
                 <div class="rx-list" id="rxBody"></div>
-                <div class="rxp-vazio" id="rxVazio" hidden>Busque o primeiro remédio acima, pela substância ou pela marca.</div>
                 <div class="rx-msg" id="rxMsg" role="status" hidden></div>
                 <div class="rx-sync" id="rxSync" hidden></div>
                 <datalist id="rxRemedios"></datalist>
-                <div class="rxp-ass">Assinatura e carimbo do médico</div>
                 <div class="rx-acts" id="rxActs" hidden>
                   <button class="pr-ghost" type="button" id="rxCopy">Copiar</button>
                   <button class="pr-save" type="button" id="rxEmit">Emitir receita</button>
@@ -7212,7 +7181,7 @@
           rxEd = -1; if (rxNovoIns) rxNovoIns.limpa(); rxSt(rxDraft ? 'rascunho salvo' : 'rascunho'); rxMsg('');
           renderRx(); renderRh(); drawSg(); rxConferir();
         });
-        if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) { medico = res.j.medico; rxPapel(); } });
+        if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) medico = res.j.medico; });
         if (!$('rxRemedios').children.length) api('GET', '/prontuario/remedios').then(function (res) {
           if (!res.ok || $('rxRemedios').children.length) return;
           var dl = $('rxRemedios'); (res.j.nomes || []).forEach(function (n) { var o = document.createElement('option'); o.value = n; dl.appendChild(o); });
@@ -7271,39 +7240,17 @@
       var rxEd = -1;                                      // linha aberta para editar
       var RXF = [['nome', 'Remédio', 'Ex.: losartana'], ['dose', 'Dose', 'Ex.: 50 mg'], ['posologia', 'Posologia', 'Ex.: 1 comprimido de 12/12 h'],
                  ['quantidade', 'Quantidade', 'Ex.: 60 comprimidos']];
-      function rxPapel() {                                 // o cabeçalho da folha: médico, paciente e data (como a impressa)
-        var m = medico || {}, h = $('rxMed'); h.innerHTML = '';
-        if (m.name) {
-          h.appendChild(el('b', null, m.name));
-          var l1 = [m.crm ? 'CRM ' + m.crm + (m.crm_uf ? '/' + m.crm_uf : '') : '', m.especialidade || ''].filter(Boolean).join(' · ');
-          var l2 = [m.consultorio_endereco || '', m.consultorio_telefone || ''].filter(Boolean).join(' · ');
-          if (l1) h.appendChild(el('span', null, l1)); if (l2) h.appendChild(el('span', null, l2));
-        }
-        if (!m.crm || !m.crm_uf) { var a = el('a', 'pr-link', 'Completar meus dados de médico'); a.href = 'opendoctor-configuracoes.html?volta=1'; h.appendChild(a); }
-        var pc = $('rxPac'); pc.innerHTML = ''; pc.appendChild(document.createTextNode('Paciente: ')); pc.appendChild(el('b', null, (patient && patient.name) || ''));
-        pc.appendChild(el('span', 'rxp-dia', rxDia(null)));
-      }
       function renderRx() {
         var L = $('rxBody'), can = rxCan(); L.innerHTML = '';
         if (!can) rxEd = -1;
         var cheios = rxCheios().length;
         $('rxActs').hidden = !cheios; $('rxNew').hidden = !can; if (can) rxNovoMonta();
-        $('rxVazio').hidden = !can || !!rxItems.length; rxPapel();
-        // como na impressão: agrupado por via de uso (na ordem em que a via aparece), numerado em sequência
-        var ordem = [], grupos = {};
-        rxItems.forEach(function (x, i) { var g = x.via || ''; if (!(g in grupos)) { grupos[g] = []; ordem.push(g); } grupos[g].push(i); });
-        var seq = [], num = {}, n = 0;
-        ordem.forEach(function (g) { grupos[g].forEach(function (i) { seq.push(i); num[i] = ++n; }); });
-        var ultimo = null;
-        seq.forEach(function (i) {
-          var x = rxItems[i], g = x.via || '';
-          if (g !== ultimo) { ultimo = g; if (g) L.appendChild(el('div', 'rxp-uso', USO[g] || g)); }
+        rxItems.forEach(function (x, i) {
           if (i === rxEd) { L.appendChild(rxForm(x, i)); return; }
           var row = el('div', 'rx-row'), b = el('button', 'rx-main'); b.type = 'button'; b.disabled = !can; if (can) b.title = 'Editar';
           var l = el('span', 'rx-l'), r = el('span', 'rx-r');
-          b.appendChild(el('span', 'rxp-num', num[i] + '.'));
           l.appendChild(el('span', 'rx-n', [x.nome, x.dose].filter(Boolean).join(' ')));
-          l.appendChild(el('span', 'rx-d', [x.posologia || 'Sem posologia', x.continuo ? 'uso contínuo' : ''].filter(Boolean).join(' · ')));
+          l.appendChild(el('span', 'rx-d', [x.via ? USO[x.via] : '', x.posologia || 'Sem posologia', x.continuo ? 'uso contínuo' : ''].filter(Boolean).join(' · ')));
           rxAvisos(x).forEach(function (a) { l.appendChild(el('span', a[0], a[1])); });
           r.appendChild(el('span', 'rx-q', x.quantidade || '—'));
           r.appendChild(el('span', 'rx-o' + (x.origem === 'ia' ? ' ia' : ''),
