@@ -56,8 +56,8 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   receita.
   - **Cabeçalho de cada receita:**
     - data, hora, consulta, tipo e situação (Emitida, Cancelada com o motivo, ou Rascunho);
-    - as ações da receita inteira: "Usar todos", "Imprimir 2ª via" (sai marcada, com a data original),
-      "Cancelar receita" (pede o motivo) e "Copiar texto".
+    - as ações da receita inteira: "Usar todos", "Imprimir 2ª via" (sai marcada, com a data original)
+      e "Cancelar receita" (pede o motivo).
   - **Linha do remédio:**
     - remédio e dose, posologia e quantidade;
     - "Usar nesta consulta" leva só aquele remédio para a receita de hoje, e a escolha é linha a linha. Quando já
