@@ -244,7 +244,8 @@ def item_limpo(it):
     """Um item da receita só com os campos conhecidos e tamanhos limitados. None sem nome."""
     if not isinstance(it, dict) or not _txt(it.get("nome"), 120):
         return None
-    return {"nome": _txt(it.get("nome"), 120), "dose": _txt(it.get("dose"), 60), "posologia": _txt(it.get("posologia"), 160),
+    return {"nome": _txt(it.get("nome"), 120), "dose": _txt(it.get("dose"), 60), "forma": _txt(it.get("forma"), 80),
+            "posologia": _txt(it.get("posologia"), 160),
             "quantidade": _txt(it.get("quantidade"), 60), "via": it.get("via") if it.get("via") in VIAS else "",
             "continuo": bool(it.get("continuo")), "origem": it.get("origem") if it.get("origem") in ORIGENS else "manual",
             "fonte": _txt(it.get("fonte"), 240), "ia": _txt(it.get("ia"), 60)}

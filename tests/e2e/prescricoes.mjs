@@ -38,12 +38,14 @@ async function ate(expr, ms, oque) {
 }
 const srv = async (p, op) => (await fetch(BASE + p, op)).json();
 const medico = (campos) => srv('/me/medico', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(campos) });
-const linhas = `[...document.querySelectorAll('#rxBody .rx-row')].map((b) => b.querySelector('.rx-n').textContent + ' | ' + b.querySelector('.rx-q').textContent)`;
+// cada item da receita: "nome dose | quantidade"
+const linhas = `[...document.querySelectorAll('#rxBody .rx-row')].map((b) => b.querySelector('.rx-n').textContent + ' | ' + b.querySelector('.rx-q').value)`;
 const n = (sel) => `document.querySelectorAll(${JSON.stringify(sel)}).length`;
 const certo = (cond, msg) => { if (!cond) throw new Error(msg); };
+const dialogos = [];                                       // confirm()/alert() que a página abriu (a receita não abre nenhum)
 
 async function limpa() {
-  recusa = null;
+  recusa = null; dialogos.length = 0;
   await srv('/_preview/reset'); await medico({ name: 'Dra. Teste', crm: '123456', crm_uf: 'SP', consultorio_endereco: 'Rua A, 1', receita_papel: '' });
   await send('Page.navigate', { url: BASE + '/health' }); await sleep(250);
   await ev(`(() => { sessionStorage.clear(); localStorage.clear(); return 1; })()`);
@@ -51,21 +53,44 @@ async function limpa() {
 async function abre(exemplo = true) {
   await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&tab=prescricoes' + (exemplo ? '&exemplo=1' : '') });
   await ate(`!!document.getElementById('rnList') && document.querySelectorAll('#rnList .sg').length > 0`, 20000, 'sugestões');
+  await ate(`!!document.querySelector('#rxNew .fz-in') && !document.querySelector('#rxNew .fz-in').disabled`, 8000, 'barra de adicionar');
 }
-async function item(nome, dose, pos, qtd) {
-  // a busca (#rxNew, padrão do Finance): o nome + Enter sem escolher = texto livre → dose, posologia, quantidade e "Adicionar"
-  await ate(`!document.getElementById('rxNew').hidden`, 3000, 'busca de novo item');
-  await ev(`(() => { const q = document.querySelector('#rxNew .fz-in'); q.focus(); q.value = ${JSON.stringify(nome)};
-    q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1; })()`);
-  await ate(n('#rxNew .fz-f') + ' === 3', 3000, 'campos do item');
-  await ev(`(() => { const f = (k) => document.querySelector('#rxNew .fz-f[data-k=' + k + ']'); f('dose').value = ${JSON.stringify(dose)};
-    f('posologia').value = ${JSON.stringify(pos)}; f('quantidade').value = ${JSON.stringify(qtd)}; document.querySelector('#rxNew .fz-ok').click(); return 1; })()`);
+const tecla = (sel, k) => ev(`(() => { document.querySelector(${JSON.stringify(sel)}).dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true })); return 1; })()`);
+// a barra "Adicionar medicamento": digita e dá Enter (o Enter vale para o primeiro resultado quando ele chega)
+async function busca(t) {
+  await ev(`(() => { const q = document.querySelector('#rxNew .fz-in'); q.focus(); q.value = ${JSON.stringify(t)}; q.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
 }
-// o rascunho salva sozinho 600 ms depois da última mudança: espera a gravação começar e terminar
-const salvo = async () => { await sleep(900); await ate(`document.getElementById('rxSt').textContent === 'rascunho salvo'`, 8000, 'rascunho salvo'); };
+// um remédio pela barra; o foco vai para a posologia dele, Enter → quantidade, Enter → de volta para a barra
+async function item(t, pos, qtd, alergia = false) {
+  const antes = await ev(n('#rxBody .rx-row'));
+  await busca(t); await tecla('#rxNew .fz-in', 'Enter');
+  if (alergia) {
+    await ate(`(document.querySelector('#rxNew .fz-row.on .fz-vs') || {}).textContent === 'Enter de novo para adicionar'`, 6000, 'alergia pede o 2º Enter');
+    certo(await ev(n('#rxBody .rx-row')) === antes, 'com alergia, o 1º Enter não adiciona');
+    await tecla('#rxNew .fz-in', 'Enter');
+  }
+  await ate(n('#rxBody .rx-row') + ' === ' + (antes + 1), 8000, 'entrou ' + t);
+  await ate(`document.activeElement.classList.contains('rxc-pos')`, 3000, 'o foco foi para a posologia');
+  if (pos == null) return;
+  await ev(`(() => { const p = document.activeElement; p.value = ${JSON.stringify(pos)}; p.dispatchEvent(new Event('input', { bubbles: true }));
+    p.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1; })()`);
+  certo(await ev(`document.activeElement.classList.contains('rx-q')`), 'Enter na posologia leva à quantidade');
+  if (qtd != null) await ev(`(() => { const q = document.activeElement; q.value = ${JSON.stringify(qtd)}; q.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+  await ev(`(() => { document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1; })()`);
+  certo(await ev(`document.activeElement === document.querySelector('#rxNew .fz-in')`), 'Enter na quantidade volta para a barra');
+}
+// o rascunho salva sozinho (300 ms depois de digitar, 600 ms depois de mudar): espera a gravação começar e terminar
+const salvo = async () => { await sleep(1100); await ate(`document.getElementById('rxSt').textContent === 'rascunho salvo'`, 8000, 'rascunho salvo'); };
+// Emitir: a confirmação aparece na própria receita (nunca confirm()); "Emitir e imprimir" emite
 async function emite() {
-  await ev(`(() => { window.__folhas = null; document.body.classList.remove('rxp'); document.getElementById('rxEmit').click(); return 1; })()`);
-  await ate(`window.__folhas !== null || !document.getElementById('rxMsg').hidden`, 10000, 'emitir');
+  await ev(`(() => { window.__folhas = null; document.body.classList.remove('rxp'); document.activeElement.blur(); document.getElementById('rxEmit').click(); return 1; })()`);
+  await ate(`!document.querySelector('.rxc-conf').hidden || !document.getElementById('rxMsg').hidden`, 5000, 'confirmação ou recado');
+  if (await ev(`!document.querySelector('.rxc-conf').hidden`)) {
+    certo(await ev(`document.activeElement === document.getElementById('rxConfirma')`), 'o foco vai para "Emitir e imprimir"');
+    await ev(`document.getElementById('rxConfirma').click()`);
+    await ate(`window.__folhas !== null || !document.getElementById('rxMsg').hidden`, 10000, 'emitir');
+  }
+  certo(!dialogos.includes('confirm'), 'a receita não usa confirm()');
 }
 const sg = (nome) => `[...document.querySelectorAll('#rnList .sg')].find((r) => r.querySelector('.ov-post-t').textContent.toLowerCase().startsWith(${JSON.stringify(nome.toLowerCase())}))`;
 const emUso = async () => (await srv('/patients')).patients.find((p) => p.id === 9001).medications.split('\n');
@@ -75,41 +100,105 @@ const acaoRh = (t, i = 0) => ev(`(() => { [...[...document.querySelectorAll('#rh
 // "Usar nesta consulta" na linha do remédio (na i-ésima linha com esse nome)
 const usaRh = (nome) => ev(`(() => { [...document.querySelectorAll('#rhList .rh-item')].find((r) => r.querySelector('.pr-tdate').textContent.startsWith(${JSON.stringify(nome)}))
   .querySelector('button').click(); return 1; })()`);
-const daApi = () => ev(`fetch('/prontuario/receitas?patient_id=9001').then((r) => r.json()).then((j) => j.receitas.map((r) => [r.tipo, r.status, r.itens.map((i) => i.nome).join('+'), r.motivo_cancelamento || '']))`);
+const daApi = () => ev(`fetch('/prontuario/receitas?patient_id=9001').then((r) => r.json()).then((j) => j.receitas.map((r) => [r.tipo, r.status, r.itens.map((i) => i.nome).join('+'), r.motivo_cancelamento || '', r.itens]))`);
+const linha = (nome) => `[...document.querySelectorAll('#rxBody .rx-row')].find((r) => r.querySelector('.rx-n').textContent.startsWith(${JSON.stringify(nome)}))`;
 
 const cenarios = [
-  ['excluir um remédio da receita pelo × e desfazer', async () => {
-    await abre(); await item('Losartana', '50 mg', '1 comprimido de 12/12 h', '60 comprimidos');
-    await item('Metformina', '850 mg', '1 comprimido 2x/dia', '60 comprimidos'); await item('Atorvastatina', '20 mg', '1 comprimido à noite', '30 comprimidos');
-    await salvo(); certo((await ev(linhas)).length === 3, '3 itens na receita');
-    await ev(`[...document.querySelectorAll('#rxBody .rx-row')].find((x) => x.innerText.includes('Metformina')).querySelector('.rx-x').click()`);
-    await salvo(); certo((await daApi()).find((r) => r[1] === 'rascunho')[2] === 'Losartana+Atorvastatina', 'o rascunho salvo ficou sem a metformina');
+  ['renovar o uso contínuo da última receita em um clique', async () => {
+    await abre();
+    const faixa = await ev(`(document.querySelector('.rxc-renova:not([hidden])') || {}).innerText || ''`);
+    certo(/Losartana 50 mg · Metformina 850 mg · Atorvastatina 20 mg/.test(faixa), 'faixa Renovar: ' + faixa);
+    await ev(`document.querySelector('.rxc-renova button').click()`); await salvo();
+    const l = await ev(linhas);
+    certo(l.join('; ') === 'Losartana 50 mg | 60 comprimidos; Metformina 850 mg | 60 comprimidos; Atorvastatina 20 mg | 30 comprimidos', 'renovados: ' + l.join('; '));
+    certo(await ev(`[...document.querySelectorAll('#rxBody .rxc-pos')].every((p) => /uso contínuo$/.test(p.value))`), 'posologia da última vez, com uso contínuo');
+    certo(await ev(`document.querySelector('.rxc-renova').hidden && document.activeElement === document.getElementById('rxEmit')`), 'a faixa some e o foco vai para Emitir');
+    const d = (await daApi()).find((r) => r[1] === 'rascunho');
+    certo(d && d[4].length === 3 && d[4].every((x) => x.continuo), 'rascunho salvo com os 3 de uso contínuo');
+    await emite(); await ate(n('#rxBody .rx-row') + ' === 0', 6000, 'receita vazia depois de emitir');
+    certo(await ev(`document.querySelector('.rxc-renova').hidden`), 'depois de emitir, a faixa Renovar não volta');
+    return '3 remédios com a posologia da última vez e a quantidade de 30 dias';
+  }],
+  ['adicionar pela busca: dose, alergia, sugestões e quantidade calculada', async () => {
+    await abre(false);
+    await busca('amox 500'); await ate(n('#rxNew .fz-row') + ' > 0', 6000, 'resultados');
+    const r = await ev(`[...document.querySelectorAll('#rxNew .fz-row')].map((b) => b.querySelector('.fz-t').textContent)`);
+    certo(r[0] === 'Amoxicilina 500 mg' && r.every((t) => / 500 mg/.test(t)), 'a dose filtra: ' + r.join(' | '));
+    certo(await ev(`document.querySelector('#rxNew .fz-row .fz-vs.al').textContent`) === 'Alergia: Penicilina', 'alergia no resultado');
+    await ev(`(() => { const q = document.querySelector('#rxNew .fz-in'); q.value = ''; q.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await item('amox 500', null, null, true);
+    const l = linha('Amoxicilina 500 mg');
+    certo(await ev(`${l}.querySelector('.rxc-forma').textContent`) === 'Cápsula · uso oral', 'forma e via');
+    certo(await ev(`!${l}.querySelector('.rxc-sug').hidden`), 'sugestões com a posologia em foco');
+    const chip = (t) => ev(`(() => { [...${l}.querySelectorAll('.rxc-sug .gq-chip')].find((b) => b.textContent === ${JSON.stringify(t)}).click(); return 1; })()`);
+    await chip('8/8 h'); await chip('7 dias');
+    certo(await ev(`${l}.querySelector('.rxc-pos').value`) === 'Tomar 1 cápsula a cada 8 horas, por 7 dias', 'posologia pelas sugestões');
+    certo(await ev(`${l}.querySelector('.rx-q').value === '21 cápsulas' && !${l}.querySelector('.rxc-calc').hidden`), 'quantidade calculada: 21 cápsulas');
+    const casos = [['1 cápsula de 12/12 h, uso contínuo', '60 cápsulas'], ['2 cápsulas ao dia por 10 dias', '20 cápsulas'],
+                   ['1,5 cápsula a cada 12 horas por 5 dias', '15 cápsulas'], ['1 cápsula se dor', '30 cápsulas'], ['5 mL de 8/8 h por 5 dias', '30 cápsulas']];
+    for (const [pos, q] of casos) {
+      const v = await ev(`(() => { const p = ${l}.querySelector('.rxc-pos'); p.value = ${JSON.stringify(pos)}; p.dispatchEvent(new Event('input', { bubbles: true })); return ${l}.querySelector('.rx-q').value; })()`);
+      certo(v === q, `"${pos}" → ${v} (esperado ${q})`);
+    }
+    await ate(`${l}.innerText.includes('Alergia registrada: Penicilina') && ${l}.innerText.includes('Antimicrobiano: sai numa receita separada')`, 6000, 'avisos da conferência');
+    certo(await ev(`document.querySelector('.rxc-resumo').textContent`) === 'Sai 1 receita de antimicrobiano (2 vias)', 'o que vai sair');
+    return 'amox 500 → Amoxicilina 500 mg, 8/8 h · 7 dias → 21 cápsulas; tabela da quantidade ok';
+  }],
+  ['marca pela busca entra como "Marca (substância)", com a embalagem', async () => {
+    await abre(false); await busca('glifage 850'); await ate(n('#rxNew .fz-row') + ' > 0', 6000, 'resultados');
+    const r = await ev(`[...document.querySelectorAll('#rxNew .fz-row')].map((b) => b.querySelector('.fz-t').textContent + ' / ' + b.querySelector('.fz-s').textContent)[0]`);
+    certo(r === 'Glifage (cloridrato de metformina) 850 mg / comprimido revestido · Merck', 'resultado: ' + r);
+    await item('glifage 850', '1 comprimido de 12/12 h, uso contínuo'); await salvo();
+    const l = await ev(linhas);
+    certo(l[0] === 'Glifage (cloridrato de metformina) 850 mg | 60 comprimidos', 'na receita: ' + l.join('; '));
+    return l[0];
+  }],
+  ['excluir pelo × e desfazer', async () => {
+    await abre(false);
+    await item('losartana 50', '1 comprimido de 12/12 h, uso contínuo'); await item('metformina 850', '1 comprimido 2x/dia, uso contínuo');
+    await item('atorvastatina 20', '1 comprimido à noite, uso contínuo'); await salvo();
+    certo((await ev(linhas)).length === 3, '3 itens na receita');
+    await ev(`${linha('Cloridrato de metformina')}.querySelector('.rx-x').click()`); await salvo();
+    certo(!(await daApi()).find((r) => r[1] === 'rascunho')[2].includes('metformina'), 'o rascunho salvo ficou sem a metformina');
     await ev(`document.querySelector('.pr-toast.pr-desfaz button').click()`); await salvo();
-    const l = await ev(linhas); certo(l.length === 3 && l[1].startsWith('Metformina'), 'desfazer volta no mesmo lugar');
+    const l = await ev(linhas); certo(l.length === 3 && l[1].startsWith('Cloridrato de metformina'), 'desfazer volta no mesmo lugar: ' + l.join('; '));
     return 'saiu, salvou sem ela e voltou no lugar';
   }],
-  ['item digitado à mão é conferido (alergia e antimicrobiano)', async () => {
-    await abre(); await item('Amoxicilina', '500 mg', '1 cápsula de 8/8 h', '21 cápsulas');
-    await ate(`document.querySelector('#rxBody').innerText.includes('Alergia registrada: Penicilina')`, 6000, 'aviso de alergia');
-    const t = await ev(`document.querySelector('#rxBody').innerText`);
-    certo(t.includes('Antimicrobiano: sai numa receita separada'), 'tipo antimicrobiano');
-    return 'alergia a penicilina e antimicrobiano avisados';
+  ['remédio que já está na receita: Enter leva até ele', async () => {
+    await abre(false); await item('losartana 50', '1 comprimido de 12/12 h');
+    await busca('losartana 50'); await ate(n('#rxNew .fz-row') + ' > 0', 6000, 'resultados');
+    certo(await ev(`document.querySelector('#rxNew .fz-row .fz-vs.ja').textContent`) === 'Já na receita', 'marca "Já na receita"');
+    await tecla('#rxNew .fz-in', 'Enter');
+    await ate(`document.activeElement.classList.contains('rxc-pos')`, 3000, 'foco no item');
+    certo(await ev(n('#rxBody .rx-row')) === 1, 'não repetiu');
+    return 'não repete; o foco vai para a posologia dele';
+  }],
+  ['sem posologia não emite: diz o quê e leva o foco até lá', async () => {
+    await abre(false); await item('losartana 50'); await salvo();
+    await emite();
+    const m = await ev(`document.getElementById('rxMsg').innerText`);
+    certo(m.startsWith('Falta a posologia de Losartana potássica 50 mg'), 'recado: ' + m);
+    certo(await ev(`document.activeElement.classList.contains('rxc-pos') && document.activeElement.classList.contains('falta')`), 'foco no campo, marcado');
+    certo(!(await daApi()).some((r) => r[1] === 'emitida'), 'nada emitido');
+    return 'recado e foco na posologia que falta';
   }],
   ['emitir sem CRM pede os dados; com os dados separa e imprime em vias', async () => {
-    await medico({ crm: '' }); await abre(); await item('Losartana', '50 mg', '1 comprimido de 12/12 h', '60 comprimidos');
-    await item('Azitromicina', '500 mg', '1 comprimido ao dia por 3 dias', '3 comprimidos'); await salvo();
+    await medico({ crm: '' }); await abre(false); await item('losartana 50', '1 comprimido de 12/12 h, uso contínuo');
+    await item('azitromicina 500', '1 comprimido ao dia por 3 dias'); await salvo();
     await emite(); const m = await ev(`document.getElementById('rxMsg').innerText`);
     certo(m.includes('complete seus dados') && m.includes('CRM'), 'recado de dados do médico: ' + m);
     await medico({ crm: '123456' }); await emite();
     await ate(`window.__folhas !== null`, 8000, 'folhas');
     const f = await ev(`window.__folhas`);
     certo(f.join('|') === 'Receita|Receita de antimicrobiano · 1ª via · retida na farmácia|Receita de antimicrobiano · 2ª via · paciente', 'folhas: ' + f.join('|'));
+    const t = await ev(`document.getElementById('rxPrint').innerText`);
+    certo(t.includes('Losartana potássica 50 mg, comprimido revestido') && t.includes('3 comprimidos'), 'a forma e a quantidade calculada na folha');
     await ate(n('#rxBody .rx-row') + ' === 0', 5000, 'rascunho vazio depois de emitir');
     const api = await daApi(); certo(api.filter((r) => r[1] === 'emitida' && r[2].includes('Azitromicina')).length === 1, 'antimicrobiano emitido à parte');
-    return f.length + ' folhas: simples + antimicrobiano em 2 vias';
+    return f.length + ' folhas: simples + antimicrobiano em 2 vias, com a forma';
   }],
   ['o que exige talão não sai', async () => {
-    await abre(false); await item('Clonazepam', '2 mg', '1 comprimido à noite', '30 comprimidos');
+    await abre(false); await item('clonazepam 2', '1 comprimido à noite', '30 comprimidos');
     await ate(`document.querySelector('#rxBody').innerText.includes('Notificação de Receita B')`, 6000, 'aviso de talão'); await salvo();
     await emite(); const m = await ev(`document.getElementById('rxMsg').innerText`);
     certo(m.includes('talão') && m.includes('Clonazepam'), 'recusou: ' + m);
@@ -117,7 +206,8 @@ const cenarios = [
     return 'recusado, com o recado do talão';
   }],
   ['controle especial em 2 vias, com comprador e fornecedor', async () => {
-    await abre(false); await item('Sertralina', '50 mg', '1 comprimido pela manhã', '30 comprimidos'); await salvo();
+    await abre(false); await item('sertralina 50', '1 comprimido pela manhã, uso contínuo'); await salvo();
+    await ate(`document.querySelector('.rxc-resumo').textContent === 'Sai 1 receita de controle especial (2 vias)'`, 6000, 'o que vai sair');
     await emite(); await ate(`window.__folhas !== null`, 8000, 'folhas');
     const f = await ev(`window.__folhas`), id = await ev(n('#rxPrint .rx-id'));
     certo(f.length === 2 && f[0].startsWith('Receituário de controle especial') && id === 2, 'folhas: ' + f.join('|'));
@@ -141,11 +231,13 @@ const cenarios = [
     return 'data ' + data + ' e marca de 2ª via';
   }],
   ['recarregar no meio: o rascunho volta igual', async () => {
-    await abre(false); await item('Losartana', '50 mg', '1 comprimido de 12/12 h', '60 comprimidos');
-    await item('Omeprazol', '20 mg', '1 cápsula em jejum', '30 cápsulas'); await salvo();
+    await abre(false); await item('losartana 50', '1 comprimido de 12/12 h, uso contínuo');
+    await item('omeprazol 20', '1 cápsula em jejum por 30 dias'); await salvo();
+    const antes = await ev(linhas);
     await send('Page.reload'); await sleep(500);
     await ate(`!!document.getElementById('rxBody') && document.querySelectorAll('#rxBody .rx-row').length === 2`, 15000, 'rascunho depois de recarregar');
-    return (await ev(linhas)).map((l) => l.split(' | ')[0]).join(', ') + ' voltaram';
+    const depois = await ev(linhas); certo(depois.join() === antes.join(), 'igual: ' + depois.join('; '));
+    return depois.map((l) => l.split(' | ')[0]).join(', ') + ' voltaram';
   }],
   ['receitas emitidas aparecem no card da consulta no Histórico', async () => {
     await abre();
@@ -155,60 +247,34 @@ const cenarios = [
     return 'seção "Receita simples · emitida em …" no card';
   }],
   ['depois de emitir, oferece atualizar as medicações em uso', async () => {
-    await abre(); await ate(n('#rhList .rh-item') + ' > 0', 5000, 'histórico');
-    await usaRh('Metformina'); await salvo();                                   // do Histórico: uso contínuo, 850 mg
-    await ev(`(() => { [...document.querySelectorAll('#rxBody .rx-row')].find((r) => r.innerText.includes('Metformina')).querySelector('.rx-main').click(); return 1; })()`);
-    await ate(n('#rxBody .rx-edit .rx-f') + ' >= 4', 3000, 'edição do item');
-    await ev(`(() => { const f = document.querySelectorAll('#rxBody .rx-edit .rx-f'); f[1].value = '1000 mg'; document.querySelector('#rxBody .rx-edit .pr-save').click(); return 1; })()`);
-    await salvo(); await emite(); await ate(`!document.getElementById('rxSync').hidden`, 6000, 'oferta de atualizar');
+    await abre(); await item('metformina 1000', '1 comprimido de 12/12 h, uso contínuo'); await salvo();
+    await emite(); await ate(`!document.getElementById('rxSync').hidden`, 6000, 'oferta de atualizar');
     const t = await ev(`document.getElementById('rxSync').innerText`);
-    certo(t.includes('Metformina 850 mg 2x/dia → Metformina 1000 mg') && !t.includes('Tirar'), 'oferta: ' + t);
+    certo(/Metformina 850 mg 2x\/dia → Cloridrato de metformina 1000 mg/.test(t), 'oferta: ' + t);
     await ev(`[...document.querySelectorAll('#rxSync button')].find((b) => b.textContent === 'Atualizar').click()`);
     await ate(`document.getElementById('rxSync').hidden`, 3000, 'fechou a oferta'); await sleep(400);
     const u = await emUso();
-    certo(u.includes('Metformina 1000 mg 1 comprimido 2x/dia') && u.includes('Losartana 50 mg 12/12h'), 'em uso: ' + u.join('; '));
-    return 'trocou a dose da Metformina nas medicações em uso';
+    certo(u.some((x) => x.startsWith('Cloridrato de metformina 1000 mg')) && !u.some((x) => x.startsWith('Metformina 850')) && u.includes('Losartana 50 mg 12/12h'), 'em uso: ' + u.join('; '));
+    return 'trocou a dose da metformina nas medicações em uso';
   }],
-  ['possíveis prescrições: só 2 remédios novos, só com Adicionar; a barra volta vazia depois de adicionar', async () => {
+  ['possíveis prescrições: só 2 remédios novos; Adicionar abre o item na posologia', async () => {
     await abre();
     certo(await ev(n('#rnList .sg')) === 2 && await ev(`!!${sg('Dapagliflozina')} && !!${sg('Semaglutida')}`), 'só 2 remédios novos');
     certo(await ev(`[...document.querySelectorAll('#rnBox button, #rnBox a')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()).join('|')`) === 'Adicionar|Adicionar',
       'só o Adicionar no cartão');
     await ev(`${sg('Dapagliflozina')}.querySelector('.sg-add').click()`); await salvo();
     certo((await ev(linhas)).some((l) => l.startsWith('Dapagliflozina 10 mg')), 'foi para a receita');
-    certo(await ev(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .fz-in').getAttribute('role') === 'combobox'`), 'busca sempre aberta');
-    await item('Omeprazol', '20 mg', '1 cápsula em jejum', '30 cápsulas');
-    certo(await ev(`document.querySelector('#rxNew .fz-in').value === '' && document.querySelector('#rxNew .fz-pan').hidden`), 'volta para a barra vazia, painel fechado');
-    return 'Dapagliflozina e Semaglutida, só com Adicionar; a barra volta vazia';
-  }],
-  ['adicionar pela base de medicamentos: escolher a marca, a apresentação e a quantidade', async () => {
-    await abre(false);
-    await ev(`(() => { const q = document.querySelector('#rxNew .fz-in'); q.focus(); q.value = 'glifage'; q.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
-    await ate(n('#rxNew .fz-row') + ' > 0', 5000, 'resultados da busca');
-    const r = await ev(`[...document.querySelectorAll('#rxNew .fz-row')].map((b) => b.querySelector('.fz-t').textContent + ' / ' + b.querySelector('.fz-s').textContent).slice(0, 2)`);
-    certo(r[0] === 'Glifage / Cloridrato de metformina · Merck', 'resultado: ' + r.join(' | '));
-    certo(await ev(`[...document.querySelectorAll('#rxNew .fz-chip')].map((c) => c.textContent).join('|')`) === 'Todas|Substâncias|Marcas', 'filtros');
-    await ev(`(() => { document.querySelector('#rxNew .fz-row').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1; })()`);
-    await ate(`document.querySelector('#rxNew .fz-ht') && document.querySelector('#rxNew .fz-ht').textContent === 'Glifage (cloridrato de metformina)'`, 3000, 'apresentações da marca');
-    await ev(`(() => { [...document.querySelectorAll('#rxNew .fz-row')].find((b) => b.querySelector('.fz-t').textContent === '850 mg').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1; })()`);
-    await ate(n('#rxNew .fz-f') + ' === 2', 3000, 'posologia e quantidade');
-    const f = (k) => `document.querySelector('#rxNew .fz-f[data-k=${k}]')`;
-    certo(await ev(`${f('quantidade')}.value`) === '30 comprimidos' && (await ev(`${f('posologia')}.placeholder`)).includes('comprimido revestido'), 'quantidade e forma da apresentação');
-    await ev(`(() => { ${f('posologia')}.value = '1 comprimido 2x/dia'; ${f('quantidade')}.value = '60 comprimidos'; document.querySelector('#rxNew .fz-ok').click(); return 1; })()`);
-    await salvo();
-    const l = await ev(linhas);
-    certo(l.some((x) => x.startsWith('Glifage (cloridrato de metformina) 850 mg | 60 comprimidos')), 'na receita: ' + l.join('; '));
-    return 'Glifage (cloridrato de metformina) 850 mg · 60 comprimidos';
+    certo(await ev(`document.activeElement === ${linha('Dapagliflozina')}.querySelector('.rxc-pos')`), 'o foco foi para a posologia dela, para revisar');
+    return 'Dapagliflozina e Semaglutida; Adicionar leva à posologia';
   }],
   ['histórico de receitas: busca por remédio e escolha dos itens', async () => {
     await abre(); await ate(n('#rhList .rh-item') + ' > 0', 5000, 'histórico');
     certo(await ev(`document.querySelector('#rhBox .gh-t').textContent === 'Histórico' && !document.getElementById('rtBox')`), 'um cartão só, Histórico');
-    const busca = (t) => ev(`(() => { const q = document.getElementById('rhQ'); q.value = ${JSON.stringify(t)}; q.dispatchEvent(new Event('input', { bubbles: true }));
+    const bh = (t) => ev(`(() => { const q = document.getElementById('rhQ'); q.value = ${JSON.stringify(t)}; q.dispatchEvent(new Event('input', { bubbles: true }));
       return document.querySelectorAll('#rhList .rh-item').length; })()`);
-    certo(await busca('parac') === 1 && await ev(n('#rhList .rh-head')) === 1, 'a busca acha só a linha do paracetamol, com a receita dela');
-    certo(await busca('xyz') === 0 && (await ev(`document.getElementById('rhList').innerText`)).includes('Nenhuma receita'), 'sem resultado avisa');
-    await busca('');
-    certo(await ev(n('#rhList .pr-tchev')) === 0, 'sem dropdown na lista');
+    certo(await bh('parac') === 1 && await ev(n('#rhList .rh-head')) === 1, 'a busca acha só a linha do paracetamol, com a receita dela');
+    certo(await bh('xyz') === 0 && (await ev(`document.getElementById('rhList').innerText`)).includes('Nenhuma receita'), 'sem resultado avisa');
+    await bh('');
     await usaRh('Losartana'); await usaRh('Atorvastatina'); await salvo();     // a escolha é linha a linha
     const l = (await ev(linhas)).map((x) => x.split(' | ')[0]).join(', ');
     certo(l === 'Losartana 50 mg, Atorvastatina 20 mg', 'foram só os escolhidos: ' + l);
@@ -216,7 +282,7 @@ const cenarios = [
     return l + ' (a Metformina ficou de fora)';
   }],
   ['receita em A5 quando escolhido em Configurações', async () => {
-    await medico({ receita_papel: 'A5' }); await abre(); await item('Losartana', '50 mg', '1 comprimido de 12/12 h', '60 comprimidos'); await salvo();
+    await medico({ receita_papel: 'A5' }); await abre(false); await item('losartana 50', '1 comprimido de 12/12 h, uso contínuo'); await salvo();
     await emite(); await ate(`window.__folhas !== null`, 8000, 'folha');
     certo(await ev(`document.getElementById('rxPapel').textContent.includes('size:A5') && document.getElementById('rxPrint').classList.contains('a5')`), 'folha em A5');
     await ev(`(() => { window.dispatchEvent(new Event('afterprint')); return 1; })()`);
@@ -231,10 +297,11 @@ async function main() {
   ws.addEventListener('message', (m) => {
     const j = JSON.parse(m.data);
     if (j.id && espera.has(j.id)) { const w = espera.get(j.id); espera.delete(j.id); j.error ? w.no(new Error(j.error.message)) : w.ok(j.result); return; }
-    if (j.method === 'Page.javascriptDialogOpening') send('Page.handleJavaScriptDialog', { accept: !(recusa && recusa.test(j.params.message)), promptText: resposta });
+    if (j.method === 'Page.javascriptDialogOpening') { dialogos.push(j.params.type); send('Page.handleJavaScriptDialog', { accept: !(recusa && recusa.test(j.params.message)), promptText: resposta }); }
     if (j.method === 'Runtime.exceptionThrown') erros.push(j.params.exceptionDetails.exception?.description || j.params.exceptionDetails.text);
   });
   await send('Page.enable'); await send('Runtime.enable');
+  await send('Emulation.setFocusEmulationEnabled', { enabled: true });   // o foco funciona como numa janela de verdade
   // a impressão não abre janela: guarda o título e a via de cada folha
   await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__folhas = null; window.print = () => {
     window.__folhas = [...document.querySelectorAll('#rxPrint .rx-folha')].map((f) => [f.querySelector('h1').textContent, (f.querySelector('.rx-via') || {}).textContent].filter(Boolean).join(' · ')); };` });

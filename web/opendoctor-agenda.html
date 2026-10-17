@@ -149,21 +149,63 @@
     .rn-card .pr-cardhead,.rx-card .pr-cardhead{flex-wrap:nowrap;align-items:flex-start}   /* o botão fica à direita; o subtítulo quebra */
     .rn-card .pr-cardhead > div,.rx-card .pr-cardhead > div{min-width:0}
     .rn-card .pr-cardhead .pr-ghost,.rx-card .pr-cardhead .pr-ghost{flex:none}
-    /* receita = lista "Mais ativas" do Finance: à esquerda 14/20 500 + 12/16 #56595E (4 px entre), à direita a quantidade e
-       a origem; linha de 4+10 / 10 px com divisória; a linha toda abre a edição */
-    .rx-list{display:flex;flex-direction:column}
-    .rx-list:empty{display:none}
-    .rx-row{display:flex;align-items:center;gap:8px;padding:0;border-radius:8px}
-    .rx-row:hover{background:#F7F8FA}
-    .rx-main{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:0;border:0;background:none;
-      cursor:pointer;text-align:left;font-family:var(--disp)}
-    .rx-row .rx-main{padding:8px}
-    .rx-main:disabled{cursor:default}
-    .rx-main:disabled:hover .rx-n{text-decoration:none}
+    /* a receita (componente Receita, no script): cabeçalho, "Renovar", a lista (cada item lê como o papel; posologia e
+       quantidade se editam no lugar), a barra "Adicionar medicamento" e o rodapé com Emitir. Só peças que a página já
+       tem: linha do Finance (8 px de respiro, #F7F8FA ao passar), a barra e o painel da busca do Finance, as etiquetas
+       (.gq-chip), os botões (.pr-save/.pr-ghost), os avisos (.rn-w/.rx-tipo) e o piscar de "novo" (prflash) */
+    .rx-sec{display:flex;flex-direction:column;gap:16px}
+    .rx-sec .gh{margin-bottom:0}
+    .rx-sec .sg.rxc-renova{align-items:center;padding:12px 16px;border:0;border-radius:16px;background:#F7F8FA}
+    .rx-sec .sg[hidden]{display:none}
+    .rxc-lista{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
+    .rxc-lista:empty{display:none}
+    .rxc-item{position:relative;display:flex;gap:12px;padding:12px 48px 12px 8px;border-radius:8px;font-family:var(--disp);transition:opacity .15s,transform .15s}
+    .rxc-item:hover,.rxc-item:focus-within{background:#F7F8FA}
+    .rxc-item.novo{animation:prflash 1.2s ease-out}
+    .rxc-item.saindo{opacity:0;transform:translateY(-4px)}
+    .rxc-num{flex:none;width:20px;font-size:16px;line-height:24px;color:#56595E;text-align:right}
+    .rxc-corpo{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+    .rxc-nome{font-weight:500;font-size:16px;line-height:24px;color:#0A0A0A}
+    .rxc-forma{font-size:12px;line-height:16px;color:#56595E}
+    .rxc-forma[hidden]{display:none}
+    .rxc-campo{box-sizing:border-box;margin:0;padding:4px 8px;border:0;border-radius:8px;outline:0;background:none;resize:none;overflow:hidden;
+      font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A}
+    .rxc-campo:hover:not(:read-only){background:#F0F2F5}
+    .rxc-campo:focus:not(:read-only){background:#fff;box-shadow:inset 0 0 0 2px #0B57D0}
+    .rxc-campo::placeholder{color:#5E5E5E}
+    .rxc-campo.falta{box-shadow:inset 0 0 0 2px #C0151D}
+    textarea.rxc-campo{display:block;width:calc(100% + 8px);margin:2px 0 0 -8px}
+    .rxc-qtd{display:flex;align-items:center;flex-wrap:wrap;gap:0 2px;font-size:14px;line-height:20px;color:#56595E}
+    .rxc-calc{font-size:12px;line-height:16px;color:#56595E}
+    .rxc-calc[hidden]{display:none}
+    .rxc-sug{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0}
+    .rxc-sug[hidden]{display:none}
+    .rxc-sug .gq-chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;background:#fff;cursor:pointer}
+    .rxc-sug .gq-chip:hover{background:#F0F2F5}
+    .rxc-sug .gq-chip:focus-visible{outline:0;border-color:#0B57D0;box-shadow:0 0 0 1px #0B57D0}
+    .rxc-av .rn-w,.rxc-av .rx-tipo{margin-top:4px}
+    .rxc-item .rx-x{position:absolute;top:8px;right:8px;opacity:0}
+    .rxc-item:hover .rx-x,.rxc-item:focus-within .rx-x{opacity:1}
+    .rxc-item .rx-x[hidden]{display:none}
+    .rxc-ajuda{margin-top:-8px;font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .rxc-ajuda[hidden]{display:none}
+    .rxc-pe{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 16px}
+    .rxc-pe[hidden]{display:none}
+    .rxc-resumo{font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
+    .rxc-conf{display:flex;flex-direction:column;gap:8px;padding:16px 20px;border-radius:16px;background:#F7F8FA;font-family:var(--disp)}
+    .rxc-conf[hidden]{display:none}
+    .rxc-conf-t{font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
+    .rxc-conf-s{font-size:12px;line-height:16px;color:#56595E}
+    .rxc-conf-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:4px}
+    .rxc-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+    .fz.off .fz-bar{opacity:.6}
+    .fz-vs.al{color:#C0151D}
+    .fz-vs.ja{color:#046E00}
+    .fz-vs.usou{color:#0B57D0}
+    @media (prefers-reduced-motion:reduce){.rxc-item{transition:none}.rxc-item.novo{animation:none}}
     .rx-x{flex:none;display:flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:16px;background:none;cursor:pointer}
     .rx-x:hover{background:#E9EBF0}
     .rx-x svg{width:18px;height:18px}
-    .rx-l .rn-w{margin-top:4px}
     .rx-tipo{margin-top:4px;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#0B57D0}
     .rx-ck{display:flex;align-items:center;gap:8px;align-self:end;height:40px;font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A;cursor:pointer}
     .rx-ck input{width:16px;height:16px;margin:0;accent-color:#0B57D0}
@@ -172,11 +214,8 @@
     .rx-msg .pr-link{font-size:12px}
     .rx-sync{display:flex;flex-direction:column;gap:4px;padding:16px 20px;border-radius:24px;background:#fff}
     .rx-sync[hidden]{display:none}
-    .rx-sec{display:flex;flex-direction:column;gap:16px}
-    .rx-sec .gh{margin-bottom:0}
-    .rx-new[hidden]{display:none}
     /* busca da receita = a busca do Google Finance (medida na página): barra 48 px #F0F2F5, painel #E9EBF0 com sombra,
-       filtros 36 px (o escolhido #B8D5FF), linhas 8 px de respiro com o branco ao passar, 16/20 + 12/16 */
+       linhas 8 px de respiro com o branco ao passar, 16/20 + 12/16 */
     .fz{position:relative}
     .fz[hidden]{display:none}
     .fz-bar{display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-radius:24px;background:#F0F2F5;color:#5E5E5E}
@@ -187,9 +226,6 @@
     .fz-pan{position:absolute;left:0;right:0;top:48px;z-index:40;padding-bottom:8px;border-top:1px solid #DADCE0;border-radius:0 0 24px 24px;
       background:#E9EBF0;box-shadow:0 8px 16px rgba(0,0,0,.2);font-family:var(--disp)}
     .fz-pan[hidden]{display:none}
-    .fz-chips{display:flex;flex-wrap:wrap;gap:8px;padding:16px 16px 8px}
-    .fz-chip{height:36px;padding:0 16px;border:1px solid #CCCFD9;border-radius:18px;background:#F0F2F5;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;color:#0A0A0A}
-    .fz-chip.on{border-color:#B8D5FF;background:#B8D5FF}
     .fz-list{display:flex;flex-direction:column;padding:0 16px}
     .fz-row{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:8px;border:0;border-radius:8px;background:none;cursor:pointer;text-align:left;font-family:var(--disp)}
     .fz-row:hover,.fz-row.on{background:#fff}
@@ -200,33 +236,11 @@
     .fz-v{font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A}
     .fz-vs{margin-top:2px;font-weight:500;font-size:12px;line-height:16px;color:#56595E}
     .fz-vazio{padding:8px;font-size:14px;line-height:20px;color:#56595E}
-    .fz-foot{margin-top:8px;padding:16px 16px 0;border-top:1px solid #DADCE0}
-    .fz-ia{display:flex;align-items:center;gap:12px;width:100%;height:36px;padding:0 8px;border:0;border-radius:8px;background:none;cursor:pointer;font-family:var(--disp);font-size:16px;line-height:20px;color:#0A0A0A}
-    .fz-ia:hover,.fz-ia.on{background:#fff}
-    .fz-ia svg{flex:none;width:20px;height:20px;color:#5E5E5E}
-    .fz-head{display:flex;align-items:center;gap:8px;padding:12px 16px 8px}
-    .fz-back{flex:none;display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:18px;background:none;cursor:pointer;color:#0A0A0A}
-    .fz-back:hover{background:#fff}
-    .fz-back svg{width:20px;height:20px}
-    .fz-ht{min-width:0;font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .fz-form{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px}
-    .fz-f{flex:1 1 160px;min-width:0;height:48px;box-sizing:border-box;padding:0 16px;border:0;border-radius:24px;background:#fff;outline:0;font-family:var(--disp);font-size:16px;line-height:20px;color:#0A0A0A}
-    .fz-f[data-k=posologia]{flex:2 1 220px}
-    .fz-f:focus{box-shadow:inset 0 0 0 2px #0B57D0}
-    .fz-f::placeholder{color:#5E5E5E}
-    .fz-ok{flex:none;height:48px;padding:0 24px;border-radius:24px}
     .rx-sync-t{margin-bottom:4px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
     .rx-sync .rx-ck{height:auto;align-self:auto;font-size:13px;line-height:18px}
     .pr-toast.pr-desfaz{display:flex;align-items:center;gap:16px;max-width:calc(100vw - 64px)}
     .pr-toast.pr-desfaz button{border:0;background:none;padding:0;cursor:pointer;font:inherit;color:#A8C7FA}
     .ov-post-src i.cx::before{background:#C0151D}
-    .rx-l,.rx-r{display:flex;flex-direction:column;min-width:0}
-    .rx-r{flex:none;align-items:flex-end;text-align:right}
-    .rx-n{font-size:16px;line-height:20px;color:#0A0A0A}
-    .rx-d{margin-top:2px;font-size:12px;line-height:16px;color:#56595E}
-    .rx-q{font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A}
-    .rx-o{margin-top:2px;font-weight:500;font-size:12px;line-height:16px;color:#56595E}
-    .rx-o.ia{color:#0B57D0}
     .rh-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
     /* Histórico de receitas: o visual da tabela de Consultas, uma linha por remédio, agrupadas pela receita */
     .pr-trow.rh-cols{grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) minmax(0,1fr) 180px}
@@ -240,22 +254,7 @@
     .rh-ht .pr-badge{height:22px;padding:0 8px;font-size:12px}
     .rh-head .rh-acts{margin-top:0;margin-left:auto;gap:12px}
     .rh-item + .rh-head{margin-top:32px}                        /* espaço entre a receita de uma data e a seguinte */
-    /* edição: os mesmos campos em pílula (borda #CCCFD9 das etiquetas do gráfico), título 12/16 em cima */
-    .rx-edit{padding:4px 0 16px;border-bottom:1px solid rgba(0,0,0,.08)}
-    .rx-ef{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,2fr) minmax(0,1.4fr);gap:12px 16px}
-    .rx-fl{display:flex;flex-direction:column;gap:6px;min-width:0;font-family:var(--disp);font-size:12px;line-height:16px;color:#56595E}
-    .rx-f{height:40px;width:100%;box-sizing:border-box;padding:0 16px;border:1px solid #CCCFD9;border-radius:20px;background:#fff;outline:0;
-      font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A}
-    .rx-f:focus{border-color:#0B57D0;box-shadow:0 0 0 1px #0B57D0}
-    .rx-f::placeholder{color:#9AA0A6}
-    .rx-ef-foot{grid-column:1 / -1;display:flex;align-items:center;justify-content:flex-end;gap:8px}
-    .rx-ef-foot .rx-rm{margin-right:auto;color:#C0151D}
-    .rx-ef-foot .pr-err{margin-right:8px}
-    @container pr (max-width:640px){
-      .rx-ef{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-    }
-    .rx-acts{display:flex;justify-content:flex-end;gap:12px}
-    .rx-acts[hidden]{display:none}
+    .rx-ef-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px}   /* "Agora não · Atualizar" do sincronizar */
     .rn-list{display:flex;flex-direction:column}
     .sg{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 0;border-top:1px solid rgba(0,0,0,.08)}
     .sg:first-child{border-top:0;padding-top:4px}
@@ -2214,18 +2213,7 @@
             <!-- Prescrições: receita da consulta (tabela receitas), possíveis prescrições e receitas anteriores (docs/prescricao.md) -->
             <section class="pr-panel" data-panel="prescricoes" hidden>
               <!-- receita da consulta aberta: o rascunho (salvo sozinho) até emitir -->
-              <div class="gsub rx-sec" id="rxBox">
-                <div class="gh gh-col"><span class="gh-t">Prescrições</span><span class="gh-s">Receita da consulta aberta · <span id="rxSt">rascunho</span></span></div>
-                <div class="fz" id="rxNew" hidden></div>   <!-- novo item: a busca no padrão do Google Finance (barra + painel) -->
-                <div class="rx-list" id="rxBody"></div>
-                <div class="rx-msg" id="rxMsg" role="status" hidden></div>
-                <div class="rx-sync" id="rxSync" hidden></div>
-                <datalist id="rxRemedios"></datalist>
-                <div class="rx-acts" id="rxActs" hidden>
-                  <button class="pr-ghost" type="button" id="rxCopy">Copiar</button>
-                  <button class="pr-save" type="button" id="rxEmit">Emitir receita</button>
-                </div>
-              </div>
+              <div class="gsub rx-sec" id="rxBox"></div>   <!-- o componente Receita (no script): título, busca, lista, Copiar · Emitir -->
               <!-- possíveis prescrições: a IA propõe a partir do perfil, com artigos da base do assistente (lista de notícias do Finance) -->
               <div class="pr-bigcard gcard rn-card" id="rnBox" hidden>
                 <div class="pr-cardhead">
@@ -7034,7 +7022,7 @@
         secs.forEach(function (sc) { tx.appendChild(el('div', 'hc-sp' + (sc.add ? ' add' : ''), sc.h)); tx.appendChild(el('div', 'hc-p', sc.t)); });
         rxDaEvolucao(n).forEach(function (r) {
           tx.appendChild(el('div', 'hc-sp', TIPO[r.tipo] + ' · emitida em ' + rxDia(r.emitida_em) + (r.status === 'cancelada' ? ' · cancelada' : '')));
-          tx.appendChild(el('div', 'hc-p', rxLinhas(r.itens) + (r.status === 'cancelada' && r.motivo_cancelamento ? '\nMotivo do cancelamento: ' + r.motivo_cancelamento : '')));
+          tx.appendChild(el('div', 'hc-p', Receita.texto(r.itens) + (r.status === 'cancelada' && r.motivo_cancelamento ? '\nMotivo do cancelamento: ' + r.motivo_cancelamento : '')));
         });
         body.appendChild(tx); it.appendChild(body);
         function expand(on) {
@@ -7147,12 +7135,6 @@
                  origem: ia ? 'ia' : 'uso', fonte: f ? f.titulo + (f.ano ? ' (' + f.ano + ')' : '') : '', ia: ia ? sg.ia : '' };
       }
       function rxDia(iso) { var d = iso ? new Date(iso) : new Date(); return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); }
-      function rxSt(t) { $('rxSt').textContent = t; }
-      function rxMsg(t, dados) {                           // recado acima de "Emitir" (falta dado do médico, talão, erro)
-        var m = $('rxMsg'); m.innerHTML = ''; m.hidden = !t; if (!t) return;
-        m.appendChild(document.createTextNode(t + ' '));
-        if (dados) { var a = el('a', 'pr-link', 'Completar meus dados'); a.href = 'opendoctor-configuracoes.html?volta=1'; m.appendChild(a); }
-      }
       function toastAct(t, label, fn) {                    // aviso com uma ação (ex.: Desfazer)
         document.querySelectorAll('.pr-toast').forEach(function (o) { o.remove(); });
         var x = el('div', 'pr-toast pr-desfaz'), b = el('button', null, label), tm;   // não ".act": é o botão de ícone 32×32 b.type = 'button';
@@ -7178,17 +7160,13 @@
           rxs = res.ok ? res.j.receitas || [] : [];
           rxDraft = rxs.filter(rxDaConsulta)[0] || null;
           rxItems = rxDraft ? rxDraft.itens.map(function (x) { return Object.assign({}, x); }) : [];
-          rxEd = -1; if (rxNovoIns) rxNovoIns.limpa(); rxSt(rxDraft ? 'rascunho salvo' : 'rascunho'); rxMsg('');
-          renderRx(); renderRh(); drawSg(); rxConferir();
+          rx.limpa(); rx.estado(rxDraft ? 'rascunho salvo' : 'rascunho'); rx.recado('');
+          rx.desenha(); renderRh(); drawSg(); rxConferir();
         });
         if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) medico = res.j.medico; });
-        if (!$('rxRemedios').children.length) api('GET', '/prontuario/remedios').then(function (res) {
-          if (!res.ok || $('rxRemedios').children.length) return;
-          var dl = $('rxRemedios'); (res.j.nomes || []).forEach(function (n) { var o = document.createElement('option'); o.value = n; dl.appendChild(o); });
-        });
       }
       // ----- salvar o rascunho (uma gravação por vez: a primeira cria, vazio sai) -----
-      var rxFila = Promise.resolve(), rxSaveT = null;
+      var rxFila = Promise.resolve(), rxSaveT = null, rxDeNovoT = null;
       function rxSalvar() { clearTimeout(rxSaveT); rxSaveT = setTimeout(rxPersist, 600); }
       function rxPersist() {
         clearTimeout(rxSaveT);
@@ -7196,7 +7174,7 @@
           if (!patient) return;
           var itens = rxCheios(), d = rxDraft, req;
           if (!d && !itens.length) return;
-          rxSt('salvando…');
+          rx.estado('salvando…');
           if (!d) req = api('POST', '/prontuario/receitas', { patient_id: patient.id, note_id: cur ? cur.id : null,
                                                              event_id: (ctx && ctx.event_id) || null, itens: itens })
             .then(function (res) { if (!res.ok) throw new Error(); rxDraft = res.j.receita; rxs.unshift(rxDraft); });
@@ -7204,7 +7182,8 @@
             .then(function (res) { if (!res.ok) throw new Error(); rxs = rxs.filter(function (r) { return r !== d; }); if (rxDraft === d) rxDraft = null; });
           else req = api('PATCH', '/prontuario/receitas/' + d.id, { itens: itens })
             .then(function (res) { if (!res.ok) throw new Error(); d.itens = res.j.receita.itens; });
-          return req.then(function () { rxSt(rxDraft ? 'rascunho salvo' : 'rascunho'); }, function () { rxSt('não foi possível salvar o rascunho'); });
+          return req.then(function () { clearTimeout(rxDeNovoT); rx.estado(rxDraft ? 'rascunho salvo' : 'rascunho'); },
+                          function () { rx.estado('não salvou, tentando de novo'); clearTimeout(rxDeNovoT); rxDeNovoT = setTimeout(rxPersist, 10000); });
         });
         return rxFila;
       }
@@ -7218,11 +7197,11 @@
           api('POST', '/prontuario/receitas/conferir', { patient_id: patient.id, itens: itens }).then(function (res) {
             if (n !== rxConfN || !res.ok) return;
             (res.j.avisos || []).forEach(function (a, k) { if (itens[k]) itens[k]._av = a; });
-            renderRx();
+            rx.desenha();
           });
         }, 350);
       }
-      function rxChanged() { rxSalvar(); rxConferir(); renderRx(); drawSg(); renderRh(); }
+      function rxChanged() { rxSalvar(); rxConferir(); rx.desenha(); drawSg(); renderRh(); }
       function rxAvisos(x) {                               // [classe, texto] de cada aviso de um item
         var a = x._av, out = []; if (!a) return out;
         if (a.talao) out.push(['rn-w', 'Exige ' + a.talao + ': não sai por aqui, use o talão']);
@@ -7236,248 +7215,435 @@
         return out;
       }
 
-      // ----- a lista do rascunho (lista "Mais ativas" do Finance) com × e Desfazer; a linha abre a edição -----
-      var rxEd = -1;                                      // linha aberta para editar
-      var RXF = [['nome', 'Remédio', 'Ex.: losartana'], ['dose', 'Dose', 'Ex.: 50 mg'], ['posologia', 'Posologia', 'Ex.: 1 comprimido de 12/12 h'],
-                 ['quantidade', 'Quantidade', 'Ex.: 60 comprimidos']];
-      function renderRx() {
-        var L = $('rxBody'), can = rxCan(); L.innerHTML = '';
-        if (!can) rxEd = -1;
-        var cheios = rxCheios().length;
-        $('rxActs').hidden = !cheios; $('rxNew').hidden = !can; if (can) rxNovoMonta();
-        rxItems.forEach(function (x, i) {
-          if (i === rxEd) { L.appendChild(rxForm(x, i)); return; }
-          var row = el('div', 'rx-row'), b = el('button', 'rx-main'); b.type = 'button'; b.disabled = !can; if (can) b.title = 'Editar';
-          var l = el('span', 'rx-l'), r = el('span', 'rx-r');
-          l.appendChild(el('span', 'rx-n', [x.nome, x.dose].filter(Boolean).join(' ')));
-          l.appendChild(el('span', 'rx-d', [x.via ? USO[x.via] : '', x.posologia || 'Sem posologia', x.continuo ? 'uso contínuo' : ''].filter(Boolean).join(' · ')));
-          rxAvisos(x).forEach(function (a) { l.appendChild(el('span', a[0], a[1])); });
-          r.appendChild(el('span', 'rx-q', x.quantidade || '—'));
-          r.appendChild(el('span', 'rx-o' + (x.origem === 'ia' ? ' ia' : ''),
-                           { ia: 'Sugestão da IA', uso: 'Em uso', anterior: 'Receita anterior', gravacao: 'Da gravação' }[x.origem] || 'Adicionado'));
-          if (x.fonte) r.title = x.fonte;
-          b.appendChild(l); b.appendChild(r); b.addEventListener('click', function () { rxOpen(i); });
-          row.appendChild(b);
-          if (can) {
-            var del = el('button', 'rx-x'); del.type = 'button'; del.innerHTML = RXI.x; del.title = 'Tirar da receita';
-            del.setAttribute('aria-label', 'Tirar ' + x.nome + ' da receita');
-            del.addEventListener('click', function () {
-              var at = rxItems.indexOf(x); rxItems.splice(at, 1); rxEd = -1; rxChanged();
-              toastAct(x.nome + ' saiu da receita', 'Desfazer', function () { rxItems.splice(Math.min(at, rxItems.length), 0, x); rxChanged(); });
-            });
-            row.appendChild(del);
-          }
-          L.appendChild(row);
-        });
-      }
-      function rxCampos(grid, x, ok, cancel) {             // remédio, dose, posologia, quantidade, via e uso contínuo
-        var ins = {};
-        RXF.forEach(function (c) {
-          var lb = el('label', 'rx-fl'), inp = el('input', 'rx-f'); inp.type = 'text'; inp.value = x[c[0]] || ''; inp.placeholder = c[2];
-          if (c[0] === 'nome') inp.setAttribute('list', 'rxRemedios');
-          inp.maxLength = c[0] === 'posologia' ? 160 : 120;
-          lb.appendChild(document.createTextNode(c[1])); lb.appendChild(inp); grid.appendChild(lb); ins[c[0]] = inp;
-          inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ok(); } else if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
-        });
-        var lv = el('label', 'rx-fl'), sv = el('select', 'rx-f');
-        [''].concat(VIAS).forEach(function (v) { var o = el('option', null, v ? USO[v] : 'Via (não informar)'); o.value = v; sv.appendChild(o); });
-        sv.value = x.via || ''; lv.appendChild(document.createTextNode('Via')); lv.appendChild(sv); grid.appendChild(lv);
-        var lc = el('label', 'rx-ck'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!x.continuo;
-        lc.appendChild(cb); lc.appendChild(document.createTextNode('Uso contínuo')); grid.appendChild(lc);
-        ins.via = sv; ins.continuo = cb;
-        return ins;
-      }
-      function rxLe(ins, x) {                              // os campos → o item (false sem o nome do remédio)
-        if (!ins.nome.value.trim()) return false;
-        RXF.forEach(function (c) { x[c[0]] = ins[c[0]].value.replace(/\s+/g, ' ').trim(); });
-        x.via = ins.via.value; x.continuo = ins.continuo.checked; x._av = null;
-        return true;
-      }
-      function rxRodape(grid, nao, sim, ok, cancel) {
-        var foot = el('div', 'rx-ef-foot'), err = el('span', 'pr-err', 'Escreva o nome do remédio.'); err.hidden = true;
-        var bc = el('button', 'pr-ghost', nao), bo = el('button', 'pr-save', sim); bc.type = bo.type = 'button';
-        bc.addEventListener('click', cancel); bo.addEventListener('click', ok);
-        foot.appendChild(err); foot.appendChild(bc); foot.appendChild(bo); grid.appendChild(foot);
-        return err;
-      }
-      function rxForm(x, i) {                              // a linha aberta para editar: Cancelar · Salvar
-        var box = el('div', 'rx-edit'), grid = el('div', 'rx-ef'), ins, err;
-        function ok() { if (!rxLe(ins, x)) { err.hidden = false; ins.nome.focus(); return; } rxEd = -1; rxChanged(); }
-        function cancel() { rxEd = -1; renderRx(); drawSg(); }
-        ins = rxCampos(grid, x, ok, cancel); err = rxRodape(grid, 'Cancelar', 'Salvar', ok, cancel); box.appendChild(grid);
-        setTimeout(function () { ins.nome.focus(); ins.nome.select(); }, 0);
-        return box;
-      }
-      // novo item: a busca no padrão do Google Finance (medidas tiradas da página de verdade). A barra abre um painel com
-      // 3 passos: (1) resultados da base de medicamentos (CMED/Anvisa: /prontuario/remedios/busca), com os filtros
-      // Todas · Substâncias · Marcas e "Usar «texto»" (texto livre); (2) as apresentações do produto (dose · forma);
-      // (3) posologia e quantidade (a dose também, no texto livre) e Adicionar. A marca vai como "Marca (substância)".
-      // Montado uma vez (redesenhar a lista não apaga nada). Via e uso contínuo ficam na edição do item.
-      var rxNovoIns = null;
-      var FZI = {
-        busca: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14" fill="currentColor"/></svg>',
-        volta: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z" fill="currentColor"/></svg>',
-        mais: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="currentColor"/></svg>'
-      };
-      function rxNovoMonta() {
-        if (rxNovoIns) return;
-        var box = $('rxNew'); box.innerHTML = '';
-        var bar = el('div', 'fz-bar'), q = el('input', 'fz-in'), pan = el('div', 'fz-pan'); pan.hidden = true;
-        bar.innerHTML = FZI.busca; q.type = 'text'; q.placeholder = 'Adicionar remédio: substância ou marca'; q.autocomplete = 'off'; q.maxLength = 120;
-        q.setAttribute('role', 'combobox'); q.setAttribute('aria-expanded', 'false'); q.setAttribute('aria-label', 'Adicionar remédio à receita');
-        bar.appendChild(q); box.appendChild(bar); box.appendChild(pan);
-        var dl = document.createElement('datalist'); dl.id = 'rxQtds'; box.appendChild(dl);
-        var st = { passo: 'busca', res: [], filtro: 'todas', sel: -1, prod: null, ap: null, livre: '' }, tBusca = null, seq = 0, ins = {};
-        function aberto(on) { box.classList.toggle('open', on); pan.hidden = !on; q.setAttribute('aria-expanded', on ? 'true' : 'false'); }
-        function linhaFz(t, sub, v, vs, fn, on) {          // a linha do Finance: título e detalhe à esquerda, valor à direita
-          var r = el('button', 'fz-row' + (on ? ' on' : '')), a = el('span', 'fz-l'), b = el('span', 'fz-r'); r.type = 'button';
-          a.appendChild(el('span', 'fz-t', t)); if (sub) a.appendChild(el('span', 'fz-s', sub));
-          if (v) b.appendChild(el('span', 'fz-v', v)); if (vs) b.appendChild(el('span', 'fz-vs', vs));
-          r.appendChild(a); r.appendChild(b);
-          r.addEventListener('mousedown', function (e) { e.preventDefault(); fn(); });
-          return r;
+      // ===== componente Receita: a receita da consulta, o centro da aba Prescrições (docs/prescricao.md, "Tela") =====
+      // De cima para baixo:
+      //   - o título com o estado do rascunho;
+      //   - "Renovar": o uso contínuo da última receita emitida, num clique;
+      //   - a lista. Cada item lê como o papel: nome e dose; forma e via; a posologia e a quantidade, que se editam no
+      //     lugar, com sugestões. A quantidade se calcula pela posologia (Receita.quantidade);
+      //   - a barra "Adicionar medicamento": a busca do Finance, que lista direto as apresentações da base CMED. Número
+      //     filtra a dose; avisa alergia, o que o paciente já usou e o que já está na receita;
+      //   - o rodapé com o que vai sair e Emitir, que confirma ali mesmo (sem confirm()).
+      // Teclado: ↑↓ Enter Esc na busca; Enter na posologia → quantidade → busca; ↓ entra nas sugestões; ⌘/Ctrl+Enter emite.
+      // Os itens, o salvamento, a conferência e a emissão ficam com a página; o componente só fala com ela por `op`:
+      //   itens()        o array do rascunho (entrar, editar e sair mexem nele no lugar)
+      //   pode()         se dá para mexer (paciente e consulta carregados)
+      //   avisos(x)      os avisos da conferência de um item: [[classe, texto]…]
+      //   mudou()        um item entrou, mudou ou saiu (a página salva, confere e redesenha o resto)
+      //   emitir(itens)  emite de verdade, depois da confirmação
+      //   anteriores()   as receitas emitidas do paciente, da mais nova para a mais velha
+      //   paciente()     o id do paciente (a busca devolve as alergias do cadastro que batem)
+      // Devolve { desenha(), estado(texto), recado(texto, dados), limpa(), emitindo(sim), foca(item) }.
+      // Redesenhar não recria o campo em que se está escrevendo: cada item guarda o seu nó e só o que mudou é trocado.
+      function Receita(raiz, op) {
+        raiz.innerHTML = '';
+        var cab = el('div', 'gh gh-col'), sub = el('span', 'gh-s', 'Da consulta aberta · '), st = el('span', null, 'rascunho');
+        var renova = el('div', 'sg rxc-renova'), L = el('ol', 'rxc-lista'), nova = el('div', 'fz'), ajuda = el('div', 'rxc-ajuda');
+        var msg = el('div', 'rx-msg'), pe = el('div', 'rxc-pe'), resumo = el('span', 'rxc-resumo'), bEmite = el('button', 'pr-save', 'Emitir receita');
+        var conf = el('div', 'rxc-conf'), sync = el('div', 'rx-sync'), sr = el('div', 'rxc-sr');
+        st.id = 'rxSt'; L.id = 'rxBody'; nova.id = 'rxNew'; msg.id = 'rxMsg'; sync.id = 'rxSync'; bEmite.id = 'rxEmit'; bEmite.type = 'button';
+        msg.setAttribute('role', 'status'); sr.setAttribute('aria-live', 'polite'); L.setAttribute('aria-label', 'Remédios da receita');
+        ajuda.textContent = 'Busque pelo remédio ou pela marca; a dose filtra (ex.: amox 500).';
+        renova.hidden = msg.hidden = conf.hidden = pe.hidden = sync.hidden = true;
+        cab.appendChild(el('span', 'gh-t', 'Receita')); sub.appendChild(st); cab.appendChild(sub);
+        pe.appendChild(resumo); pe.appendChild(bEmite);
+        [cab, renova, L, nova, ajuda, msg, pe, conf, sync, sr].forEach(function (n) { raiz.appendChild(n); });
+        var nos = new WeakMap(), foco = null, novo = null, barra = null, emitindo = false;
+        var calma = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        function cheios() { return op.itens().filter(function (x) { return (x.nome || '').trim(); }); }
+        function nomeDose(x) { return [x.nome, x.dose].filter(Boolean).join(' '); }
+        function anuncia(t) { sr.textContent = ''; setTimeout(function () { sr.textContent = t; }, 30); }
+        function lista(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' e ' + a[a.length - 1]; }
+        function continuo(t) { return /uso cont[ií]nuo/i.test(t || ''); }
+        function comContinuo(t) { t = (t || '').replace(/[\s.,]+$/, ''); return continuo(t) ? t : t ? t + ', uso contínuo' : 'Uso contínuo'; }
+        function embalagem(emb) { return (emb || []).filter(function (q) { return /^30 /.test(q); })[0] || (emb || [])[0] || ''; }
+        function formaVia(x) {
+          var f = (x.forma || '').trim(), v = x.via ? USO[x.via].toLowerCase() : '';
+          return [f ? f[0].toUpperCase() + f.slice(1) : '', v].filter(Boolean).join(' · ');
         }
-        function visiveis() { return st.res.filter(function (it) { return st.filtro === 'todas' || (st.filtro === 'sub') === (it.tipo === 'substancia'); }); }
-        function doses(it) {
-          var l = []; it.apresentacoes.forEach(function (a) { if (a.dose && l.indexOf(a.dose) < 0) l.push(a.dose); });
-          return l.length > 3 ? l.slice(0, 3).join(' · ') + ' +' + (l.length - 3) : l.join(' · ');
-        }
+
+        // ----- a lista: um nó por item, reaproveitado entre um desenho e outro -----
         function desenha() {
-          pan.innerHTML = '';
-          if (st.passo === 'busca') {
-            var t = q.value.trim(); if (t.length < 2) { aberto(false); return; }
-            var ch = el('div', 'fz-chips');
-            [['todas', 'Todas'], ['sub', 'Substâncias'], ['marca', 'Marcas']].forEach(function (c) {
-              var b = el('button', 'fz-chip' + (st.filtro === c[0] ? ' on' : ''), c[1]); b.type = 'button';
-              b.addEventListener('mousedown', function (e) { e.preventDefault(); st.filtro = c[0]; st.sel = -1; desenha(); });
-              ch.appendChild(b);
-            });
-            pan.appendChild(ch);
-            var L = el('div', 'fz-list'), vs = visiveis();
-            vs.forEach(function (it, k) {
-              var f = (it.apresentacoes[0] || {}).forma || '';
-              L.appendChild(linhaFz(it.marca || it.substancia, it.marca ? it.substancia + ' · ' + it.laboratorios[0] : 'Substância' + (it.generico ? ' · tem genérico' : ''),
-                                    doses(it), f, function () { escolhe(it); }, k === st.sel));
-            });
-            if (!vs.length) L.appendChild(el('div', 'fz-vazio', st.res.length ? 'Nada neste filtro.' : 'Nada na base com esse nome.'));
-            pan.appendChild(L);
-            var ft = el('div', 'fz-foot'), u = el('button', 'fz-ia' + (st.sel === vs.length ? ' on' : '')); u.type = 'button';
-            u.innerHTML = FZI.mais; u.appendChild(el('span', null, 'Usar “' + t + '”'));
-            u.addEventListener('mousedown', function (e) { e.preventDefault(); livre(); });
-            ft.appendChild(u); pan.appendChild(ft);
-          } else if (st.passo === 'apres') {
-            pan.appendChild(cabeca(st.prod.nome, function () { st.passo = 'busca'; st.sel = -1; desenha(); }));
-            var L2 = el('div', 'fz-list');
-            st.prod.apresentacoes.forEach(function (a, k) {
-              L2.appendChild(linhaFz(a.dose || '(sem dose)', a.forma, a.quantidades[0] || '', a.quantidades.length > 1 ? '+' + (a.quantidades.length - 1) + ' embalagens' : '',
-                                     function () { item(a); }, k === st.sel));
-            });
-            pan.appendChild(L2);
-          } else {
-            var tit = st.prod ? st.prod.nome + (st.ap && st.ap.dose ? ' ' + st.ap.dose : '') : st.livre;
-            pan.appendChild(cabeca(tit, function () { st.passo = st.prod ? 'apres' : 'busca'; st.sel = -1; desenha(); setTimeout(function () { q.focus(); }, 0); }));
-            var fm = el('div', 'fz-form');
-            (st.prod ? [['posologia', 'Posologia' + (st.ap && st.ap.forma ? ' (' + st.ap.forma + ')' : '')], ['quantidade', 'Quantidade']]
-                     : [['dose', 'Dose'], ['posologia', 'Posologia'], ['quantidade', 'Quantidade']]).forEach(function (c) {
-              var i = el('input', 'fz-f'); i.type = 'text'; i.placeholder = c[1]; i.setAttribute('aria-label', c[1]); i.dataset.k = c[0]; i.autocomplete = 'off';
-              i.maxLength = c[0] === 'posologia' ? 160 : 120;
-              i.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ok(); } else if (e.key === 'Escape') { e.preventDefault(); fecha(); } });
-              fm.appendChild(i); ins[c[0]] = i;
-            });
-            dl.innerHTML = ''; ins.quantidade.setAttribute('list', 'rxQtds');
-            ((st.ap && st.ap.quantidades) || []).forEach(function (x) { var o = document.createElement('option'); o.value = x; dl.appendChild(o); });
-            if (st.ap && st.ap.quantidades.length) ins.quantidade.value = st.ap.quantidades.indexOf('30 comprimidos') >= 0 ? '30 comprimidos' : st.ap.quantidades[0];
-            var bo = el('button', 'pr-save fz-ok', 'Adicionar'); bo.type = 'button'; bo.addEventListener('click', ok); fm.appendChild(bo);
-            pan.appendChild(fm);
-            setTimeout(function () { (ins.dose || ins.posologia).focus(); }, 0);
+          var can = op.pode(), its = op.itens();
+          [].slice.call(L.children).forEach(function (li) { if (its.indexOf(li._x) < 0) li.remove(); });
+          its.forEach(function (x, i) {
+            var n = nos.get(x); if (!n) { n = monta(x); nos.set(x, n); }
+            atualiza(n, x, i, can);
+            if (L.children[i] !== n.li) L.insertBefore(n.li, L.children[i] || null);
+          });
+          desenhaRenova(can); montaBarra(can);
+          ajuda.hidden = !can || its.length > 0 || !renova.hidden;
+          pe.hidden = !can || !cheios().length || !conf.hidden;
+          resumo.textContent = resumoTxt();
+          if (novo) { var nv = nos.get(novo); novo = null; if (nv && !calma) { nv.li.classList.remove('novo'); void nv.li.offsetWidth; nv.li.classList.add('novo'); } }
+          if (foco) {
+            var nf = nos.get(foco); foco = null;
+            if (nf && can) { nf.pos.focus(); nf.pos.setSelectionRange(nf.pos.value.length, nf.pos.value.length); nf.sugere(); nf.li.scrollIntoView({ block: 'nearest' }); }
           }
-          aberto(true);
         }
-        function cabeca(t, fn) {                            // o passo atual, com voltar
-          var h = el('div', 'fz-head'), b = el('button', 'fz-back'); b.type = 'button'; b.innerHTML = FZI.volta; b.setAttribute('aria-label', 'Voltar');
-          b.addEventListener('mousedown', function (e) { e.preventDefault(); fn(); });
-          h.appendChild(b); h.appendChild(el('span', 'fz-ht', t)); return h;
+        function atualiza(n, x, i, can) {
+          n.num.textContent = i + 1;
+          n.nome.textContent = nomeDose(x);
+          n.forma.textContent = formaVia(x); n.forma.hidden = !n.forma.textContent;
+          if (document.activeElement !== n.pos && n.pos.value !== (x.posologia || '')) n.pos.value = x.posologia || '';
+          if (document.activeElement !== n.qtd && n.qtd.value !== (x.quantidade || '')) n.qtd.value = x.quantidade || '';
+          n.pos.readOnly = n.qtd.readOnly = !can; n.del.hidden = !can;
+          n.pos.classList.toggle('falta', !!x._falta && !(x.posologia || '').trim());
+          n.qtd.classList.toggle('falta', !!x._falta && !(x.quantidade || '').trim());
+          n.calc.hidden = !x._qcalc;
+          n.li.classList.remove('saindo');
+          altura(n.pos); largura(n.qtd);
+          n.av.innerHTML = ''; op.avisos(x).forEach(function (a) { n.av.appendChild(el('div', a[0], a[1])); });
         }
-        function busca() {
-          clearTimeout(tBusca); st.passo = 'busca'; st.sel = -1; var t = q.value.trim();
-          if (t.length < 2) { st.res = []; desenha(); return; }
-          tBusca = setTimeout(function () {
-            var n = ++seq;
-            api('GET', '/prontuario/remedios/busca?q=' + encodeURIComponent(t)).then(function (r) {
-              if (n !== seq || q.value.trim() !== t || st.passo !== 'busca') return;
-              st.res = r.ok ? r.j.itens || [] : []; desenha();
+        function altura(t) { t.style.height = 'auto'; if (t.scrollHeight) t.style.height = t.scrollHeight + 'px'; }   // aba escondida: fica 1 linha
+        function largura(i) { i.size = Math.max(6, (i.value || i.placeholder).length + 1); }
+        function monta(x) {
+          if (x.continuo && !continuo(x.posologia)) x.posologia = comContinuo(x.posologia);   // o que se vê é o que sai
+          var li = el('li', 'rxc-item rx-row'), num = el('span', 'rxc-num'), corpo = el('div', 'rxc-corpo'), nome = el('div', 'rxc-nome rx-n');
+          var forma = el('div', 'rxc-forma'), pos = el('textarea', 'rxc-campo rxc-pos'), sug = el('div', 'rxc-sug'), ql = el('label', 'rxc-qtd');
+          var qtd = el('input', 'rxc-campo rx-q'), calc = el('span', 'rxc-calc', 'calculada'), av = el('div', 'rxc-av'), del = el('button', 'rx-x');
+          var n = { li: li, num: num, nome: nome, forma: forma, pos: pos, sug: sug, qtd: qtd, calc: calc, av: av, del: del }, tSalva = null;
+          n.sugere = function () { if (op.pode()) sugestoes(n, x, posMudou); };
+          pos.rows = 1; pos.maxLength = 160; pos.placeholder = 'Escreva a posologia'; pos.setAttribute('aria-label', 'Posologia de ' + nomeDose(x));
+          qtd.type = 'text'; qtd.maxLength = 60; qtd.placeholder = 'ex.: 30 comprimidos'; qtd.setAttribute('aria-label', 'Quantidade de ' + nomeDose(x));
+          del.type = 'button'; del.innerHTML = RXI.x; del.title = 'Tirar da receita'; del.setAttribute('aria-label', 'Tirar ' + nomeDose(x) + ' da receita');
+          sug.hidden = true; sug.setAttribute('role', 'group'); sug.setAttribute('aria-label', 'Sugestões de posologia');
+          ql.appendChild(document.createTextNode('Quantidade:')); ql.appendChild(qtd); ql.appendChild(calc);
+          [nome, forma, pos, sug, ql, av].forEach(function (c) { corpo.appendChild(c); });
+          li.appendChild(num); li.appendChild(corpo); li.appendChild(del); li._x = x;
+          function salva() { clearTimeout(tSalva); tSalva = setTimeout(op.mudou, 300); }
+          function posMudou() {                           // a posologia manda no uso contínuo e na quantidade calculada
+            x.posologia = pos.value; x.continuo = continuo(pos.value); x._falta = false; pos.classList.remove('falta');
+            if (x._qauto) {
+              var q = Receita.quantidade(pos.value);
+              var nv = q ? q.texto : embalagem(x._emb) || x.quantidade;
+              x._qcalc = !!q; calc.hidden = !q;
+              if (nv !== x.quantidade) { x.quantidade = nv; qtd.value = nv; largura(qtd); if (q) anuncia('Quantidade calculada: ' + nv); }
+            }
+            altura(pos); salva();
+          }
+          pos.addEventListener('input', posMudou);
+          pos.addEventListener('focus', n.sugere);
+          corpo.addEventListener('focusout', function (e) { if (!e.relatedTarget || (e.relatedTarget !== pos && !sug.contains(e.relatedTarget))) sug.hidden = true; });
+          pos.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) { e.preventDefault(); qtd.focus(); qtd.select(); }
+            else if (e.key === 'ArrowDown' && !sug.hidden && pos.selectionStart === pos.value.length && sug.firstChild) { e.preventDefault(); sug.firstChild.focus(); }
+            else if (e.key === 'Escape') { sug.hidden = true; }
+          });
+          qtd.addEventListener('input', function () { x.quantidade = qtd.value; x._qauto = x._qcalc = false; x._falta = false; calc.hidden = true; qtd.classList.remove('falta'); largura(qtd); salva(); });
+          qtd.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) { e.preventDefault(); if (barra) barra.foca(); }
+          });
+          del.addEventListener('click', function () {
+            if (!op.pode()) return;
+            li.classList.add('saindo');
+            setTimeout(function () {
+              var its = op.itens(), at = its.indexOf(x); if (at < 0) return;
+              its.splice(at, 1); op.mudou(); anuncia(nomeDose(x) + ' saiu da receita');
+              toastAct(nomeDose(x) + ' saiu da receita', 'Desfazer', function () { var a = op.itens(); a.splice(Math.min(at, a.length), 0, x); novo = x; op.mudou(); });
+            }, calma ? 0 : 150);
+          });
+          return n;
+        }
+
+        // ----- sugestões da posologia (só com o campo em foco): como da última vez, as comuns da forma e a duração -----
+        var DUR = /,?\s*(?:(?:por|durante)\s+\d+\s+(?:dias?|semanas?|m[eê]s(?:es)?)|uso cont[ií]nuo)\.?\s*$/i;
+        function ultima(x) {                              // a posologia da última receita deste paciente com o mesmo remédio
+          var k = chave(x.nome), achou = '';
+          op.anteriores().some(function (r) { return r.itens.some(function (y) { if (chave(y.nome) === k && (y.posologia || '').trim()) { achou = y.posologia.trim(); return true; } }); });
+          return achou;
+        }
+        function sugestoes(n, x, mudou) {
+          var ops = [], u = ultima(x);
+          if (u && norm(u) !== norm(x.posologia || '')) ops.push(['Como da última vez: ' + u, u, 'tudo']);
+          Receita.posologias(x.forma).forEach(function (p) { ops.push([p[0], p[1], 'base']); });
+          [['7 dias', ', por 7 dias'], ['10 dias', ', por 10 dias'], ['Uso contínuo', ', uso contínuo']].forEach(function (d) { ops.push([d[0], d[1], 'dur']); });
+          n.sug.innerHTML = '';
+          ops.forEach(function (o, k) {
+            var b = el('button', 'gq-chip', o[0]); b.type = 'button'; b.tabIndex = -1; if (o[2] === 'tudo') b.title = o[1];
+            b.addEventListener('mousedown', function (e) { e.preventDefault(); });   // o foco fica no campo
+            b.addEventListener('click', function () {
+              var p = n.pos, t = p.value.trim(), dur = (t.match(DUR) || [''])[0];
+              if (o[2] === 'tudo') p.value = o[1];
+              else if (o[2] === 'base') p.value = o[1] + dur;
+              else p.value = t ? t.replace(DUR, '').replace(/[\s.,]+$/, '') + o[1] : o[1].replace(/^, /, '').replace(/^./, function (c) { return c.toUpperCase(); });
+              mudou(); p.focus();
+              var i = p.value.indexOf('__');               // líquido: o volume fica selecionado para digitar
+              if (i >= 0) p.setSelectionRange(i, i + 2); else p.setSelectionRange(p.value.length, p.value.length);
             });
-          }, 150);
-          desenha();
+            b.addEventListener('keydown', function (e) {
+              var bs = [].slice.call(n.sug.children), j = bs.indexOf(b);
+              if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); (bs[j + 1] || bs[0]).focus(); }
+              else if (e.key === 'ArrowLeft') { e.preventDefault(); (bs[j - 1] || bs[bs.length - 1]).focus(); }
+              else if (e.key === 'ArrowUp' || e.key === 'Escape') { e.preventDefault(); n.pos.focus(); }
+            });
+            n.sug.appendChild(b);
+          });
+          n.sug.hidden = !ops.length;
         }
-        function escolhe(it) { st.prod = it; st.sel = -1; if (it.apresentacoes.length === 1) item(it.apresentacoes[0]); else { st.passo = 'apres'; desenha(); } }
-        function item(a) { st.ap = a; st.passo = 'item'; desenha(); }
-        function livre() { var t = q.value.replace(/\s+/g, ' ').trim(); if (!t) return; st.livre = t[0].toUpperCase() + t.slice(1); st.prod = null; st.ap = null; st.passo = 'item'; desenha(); }
-        function fecha() { st = { passo: 'busca', res: st.res, filtro: st.filtro, sel: -1, prod: null, ap: null, livre: '' }; ins = {}; aberto(false); }
-        function limpa() { q.value = ''; st.res = []; fecha(); }
-        function ok() {
-          if (!rxCan()) return;
-          var x = { nome: st.prod ? st.prod.nome : st.livre, dose: st.ap ? st.ap.dose || '' : '', posologia: '', quantidade: '', via: '', continuo: false,
-                    origem: 'manual', fonte: '', ia: '' };
-          if (!x.nome) return;
-          ['dose', 'posologia', 'quantidade'].forEach(function (k) { if (ins[k]) x[k] = ins[k].value.replace(/\s+/g, ' ').trim(); });
-          rxItems.push(x); limpa(); rxChanged(); q.focus();
+
+        // ----- "Renovar": o uso contínuo da última emissão (as receitas emitidas no mesmo dia), que não está nesta -----
+        function renovaveis() {
+          var com = op.anteriores().filter(function (r) { return r.itens.some(function (x) { return x.continuo; }); });
+          if (!com.length) return { itens: [], dia: '' };
+          var dia = rxDia(com[0].emitida_em), its = [], aqui = op.itens().map(function (y) { return chave(y.nome); });
+          if (dia === rxDia(null)) return { itens: [], dia: '' };      // emitida hoje: acabou de renovar
+          com.filter(function (r) { return rxDia(r.emitida_em) === dia; }).forEach(function (r) {
+            r.itens.forEach(function (x) {
+              var k = chave(x.nome);
+              if (x.continuo && aqui.indexOf(k) < 0 && !its.some(function (y) { return chave(y.nome) === k; })) its.push(x);
+            });
+          });
+          return { itens: its, dia: dia };
         }
-        q.addEventListener('input', busca);
-        q.addEventListener('focus', function () { if (q.value.trim().length >= 2 && st.passo === 'busca') desenha(); });
-        q.addEventListener('keydown', function (e) {
-          var n = st.passo === 'busca' ? visiveis().length + 1 : st.passo === 'apres' ? st.prod.apresentacoes.length : 0;
-          if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && n) {
-            e.preventDefault(); st.sel = e.key === 'ArrowDown' ? (st.sel + 1) % n : (st.sel - 1 + n) % n; desenha();
-          } else if (e.key === 'Enter') {
-            e.preventDefault();
-            if (st.passo === 'busca') { var vs = visiveis(); if (st.sel >= 0 && st.sel < vs.length) escolhe(vs[st.sel]); else livre(); }
-            else if (st.passo === 'apres' && st.sel >= 0) item(st.prod.apresentacoes[st.sel]);
-          } else if (e.key === 'Escape') { e.preventDefault(); if (st.passo !== 'busca') { st.passo = 'busca'; st.sel = -1; desenha(); } else if (!pan.hidden) aberto(false); else q.value = ''; }
+        function desenhaRenova(can) {
+          var r = can ? renovaveis() : { itens: [] }; renova.innerHTML = ''; renova.hidden = !r.itens.length; if (!r.itens.length) return;
+          var tx = el('div', 'sg-tx'), b = el('button', 'gq-chip sg-add'); b.type = 'button'; b.innerHTML = RXI.plus + 'Renovar';
+          tx.appendChild(el('span', 'ov-post-t', 'Uso contínuo da última receita (' + r.dia + ')'));
+          tx.appendChild(el('span', 'sg-why', r.itens.map(nomeDose).join(' · ')));
+          b.setAttribute('aria-label', 'Renovar ' + r.itens.length + (r.itens.length === 1 ? ' remédio de uso contínuo' : ' remédios de uso contínuo'));
+          b.addEventListener('click', function () {
+            if (!op.pode()) return;
+            r.itens.forEach(function (y) {
+              var x = { nome: y.nome, dose: y.dose || '', forma: y.forma || '', via: y.via || '', posologia: comContinuo(y.posologia), quantidade: y.quantidade || '',
+                        continuo: true, origem: 'anterior', fonte: '', ia: '' }, q = Receita.quantidade(x.posologia);
+              if (q) { x.quantidade = q.texto; x._qauto = x._qcalc = true; }
+              op.itens().push(x); novo = x;
+            });
+            op.mudou(); anuncia(r.itens.length + (r.itens.length === 1 ? ' remédio renovado' : ' remédios renovados')); bEmite.focus();
+          });
+          renova.appendChild(tx); renova.appendChild(b);
+        }
+
+        // ----- a barra "Adicionar medicamento": a busca do Finance, com as apresentações direto -----
+        function montaBarra(can) {
+          if (barra) { barra.liga(can); return; }
+          var bar = el('div', 'fz-bar'), q = el('input', 'fz-in'), pan = el('div', 'fz-pan'), lis = el('div', 'fz-list');
+          bar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="currentColor"/></svg>';
+          q.type = 'text'; q.autocomplete = 'off'; q.maxLength = 120; q.spellcheck = false;
+          q.setAttribute('role', 'combobox'); q.setAttribute('aria-expanded', 'false'); q.setAttribute('aria-autocomplete', 'list'); q.setAttribute('aria-controls', 'rxcOpcoes');
+          q.setAttribute('aria-label', 'Adicionar medicamento à receita'); lis.id = 'rxcOpcoes'; lis.setAttribute('role', 'listbox'); pan.hidden = true;
+          bar.appendChild(q); pan.appendChild(lis); nova.appendChild(bar); nova.appendChild(pan);
+          var b = { linhas: [], sel: 0, confirma: -1, seq: 0, t: null, res: null, erro: false, enter: false };   // enter: Enter antes do resultado
+          function aberto(on) { nova.classList.toggle('open', on); pan.hidden = !on; q.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on) q.removeAttribute('aria-activedescendant'); }
+          function linhas(res) {                          // as apresentações: o que o paciente já usou primeiro; até 8
+            var its = op.itens(), us = op.anteriores().reduce(function (a, r) { return a.concat(r.itens.map(function (x) { return chave(x.nome); })); }, []), out = [], vistos = {};
+            res.forEach(function (p) {
+              var k = chave(p.nome);
+              p.apresentacoes.slice(0, 5).forEach(function (a) {
+                var id = p.marca ? '' : [k, norm(a.dose || ''), norm(a.forma || '')].join('|');   // a mesma substância escrita de 2 jeitos na CMED
+                if (id && vistos[id]) return; if (id) vistos[id] = 1;
+                out.push({ p: p, a: a, usou: us.indexOf(k) >= 0,
+                           ja: its.filter(function (x) { return chave(x.nome) === k && norm(x.dose || '') === norm(a.dose || ''); })[0] || null });
+              });
+            });
+            return out.filter(function (r) { return r.usou; }).concat(out.filter(function (r) { return !r.usou; })).slice(0, 8);
+          }
+          function desenhaPainel() {
+            lis.innerHTML = ''; var t = q.value.trim();
+            if (t.length < 2 || b.res === null) { aberto(false); return; }
+            if (b.erro) lis.appendChild(el('div', 'fz-vazio', 'Não foi possível buscar agora.'));
+            else if (!b.linhas.length) lis.appendChild(el('div', 'fz-vazio', 'Nada na base com esse nome.'));
+            b.linhas.forEach(function (r, k) {
+              var o = el('div', 'fz-row' + (k === b.sel ? ' on' : '')), l = el('span', 'fz-l'), d = el('span', 'fz-r'), al = (r.p.alergias || []).length;
+              o.id = 'rxcOp' + k; o.setAttribute('role', 'option'); o.setAttribute('aria-selected', k === b.sel ? 'true' : 'false');
+              l.appendChild(el('span', 'fz-t', r.p.nome + (r.a.dose ? ' ' + r.a.dose : '')));
+              l.appendChild(el('span', 'fz-s', [r.a.forma, r.p.marca ? r.p.laboratorios[0] : r.p.generico ? 'genérico' : ''].filter(Boolean).join(' · ')));
+              d.appendChild(el('span', 'fz-v', embalagem(r.a.quantidades)));
+              var s = al ? (b.confirma === k ? 'Enter de novo para adicionar' : 'Alergia: ' + r.p.alergias.join(', ')) : r.ja ? 'Já na receita' : r.usou ? 'Já usou' : '';
+              if (s) d.appendChild(el('span', 'fz-vs' + (al ? ' al' : r.ja ? ' ja' : ' usou'), s));
+              o.appendChild(l); o.appendChild(d);
+              o.addEventListener('mousedown', function (e) { e.preventDefault(); b.sel = k; escolhe(k); });
+              lis.appendChild(o);
+            });
+            if (b.linhas.length) q.setAttribute('aria-activedescendant', 'rxcOp' + b.sel);
+            aberto(true);
+          }
+          function busca() {
+            clearTimeout(b.t); b.confirma = -1; b.enter = false; var t = q.value.trim();
+            if (t.length < 2) { b.res = null; b.linhas = []; desenhaPainel(); return; }
+            b.t = setTimeout(function () {
+              var n = ++b.seq, pid = op.paciente();
+              api('GET', '/prontuario/remedios/busca?q=' + encodeURIComponent(t) + (pid ? '&patient_id=' + encodeURIComponent(pid) : '')).then(function (r) {
+                if (n !== b.seq || q.value.trim() !== t) return;
+                b.erro = !r.ok; b.res = r.ok ? r.j.itens || [] : []; b.linhas = linhas(b.res); b.sel = 0;
+                if (b.enter && b.linhas.length) { b.enter = false; escolhe(0); } else desenhaPainel();
+              }, function () { if (n === b.seq) { b.erro = true; b.res = []; b.linhas = []; desenhaPainel(); } });
+            }, 150);
+          }
+          function limpa() { clearTimeout(b.t); b.seq++; q.value = ''; b.res = null; b.linhas = []; b.confirma = -1; lis.innerHTML = ''; aberto(false); }
+          function escolhe(k) {
+            var r = b.linhas[k]; if (!r || !op.pode()) return;
+            if (r.ja) { limpa(); foco = r.ja; desenha(); return; }
+            if ((r.p.alergias || []).length && b.confirma !== k) {
+              b.confirma = k; b.sel = k; desenhaPainel(); anuncia('Alergia registrada: ' + r.p.alergias.join(', ') + '. Enter de novo para adicionar mesmo assim.'); return;
+            }
+            var x = { nome: r.p.nome, dose: r.a.dose || '', forma: r.a.forma || '', via: viaDaForma(r.a.forma), posologia: '', quantidade: embalagem(r.a.quantidades),
+                      continuo: false, origem: 'manual', fonte: '', ia: '' };
+            x._emb = r.a.quantidades || []; x._qauto = true; x._qcalc = false;
+            op.itens().push(x); limpa(); novo = x; foco = x; op.mudou(); anuncia(nomeDose(x) + ' entrou na receita');
+          }
+          q.addEventListener('input', busca);
+          q.addEventListener('focus', function () { if (q.value.trim().length >= 2 && b.res) desenhaPainel(); });
+          q.addEventListener('keydown', function (e) {
+            var n = b.linhas.length;
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && n && !pan.hidden) {
+              e.preventDefault(); b.sel = e.key === 'ArrowDown' ? (b.sel + 1) % n : (b.sel - 1 + n) % n; b.confirma = -1; desenhaPainel();
+            } else if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
+              e.preventDefault(); if (n && !pan.hidden) escolhe(b.sel); else if (q.value.trim().length >= 2) b.enter = true;
+            }
+            else if (e.key === 'Escape') { e.preventDefault(); if (!pan.hidden) aberto(false); else limpa(); }
+          });
+          bar.addEventListener('mousedown', function (e) { if (e.target !== q) { e.preventDefault(); q.focus(); } });
+          document.addEventListener('mousedown', function (e) { if (!pan.hidden && e.composedPath().indexOf(nova) < 0) aberto(false); });
+          barra = {
+            liga: function (can) { q.disabled = !can; q.placeholder = can ? 'Adicionar medicamento' : 'Carregando a consulta…'; nova.classList.toggle('off', !can); if (!can) limpa(); },
+            foca: function () { q.focus(); }, limpa: limpa
+          };
+          barra.liga(can);
+        }
+
+        // ----- o rodapé: o que vai sair, Emitir e a confirmação ali mesmo -----
+        function tipos() {
+          var t = {}; cheios().forEach(function (x) { t[(x._av && x._av.tipo) || 'simples'] = 1; });
+          return ['simples', 'especial', 'antimicrobiano'].filter(function (k) { return t[k]; });
+        }
+        function resumoTxt() {
+          var ts = tipos(), NOME = { simples: 'simples', especial: 'controle especial', antimicrobiano: 'antimicrobiano' };
+          var vias = ts.filter(function (k) { return k !== 'simples'; }).length, nota = vias === 2 ? ' (2 vias cada)' : vias ? ' (2 vias)' : '';
+          if (!ts.length) return '';
+          if (ts.length === 1) return 'Sai 1 receita' + (ts[0] === 'simples' ? ' simples' : ' de ' + NOME[ts[0]]) + nota;
+          return 'Saem ' + ts.length + ' receitas: ' + lista(ts.map(function (k) { return NOME[k]; })) + nota;
+        }
+        function recado(t, dados) {                       // acima de Emitir: o que falta, talão, dados do médico, erro
+          msg.innerHTML = ''; msg.hidden = !t; if (!t) return;
+          msg.appendChild(document.createTextNode(t + ' '));
+          if (dados) { var a = el('a', 'pr-link', 'Completar meus dados'); a.href = 'opendoctor-configuracoes.html?volta=1'; msg.appendChild(a); }
+        }
+        function pedeEmitir() {
+          if (!op.pode() || emitindo) return;
+          var its = cheios(); if (!its.length) return;
+          var talao = its.filter(function (x) { return x._av && x._av.talao; });
+          if (talao.length) { recado('Tire da receita o que exige Notificação de Receita (talão): ' + lista(talao.map(nomeDose)) + '.'); return; }
+          var falta = its.filter(function (x) { return !(x.posologia || '').trim() || !(x.quantidade || '').trim(); });
+          if (falta.length) {
+            falta.forEach(function (x) { x._falta = true; }); desenha();
+            var semPos = falta.filter(function (x) { return !(x.posologia || '').trim(); });
+            recado((semPos.length ? 'Falta a posologia de ' + lista(semPos.map(nomeDose)) : 'Falta a quantidade de ' + lista(falta.map(nomeDose))) + '.');
+            var n = nos.get(falta[0]); if (n) (semPos.length ? n.pos : n.qtd).focus();
+            return;
+          }
+          recado(''); abreConf(its);
+        }
+        function abreConf(its) {
+          var r = resumoTxt(), av = [];
+          its.forEach(function (x) { op.avisos(x).forEach(function (a) { if (a[0] !== 'rx-tipo') av.push([a[0], nomeDose(x) + ': ' + a[1]]); }); });
+          conf.innerHTML = '';
+          conf.appendChild(el('div', 'rxc-conf-t', r.replace(/^Sai 1 receita/, 'Emitir a receita').replace(/^Saem (\d+) receitas/, 'Emitir $1 receitas') + '?'));
+          conf.appendChild(el('div', 'rxc-conf-s', 'Depois de emitida, a receita não muda mais (dá para cancelar no Histórico).'));
+          av.forEach(function (a) { conf.appendChild(el('div', a[0], a[1])); });
+          var acts = el('div', 'rxc-conf-acts'), volta = el('button', 'pr-ghost', 'Voltar'), ok = el('button', 'pr-save', 'Emitir e imprimir');
+          volta.type = ok.type = 'button'; ok.id = 'rxConfirma';
+          volta.addEventListener('click', fechaConf); ok.addEventListener('click', function () { if (!emitindo) op.emitir(cheios()); });
+          acts.appendChild(volta); acts.appendChild(ok); conf.appendChild(acts);
+          conf.hidden = false; pe.hidden = true; ok.focus();
+        }
+        function fechaConf() { conf.hidden = true; pe.hidden = !op.pode() || !cheios().length; if (!pe.hidden) bEmite.focus(); }
+        bEmite.addEventListener('click', pedeEmitir);
+        conf.addEventListener('keydown', function (e) { if (e.key === 'Escape') { e.preventDefault(); fechaConf(); } });
+        raiz.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); if (conf.hidden) pedeEmitir(); else if (!emitindo) op.emitir(cheios()); }
         });
-        document.addEventListener('mousedown', function (e) {   // clique fora fecha (o caminho do evento: a linha clicada pode ter saído ao redesenhar)
-          if (!pan.hidden && e.composedPath().indexOf(box) < 0) aberto(false);
-        });
-        rxNovoIns = { limpa: limpa };
+
+        return {
+          desenha: desenha,
+          estado: function (t) { st.textContent = t; },
+          recado: recado,
+          limpa: function () { if (barra) barra.limpa(); conf.hidden = true; foco = novo = null; },
+          emitindo: function (sim) {
+            emitindo = sim; bEmite.disabled = sim; var ok = $('rxConfirma');
+            if (ok) { ok.disabled = sim; ok.textContent = sim ? 'Emitindo…' : 'Emitir e imprimir'; }
+            if (!sim) { conf.hidden = true; desenha(); }
+          },
+          foca: function (x) { foco = novo = x; desenha(); }
+        };
       }
-      function rxOpen(i) {
-        if (!rxCan()) return;
-        rxEd = Math.min(i, rxItems.length - 1); renderRx();
-      }
-      function rxLinhas(itens) {
+      // a mesma receita em texto ("1. Amoxicilina 500 mg, cápsula — Tomar … — 21 cápsulas"): card do Histórico e PDF
+      Receita.texto = function (itens) {
         return itens.map(function (x, i) {
-          return (i + 1) + '. ' + [[x.nome, x.dose].filter(Boolean).join(' '), x.posologia, x.quantidade].filter(Boolean).join(' — ');
+          return (i + 1) + '. ' + [[x.nome, x.dose].filter(Boolean).join(' ') + (x.forma ? ', ' + x.forma : ''), x.posologia, x.quantidade].filter(Boolean).join(' — ');
         }).join('\n');
+      };
+      // a quantidade pela posologia: unidades por tomada × tomadas por dia × dias (uso contínuo = 30 dias). Só para o que
+      // se conta (comprimido, cápsula…); "se dor", "se necessário", líquido ou texto que não dá para ler → null.
+      // "1 cápsula a cada 8 horas, por 7 dias" → {n: 21, texto: '21 cápsulas'}
+      Receita.quantidade = function (pos) {
+        var t = norm(pos || '').replace(/,(\s|$)/g, ' $1');                // a vírgula da frase sai; a do decimal (1,5) fica
+        if (!t || /\bse (dor|febre|necess|precis|crise|falta|nausea|enjoo)|\bs\/n\b|\bsos\b|quando necess/.test(t)) return null;
+        var N = { meio: 0.5, meia: 0.5, um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4 };
+        var U = { comprimido: ['comprimido', 'comprimidos'], capsula: ['cápsula', 'cápsulas'], dragea: ['drágea', 'drágeas'], pastilha: ['pastilha', 'pastilhas'],
+                  supositorio: ['supositório', 'supositórios'], ovulo: ['óvulo', 'óvulos'], adesivo: ['adesivo', 'adesivos'], sache: ['sachê', 'sachês'], envelope: ['envelope', 'envelopes'] };
+        var m = t.match(/(\d+(?:[.,]\d+)?|meio|meia|uma?|dois|duas|tres|quatro)\s+(comprimido|capsula|dragea|pastilha|supositorio|ovulo|adesivo|sache|envelope)s?\b/);
+        if (!m) return null;
+        var por = N[m[1]] != null ? N[m[1]] : parseFloat(m[1].replace(',', '.')), dia = null, dias = null, x;
+        if ((x = t.match(/(\d+)\s*\/\s*(\d+)\s*h/)) && x[1] === x[2]) dia = 24 / +x[1];
+        else if ((x = t.match(/(\d+)\s*em\s*(\d+)\s*h/)) && x[1] === x[2]) dia = 24 / +x[1];
+        else if ((x = t.match(/a cada\s*(\d+)\s*h/))) dia = 24 / +x[1];
+        else if ((x = t.match(/(\d+|uma|duas|tres|quatro)\s*(?:x|vez(?:es)?)\s*(?:\/|ao|por)?\s*(dia|semana)/))) dia = (N[x[1]] || +x[1]) / (x[2] === 'semana' ? 7 : 1);
+        else if (/\b(ao dia|por dia|diariamente|a noite|ao deitar|pela manha|em jejum|de manha)\b/.test(t)) dia = 1;
+        if ((x = t.match(/(?:por|durante)\s*(\d+)\s*(dias?|semanas?|mes(?:es)?)\b/))) dias = +x[1] * (/^sem/.test(x[2]) ? 7 : /^mes/.test(x[2]) ? 30 : 1);
+        else if (/uso continuo/.test(t)) dias = 30;
+        if (!dia || !dias || !(por > 0)) return null;
+        var n = Math.ceil(por * dia * dias - 1e-9), u = U[m[2]];
+        return { n: n, texto: n + ' ' + u[n === 1 ? 0 : 1] };
+      };
+      // as posologias comuns de cada forma (as sugestões embaixo do campo); "__" marca o volume a digitar
+      Receita.posologias = function (forma) {
+        var f = norm(forma || ''), dose = function (u, verbo, freqs) { return freqs.map(function (q) { return [q[0], verbo + ' ' + u + ' ' + q[1]]; }); };
+        var FREQ = [['1x ao dia', '1 vez ao dia'], ['12/12 h', 'a cada 12 horas'], ['8/8 h', 'a cada 8 horas'], ['À noite', 'à noite']];
+        if (!f || /injet/.test(f)) return [];
+        if (/oftalm|colirio/.test(f)) return dose('1 gota em cada olho', 'Pingar', [['12/12 h', 'a cada 12 horas'], ['8/8 h', 'a cada 8 horas'], ['6/6 h', 'a cada 6 horas']]);
+        if (/nasal/.test(f)) return dose('1 jato em cada narina', 'Aplicar', [['1x ao dia', '1 vez ao dia'], ['2x ao dia', '2 vezes ao dia']]);
+        if (/inala|aeross/.test(f)) return dose('1 jato', 'Inalar', [['12/12 h', 'a cada 12 horas'], ['Se falta de ar', 'se falta de ar']]);
+        if (/creme|pomada|gel|locao|topic|xampu|emuls|derm/.test(f)) return dose('na região afetada', 'Aplicar', [['1x ao dia', '1 vez ao dia'], ['2x ao dia', '2 vezes ao dia'], ['3x ao dia', '3 vezes ao dia']]);
+        if (/solucao|suspensao|xarope|elixir|gotas/.test(f)) return dose(/gotas/.test(f) ? '__ gotas' : '__ mL', 'Tomar', FREQ.slice(0, 3));
+        var u = /comprimido/.test(f) ? 'comprimido' : /capsula/.test(f) ? 'cápsula' : /dragea/.test(f) ? 'drágea' : /pastilha/.test(f) ? 'pastilha' :
+                /supositorio/.test(f) ? 'supositório' : /ovulo/.test(f) ? 'óvulo' : /adesivo/.test(f) ? 'adesivo' : '';
+        if (!u) return [];
+        return dose('1 ' + u, /supositorio|ovulo|adesivo/.test(f) ? 'Aplicar' : 'Tomar', /adesivo/.test(f) ? [['1x ao dia', '1 vez ao dia']] : FREQ);
+      };
+      // a via sai da forma farmacêutica (comprimido → oral, creme → tópica, colírio → oftálmica…); injetável fica sem
+      var VIA_FORMA = [[/oftalm|colirio/, 'oftálmica'], [/nasal/, 'nasal'], [/inala|aeross/, 'inalatória'], [/vaginal|ovulo/, 'vaginal'], [/supositorio|retal/, 'retal'],
+                       [/adesivo|transd/, 'transdérmica'], [/injet/, ''], [/creme|pomada|gel|locao|topic|xampu|emuls|derm/, 'tópica'], [/sublingual/, 'sublingual'],
+                       [/oral|comprimido|capsula|dragea|pastilha|xarope|elixir|gotas|granulado|sache|envelope/, 'oral']];
+      function viaDaForma(forma) { var f = norm(forma || ''), v = ''; VIA_FORMA.some(function (p) { if (p[0].test(f)) { v = p[1]; return true; } }); return v; }
+      // o remédio sem o sal e sem a marca, para comparar ("Glifage (cloridrato de metformina)" e "Metformina" → metformina)
+      var SAIS = /^(cloridrato|dicloridrato|bromidrato|sodic[oa]|potassic[oa]|calcic[oa]|magnesic[oa]|besilato|maleato|mesilato|succinato|fumarato|hemifumarato|tartarato|sulfato|fosfato|acetato|citrato|valerato|propionato|monoidratad[oa]|di-?hidratad[oa]|tri-?hidratad[oa]|de|do|da)$/;
+      function chave(nome) {
+        var t = norm(nome || ''), p = t.match(/\(([^)]+)\)/);
+        return ((p ? p[1] : t).split(/[^a-z0-9-]+/).filter(function (w) { return w.length >= 4 && !SAIS.test(w); })[0]) || t;
       }
-      $('rxCopy').addEventListener('click', function () {
-        var t = rxLinhas(rxCheios()); if (!t) return;
-        try { navigator.clipboard.writeText(t).then(function () { toast('Receita copiada'); }); } catch (_) {}
-      });
+      var rx = Receita($('rxBox'), { itens: function () { return rxItems; }, pode: rxCan, avisos: rxAvisos, mudou: rxChanged, emitir: rxEmitir,
+                                     anteriores: function () { return rxs.filter(function (r) { return r.status === 'emitida'; }); },
+                                     paciente: function () { return patient && patient.id; } });
 
       // ----- emitir: confere, separa por tipo, grava e imprime -----
-      $('rxEmit').addEventListener('click', function () {
-        if (!rxCan()) return;
-        var itens = rxCheios(); if (!itens.length) return;
-        var talao = itens.filter(function (x) { return x._av && x._av.talao; });
-        if (talao.length) { rxMsg('Tire da receita o que exige Notificação de Receita (talão): ' + talao.map(function (x) { return x.nome; }).join(', ') + '.'); return; }
-        var avisos = [], separa = itens.some(function (x) { return x._av && x._av.tipo !== 'simples'; });
-        itens.forEach(function (x) { rxAvisos(x).forEach(function (a) { if (a[0] !== 'rx-tipo') avisos.push(x.nome + ': ' + a[1]); }); });
-        if (!confirm('Emitir a receita?' + (separa ? '\n\nControle especial e antimicrobiano saem em receitas separadas, em 2 vias.' : '') +
-                     (avisos.length ? '\n\nAvisos:\n- ' + avisos.join('\n- ') : '') + '\n\nDepois de emitida a receita não muda mais (dá para cancelar).')) return;
-        rxMsg(''); $('rxEmit').disabled = true;
+      function rxEmitir(itens) {                           // depois da confirmação no componente (o talão e o que falta ele já barrou)
+        rx.recado(''); rx.emitindo(true);
         rxPersist().then(function () {
           if (!rxDraft) throw new Error('sem rascunho');
           return api('POST', '/prontuario/receitas/' + rxDraft.id + '/emitir', { itens: itens });
         }).then(function (res) {
-          if (res.status === 409 && res.j.faltam) { rxMsg('Para emitir, complete seus dados de médico (' + res.j.faltam.join(', ') + ').', true); return; }
-          if (res.status === 409 && res.j.talao) { rxMsg('Tire da receita o que exige Notificação de Receita (talão): ' + res.j.talao.join('; ') + '.'); return; }
-          if (!res.ok) { rxMsg('Não foi possível emitir: ' + ((res.j && res.j.error) || 'tente de novo') + '.'); return; }
+          if (res.status === 409 && res.j.faltam) { rx.recado('Para emitir, complete seus dados de médico (' + res.j.faltam.join(', ') + ').', true); return; }
+          if (res.status === 409 && res.j.talao) { rx.recado('Tire da receita o que exige Notificação de Receita (talão): ' + res.j.talao.join('; ') + '.'); return; }
+          if (!res.ok) { rx.recado('Não foi possível emitir: ' + ((res.j && res.j.error) || 'tente de novo') + '.'); return; }
           var em = res.j.receitas || [];
           toast(em.length > 1 ? em.length + ' receitas emitidas' : 'Receita emitida');
           rxImprimir(em, false); rxSyncOferta(em); rxLoad(true);
-        }).catch(function () { rxMsg('Não foi possível emitir agora: tente de novo.'); })
-          .then(function () { $('rxEmit').disabled = false; });
-      });
+        }).catch(function () { rx.recado('Não foi possível emitir agora: tente de novo.'); })
+          .then(function () { rx.emitindo(false); });
+      }
       // a folha de cada receita (#rxPrint, fora do app): cabeçalho do médico, tipo, via, paciente, itens por via de uso, assinatura
       function rxFolha(r, via, segunda) {
         var f = el('div', 'rx-folha'), m = medico || {}, cab = el('div', 'rx-med');
@@ -7497,8 +7663,8 @@
           if (g) ol.appendChild(el('li', 'rx-uso', g));
           grupos[g].forEach(function (x) {
             var li = el('li'); li.value = ++n; if (x.quantidade) li.appendChild(el('span', 'q', x.quantidade));
-            li.appendChild(el('b', null, [x.nome, x.dose].filter(Boolean).join(' ')));
-            if (x.posologia) li.appendChild(el('div', null, x.posologia + (x.continuo ? ' · uso contínuo' : '')));
+            li.appendChild(el('b', null, [x.nome, x.dose].filter(Boolean).join(' ') + (x.forma ? ', ' + x.forma : '')));
+            if (x.posologia) li.appendChild(el('div', null, x.posologia + (x.continuo && !/uso cont[ií]nuo/i.test(x.posologia) ? ' · uso contínuo' : '')));
             ol.appendChild(li);
           });
         });
@@ -7619,7 +7785,7 @@
       function renderRn(segura) {                          // ao abrir a aba e quando o resumo clínico muda
         var pane = document.querySelector('.pr-panel[data-panel=prescricoes]');
         if (!isOpen() || !pane || pane.hidden) return;
-        var p = patient; $('rnBox').hidden = !p || !RR.on; rxLoad(); renderRx(); renderRh(); if (!p || !RR.on) return;
+        var p = patient; $('rnBox').hidden = !p || !RR.on; rxLoad(); rx.desenha(); renderRh(); if (!p || !RR.on) return;
         var key = sgChaveAtual();                         // perfil mudou (cadastro, sinal ou exame novo): gera de novo ao abrir a aba
         var mesmo = sg && sg.st === 'pronto' && String(sgKey).split('|')[0] === String(p.id);
         if ((key !== sgKey && !(segura && mesmo)) || (!segura && sg && sg.st === 'falhou')) sgLoad(key, false); else drawSg();
@@ -7667,7 +7833,10 @@
       function sgAceita() { if (sg && sg.st === 'pronto') sgKey = sgChaveAtual(); }
       function sgPoe(it) { rxItems = rxItems.filter(function (x) { return !rxSame(x, it); }); rxItems.push(rxFrom(it)); }
       function rxMesmo(linha, nome) {                      // "Losartana 50 mg 12/12h" é a Losartana; "Insulina regular 10 UI" não é a NPH
-        var k = function (t) { return norm(t).replace(/\s+/g, ' ').trim(); }, a = k(linha).split(/ (?=\d)/)[0], b = k(nome);
+        var k = function (t) {                             // sem a marca e sem o sal: "Glifage (cloridrato de metformina)" → metformina
+          var s = norm(t), p = s.match(/\(([^)]+)\)/);
+          return (p ? p[1] : s).split(/\s+/).filter(function (w) { return w && !SAIS.test(w); }).join(' ').trim();
+        }, a = k(linha).split(/ (?=\d)/)[0], b = k(nome);
         return !!a && !!b && (a === b || a.indexOf(b + ' ') === 0 || b.indexOf(a + ' ') === 0);
       }
       function rxDoseIgual(linha, dose) { var k = function (t) { return norm(t).replace(/\s+/g, '').replace(/,/g, '.'); }; return !dose || k(linha).indexOf(k(dose)) >= 0; }
@@ -7697,7 +7866,7 @@
             if (!rxCan()) return;
             if (rxHas(it)) { rxItems = rxItems.filter(function (x) { return !rxSame(x, it); }); rxChanged(); return; }
             if ((it.alergias || []).length && !confirm('Alergia registrada a ' + it.alergias.join(', ') + '. Adicionar ' + it.nome + ' à receita mesmo assim?')) return;
-            sgPoe(it); rxChanged();
+            sgPoe(it); rxChanged(); rx.foca(rxItems[rxItems.length - 1]);
           });
           r.appendChild(b); L.appendChild(r);
         });

@@ -1802,13 +1802,20 @@ async def prontuario_remedios(request: Request):
 
 
 @app.get("/prontuario/remedios/busca")
-async def prontuario_remedios_busca(request: Request, q: str = ""):
+async def prontuario_remedios_busca(request: Request, q: str = "", patient_id: str = ""):
     """Substâncias e marcas da base de medicamentos (CMED/Anvisa, app/medicamentos.py) para a barra "Adicionar
-    remédio…", cada uma com as apresentações (dose, forma e quantidades de embalagem)."""
+    medicamento", cada uma com as apresentações (dose, forma e quantidades de embalagem). Com o paciente (só o id), cada
+    resultado traz as alergias do cadastro que batem com ele, para avisar antes de entrar na receita."""
     u, err = _auth_or_401(request)
     if err:
         return err
-    return {"itens": await run_in_threadpool(medicamentos.buscar, q[:80])}
+    itens = await run_in_threadpool(medicamentos.buscar, q[:80])
+    if patient_id.isdigit() and itens:
+        p = await run_in_threadpool(db.get_patient, u["id"], int(patient_id))
+        alergias = (p or {}).get("allergies") or ""
+        for it in itens:
+            it["alergias"] = scribe.allergy_hits(it["nome"] + " " + it["substancia"], alergias) if alergias else []
+    return {"itens": itens}
 
 
 @app.get("/me/medico")

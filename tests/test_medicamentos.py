@@ -40,3 +40,30 @@ def test_rota_da_busca(monkeypatch):
     assert r[0]["nome"] == "Losartana potássica" and any(x["tipo"] == "marca" for x in r)
     monkeypatch.setattr(auth, "current_user", lambda request: None)
     assert TestClient(server.app).get("/prontuario/remedios/busca?q=losartana").status_code == 401
+
+
+@pytest.mark.parametrize("d,esperado", [
+    ("(100,0 + 25,0) mg", "100 mg + 25 mg"), ("(100+25) mg", "100 mg + 25 mg"), ("50 mg / ml", "50 mg/mL"),
+    ("500 mg pó liof", "500 mg"), ("12,5 mg", "12,5 mg"), ("29 ui/g + 3 mg/g", "29 UI/g + 3 mg/g"), ("", ""),
+])
+def test_a_dose_num_jeito_so(d, esperado):
+    assert m.dose_limpa(d) == esperado
+
+
+def test_numero_na_busca_filtra_a_dose():
+    r = m.buscar("losartana 50")
+    assert r[0]["nome"] == "Losartana potássica" and [a["dose"] for a in r[0]["apresentacoes"]] == ["50 mg"]
+    assert all(any("50" in a["dose"] for a in x["apresentacoes"]) for x in r)
+    assert [a["dose"] for a in m.buscar("amoxicilina 500mg")[0]["apresentacoes"]] == ["500 mg"]
+    assert m.buscar("losartana 150") == [] and m.buscar("500") == []         # dose sem nome não busca
+    doses = [a["dose"] for a in m.buscar("losartana")[1]["apresentacoes"]]   # a mesma dose escrita de 3 jeitos vira uma
+    assert doses.count("100 mg + 25 mg") == 1
+
+
+def test_a_busca_avisa_a_alergia_do_paciente(monkeypatch):
+    from app import db
+    monkeypatch.setattr(auth, "current_user", lambda request: {"id": "u-1", "email": "medica@exemplo.com", "sv": 0})
+    monkeypatch.setattr(db, "get_patient", lambda uid, pid: {"id": pid, "allergies": "Penicilina"} if uid == "u-1" else None)
+    r = TestClient(server.app).get("/prontuario/remedios/busca?q=amoxicilina&patient_id=7").json()["itens"]
+    assert r[0]["alergias"] == ["Penicilina"]
+    assert "alergias" not in TestClient(server.app).get("/prontuario/remedios/busca?q=amoxicilina").json()["itens"][0]

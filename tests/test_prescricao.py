@@ -194,3 +194,8 @@ def test_exemplo_tem_uma_receita_por_consulta():
     for i in range(len(exemplo.RECEITAS)):
         assert pr.itens_limpos(exemplo.receita_itens(i)) == exemplo.receita_itens(i)     # passa pelo filtro do servidor
     assert [x["nome"] for x in exemplo.receita_itens(len(exemplo.RECEITAS) - 1)] == [l.split(" ")[0] for l in exemplo.MEDICATIONS.split("\n")]
+
+
+def test_o_item_guarda_a_forma():
+    assert pr.item_limpo({"nome": "Amoxicilina", "dose": "500 mg", "forma": "cápsula"})["forma"] == "cápsula"
+    assert pr.item_limpo({"nome": "Amoxicilina"})["forma"] == ""
