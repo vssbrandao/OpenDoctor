@@ -72,9 +72,12 @@ const SUG = { ok: true, prompt: 'teste', modelo: 'teste', observacoes: '', fonte
 const comSugestoes = async (s) => { sug = s; await send('Fetch.enable', { patterns: [{ urlPattern: '*/prontuario/prescricao/sugerir*' }] }); };
 const sg = (nome) => `[...document.querySelectorAll('#rnList .sg')].find((r) => r.querySelector('.ov-post-t').textContent.toLowerCase().startsWith(${JSON.stringify(nome.toLowerCase())}))`;
 const emUso = async () => (await srv('/patients')).patients.find((p) => p.id === 9001).medications.split('\n');
-// Histórico (tabela como a de Consultas): abre a linha i e clica num botão de ação do cartão
-const abreRh = async (i = 0) => { await ev(`[...document.querySelectorAll('#rhList button.pr-trow')][${i}].click()`); await ate(n('#rhList .rh-card') + ' === 1', 3000, 'cartão da receita'); };
-const menuRh = (t) => ev(`(() => { [...document.querySelectorAll('#rhList .rh-card .rh-acts button')].find((b) => b.textContent === ${JSON.stringify(t)}).click(); return 1; })()`);
+// Histórico (visual da tabela de Consultas, uma linha por remédio): ação da receita i (no cabeçalho dela)
+const acaoRh = (t, i = 0) => ev(`(() => { [...[...document.querySelectorAll('#rhList .rh-head')][${i}].querySelectorAll('.rh-acts button')]
+  .find((b) => b.textContent === ${JSON.stringify(t)}).click(); return 1; })()`);
+// "Usar nesta consulta" na linha do remédio (na i-ésima linha com esse nome)
+const usaRh = (nome) => ev(`(() => { [...document.querySelectorAll('#rhList .rh-item')].find((r) => r.querySelector('.pr-tdate').textContent.startsWith(${JSON.stringify(nome)}))
+  .querySelector('button').click(); return 1; })()`);
 const daApi = () => ev(`fetch('/prontuario/receitas?patient_id=9001').then((r) => r.json()).then((j) => j.receitas.map((r) => [r.tipo, r.status, r.itens.map((i) => i.nome).join('+'), r.motivo_cancelamento || '']))`);
 
 const cenarios = [
@@ -124,9 +127,8 @@ const cenarios = [
   }],
   ['cancelar uma receita emitida, com motivo', async () => {
     await abre(); resposta = 'Dose errada';
-    await abreRh(0); await menuRh('Cancelar receita');
-    await ate(`document.querySelector('#rhList .rh-card') && document.querySelector('#rhList .rh-card').innerText.includes('Dose errada')
-      && document.querySelector('#rhList button.pr-trow .pr-badge').textContent === 'Cancelada'`, 6000, 'cancelada na lista');
+    await acaoRh('Cancelar receita');
+    await ate(`[...document.querySelectorAll('#rhList .rh-head')].some((h) => h.innerText.includes('Motivo: Dose errada') && h.querySelector('.pr-badge').textContent === 'Cancelada')`, 6000, 'cancelada na lista');
     certo((await daApi()).some((r) => r[1] === 'cancelada' && r[3] === 'Dose errada'), 'cancelada no servidor');
     return 'cancelada com o motivo';
   }],
@@ -134,7 +136,7 @@ const cenarios = [
     await abre();
     const em = new Date((await srv('/prontuario/receitas?patient_id=9001')).receitas.find((r) => r.status === 'emitida').emitida_em);
     const data = [em.getDate(), em.getMonth() + 1].map((x) => String(x).padStart(2, '0')).join('/') + '/' + em.getFullYear();
-    await abreRh(0); await ev(`(() => { window.__folhas = null; return 1; })()`); await menuRh('Imprimir 2ª via');
+    await ev(`(() => { window.__folhas = null; return 1; })()`); await acaoRh('Imprimir 2ª via');
     await ate(`window.__folhas !== null`, 5000, 'folha da 2ª via');
     const t = await ev(`document.getElementById('rxPrint').innerText`);
     certo(t.includes(data) && t.includes('2ª via, impressa em'), 'data e marca: ' + t.slice(0, 200));
@@ -224,20 +226,19 @@ const cenarios = [
     return 'Sim → Não na Empagliflozina; Losartana desmarcada; voltou marcado';
   }],
   ['histórico de receitas: busca por remédio e escolha dos itens', async () => {
-    await abre(); await ate(n('#rhList button.pr-trow') + ' > 0', 5000, 'histórico');
+    await abre(); await ate(n('#rhList .rh-item') + ' > 0', 5000, 'histórico');
     certo(await ev(`document.querySelector('#rhBox .gh-t').textContent === 'Histórico' && !document.getElementById('rtBox')`), 'um cartão só, Histórico');
     const busca = (t) => ev(`(() => { const q = document.getElementById('rhQ'); q.value = ${JSON.stringify(t)}; q.dispatchEvent(new Event('input', { bubbles: true }));
-      return document.querySelectorAll('#rhList button.pr-trow').length; })()`);
-    certo(await busca('parac') === 1, 'a busca acha só a receita do paracetamol');
+      return document.querySelectorAll('#rhList .rh-item').length; })()`);
+    certo(await busca('parac') === 1 && await ev(n('#rhList .rh-head')) === 1, 'a busca acha só a linha do paracetamol, com a receita dela');
     certo(await busca('xyz') === 0 && (await ev(`document.getElementById('rhList').innerText`)).includes('Nenhuma receita'), 'sem resultado avisa');
     await busca('');
-    await abreRh(0); await menuRh('Usar nesta consulta');
-    certo(await ev(n('#rhList .rh-esc input:checked')) === 3, 'escolha com os 3 itens marcados');
-    await ev(`[...document.querySelectorAll('#rhList .rh-esc label')].find((l) => l.textContent.startsWith('Metformina')).querySelector('input').click()`);
-    await ev(`[...document.querySelectorAll('#rhList .rh-esc button')].find((b) => b.textContent === 'Usar os marcados').click()`); await salvo();
+    certo(await ev(n('#rhList .pr-tchev')) === 0, 'sem dropdown na lista');
+    await usaRh('Losartana'); await usaRh('Atorvastatina'); await salvo();     // a escolha é linha a linha
     const l = (await ev(linhas)).map((x) => x.split(' | ')[0]).join(', ');
-    certo(l === 'Losartana 50 mg, Atorvastatina 20 mg' && await ev(n('#rhList .rh-esc')) === 0, 'foram só os marcados: ' + l);
-    return l + ' (sem a Metformina desmarcada)';
+    certo(l === 'Losartana 50 mg, Atorvastatina 20 mg', 'foram só os escolhidos: ' + l);
+    certo(await ev(`[...document.querySelectorAll('#rhList .rh-item')].filter((r) => r.innerText.includes('Na receita')).length`) >= 2, 'as linhas viram "Na receita"');
+    return l + ' (a Metformina ficou de fora)';
   }],
   ['receita em A5 quando escolhido em Configurações', async () => {
     await medico({ receita_papel: 'A5' }); await abre(); await item('Losartana', '50 mg', '1 comprimido de 12/12 h', '60 comprimidos'); await salvo();

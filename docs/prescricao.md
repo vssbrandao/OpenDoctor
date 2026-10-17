@@ -52,18 +52,18 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 - **Emitir receita:** confirma mostrando os avisos e imprime as folhas, com o cabeçalho do médico e os itens agrupados
   por via de uso.
 - **Copiar:** copia o texto da receita.
-- **Histórico** (o visual da tabela de Consultas):
-  - **Tabela:** Data, Remédios, Consulta e Receita (Emitida, Cancelada ou Rascunho). Com a coluna estreita, a coluna
-    Consulta some, como a Local em Consultas.
-  - **Busca:** "Buscar nas receitas" filtra por remédio. Mostra 10 linhas, com "Mostrar todas".
-  - **Cartão:** clicar na linha abre o cartão da receita, como o da evolução: tipo, data, situação, remédios,
-    consulta e o motivo do cancelamento.
-  - **Botões no cartão:**
-    - "Usar nesta consulta" copia os itens para a receita de hoje; com mais de um item novo, abre a escolha (os que
-      já estão na receita vêm travados);
-    - "Imprimir 2ª via" sai marcada, com a data original;
-    - "Cancelar receita" pede o motivo;
-    - "Copiar texto".
+- **Histórico** (o visual da tabela de Consultas, sem abrir e fechar): **uma linha por remédio**, agrupadas pela
+  receita.
+  - **Cabeçalho de cada receita:**
+    - data, hora, consulta, tipo e situação (Emitida, Cancelada com o motivo, ou Rascunho);
+    - as ações da receita inteira: "Usar todos", "Imprimir 2ª via" (sai marcada, com a data original),
+      "Cancelar receita" (pede o motivo) e "Copiar texto".
+  - **Linha do remédio:**
+    - remédio e dose, posologia e quantidade;
+    - "Usar nesta consulta" leva só aquele remédio para a receita de hoje, e a escolha é linha a linha. Quando já
+      está lá, o botão vira "Na receita".
+  - **Busca:** "Buscar nas receitas" mostra só as linhas daquele remédio, cada uma com a sua receita. Sem busca,
+    aparecem 5 receitas, com "Mostrar todas".
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
   - entra o remédio de uso contínuo que não está no cadastro;
   - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta);
