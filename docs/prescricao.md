@@ -62,37 +62,24 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 - **Antimicrobiano** (`app/data/antimicrobianos.tsv`, RDC 471/2021): 2 vias, válida por 10 dias.
 
 ### Tela
-- **O cartão:** a nova receita segue o design do Figma (arquivo Concept, nó 1001:7340; cartão 1079:49100), com as
-  medidas exatas do quadro de 1440. A largura acompanha a coluna do meio. O cartão tem:
-  - fundo branco, canto de 19,34 e sombra;
-  - uma linha a 161,99 do topo; o espaço acima fica vazio, como no Figma;
-  - os dados: Paciente, Documento (o CPF do cadastro, ou "—") e Data de emissão por extenso. A Validade do Figma
-    saiu, a pedido do usuário;
-  - outra linha e os remédios numerados 01, 02…, na ordem em que entraram (a impressão continua agrupando por via);
-  - a barra "Adicionar medicamento";
-  - embaixo, o estado do rascunho e Copiar · Emitir.
-
-  Os textos vêm de um print colado no Figma em escala 0,806 e ficam pequenos:
-  - rótulos 8,87 px #858585;
-  - valores 9,67 px bold #383838;
-  - nome do remédio 10,48 px bold #303030;
-  - linhas do remédio 9,27 px #555.
-- **Lista:** cada remédio mostra:
-  - o nome com a dose;
-  - "Forma farmacêutica: …", quando veio da base (o item guarda `forma`);
-  - a posologia;
-  - "Quantidade: …";
-  - os avisos.
-
-  O "×" aparece ao passar o mouse e tem "Desfazer". Clicar edita: remédio, dose, posologia, quantidade, via e uso
-  contínuo. Trocar o nome do remédio limpa a forma.
-- **Novo item:** a barra do Figma tem 40,3 px, fundo #F3F3F3, canto 8, o "+" do SF Symbol (exportado do Figma) e
-  "Adicionar medicamento" 11,28/16,12 Medium #6B7173. Fica sempre aberta, abaixo da lista. Ao digitar, abre embaixo
-  o painel de busca no padrão do Google Finance, com as medidas tiradas da página de verdade:
+- **A folha:** a nova receita aparece como a folha que vai ser impressa e é o centro da aba: papel branco com sombra,
+  com:
+  - o cabeçalho do médico (com "Completar meus dados de médico" se faltar CRM ou UF);
+  - "Receita", com o estado do rascunho;
+  - o paciente e a data;
+  - a busca;
+  - os remédios numerados e agrupados por via de uso, como na impressão;
+  - a linha de assinatura e Copiar · Emitir.
+  
+  Vazia, mostra onde começar.
+- **Lista:** cada linha mostra os avisos e tem "×" com "Desfazer". Clicar edita: remédio, dose, posologia,
+  quantidade, via e uso contínuo.
+- **Novo item:** a busca no padrão da do Google Finance, com as medidas tiradas da página de verdade. Fica sempre
+  aberta, acima da lista.
+  - **Barra:** 48 px, cinza #F0F2F5.
   - **Painel:** #E9EBF0, com sombra.
   - **Filtros:** Todas · Substâncias · Marcas; o escolhido em #B8D5FF.
-  - **Linhas:** título 16/20 e detalhe 12/16 à esquerda, o valor à direita (no máximo metade da linha), e o branco
-    ao passar o mouse.
+  - **Linhas:** título 16/20 e detalhe 12/16 à esquerda, o valor à direita, e o branco ao passar o mouse.
   
   São 3 passos dentro do painel:
   1. Resultados da base de medicamentos (veja "Base de medicamentos"). No fim, `Usar "texto"` aceita o texto livre;
@@ -104,6 +91,7 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   - A marca entra como "Marca (substância)".
   - ↑↓ e Enter escolhem; Esc volta um passo; clicar fora fecha.
   - Via e uso contínuo ficam na edição do item.
+  - As linhas da receita seguem o mesmo padrão: nome e dose à esquerda, posologia embaixo, quantidade à direita.
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
   - entra o remédio de uso contínuo que não está no cadastro;
   - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta).

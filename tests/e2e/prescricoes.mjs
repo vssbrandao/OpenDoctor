@@ -198,10 +198,6 @@ const cenarios = [
     await salvo();
     const l = await ev(linhas);
     certo(l.some((x) => x.startsWith('Glifage (cloridrato de metformina) 850 mg | 60 comprimidos')), 'na receita: ' + l.join('; '));
-    // o cartão do Figma: 01, 02…, a forma da apresentação escolhida e os dados do topo (sem Validade)
-    const row = `[...document.querySelectorAll('#rxBody .rx-row')].find((r) => r.innerText.includes('Glifage'))`;
-    certo(await ev(`${row}.innerText.includes('Forma farmacêutica: Comprimido revestido') && /^0\\d$/.test(${row}.querySelector('.rxp-num').textContent)`), 'número e forma na linha');
-    certo(await ev(`[...document.querySelectorAll('#rxDados dt')].map((d) => d.textContent).join('|')`) === 'Paciente|Documento|Data de emissão', 'dados do topo');
     return 'Glifage (cloridrato de metformina) 850 mg · 60 comprimidos';
   }],
   ['histórico de receitas: busca por remédio e escolha dos itens', async () => {
