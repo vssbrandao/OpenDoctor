@@ -133,25 +133,8 @@ def test_medico_configuracoes(cli):
     assert cli.patch("/me/medico", json={"receita_papel": ""}).json()["medico"]["receita_papel"] is None
 
 
-def test_avaliar_sugestao_util_nao_util_e_desmarcar(cli):
-    sug = {"patient_id": 7, "ia": "2026-10-16.1/gpt-5.4", "acao": "ajustar", "nome": "Metformina", "dose": "1000 mg",
-           "motivo": "HbA1c acima da meta", "fonte": "Diretriz (2024)"}
-    assert cli.post("/prontuario/prescricao/avaliar", json=dict(sug, util=True)).json() == {"ok": True}
-    assert cli.post("/prontuario/prescricao/avaliar", json=dict(sug, util=False)).status_code == 200      # troca, não soma
-    r = cli.get("/prontuario/prescricao/avaliacoes?patient_id=7").json()["avaliacoes"]
-    assert r == [{"ia": "2026-10-16.1/gpt-5.4", "acao": "ajustar", "nome": "Metformina", "util": False}]
-    cli.post("/prontuario/prescricao/avaliar", json=dict(sug, util=None))
-    assert cli.get("/prontuario/prescricao/avaliacoes?patient_id=7").json()["avaliacoes"] == []
-    for ruim in (dict(sug, acao="trocar", util=True), dict(sug, ia="", util=True), dict(sug, util="sim"), dict(sug, patient_id=9, util=True)):
-        assert cli.post("/prontuario/prescricao/avaliar", json=ruim).status_code == 400
-    cli.quem["u"] = OUTRO                                 # outro médico não avalia nem vê o paciente
-    assert cli.post("/prontuario/prescricao/avaliar", json=dict(sug, util=True)).status_code == 400
-    assert cli.get("/prontuario/prescricao/avaliacoes?patient_id=7").status_code == 400
-
-
 @pytest.mark.parametrize("metodo,rota", [("get", "/prontuario/receitas?patient_id=7"), ("post", "/prontuario/receitas"),
-                                         ("post", "/prontuario/receitas/conferir"), ("get", "/me/medico"), ("patch", "/me/medico"),
-                                         ("post", "/prontuario/prescricao/avaliar"), ("get", "/prontuario/prescricao/avaliacoes?patient_id=7")])
+                                         ("post", "/prontuario/receitas/conferir"), ("get", "/me/medico"), ("patch", "/me/medico")])
 def test_exige_login(monkeypatch, metodo, rota):
     monkeypatch.setattr(auth, "current_user", lambda request: None)
     assert getattr(TestClient(server.app), metodo)(rota).status_code == 401

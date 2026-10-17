@@ -899,43 +899,6 @@ def add_example_receitas(user_id, patient_id, rows):
         conn.commit()
 
 
-# --- "útil / não útil" nas possíveis prescrições (para o médico revisor) ---
-_AV_CAMPOS = ("ia", "acao", "nome", "dose", "posologia", "motivo", "fonte")
-
-
-def avaliar_sugestao(user_id, patient_id, av, util):
-    """Grava ou troca a avaliação de uma sugestão (uma por versão da IA, ação e remédio); util None apaga."""
-    chave = (user_id, patient_id, av["ia"], av["acao"], av["nome"])
-    with connection() as conn:
-        if util is None:
-            conn.execute("""delete from prescricao_avaliacoes
-                            where user_id = %s and patient_id = %s and ia = %s and acao = %s and nome = %s""", chave)
-        else:
-            conn.execute(f"""insert into prescricao_avaliacoes (user_id, patient_id, {', '.join(_AV_CAMPOS)}, util)
-                             values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                             on conflict (user_id, patient_id, ia, acao, nome) do update set
-                               dose = excluded.dose, posologia = excluded.posologia, motivo = excluded.motivo,
-                               fonte = excluded.fonte, util = excluded.util, updated_at = now()""",
-                         (user_id, patient_id, *(av[k] for k in _AV_CAMPOS), util))
-        conn.commit()
-
-
-def list_avaliacoes(user_id, patient_id):
-    with connection() as conn:
-        rows = conn.execute("""select ia, acao, nome, util from prescricao_avaliacoes
-                               where user_id = %s and patient_id = %s order by updated_at desc limit 500""",
-                            (user_id, patient_id)).fetchall()
-    return [{"ia": r[0], "acao": r[1], "nome": r[2], "util": r[3]} for r in rows]
-
-
-def resumo_avaliacoes():
-    """Para o médico revisor: quantas vezes cada sugestão foi útil ou não, por versão da IA. Sem médico nem paciente."""
-    with connection() as conn:
-        rows = conn.execute("""select ia, acao, lower(nome), count(*) filter (where util), count(*) filter (where not util)
-                               from prescricao_avaliacoes group by 1, 2, 3 order by 1 desc, 5 desc, 4 desc""").fetchall()
-    return [{"ia": r[0], "acao": r[1], "nome": r[2], "util": r[3], "nao_util": r[4]} for r in rows]
-
-
 # --- dados do médico para a receita (Configurações) ---
 MEDICO_CAMPOS = ("name", "crm", "crm_uf", "especialidade", "consultorio_endereco", "consultorio_telefone", "receita_papel")
 

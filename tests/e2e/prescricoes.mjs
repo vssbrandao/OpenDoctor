@@ -166,45 +166,17 @@ const cenarios = [
     certo(u.includes('Metformina 1000 mg 1 comprimido 2x/dia') && u.includes('Losartana 50 mg 12/12h'), 'em uso: ' + u.join('; '));
     return 'trocou a dose da Metformina nas medicações em uso';
   }],
-  ['não sugerir esconde (também ao recarregar); perguntar vai ao assistente sem o nome; nome do remédio com sugestão', async () => {
+  ['possíveis prescrições: só 2 remédios novos, só com Adicionar; nome do remédio com sugestão', async () => {
     await abre();
     certo(await ev(n('#rnList .sg')) === 2 && await ev(`!!${sg('Dapagliflozina')} && !!${sg('Semaglutida')}`), 'só 2 remédios novos');
-    await ev(`[...${sg('Semaglutida')}.querySelectorAll('.sg-mais button')].find((b) => b.textContent === 'Não sugerir').click()`);
-    certo(!(await ev(`!!${sg('Semaglutida')}`)) && (await ev(`document.getElementById('rnFoot').textContent`)).includes('Ver 1 que você tirou'), 'escondeu');
-    await send('Page.reload'); await sleep(500); await ate(`document.querySelectorAll('#rnList .sg').length > 0`, 20000, 'sugestões depois de recarregar');
-    certo(!(await ev(`!!${sg('Semaglutida')}`)), 'continua escondida depois de recarregar');
-    await ev(`[...document.querySelectorAll('#rnFoot button')].find((b) => /que você tirou/.test(b.textContent)).click()`);
-    certo(await ev(`${sg('Semaglutida')}.classList.contains('oculta') && !!${sg('Semaglutida')}.innerText.includes('Voltar a sugerir')`), 'mostra a escondida');
-    await ev(`[...${sg('Dapagliflozina')}.querySelectorAll('.sg-mais button')].find((b) => b.textContent === 'Perguntar').click()`);
-    const q = await ev(`document.getElementById('biInput').value`);
-    certo(q.includes('Sugestão de prescrição: iniciar') && q.toLowerCase().includes('dapagliflozina') && !q.includes('Maria'), 'pergunta: ' + q.slice(0, 160));
+    certo(await ev(`[...document.querySelectorAll('#rnBox button, #rnBox a')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()).join('|')`) === 'Adicionar|Adicionar',
+      'só o Adicionar no cartão');
+    await ev(`${sg('Dapagliflozina')}.querySelector('.sg-add').click()`); await salvo();
+    certo((await ev(linhas)).some((l) => l.startsWith('Dapagliflozina 10 mg')), 'foi para a receita');
     await ev(`document.getElementById('rxAdd').click()`);
     certo(await ev(`document.querySelector('#rxBody .rx-edit .rx-f').getAttribute('list') === 'rxRemedios'`), 'campo do nome com a lista');
     await ate(`document.getElementById('rxRemedios').options.length > 500`, 4000, 'lista de remédios');
-    return 'escondeu e voltou; pergunta sem o nome; ' + (await ev(`document.getElementById('rxRemedios').options.length`)) + ' nomes na sugestão';
-  }],
-  ['sinal novo na consulta: avisa que o perfil mudou, sem gerar de novo sozinho', async () => {
-    await abre(); const antes = await ev(n('#rnList .sg'));
-    await ev(`document.querySelector('#prTabs [data-tab=atual]').click()`); await sleep(300);
-    await ev(`document.querySelector('#prSeg [data-m=soap]').click()`); await sleep(300);
-    await ev(`(() => { for (const [k, v] of [['pa_s', '150'], ['pa_d', '95']]) { const i = document.querySelector('input[data-v=' + k + ']');
-      i.value = v; i.dispatchEvent(new Event('input', { bubbles: true })); } return 1; })()`);
-    await sleep(2500); await ev(`document.querySelector('#prTabs [data-tab=prescricoes]').click()`);
-    await ate(`document.getElementById('rnFoot').textContent.includes('O perfil mudou')`, 5000, 'aviso de perfil mudado');
-    certo(await ev(n('#rnList .sg')) === antes, 'as sugestões continuam na tela');
-    return 'aviso com "Gerar de novo"; ' + antes + ' sugestões mantidas';
-  }],
-  ['útil / não útil: grava, troca, desmarca e volta marcado ao recarregar', async () => {
-    await abre(); await ate(n('#rnList .sg-av') + ' > 0', 5000, 'Útil?');
-    const marca = (nome, qual) => ev(`[...${sg(nome)}.querySelectorAll('.sg-av button')].find((b) => b.getAttribute('aria-label') === ${JSON.stringify(qual === 'Sim' ? 'Útil' : 'Não útil')}).click()`);
-    const api = async () => (await srv('/prontuario/prescricao/avaliacoes?patient_id=9001')).avaliacoes.map((a) => a.acao + ' ' + a.nome.toLowerCase() + ' ' + a.util).join('; ');
-    await marca('Dapagliflozina', 'Sim'); await sleep(400); await marca('Semaglutida', 'Não'); await sleep(400);
-    certo(await api() === 'iniciar semaglutida false; iniciar dapagliflozina true', 'gravou: ' + await api());
-    await marca('Dapagliflozina', 'Não'); await sleep(400); await marca('Semaglutida', 'Não'); await sleep(400);
-    certo(await api() === 'iniciar dapagliflozina false', 'trocou e desmarcou: ' + await api());
-    await send('Page.reload'); await sleep(500); await ate(n('#rnList .sg-av .on') + ' === 1', 20000, 'marcado depois de recarregar');
-    certo(await ev(`${sg('Dapagliflozina')}.querySelector('.sg-av .on').getAttribute('aria-label') === 'Não útil'`), 'a marcada é a da Dapagliflozina');
-    return 'Sim → Não na Dapagliflozina; Semaglutida desmarcada; voltou marcado';
+    return 'Dapagliflozina e Semaglutida, só com Adicionar; ' + (await ev(`document.getElementById('rxRemedios').options.length`)) + ' nomes na sugestão';
   }],
   ['histórico de receitas: busca por remédio e escolha dos itens', async () => {
     await abre(); await ate(n('#rhList .rh-item') + ' > 0', 5000, 'histórico');

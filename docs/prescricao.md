@@ -32,8 +32,6 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   - entra no registro de acessos.
 - `POST /prontuario/receitas/{id}/cancelar`: só emitida, com motivo; entra no registro de acessos.
 - `GET` e `PATCH /me/medico`: dados do médico e o papel da receita, A4 ou A5 (`web/opendoctor-configuracoes.html`).
-- `POST /prontuario/prescricao/avaliar` e `GET /prontuario/prescricao/avaliacoes?patient_id=`: o "útil / não útil"
-  das sugestões da IA (veja abaixo).
 
 ### Conferência de cada item (`prescricao.conferir`, inclusive o que o médico digita)
 - Alergia do cadastro, inclusive família e marca (`scribe.allergy_hits`).
@@ -100,28 +98,18 @@ linha.
    
    A comparação de nomes é a de `scribe.same_drug`, que tolera até 2 letras de diferença. Por isso dapagliflozina e
    empagliflozina contam como o mesmo remédio, e outro remédio da mesma classe de um já usado também sai.
-5. **Guarda em memória** por 24 h, enquanto o perfil não muda. "Gerar de novo" força outra geração.
+5. **Guarda em memória** por 24 h, enquanto o perfil não muda.
 
 ### Na tela
-- **Cartão enxuto:**
-  - cada sugestão mostra remédio, dose e posologia, e o motivo numa linha (inteiro ao passar o mouse);
-  - os avisos de alergia, dose e função renal aparecem quando houver;
-  - as ações: "Fonte" (o artigo), "Perguntar", "Não sugerir" e os joinhas de útil e não útil;
-  - a observação da IA fica em texto pequeno, em até 2 linhas;
-  - "Gerar de novo" fica no canto do cabeçalho.
-- **Adicionar** leva o item à receita; de novo ("Na receita") tira.
+- **Cartão minimalista:** cada sugestão mostra remédio, dose e posologia, e o motivo numa linha (inteiro ao passar o
+  mouse). A única ação é **Adicionar**, que leva o item à receita; de novo ("Na receita") tira.
+- **Avisos:** os de alergia, dose e função renal aparecem quando houver.
+- **Observação da IA:** em texto pequeno, em até 2 linhas.
 - **Nada com indicação clara:** a lista vem vazia, com a observação da IA.
-- **Perguntar ao assistente:** põe no campo do assistente o perfil (sem o nome) e a pergunta sobre a sugestão; quem
-  envia é o médico.
-- **Não sugerir:** esconde a sugestão neste navegador (`localStorage`, por paciente). "Ver as que você tirou" mostra
-  de novo, com "Voltar a sugerir".
-- **Útil e não útil (joinhas):** a avaliação de cada sugestão da IA vai para a tabela `prescricao_avaliacoes` (migração
-  `0015`), uma por sugestão (versão da IA, ação e remédio). Clicar de novo desmarca. Guarda só a sugestão, sem o
-  perfil. Para o médico revisor, `scripts/avaliacoes_prescricao.py` mostra as contagens por versão da IA, sem médico
-  e sem paciente (ler produção só com o ok do usuário).
-- **Perfil mudou:** abrir a aba com o resumo clínico mudado gera de novo. Com a aba aberta, e quando chega sinal ou
-  exame novo, só avisa "O perfil mudou desde estas sugestões", com "Gerar de novo", porque gerar gasta crédito e troca
-  a lista. O que o médico muda pela própria aba (atualizar as em uso) não conta como mudança.
+- **Perfil mudou:** gera de novo ao abrir a aba. Conta como mudança o cadastro e o último valor de cada sinal e exame.
+  - **Com a aba aberta:** não gera sozinho, porque gerar gasta crédito e troca a lista. O que o médico muda pela
+    própria aba (atualizar as em uso) não conta.
+  - **Se a IA falhar:** abrir a aba de novo tenta outra vez.
 
 ### Gravação da consulta
 Os remédios que a gravação extrai (`scribe.finish` → `meds`) entram no rascunho da receita desta consulta como "Da
@@ -155,9 +143,7 @@ continua no servidor, mas a tela não a usa mais.
   - recarregar no meio;
   - receita no Histórico;
   - atualizar as medicações em uso depois de emitir;
-  - "Não sugerir" depois de recarregar, "Perguntar ao assistente" sem o nome e a sugestão do nome do remédio;
-  - sinal novo na consulta: aviso de perfil mudado;
-  - útil / não útil (grava, troca, desmarca e volta ao recarregar);
+  - possíveis prescrições: só 2 remédios novos e só o "Adicionar"; a sugestão do nome do remédio;
   - busca e escolha dos itens no Histórico;
   - receita em A5.
 
@@ -169,8 +155,8 @@ continua no servidor, mas a tela não a usa mais.
 - **Médico revisor:** `controlados.tsv`, `antimicrobianos.tsv`, `ajuste_renal.tsv` e o prompt. É sugestão de conduta,
   perto da RDC 657/2022 da Anvisa.
 - **Advogado:** modelo de receita, assinatura digital (ICP-Brasil), RIPD e Política, incluindo o envio do perfil à IA.
-- **Produção:** as migrações 0014 e 0015 vão para produção só com o ok do usuário; no banco de testes já foram
-  aplicadas.
+- **Produção:** as migrações 0014 (receitas) e 0015 (papel da receita) vão para produção só com o ok do usuário; no
+  banco de testes já foram aplicadas.
 - **Fase 3, o que depende de decisão:**
   - enviar ao paciente por WhatsApp ou e-mail (dado de saúde saindo do app: decidir com o usuário e o advogado);
   - receita digital com assinatura ICP-Brasil (integração externa; decidir com o advogado).

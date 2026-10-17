@@ -1,11 +1,11 @@
 """Receitas e dados do médico em memória, com os MESMOS contratos de app/db.py (list/get/create/update/delete/emit/
-cancel_receita, add_example_receitas, get/update_medico, avaliar_sugestao, list_avaliacoes). Uma cópia só, usada pelos testes das rotas
+cancel_receita, add_example_receitas, get/update_medico). Uma cópia só, usada pelos testes das rotas
 (tests/test_receitas.py) e pelo preview local (scripts/preview_gravacao.py): mudou uma regra no db.py, muda aqui."""
 import datetime as dt
 import uuid
 
 NOMES = ("list_receitas", "get_receita", "create_receita", "update_receita", "delete_receita", "emit_receita",
-         "cancel_receita", "add_example_receitas", "get_medico", "update_medico", "avaliar_sugestao", "list_avaliacoes")
+         "cancel_receita", "add_example_receitas", "get_medico", "update_medico")
 CAMPOS = ("name", "crm", "crm_uf", "especialidade", "consultorio_endereco", "consultorio_telefone", "receita_papel")
 
 
@@ -13,7 +13,6 @@ class FakeReceitas:
     def __init__(self, medicos=None):
         self.rx = {}                                     # id → receita (com "user_id")
         self.medicos = dict(medicos or {})               # user_id → {campos}
-        self.avaliacoes = {}                             # (user_id, patient_id, ia, acao, nome) → {campos, util}
 
     def install(self, setattr_):
         from app import db
@@ -21,7 +20,7 @@ class FakeReceitas:
             setattr_(db, nome, getattr(self, nome))
 
     def reset(self):
-        self.rx.clear(); self.avaliacoes.clear()
+        self.rx.clear()
 
     @staticmethod
     def _agora():
@@ -92,14 +91,3 @@ class FakeReceitas:
     def update_medico(self, user_id, campos):
         self.medicos.setdefault(user_id, {}).update({k: v for k, v in campos.items() if k in CAMPOS})
         return self.get_medico(user_id)
-
-    def avaliar_sugestao(self, user_id, patient_id, av, util):
-        k = (user_id, patient_id, av["ia"], av["acao"], av["nome"])
-        if util is None:
-            self.avaliacoes.pop(k, None)
-        else:
-            self.avaliacoes[k] = dict(av, util=util, em=self._agora())
-
-    def list_avaliacoes(self, user_id, patient_id):
-        rs = [v for k, v in self.avaliacoes.items() if k[0] == user_id and k[1] == patient_id]
-        return [{c: v[c] for c in ("ia", "acao", "nome", "util")} for v in sorted(rs, key=lambda v: v["em"], reverse=True)]

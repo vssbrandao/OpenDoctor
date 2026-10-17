@@ -356,7 +356,7 @@ def _estado():
 
 @mock.get("/_preview/reset")
 def _reset():
-    GRAV.reset(); NOTES.clear(); FILES.clear(); RX.reset(); PATS.clear(); PATS.update({k: dict(v) for k, v in _PATS0.items()}); prescricao._CACHE.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
+    GRAV.reset(); NOTES.clear(); FILES.clear(); RX.reset(); PATS.clear(); PATS.update({k: dict(v) for k, v in _PATS0.items()}); prescricao._CACHE.clear(); server._RL.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
     return {"ok": True}
 
 
