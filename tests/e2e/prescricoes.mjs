@@ -53,12 +53,13 @@ async function abre(exemplo = true) {
   await ate(`!!document.getElementById('rnList') && document.querySelectorAll('#rnList .sg').length > 0`, 20000, 'sugestões');
 }
 async function item(nome, dose, pos, qtd) {
-  // a barra "Adicionar remédio…" (#rxNew): o nome + Enter abre a linha de pílulas; preenche e "Adicionar"
-  await ate(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .rx-busca').offsetParent !== null`, 3000, 'barra de novo item');
-  await ev(`(() => { const q = document.querySelector('#rxNew .rx-q'); q.value = ${JSON.stringify(nome)};
+  // a busca (#rxNew, padrão do Finance): o nome + Enter sem escolher = texto livre → dose, posologia, quantidade e "Adicionar"
+  await ate(`!document.getElementById('rxNew').hidden`, 3000, 'busca de novo item');
+  await ev(`(() => { const q = document.querySelector('#rxNew .fz-in'); q.focus(); q.value = ${JSON.stringify(nome)};
     q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1; })()`);
-  await ev(`(() => { const p = (k) => document.querySelector('#rxNew .rx-p[data-k=' + k + ']'); p('dose').value = ${JSON.stringify(dose)};
-    p('posologia').value = ${JSON.stringify(pos)}; p('quantidade').value = ${JSON.stringify(qtd)}; document.querySelector('#rxNew .rx-ok').click(); return 1; })()`);
+  await ate(n('#rxNew .fz-f') + ' === 3', 3000, 'campos do item');
+  await ev(`(() => { const f = (k) => document.querySelector('#rxNew .fz-f[data-k=' + k + ']'); f('dose').value = ${JSON.stringify(dose)};
+    f('posologia').value = ${JSON.stringify(pos)}; f('quantidade').value = ${JSON.stringify(qtd)}; document.querySelector('#rxNew .fz-ok').click(); return 1; })()`);
 }
 // o rascunho salva sozinho 600 ms depois da última mudança: espera a gravação começar e terminar
 const salvo = async () => { await sleep(900); await ate(`document.getElementById('rxSt').textContent === 'rascunho salvo'`, 8000, 'rascunho salvo'); };
@@ -175,26 +176,25 @@ const cenarios = [
       'só o Adicionar no cartão');
     await ev(`${sg('Dapagliflozina')}.querySelector('.sg-add').click()`); await salvo();
     certo((await ev(linhas)).some((l) => l.startsWith('Dapagliflozina 10 mg')), 'foi para a receita');
-    certo(await ev(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .rx-q').getAttribute('role') === 'combobox'`), 'barra sempre aberta, com a busca');
+    certo(await ev(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .fz-in').getAttribute('role') === 'combobox'`), 'busca sempre aberta');
     await item('Omeprazol', '20 mg', '1 cápsula em jejum', '30 cápsulas');
-    certo(await ev(`document.querySelector('#rxNew .rx-q').value === '' && document.querySelector('#rxNew .rx-busca').offsetParent !== null`), 'volta para a barra vazia depois de adicionar');
+    certo(await ev(`document.querySelector('#rxNew .fz-in').value === '' && document.querySelector('#rxNew .fz-pan').hidden`), 'volta para a barra vazia, painel fechado');
     return 'Dapagliflozina e Semaglutida, só com Adicionar; a barra volta vazia';
   }],
-  ['adicionar pela base de medicamentos: escolher a marca, dose e quantidade da apresentação', async () => {
+  ['adicionar pela base de medicamentos: escolher a marca, a apresentação e a quantidade', async () => {
     await abre(false);
-    await ev(`(() => { const q = document.querySelector('#rxNew .rx-q'); q.focus(); q.value = 'glifage'; q.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
-    await ate(n('#rxNew .rx-sug-i') + ' > 0', 5000, 'resultados da busca');
-    const r = await ev(`[...document.querySelectorAll('#rxNew .rx-sug-i')].map((b) => b.innerText.replace(/\\s+/g, ' ')).slice(0, 2)`);
-    certo(r[0].startsWith('Glifage Cloridrato de metformina'), 'resultado: ' + r.join(' / '));
-    await ev(`(() => { document.querySelector('#rxNew .rx-sug-i').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1; })()`);
-    const p = (k) => `document.querySelector('#rxNew .rx-p[data-k=${k}]')`;
-    certo(await ev(`${p('nome')}.value`) === 'Glifage (cloridrato de metformina)', 'nome na receita: Marca (substância)');
-    const doses = await ev(`[...document.getElementById('rxDoses').options].map((o) => o.value)`);
-    certo(doses.includes('850 mg') && doses.includes('500 mg'), 'doses da marca: ' + doses.join(', '));
-    await ev(`(() => { const d = ${p('dose')}; d.value = '850 mg'; d.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
-    const qs = await ev(`[...document.getElementById('rxQtds').options].map((o) => o.value)`);
-    certo(qs.includes('30 comprimidos') && (await ev(`${p('posologia')}.placeholder`)).includes('comprimido revestido'), 'quantidades e forma: ' + qs.join(', '));
-    await ev(`(() => { ${p('posologia')}.value = '1 comprimido 2x/dia'; ${p('quantidade')}.value = '60 comprimidos'; document.querySelector('#rxNew .rx-ok').click(); return 1; })()`);
+    await ev(`(() => { const q = document.querySelector('#rxNew .fz-in'); q.focus(); q.value = 'glifage'; q.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await ate(n('#rxNew .fz-row') + ' > 0', 5000, 'resultados da busca');
+    const r = await ev(`[...document.querySelectorAll('#rxNew .fz-row')].map((b) => b.querySelector('.fz-t').textContent + ' / ' + b.querySelector('.fz-s').textContent).slice(0, 2)`);
+    certo(r[0] === 'Glifage / Cloridrato de metformina · Merck', 'resultado: ' + r.join(' | '));
+    certo(await ev(`[...document.querySelectorAll('#rxNew .fz-chip')].map((c) => c.textContent).join('|')`) === 'Todas|Substâncias|Marcas', 'filtros');
+    await ev(`(() => { document.querySelector('#rxNew .fz-row').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1; })()`);
+    await ate(`document.querySelector('#rxNew .fz-ht') && document.querySelector('#rxNew .fz-ht').textContent === 'Glifage (cloridrato de metformina)'`, 3000, 'apresentações da marca');
+    await ev(`(() => { [...document.querySelectorAll('#rxNew .fz-row')].find((b) => b.querySelector('.fz-t').textContent === '850 mg').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1; })()`);
+    await ate(n('#rxNew .fz-f') + ' === 2', 3000, 'posologia e quantidade');
+    const f = (k) => `document.querySelector('#rxNew .fz-f[data-k=${k}]')`;
+    certo(await ev(`${f('quantidade')}.value`) === '30 comprimidos' && (await ev(`${f('posologia')}.placeholder`)).includes('comprimido revestido'), 'quantidade e forma da apresentação');
+    await ev(`(() => { ${f('posologia')}.value = '1 comprimido 2x/dia'; ${f('quantidade')}.value = '60 comprimidos'; document.querySelector('#rxNew .fz-ok').click(); return 1; })()`);
     await salvo();
     const l = await ev(linhas);
     certo(l.some((x) => x.startsWith('Glifage (cloridrato de metformina) 850 mg | 60 comprimidos')), 'na receita: ' + l.join('; '));

@@ -64,32 +64,24 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 ### Tela
 - **Lista:** cada linha mostra os avisos e tem "×" com "Desfazer". Clicar edita: remédio, dose, posologia,
   quantidade, via e uso contínuo.
-- **Novo item:** a barra "Adicionar remédio…" fica sempre aberta embaixo da lista.
-  - Ela busca na base de medicamentos (veja "Base de medicamentos") por substância ou marca. As setas ↑↓ e o Enter
-    escolhem; Enter sem escolher aceita o texto livre.
-  - Escolher troca a barra pela linha de pílulas: remédio, dose, posologia, quantidade e "Adicionar".
-  - A marca entra como "Marca (substância)", por exemplo "Glifage (cloridrato de metformina)".
-  - As doses e as quantidades de embalagem daquele produto aparecem como sugestão nas pílulas, e a forma (ex.:
-    comprimido revestido) vem como dica na posologia.
-  - "Adicionar" põe o item na receita e volta para a barra vazia; Esc também volta.
+- **Novo item:** a busca no padrão da do Google Finance, com as medidas tiradas da página de verdade. Fica sempre
+  aberta, acima da lista.
+  - **Barra:** 48 px, cinza #F0F2F5.
+  - **Painel:** #E9EBF0, com sombra.
+  - **Filtros:** Todas · Substâncias · Marcas; o escolhido em #B8D5FF.
+  - **Linhas:** título 16/20 e detalhe 12/16 à esquerda, o valor à direita, e o branco ao passar o mouse.
+  
+  São 3 passos dentro do painel:
+  1. Resultados da base de medicamentos (veja "Base de medicamentos"). No fim, `Usar "texto"` aceita o texto livre;
+     Enter sem escolher faz o mesmo.
+  2. As apresentações do produto: dose e forma, com a embalagem à direita.
+  3. Posologia, com a forma como dica, e quantidade, já com a embalagem de 30 quando existe. No texto livre, a dose
+     também. Depois, "Adicionar".
+  
+  - A marca entra como "Marca (substância)".
+  - ↑↓ e Enter escolhem; Esc volta um passo; clicar fora fecha.
   - Via e uso contínuo ficam na edição do item.
-  - É montada uma vez só, então redesenhar a lista não apaga o que está sendo digitado. O nome do remédio tem sugestão enquanto digita (`GET /prontuario/remedios`, a lista
-  de `app/data/remedios.txt`, num `<datalist>`).
-- **Emitir receita:** confirma mostrando os avisos e imprime as folhas, com o cabeçalho do médico e os itens agrupados
-  por via de uso.
-- **Copiar:** copia o texto da receita.
-- **Histórico** (o visual da tabela de Consultas, sem abrir e fechar): **uma linha por remédio**, agrupadas pela
-  receita.
-  - **Cabeçalho de cada receita:**
-    - data, hora, consulta, tipo e situação (Emitida, Cancelada com o motivo, ou Rascunho);
-    - à direita, na mesma linha, as ações da receita inteira: "Imprimir 2ª via" (sai marcada, com a data original)
-      e "Cancelar receita" (pede o motivo).
-  - **Linha do remédio:**
-    - remédio e dose, posologia e quantidade;
-    - "Usar nesta consulta" leva só aquele remédio para a receita de hoje, e a escolha é linha a linha. Quando já
-      está lá, o botão vira "Na receita".
-  - **Busca:** "Buscar nas receitas" mostra só as linhas daquele remédio, cada uma com a sua receita. Sem busca,
-    aparecem 5 receitas, com "Mostrar todas".
+  - As linhas da receita seguem o mesmo padrão: nome e dose à esquerda, posologia embaixo, quantidade à direita.
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
   - entra o remédio de uso contínuo que não está no cadastro;
   - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta).
