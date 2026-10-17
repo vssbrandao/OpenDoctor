@@ -1,5 +1,5 @@
 {
- "nota": "Resposta real do gpt-5.4 (2ª rodada de teste, 16/10/2026) para a paciente fictícia Maria Silva (app/exemplo), com as fontes da busca. O preview usa este arquivo no lugar da OpenAI e da busca.",
+ "nota": "Resposta real do gpt-5.4 (prompt 2026-10-17.1: até 2 remédios novos, 17/10/2026) para a paciente fictícia Maria Silva (app/exemplo), com as fontes da busca. O preview usa este arquivo no lugar da OpenAI e da busca.",
  "fontes": [
   {
    "rotulo": "F1",
@@ -8,7 +8,7 @@
    "url": "https://doi.org/10.1080/08037051.2026.2705014",
    "publication_date": "2026-01-01",
    "evidence": "Ensaio clínico",
-   "text": ""
+   "text": "Many patients pharmacologically treated for hypertension do not reach blood pressure (BP) treatment targets. In Europe, a target of BP < 130/80 mmHg has recently been recommended. Presently, the effect of combining pharmacological approaches and lifestyle changes is unclear. The Hypocaloric Mediterranean Diet or Physical Activity (MeDiPA) randomised controlled trial aims at investigating the effects of lifestyle modifications in patients with uncontrolled hypertension taking antihypertensives. Here, we present the MeDiPA design and baseline population characteristics."
   },
   {
    "rotulo": "F2",
@@ -17,7 +17,7 @@
    "url": "https://doi.org/10.1002/14651858.CD011575.pub3",
    "publication_date": "2024-01-01",
    "evidence": "Metanálise",
-   "text": ""
+   "text": "This is an update of the original Cochrane review, published in 2017. Eight out of 10 major antihypertensive trials in adults, 65 years of age or older, attempted to achieve a target systolic blood pressure (BP) of < 160 mmHg. Collectively, these trials demonstrated cardiovascular benefit for treatment, compared to no treatment, for older adults with BP > 160 mmHg. However, an even lower BP target of < 140 mmHg is commonly applied to all age groups. Yet the risk and benefit of antihypertensive therapy can be expected to vary across populations, and some observational evidence suggests that older adults who are frail might have better health outcomes with less aggressive BP lowering. Current clinical practice guidelines are inconsistent in target BP recommendations for older adults, with systolic BP targets ranging from < 130 mmHg to < 150 mmHg. The 2017 review did not find compelling evidence of a reduction in any of the primary outcomes, including all-cause mortality, stroke, or total serious cardiovascular adverse events, comparing a lower BP target to a higher BP target in older adults with hypertension. It is important to update this review to explore if new evidence exists to determine whether older adults might do just as well, better, or worse with less aggressive pharmacotherapy for hypertension."
   },
   {
    "rotulo": "F3",
@@ -26,7 +26,7 @@
    "url": "https://doi.org/10.3390/jcdd13090441",
    "publication_date": "2026-01-01",
    "evidence": "Artigo",
-   "text": ""
+   "text": "Arterial hypertension is the leading driver of hypertensive heart disease (HHD), the cardiac structural or functional injury attributable to sustained pressure overload, which promotes left ventricular hypertrophy and provides the substrate for incident heart failure, especially heart failure with preserved ejection fraction (HFpEF). Antihypertensive pharmacotherapy lowers blood pressure (BP) and regresses hypertrophy, yet residual cardiovascular risk persists, and exercise training may add to what drug therapy achieves. HHD progresses through interwoven autonomic, vascular, structural, and diastolic mechanisms, and the benefits of training are uneven across them: functional capacity, BP, endothelial function, and autonomic indices improve within typical trial durations, whereas resting diastolic indices, left ventricular mass, and myocardial fibrosis markers change inconsistently. Carotid-femoral pulse wave velocity is itself sensitive to distending pressure, so a fall does not by itself establish structural arterial remodeling. Small hypertensive trials support favorable geometry, and animal models support antifibrotic mechanisms, but in predominantly hypertensive HFpEF cohorts, capacity gains often occur without durable resting diastolic reversal or mortality benefit. By pairing each hypertension-specific mechanism with the corresponding human evidence, the present narrative review concludes that exercise training is a beneficial adjunct to antihypertensive therapy and to broader risk-factor management, while reverse remodeling and clinical-event reduction remain incompletely proven. Phenotype-guided trials with sensitive imaging, exercise-load endpoints, and hard outcomes are needed."
   },
   {
    "rotulo": "F4",
@@ -35,7 +35,7 @@
    "url": "https://doi.org/10.1016/S0140-6736(21)00536-5",
    "publication_date": "2021-01-01",
    "evidence": "Revisão",
-   "text": ""
+   "text": "SGLT2 inhibitors and GLP-1 receptor agonists are used in patients with type 2 diabetes as glucose lowering therapies, with additional benefits of weight loss and blood pressure reduction. Data from cardiovascular outcome trials have highlighted that these drugs confer protection against major cardiovascular disease in those with established atherosclerotic cardiovascular disease, reduce the risk of admission to hospital for heart failure, and reduce cardiovascular and all-cause mortality. Ongoing research using hard renal endpoints such as end stage kidney disease rather than surrogate markers might clarify the renoprotective benefits of both agents. When used for glucose lowering, SGLT2 inhibitors are most effective if the estimated glomerular filtration rate is more than 60 ml per min per 1·73m2 at initiation and should be avoided where there is a risk of diabetic ketoacidosis. GLP-1 receptor agonists are contraindicated in those with a history of medullary thyroid cancer and used with caution in patients with a history of pancreatitis of a known cause. These drugs are now second-line, or even arguably first-line, glucose lowering therapies in patients with cardiorenal disease, irrespective of glycaemic control. If an SGLT2 inhibitor or GLP-1 receptor agonist is considered suitable in patients with type 2 diabetes, treatment should be prioritised according to existing evidence: GLP-1 receptor agonists should be considered in patients at a high risk of, or with established, cardiovascular disease and SGLT2 inhibitors considered for patients with heart failure (with reduced ejection fraction) or chronic kidney disease (with or without established cardiovascular disease). There is now compelling data on the benefits of these drugs for a range of other clinical indications even without type 2 diabetes, including for GLP-1 receptor agonists in patients with obesity and overweight with weight-related comorbidities."
   },
   {
    "rotulo": "F5",
@@ -44,7 +44,7 @@
    "url": "https://doi.org/10.1177/15209156261486127",
    "publication_date": "2026-01-01",
    "evidence": "Revisão",
-   "text": ""
+   "text": "Automated Insulin Delivery (AID) systems represent the most effective and safe treatment for the management of type 1 diabetes (T1D). Antidiabetic agents used for the treatment of type 2 diabetes, such as the Glucagon-Like Peptide-1 (GLP-1) Receptor Agonists (RAs), the dual Glucose-dependent Insulinotropic Polypeptide and GLP-1 RA and the Sodium-Glucose co-Transporter 2 inhibitors are associated with clinically significant weight loss and cardioprotective effect. Given the increased prevalence of overweight, obesity, and cardiovascular risk in patients with T1D, the addition of these medications to AID treatment is of considerable clinical interest. In this review limited data from randomized controlled and observational trials show that in overweight and obese patients with T1D treated with AID, the addition of weekly semaglutide, or tirzepatide is associated with significant weight loss, reduction in total daily insulin dose and increase in Time In target Range (TIR) without increased risk for hypoglycemia and Diabetic Ketoacidosis (DKA). Similarly, adjunctive treatment with empagliflozin resulted in increased TIR without increase in hypoglycemia, reduction in insulin requirements, and increase in the mean plasma ketone value, although DKA remained rare. However, studies of longer duration with more participants are required to establish the long-term safety and efficacy of these interventions in patients with T1D treated with AID."
   },
   {
    "rotulo": "F6",
@@ -53,7 +53,7 @@
    "url": "https://doi.org/10.1136/bmj-2024-083039",
    "publication_date": "2025-01-01",
    "evidence": "Revisão sistemática",
-   "text": ""
+   "text": "Medications for adults with type 2 diabetes: a living systematic review and network meta-analysis."
   },
   {
    "rotulo": "F7",
@@ -62,7 +62,7 @@
    "url": "https://doi.org/10.1503/cmaj.250502",
    "publication_date": "2025-01-01",
    "evidence": "Diretriz",
-   "text": ""
+   "text": "This update includes 6 new and 7 revised recommendations since the 2022 pharmacotherapy guideline revision (all 2020 pharmacotherapy recommendations are updated). Measures of central adiposity, in addition to ethnicity-specific body mass index and adiposity-related complications, should be used to guide the decision to initiate pharmacotherapy. Obesity pharmacotherapy should be used in conjunction with health behaviour changes and individualized based on a person's specific health needs and in keeping with their values and preferences. Recommendations support long-term use of obesity pharmacotherapy for sustained weight loss and maintenance of weight loss. We provide recommendations for use of specific obesity pharmacotherapies with proven benefit in specific subpopulations - atherosclerotic cardiovascular disease, heart failure with preserved ejection fraction, metabolic dysfunction-associated steatohepatitis, prediabetes, type 2 diabetes, obstructive sleep apnea, osteoarthritis - and for those with certain specific monogenic causes of obesity. We recommend against the use of compounded medications or medications other than those approved for weight loss in people with excess adiposity."
   },
   {
    "rotulo": "F8",
@@ -71,7 +71,7 @@
    "url": "https://doi.org/10.1503/cmaj.250502",
    "publication_date": "2025-01-01",
    "evidence": "Diretriz",
-   "text": ""
+   "text": "Pharmacotherapy in obesity facilitates clinically meaningful weight loss and important improvements in obesity-related health complications. Clinicians who treat people with obesity with or without obesity-related health complications should appropriately use pharmacotherapy as an integral part of their treatment paradigm."
   },
   {
    "rotulo": "F9",
@@ -80,50 +80,35 @@
    "url": "https://doi.org/10.1503/cmaj.250502",
    "publication_date": "2025-01-01",
    "evidence": "Diretriz",
-   "text": ""
+   "text": "Pharmacotherapy is a key component of comprehensive obesity management, alongside behavioural therapy and metabolic and bariatric surgery. In this guideline, we update the pharmacotherapy recommendations in the 2020 Canadian clinical practice guideline on obesity in adults and in the 2022 pharmacotherapy for obesity management revision to provide current recommendations for clinicians on the efficacy, safety, and appropriate use of pharmacotherapy in the management of obesity in adults."
   }
  ],
  "resposta": {
   "itens": [
    {
-    "acao": "manter",
-    "nome": "losartana",
-    "dose": "50 mg",
-    "posologia": "1 comprimido de 12/12 h",
-    "quantidade": "60 comprimidos",
-    "motivo": "PA próxima da meta, com benefício adicional na albuminúria e potássio/TFG estáveis.",
-    "fontes": []
-   },
-   {
-    "acao": "manter",
-    "nome": "metformina",
-    "dose": "850 mg",
-    "posologia": "1 comprimido 2x/dia",
-    "quantidade": "60 comprimidos",
-    "motivo": "HbA1c em meta aceitável e TFG atual permite manutenção da dose.",
-    "fontes": []
-   },
-   {
-    "acao": "manter",
-    "nome": "atorvastatina",
-    "dose": "20 mg",
-    "posologia": "1 comprimido à noite",
-    "quantidade": "30 comprimidos",
-    "motivo": "Em uso regular, com LDL abaixo de 100 mg/dL e boa tolerabilidade laboratorial.",
-    "fontes": []
-   },
-   {
     "acao": "iniciar",
-    "nome": "empagliflozina",
+    "nome": "dapagliflozina",
     "dose": "10 mg",
-    "posologia": "1 comprimido 1x/dia",
+    "posologia": "1 comprimido ao dia",
     "quantidade": "30 comprimidos",
-    "motivo": "Diabetes tipo 2 com obesidade e benefício cardiorrenal potencial; a eficácia é mais favorável com TFG acima de 60 mL/min/1,73 m².",
+    "motivo": "Diabetes tipo 2 com albuminúria e TFG 61: pode agregar proteção renal e cardiovascular, além de discreta redução de peso e pressão.",
     "fontes": [
      "F4"
     ]
+   },
+   {
+    "acao": "iniciar",
+    "nome": "semaglutida",
+    "dose": "0,25 mg",
+    "posologia": "aplicação subcutânea 1 vez por semana",
+    "quantidade": "1 caneta",
+    "motivo": "Obesidade grau I associada a diabetes tipo 2: opção farmacológica com benefício em perda de peso e benefício cardiovascular nessa população.",
+    "fontes": [
+     "F4",
+     "F7"
+    ]
    }
   ],
-  "observacoes": "RAC disponível é de 2025; se houver piora renal, infecção urinária de repetição, candidíase genital recorrente ou risco de cetoacidose, reavaliar a conveniência de iSGLT2. Meta pressórica e meta de LDL devem ser individualizadas pelo médico assistente."
+  "observacoes": "Sem contraindicação evidente nas informações fornecidas para essas opções. Em inibidor de SGLT2, usar com cautela se houver risco de cetoacidose, desidratação ou infecção genital recorrente, situações não detalhadas no perfil."
  }
 }

@@ -1563,7 +1563,7 @@ async def prontuario_renovacao(request: Request):
 @app.post("/prontuario/prescricao/sugerir")
 async def prontuario_prescricao_sugerir(request: Request):
     """Possíveis prescrições pela IA (aba Prescrições): o perfil da paciente (sem nome) + trechos da base do assistente
-    → o modelo propõe manter/ajustar/iniciar/suspender, e app/prescricao.finish confere (fonte, remédio conhecido,
+    → o modelo propõe até 2 remédios NOVOS (nem em uso, nem já receitados), e app/prescricao.finish confere (fonte, remédio conhecido,
     alergia, dose). Só contas liberadas (as mesmas da gravação). Nada é gravado: o resultado fica em memória enquanto o
     perfil não muda (abrir a aba de novo não gasta crédito; "novo": true gera de novo). NDJSON: passos e o resultado."""
     u, err = _auth_or_401(request)
@@ -1579,7 +1579,9 @@ async def prontuario_prescricao_sugerir(request: Request):
     if not p:
         return JSONResponse({"error": "inválido"}, status_code=400)
     notes = await run_in_threadpool(db.list_notes, u["id"], p["id"], p.get("key"))
-    texto, nums = prescricao.perfil(p, notes)
+    rxs = await run_in_threadpool(db.list_receitas, u["id"], p["id"])
+    usados = [x.get("nome") or "" for r in rxs if r["status"] == "emitida" for x in r["itens"]]     # o que já usou
+    texto, nums = prescricao.perfil(p, notes, usados)
     chave = prescricao.chave(u["id"], p["id"], texto)
     pronto = None if b.get("novo") else prescricao.guardado(chave)
     if not pronto and _rate_limited(request, "prescricao"):
@@ -1605,7 +1607,7 @@ async def prontuario_prescricao_sugerir(request: Request):
             print("[prescricao] falhou:", type(e).__name__, flush=True)
             yield _line({"error": "o serviço de IA não respondeu"})
             return
-        res = prescricao.finish(raw, p, fts, nums["tfg"])
+        res = prescricao.finish(raw, p, fts, nums["tfg"], usados)
         prescricao.guardar(chave, res)
         print("[prescricao] itens=", len(res["itens"]), "descartados=", res["descartados"], "fontes=", len(fts),
               "s=", round(time.monotonic() - t0), flush=True)

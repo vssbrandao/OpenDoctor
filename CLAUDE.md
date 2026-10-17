@@ -27,7 +27,8 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
      o log da gravação só leva números. Mudar isso (outro provedor, guardar áudio) pede revisão do
      `docs/ripd-gravacao.md` e da Política de Privacidade.
    - Possíveis prescrições (aba Prescrições, contas da gravação): vai ao modelo o perfil sem nome (sexo, idade, cadastro
-     clínico, últimos sinais e exames; ainda por `scribe.mask`) e trechos da base do assistente. Como funciona e as
+     clínico, remédios das receitas anteriores, últimos sinais e exames; ainda por `scribe.mask`) e trechos da base do
+     assistente. Como funciona e as
      pendências (médico revisor, RIPD): `docs/prescricao.md`.
 4. **Segredos** só em variável de ambiente (Render / `.env`, que não é commitado). Nunca em código,
    comando, log ou mensagem. O usuário cola os segredos; não imprimir chaves.

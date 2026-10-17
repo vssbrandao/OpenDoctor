@@ -18,11 +18,11 @@ import time
 
 from . import config, llm, scribe, search
 
-PROMPT_VERSION = "2026-10-16.1"
+PROMPT_VERSION = "2026-10-17.1"
 with open(os.path.join(scribe._DATA, "prescricao_prompt.txt"), encoding="utf-8") as _arq:
     SYSTEM = _arq.read().strip()
 ACOES = ("manter", "ajustar", "iniciar", "suspender")
-MAX_FONTES, MAX_NOVOS = 12, 4
+MAX_FONTES, MAX_NOVOS = 12, 2     # possíveis prescrições: só remédios novos para a paciente, no máximo 2
 MIN_SIM = 0.35            # trecho menos parecido com a pergunta fica de fora (o ajuste renal trazia cálculo renal, anticoagulante…)
 
 _VIT = (("pa", "PA", "mmHg"), ("fc", "FC", "bpm"), ("peso", "peso", "kg"), ("imc", "IMC", "kg/m²"), ("glicemia", "glicemia", "mg/dL"),
@@ -114,14 +114,17 @@ def ultimos(notes):
     return out
 
 
-def perfil(p, notes):
-    """Texto do perfil para o modelo (sem nome) e os números usados nas conferências."""
+def perfil(p, notes, usados=()):
+    """Texto do perfil para o modelo (sem nome) e os números usados nas conferências. usados: remédios das receitas
+    emitidas que não estão em uso (o modelo só sugere remédio que a paciente ainda não usou)."""
     anos, sexo = idade(p.get("birth_date")), p.get("sex") or ""
     u = ultimos(notes)
     linhas = ["Paciente: " + ", ".join(x for x in ({"F": "mulher", "M": "homem"}.get(sexo, ""), f"{anos} anos" if anos is not None else "") if x) + "."]
     for rot, campo in (("Problemas", "problems"), ("Em uso", "medications"), ("Alergias", "allergies")):
         itens = [x.strip() for x in (p.get(campo) or "").split("\n") if x.strip()]
         linhas.append(f"{rot}: " + ("; ".join(itens) if itens else "nenhum registrado") + ".")
+    ja = [u for u in dict.fromkeys(_txt(x, 120) for x in usados) if u and not scribe.same_drug(u, p.get("medications") or "")]
+    linhas.append("Já usou (receitas anteriores): " + ("; ".join(ja) if ja else "nenhum registrado") + ".")
     sinais = [f"{rot} {v[0] if isinstance(v[0], str) else _fmt(v[0])} {un} ({_dia(v[1])})" for k, rot, un in _VIT for v in [u.get(k)] if v]
     if sinais:
         linhas.append("Últimos sinais: " + "; ".join(sinais) + ".")
@@ -140,16 +143,14 @@ def perfil(p, notes):
 
 
 def fontes(p, tfg_=None):
-    """Trechos da base do assistente para os problemas da paciente e, com a TFG abaixo de 60, para a dose de cada
-    remédio em uso na doença renal (o modelo só ajusta ou suspende com fonte)."""
+    """Trechos da base do assistente para os problemas da paciente (tratamento e escolha do remédio) e, com a TFG
+    abaixo de 60, para a escolha de remédios na doença renal (o modelo só sugere remédio novo com fonte)."""
     probs = [x.strip() for x in (p.get("problems") or "").split("\n") if x.strip()][:4]
-    meds = [re.split(r"\s\d", x.strip())[0].strip() for x in (p.get("medications") or "").split("\n") if x.strip()][:6]
     consultas = [(f"{pr}: tratamento farmacológico, metas e escolha do remédio",
                   next((en for pat, en in _EN if re.search(pat, scribe.norm(pr))), None)) for pr in probs]
     if tfg_ is not None and tfg_ < 60:
-        for m in meds[:4]:                                  # "metformina" → "metformin" para a busca por palavra (corpus inglês)
-            en = re.sub(r"[ao]$", "", scribe.norm(m).split(" ")[0])
-            consultas.append((f"{m}: dose na doença renal crônica com TFG de {round(tfg_)} mL/min", f"{en} chronic kidney disease eGFR dose"))
+        consultas.append((f"escolha e dose de remédios na doença renal crônica com TFG de {round(tfg_)} mL/min",
+                          "chronic kidney disease eGFR drug dosing"))
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as ex:            # as buscas em paralelo (cada uma ~3 s)
         res = list(ex.map(lambda qe: search.search(qe[0], k=3, fts_query=qe[1])["hits"], consultas))
     vistos, out = set(), []
@@ -190,43 +191,34 @@ def _txt(v, n):
     return re.sub(r"\s+", " ", str(v or "")).strip()[:n]
 
 
-def finish(raw, p, fts, tfg_=None):
-    """Confere a resposta do modelo: só ações conhecidas; mudar algo exige fonte; remédio novo precisa ser conhecido e
-    não pode bater com alergia nem com a função renal; dose fora da faixa usual e ajuste renal viram aviso. Remédio em
-    uso que o modelo esqueceu entra como "manter" (nada some da receita sem o médico ver)."""
+def finish(raw, p, fts, tfg_=None, usados=()):
+    """Confere a resposta do modelo: só remédio NOVO ("iniciar"), no máximo 2, cada um com fonte, conhecido, fora do
+    que está em uso e do que a paciente já usou, sem alergia e sem contraindicação pela função renal. Dose fora da faixa
+    usual e ajuste renal viram aviso. O resto (manter, ajustar, suspender) não entra: os remédios em uso ficam no
+    Histórico e no cadastro."""
     try:
         out = json.loads(raw) if isinstance(raw, str) else (raw or {})
     except ValueError:
         out = {}
     rot = {h["rotulo"] for h in fts}
-    meds_txt, alergias = p.get("medications") or "", p.get("allergies") or ""
-    itens, descartados, novos = [], 0, 0
+    meds_txt, alergias, ja_txt = p.get("medications") or "", p.get("allergies") or "", "\n".join(usados)
+    itens, descartados = [], 0
     for m in out.get("itens") if isinstance(out.get("itens"), list) else []:
         if not isinstance(m, dict):
             continue
-        acao, nome = m.get("acao") if m.get("acao") in ACOES else "", _txt(m.get("nome"), 120)
+        nome = _txt(m.get("nome"), 120)
         fs = [f for f in (m.get("fontes") if isinstance(m.get("fontes"), list) else []) if f in rot][:3]
-        em_uso = bool(nome) and scribe.same_drug(nome, meds_txt)
-        if not acao or not nome or (acao != "manter" and not fs) or (acao in ("manter", "ajustar", "suspender") and not em_uso):
+        ren = aviso_renal(nome, tfg_) if nome else ""
+        if (m.get("acao") != "iniciar" or not nome or not fs or scribe.same_drug(nome, meds_txt) or (ja_txt and scribe.same_drug(nome, ja_txt))
+                or scribe.allergy_hits(nome, alergias) or _NAO_INICIAR.search(ren) or scribe.drug_lookup(nome)[0] != "ok"
+                or any(scribe.same_drug(nome, x["nome"]) for x in itens) or len(itens) >= MAX_NOVOS):
             descartados += 1
             continue
-        al = scribe.allergy_hits(nome, alergias)
-        ren = aviso_renal(nome, tfg_) if acao != "suspender" else ""
-        if acao == "iniciar" and (em_uso or al or _NAO_INICIAR.search(ren) or scribe.drug_lookup(nome)[0] != "ok" or novos >= MAX_NOVOS):
-            descartados += 1
-            continue
-        novos += acao == "iniciar"
         dose = _txt(m.get("dose"), 60)
-        odd = scribe.dose_incomum(nome, dose) if acao != "suspender" else None
-        itens.append({"acao": acao, "nome": nome[:1].upper() + nome[1:], "dose": dose, "posologia": _txt(m.get("posologia"), 160),
+        odd = scribe.dose_incomum(nome, dose)
+        itens.append({"acao": "iniciar", "nome": nome[:1].upper() + nome[1:], "dose": dose, "posologia": _txt(m.get("posologia"), 160),
                       "quantidade": _txt(m.get("quantidade"), 60), "motivo": _txt(m.get("motivo"), 300), "fontes": fs,
-                      "alergias": al if acao != "suspender" else [], "faixa": list(odd[1]) if odd else None, "renal": ren})
-    for r in scribe.renovacao(meds_txt, alergias):                 # o que estava em uso e o modelo não citou
-        if not any(scribe.same_drug(it["nome"], r["texto"]) for it in itens if it["acao"] != "iniciar"):
-            itens.insert(sum(1 for it in itens if it["acao"] != "iniciar"),
-                         {"acao": "manter", "nome": r["nome"], "dose": r["dose"], "posologia": r["posologia"], "quantidade": "",
-                          "motivo": "Em uso (cadastro).", "fontes": [], "alergias": r["alergias"], "faixa": r["faixa"],
-                          "renal": aviso_renal(r["nome"], tfg_)})
+                      "alergias": [], "faixa": list(odd[1]) if odd else None, "renal": ren})
     usadas = {f for it in itens for f in it["fontes"]}
     return {"itens": itens, "observacoes": _txt(out.get("observacoes"), 400), "descartados": descartados,
             "fontes": {h["rotulo"]: {"titulo": _txt(h.get("title"), 200), "url": h.get("url") or "",

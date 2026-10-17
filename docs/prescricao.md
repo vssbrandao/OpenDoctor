@@ -3,7 +3,8 @@
 A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o que falta está em "Pendências"):
 
 1. **Prescrições:** a receita da consulta aberta, que fica no rascunho até ser emitida.
-2. **Possíveis prescrições:** sugestões da IA (ou só a renovação, sem IA). O "+" leva o item à receita; nada entra sem
+2. **Possíveis prescrições:** até 2 remédios que o paciente ainda não usou e talvez façam sentido, sugeridos pela IA.
+   O "+" leva o item à receita; nada entra sem
    esse clique.
 3. **Histórico:** as emitidas, as canceladas e os rascunhos de outras consultas, numa tabela com o mesmo visual da
    de Consultas.
@@ -66,8 +67,7 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
     aparecem 5 receitas, com "Mostrar todas".
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
   - entra o remédio de uso contínuo que não está no cadastro;
-  - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta);
-  - "Tirar" o que foi suspenso e o médico quis manter nas em uso aparece desmarcado.
+  - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta).
 - **Histórico:** as emitidas aparecem no card da consulta e, com ele, no "Exportar PDF".
 - **Impressão:** só a folha vai para o papel enquanto `body.rxp` estiver ligado; desliga no `afterprint`. No Safari, o
   `window.print()` não espera a impressão terminar.
@@ -75,29 +75,36 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   imprime; o PDF do prontuário continua em A4.
 
 ## Possíveis prescrições (`app/prescricao.py`, `POST /prontuario/prescricao/sugerir`)
-1. **Perfil, sem nome:** sexo, idade, problemas, remédios e alergias, e o último valor de cada sinal e exame, com a
-   data. A TFG é pela CKD-EPI 2021, igual à tela. Ainda passa por `scribe.mask`.
+**O que sugere:** só remédios NOVOS para o paciente, no máximo 2. Nenhum que esteja em uso nem que já tenha saído
+numa receita emitida. Os remédios em uso não aparecem aqui: ficam no Histórico, com "Usar nesta consulta" em cada
+linha.
+
+1. **Perfil, sem nome:** sexo, idade, problemas, remédios em uso e alergias; "Já usou" (os remédios das receitas
+   emitidas que não estão em uso; cancelada não conta); e o último valor de cada sinal e exame, com a data. A TFG é
+   pela CKD-EPI 2021, igual à tela. Ainda passa por `scribe.mask`.
 2. **Fontes:**
-   - uma busca na base do assistente por problema (até 4);
-   - com a TFG abaixo de 60, também a dose de cada remédio em uso na doença renal.
+   - uma busca na base do assistente por problema (até 4): tratamento e escolha do remédio;
+   - com a TFG abaixo de 60, também a escolha e a dose de remédios na doença renal.
    
    As buscas rodam em paralelo. Trechos com semelhança abaixo de 0,35 ficam de fora, e o limite é de 12. A base tem
    artigos do PubMed Central, em inglês; as diretrizes brasileiras ainda não estão nela.
 3. **Modelo:** `OPENAI_PRESC_MODEL`, padrão gpt-5.4. O prompt fica em `app/data/prescricao_prompt.txt`, com
    `PROMPT_VERSION` amarrada ao texto por teste.
 4. **Conferências** (`finish`):
-   - mudar algo exige fonte;
-   - remédio novo precisa ser conhecido, sem alergia e sem contraindicação renal;
-   - são no máximo 4 novos;
-   - dose usual e função renal viram aviso;
-   - remédio em uso esquecido pelo modelo volta como "manter".
+   - só entra "iniciar"; manter, ajustar e suspender são descartados;
+   - cada um precisa de fonte e de ser um remédio conhecido;
+   - fica de fora o que está em uso, o que já usou, o repetido, o que bate com alergia e o que a função renal
+     contraindica;
+   - são no máximo 2;
+   - dose fora da faixa usual e ajuste renal viram aviso.
+   
+   A comparação de nomes é a de `scribe.same_drug`, que tolera até 2 letras de diferença. Por isso dapagliflozina e
+   empagliflozina contam como o mesmo remédio, e outro remédio da mesma classe de um já usado também sai.
 5. **Guarda em memória** por 24 h, enquanto o perfil não muda. "Gerar de novo" força outra geração.
 
 ### Na tela
-- **Adicionar** leva o item à receita. Em **ajustar**, se o remédio já está na receita, o botão vira "Trocar a dose" e
-  a dose nova substitui a anterior.
-- **Suspender:** tira o remédio da receita e pergunta se ele sai também das medicações em uso; o aviso tem "Desfazer",
-  que devolve os dois.
+- **Adicionar** leva o item à receita; de novo ("Na receita") tira.
+- **Nada com indicação clara:** a lista vem vazia, com a observação da IA.
 - **Perguntar ao assistente:** põe no campo do assistente o perfil (sem o nome) e a pergunta sobre a sugestão; quem
   envia é o médico.
 - **Não sugerir:** esconde a sugestão neste navegador (`localStorage`, por paciente). "Ver as que você tirou" mostra
@@ -108,7 +115,7 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   e sem paciente (ler produção só com o ok do usuário).
 - **Perfil mudou:** abrir a aba com o resumo clínico mudado gera de novo. Com a aba aberta, e quando chega sinal ou
   exame novo, só avisa "O perfil mudou desde estas sugestões", com "Gerar de novo", porque gerar gasta crédito e troca
-  a lista. O que o médico muda pela própria aba (suspender, atualizar as em uso) não conta como mudança.
+  a lista. O que o médico muda pela própria aba (atualizar as em uso) não conta como mudança.
 
 ### Gravação da consulta
 Os remédios que a gravação extrai (`scribe.finish` → `meds`) entram no rascunho da receita desta consulta como "Da
@@ -118,8 +125,9 @@ gravação" (`prescricao.da_gravacao`), para revisar:
 - a tela recarrega a receita e avisa quantos entraram;
 - se der erro, a evolução sai do mesmo jeito, sem a receita (`_receita_da_gravacao`).
 
-**Acesso:** só as contas da gravação (`SCRIBE_EMAILS` / `SCRIBE_ALL`; `SCRIBE_OFF` desliga). Sem acesso, ou se a IA
-falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.renovacao`).
+**Acesso:** só as contas da gravação (`SCRIBE_EMAILS` / `SCRIBE_ALL`; `SCRIBE_OFF` desliga). Sem acesso, o cartão não
+aparece. Se a IA falhar, aparece o aviso com "Tentar de novo". A rota `POST /prontuario/renovacao` (`scribe.renovacao`)
+continua no servidor, mas a tela não a usa mais.
 
 **Custo:** cerca de US$ 0,015 a 0,025 por geração, levando de 15 a 25 s.
 
@@ -140,7 +148,6 @@ falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.r
   - 2ª via;
   - recarregar no meio;
   - receita no Histórico;
-  - ajustar troca a dose; suspender com Desfazer (receita e medicações em uso);
   - atualizar as medicações em uso depois de emitir;
   - "Não sugerir" depois de recarregar, "Perguntar ao assistente" sem o nome e a sugestão do nome do remédio;
   - sinal novo na consulta: aviso de perfil mudado;
@@ -148,8 +155,8 @@ falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.r
   - busca e escolha dos itens no Histórico;
   - receita em A5.
 
-  As sugestões da IA desses cenários são trocadas no próprio Chrome (`Fetch.fulfillRequest`); o servidor nem é
-  chamado.
+  O preview usa uma resposta real guardada (`scripts/preview_prescricao.json`, prompt 2026-10-17.1, Maria fictícia):
+  dapagliflozina e semaglutida.
 - **Qualidade da IA:** `scripts/presc_try.py`. **Gasta crédito:** só com o ok do usuário.
 
 ## Pendências

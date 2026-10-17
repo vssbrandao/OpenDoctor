@@ -21,7 +21,7 @@ FONTES = [{"rotulo": "F1", "chunk_id": 1, "title": "Hypertension guideline", "ur
            "evidence": "Revisão", "text": "..."}]
 
 # versão → impressão digital do prompt (app/data/prescricao_prompt.txt): texto novo exige versão nova (rastreio na receita)
-PROMPTS = {"2026-10-16.1": "16cb300279005d17"}
+PROMPTS = {"2026-10-16.1": "16cb300279005d17", "2026-10-17.1": "ebc9f33a76a62070"}
 
 
 def test_mudou_o_prompt_sobe_a_versao():
@@ -37,6 +37,9 @@ def test_perfil_sem_nome_com_ultimos_valores_e_tfg():
     assert "HbA1c 6,9 % (26/09/2026)" in txt and "8,4" not in txt           # só o último de cada exame
     assert "albuminúria (RAC) 35 mg/g (12/07/2025)" in txt
     assert "TFG 61 mL/min" in txt and round(nums["tfg"]) == 61               # igual à tela (tfgOf)
+    assert "Já usou (receitas anteriores): nenhum registrado." in txt
+    txt, _ = pr.perfil(MARIA, NOTAS, ["Empagliflozina", "losartana", "Empagliflozina", "Paracetamol"])
+    assert "Já usou (receitas anteriores): Empagliflozina; Paracetamol." in txt   # sem repetir e sem o que está em uso
 
 
 def test_tfg_ckd_epi_2021():
@@ -54,57 +57,49 @@ def it(acao, nome, dose="", fontes=(), **kw):
                  "motivo": "motivo", "fontes": list(fontes)}, **kw)
 
 
-def test_finish_confere_cada_item():
-    raw = resp(it("manter", "losartana", "50 mg"),
+def test_finish_so_remedio_novo_com_fonte():
+    raw = resp(it("manter", "losartana", "50 mg"),                       # o que está em uso não entra mais
                it("ajustar", "metformina", "1000 mg", ["F2"]),
                it("iniciar", "dapagliflozina", "10 mg", ["F2"]),
                it("iniciar", "amoxicilina", "500 mg", ["F1"]),        # alergia (família da penicilina): sai
-               it("iniciar", "empagliflozina", "10 mg"),              # remédio novo sem fonte: sai
+               it("iniciar", "empagliflozina", "10 mg"),              # sem fonte: sai
                it("iniciar", "remediox", "10 mg", ["F1"]),            # remédio desconhecido: sai
-               it("ajustar", "atorvastatina", "40 mg", ["F9"]),       # fonte que não foi dada: sai
-               it("suspender", "enalapril", "", ["F1"]),              # não está em uso: sai
+               it("iniciar", "atorvastatina", "40 mg", ["F1"]),       # já está em uso: sai
+               it("iniciar", "semaglutida", "0,25 mg", ["F9"]),       # fonte que não foi dada: sai
                it("voar", "losartana"))
     res = pr.finish(raw, MARIA, FONTES)
-    nomes = [(x["acao"], x["nome"]) for x in res["itens"]]
-    assert ("manter", "Losartana") in nomes and ("ajustar", "Metformina") in nomes
-    assert ("iniciar", "Dapagliflozina") in nomes
-    assert not any(n in ("Amoxicilina", "Empagliflozina", "Remediox", "Enalapril") for _, n in nomes)
-    assert ("manter", "Atorvastatina") in nomes                         # em uso e esquecida pelo modelo: volta como manter
-    assert res["descartados"] == 6
+    assert [(x["acao"], x["nome"]) for x in res["itens"]] == [("iniciar", "Dapagliflozina")]
+    assert res["descartados"] == 8
     assert set(res["fontes"]) == {"F2"} and res["fontes"]["F2"]["url"] == "https://pmc.example/2"
     assert res["prompt"] == pr.PROMPT_VERSION and res["modelo"] == config.OPENAI_PRESC_MODEL
 
 
-def test_finish_avisa_dose_e_alergia_em_uso():
-    p = dict(MARIA, medications="Losartana 500 mg 1x/dia\nDorflex 1 cp 6/6h")
-    res = pr.finish(resp(it("manter", "losartana", "500 mg")), p, FONTES)
-    los, dor = res["itens"]
-    assert los["faixa"] == [12.5, 100.0]
-    assert dor["nome"] == "Dorflex" and dor["alergias"] == ["Dipirona"]   # em uso com alergia: fica, com aviso
+def test_finish_nao_sugere_o_que_ja_usou_e_no_maximo_dois():
+    raw = resp(*[it("iniciar", n, "10 mg", ["F1"]) for n in ("clortalidona", "empagliflozina", "empagliflozina", "semaglutida",
+                                                               "anlodipino")])
+    res = pr.finish(raw, MARIA, FONTES, usados=["Clortalidona", "Paracetamol"])
+    assert [x["nome"] for x in res["itens"]] == ["Empagliflozina", "Semaglutida"]          # sem o que já usou, sem repetir, até 2
+    assert res["descartados"] == 3
 
 
-def test_finish_resposta_invalida_mantem_o_que_esta_em_uso():
+def test_finish_avisa_dose_fora_da_faixa():
+    res = pr.finish(resp(it("iniciar", "losartana", "500 mg", ["F1"])), dict(MARIA, medications=""), FONTES)
+    assert res["itens"][0]["faixa"] == [12.5, 100.0]
+
+
+def test_finish_resposta_invalida_nao_sugere_nada():
     res = pr.finish("não é json", MARIA, FONTES)
-    assert [x["acao"] for x in res["itens"]] == ["manter"] * 3 and res["descartados"] == 0
+    assert res["itens"] == [] and res["descartados"] == 0
 
 
 def test_aviso_renal_e_nao_inicia_o_que_a_tfg_contraindica():
-    p = dict(MARIA, medications="Metformina 850 mg 2x/dia\nGlibenclamida 5 mg 2x/dia\nLosartana 50 mg 12/12h")
-    raw = resp(it("manter", "metformina", "850 mg"), it("iniciar", "empagliflozina", "10 mg", ["F2"]),
-               it("iniciar", "sitagliptina", "100 mg", ["F2"]))
+    p = dict(MARIA, medications="Metformina 850 mg 2x/dia\nLosartana 50 mg 12/12h")
+    raw = resp(it("iniciar", "empagliflozina", "10 mg", ["F2"]), it("iniciar", "sitagliptina", "100 mg", ["F2"]))
     por_nome = {x["nome"]: x for x in pr.finish(raw, p, FONTES, tfg_=38)["itens"]}
-    assert por_nome["Metformina"]["renal"].startswith("TFG entre 30 e 44: dose máxima de 1.000 mg/dia")
-    assert por_nome["Glibenclamida"]["renal"].startswith("TFG abaixo de 60: evitar")     # em uso, voltou como manter, com aviso
-    assert por_nome["Losartana"]["renal"] == "" and por_nome["Empagliflozina"]["renal"] == ""
+    assert por_nome["Empagliflozina"]["renal"] == ""
     assert por_nome["Sitagliptina"]["renal"] == "TFG entre 30 e 44: dose de 50 mg/dia."
     assert "Empagliflozina" not in {x["nome"] for x in pr.finish(raw, p, FONTES, tfg_=15)["itens"]}   # "não iniciar"
     assert pr.aviso_renal("metformina", 25).startswith("TFG abaixo de 30") and pr.aviso_renal("metformina", None) == ""
-
-
-def test_no_maximo_quatro_novos():
-    raw = resp(*[it("iniciar", n, "10 mg", ["F1"]) for n in ("dapagliflozina", "empagliflozina", "semaglutida", "anlodipino",
-                                                               "clortalidona", "espironolactona")])
-    assert sum(x["acao"] == "iniciar" for x in pr.finish(raw, MARIA, FONTES)["itens"]) == 4
 
 
 def test_mensagens_separam_perfil_e_fontes():
@@ -123,13 +118,17 @@ def cli(monkeypatch):
     monkeypatch.setattr(config, "OPENAI_API_KEY", "sk-teste-falsa")
     monkeypatch.setattr(db, "get_patient", lambda uid, pid: dict(MARIA) if uid == UID and pid == 7 else None)
     monkeypatch.setattr(db, "list_notes", lambda uid, pid, key: NOTAS)
+    monkeypatch.setattr(db, "list_receitas", lambda uid, pid: [
+        {"status": "emitida", "itens": [{"nome": "Empagliflozina"}, {"nome": "Losartana"}]},
+        {"status": "cancelada", "itens": [{"nome": "Sitagliptina"}]}])          # cancelada: não conta como já usado
     chamadas = []
     monkeypatch.setattr(pr, "fontes", lambda p, tfg_=None: FONTES)
 
     def modelo(msgs, model=None):
         chamadas.append(msgs)
         assert "Maria" not in json.dumps(msgs, ensure_ascii=False)              # o nome nunca vai ao modelo
-        return resp(it("manter", "losartana", "50 mg"), it("iniciar", "dapagliflozina", "10 mg", ["F2"]))
+        return resp(it("manter", "losartana", "50 mg"), it("iniciar", "empagliflozina", "10 mg", ["F2"]),
+                    it("iniciar", "sitagliptina", "100 mg", ["F2"]))
     monkeypatch.setattr(pr, "ask_model", modelo)
     pr._CACHE.clear(); server._RL.clear()
     c = TestClient(server.app)
@@ -147,7 +146,8 @@ def test_rota_gera_confere_e_guarda(cli):
     out = linhas(r)
     assert [x.get("step") for x in out[:2]] == ["buscando", "escrevendo"]
     fim = out[-1]
-    assert fim["ok"] and [x["nome"] for x in fim["itens"]] == ["Losartana", "Metformina", "Atorvastatina", "Dapagliflozina"]
+    assert fim["ok"] and [x["nome"] for x in fim["itens"]] == ["Sitagliptina"]   # empagliflozina já usou; a cancelada não conta
+    assert "Já usou (receitas anteriores): Empagliflozina." in cli.chamadas[0][1]["content"]
     assert "Maria" not in r.text
     # de novo: vem guardado, sem chamar o modelo; "novo" gera outra vez
     assert linhas(cli.post("/prontuario/prescricao/sugerir", json={"patient_id": 7}))[-1]["guardado"] is True
