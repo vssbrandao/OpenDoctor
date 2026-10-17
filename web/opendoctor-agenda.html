@@ -302,6 +302,7 @@
     .rh-hd{font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
     .rh-hs{font-size:12px;line-height:16px;color:#56595E}
     .rh-hs.rh-cx{flex-basis:100%;color:#B3261E}
+    .rh-hist .pr-histq[hidden]{display:none}
     .rh-ht .pr-badge{height:22px;padding:0 8px;font-size:12px}
     .rh-head .rh-acts{margin-top:0;margin-left:auto;gap:12px}
     .rh-item + .rh-head{margin-top:32px}                        /* espaço entre a receita de uma data e a seguinte */
@@ -7890,13 +7891,14 @@
       }
       function renderRh() {
         var todas = rxs.filter(function (r) { return r !== rxDraft && (r.status !== 'rascunho' || r.itens.length); });
-        var L = $('rhList'), q = norm($('rhQ').value).trim(); L.innerHTML = ''; $('rhBox').hidden = !todas.length;
+        var L = $('rhList'), q = norm($('rhQ').value).trim(); L.innerHTML = '';
+        $('rhBox').hidden = !patient; $('rhQ').hidden = !todas.length;   // sempre à vista: sem receita, diz que ainda não há
         var conta = function (st) { return todas.filter(function (r) { return r.status === st; }).length; }, ne = conta('emitida'), nc = conta('cancelada'), nr = conta('rascunho');
         $('rhCount').textContent = [ne ? ne + (ne === 1 ? ' receita emitida' : ' receitas emitidas') : '', nc ? nc + (nc === 1 ? ' cancelada' : ' canceladas') : '',
                                     nr ? nr + (nr === 1 ? ' rascunho' : ' rascunhos') : ''].filter(Boolean).join(' · ') || 'Receitas deste paciente';
         var acha = function (x) { return !q || norm(x.nome).indexOf(q) >= 0; };
         var list = todas.filter(function (r) { return r.itens.some(acha); });
-        if (!list.length) { if (todas.length) L.appendChild(el('div', 'pr-empty', 'Nenhuma receita com esse remédio.')); return; }
+        if (!list.length) { L.appendChild(el('div', 'pr-empty', todas.length ? 'Nenhuma receita com esse remédio.' : 'Nenhuma receita emitida para este paciente ainda. As emitidas aparecem aqui.')); return; }
         var th = el('div', 'pr-trow th rh-cols');
         ['Remédio', 'Posologia', 'Quantidade', ''].forEach(function (t) { th.appendChild(el('span', null, t)); });
         L.appendChild(th);

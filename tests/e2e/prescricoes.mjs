@@ -313,6 +313,13 @@ const cenarios = [
     certo(await ev(`!${sg('Dapagliflozina')} && !!${sg('Semaglutida')}`), 'a linha da sugestão que entrou some');
     return 'Dapagliflozina e Semaglutida; Adicionar leva à posologia';
   }],
+  ['histórico aparece mesmo sem receitas, avisando que ainda não há', async () => {
+    await abre(false);
+    certo(await ev(`!document.getElementById('rhBox').hidden && document.getElementById('rhList').innerText.includes('Nenhuma receita emitida para este paciente ainda')`),
+      'o Histórico fica à vista, vazio');
+    certo(await ev(`document.getElementById('rhQ').hidden`), 'sem a busca enquanto não há receita');
+    return 'Histórico à vista, com o aviso de que ainda não há receita';
+  }],
   ['histórico de receitas: busca por remédio e escolha dos itens', async () => {
     await abre(); await ate(n('#rhList .rh-item') + ' > 0', 5000, 'histórico');
     certo(await ev(`document.querySelector('#rhBox .gh-t').textContent === 'Histórico' && !document.getElementById('rtBox')`), 'um cartão só, Histórico');
