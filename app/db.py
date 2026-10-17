@@ -800,14 +800,14 @@ def get_file(user_id, file_id):
 
 # --- receitas (aba Prescrições): rascunho → emitida (não muda mais) → cancelada (com motivo); sempre do médico ---
 _RX_COLS = ("id, patient_id, note_id, event_id, tipo, status, itens, emitida_em, cancelada_em, motivo_cancelamento, "
-            "created_at, updated_at")
+            "created_at, updated_at, orientacoes")
 
 
 def _receita(r):
     iso = lambda d: d.isoformat() if d else None  # noqa: E731
     return {"id": str(r[0]), "patient_id": r[1], "note_id": r[2], "event_id": r[3], "tipo": r[4], "status": r[5],
             "itens": r[6] or [], "emitida_em": iso(r[7]), "cancelada_em": iso(r[8]), "motivo_cancelamento": r[9],
-            "created_at": iso(r[10]), "updated_at": iso(r[11])}
+            "created_at": iso(r[10]), "updated_at": iso(r[11]), "orientacoes": r[12] or ""}
 
 
 def list_receitas(user_id, patient_id):
@@ -824,23 +824,23 @@ def get_receita(user_id, receita_id):
     return _receita(r) if r else None
 
 
-def create_receita(user_id, patient_id, itens, tipo="simples", note_id=None, event_id=None):
+def create_receita(user_id, patient_id, itens, tipo="simples", note_id=None, event_id=None, orientacoes=""):
     from psycopg.types.json import Jsonb
     with connection() as conn:
-        r = conn.execute(f"""insert into receitas (user_id, patient_id, note_id, event_id, tipo, itens)
-                             values (%s,%s,%s,%s,%s,%s) returning {_RX_COLS}""",
-                         (user_id, patient_id, note_id, event_id, tipo, Jsonb(itens))).fetchone()
+        r = conn.execute(f"""insert into receitas (user_id, patient_id, note_id, event_id, tipo, itens, orientacoes)
+                             values (%s,%s,%s,%s,%s,%s,%s) returning {_RX_COLS}""",
+                         (user_id, patient_id, note_id, event_id, tipo, Jsonb(itens), orientacoes or "")).fetchone()
         conn.commit()
     return _receita(r)
 
 
-def update_receita(user_id, receita_id, itens):
-    """Só o rascunho muda. None se não existe, é de outro médico ou já foi emitida."""
+def update_receita(user_id, receita_id, itens, orientacoes=None):
+    """Só o rascunho muda (orientações None = ficam como estão). None se não existe, é de outro médico ou já foi emitida."""
     from psycopg.types.json import Jsonb
     with connection() as conn:
-        r = conn.execute(f"""update receitas set itens = %s, updated_at = now()
+        r = conn.execute(f"""update receitas set itens = %s, orientacoes = coalesce(%s, orientacoes), updated_at = now()
                              where user_id = %s and id = %s and status = 'rascunho' returning {_RX_COLS}""",
-                         (Jsonb(itens), user_id, receita_id)).fetchone()
+                         (Jsonb(itens), orientacoes, user_id, receita_id)).fetchone()
         conn.commit()
     return _receita(r) if r else None
 
@@ -854,24 +854,25 @@ def delete_receita(user_id, receita_id):
     return r[0] if r else None
 
 
-def emit_receita(user_id, receita_id, grupos):
+def emit_receita(user_id, receita_id, grupos, orientacoes=None):
     """Emite o rascunho já conferido. grupos = [(tipo, itens)]: o primeiro fica nesta receita; os outros (controle
-    especial, antimicrobiano) viram receitas próprias da mesma consulta, emitidas juntas. Tudo ou nada.
-    Devolve a lista de receitas emitidas ou None (não é rascunho deste médico)."""
+    especial, antimicrobiano) viram receitas próprias da mesma consulta, emitidas juntas, com as mesmas orientações.
+    Tudo ou nada. Devolve a lista de receitas emitidas ou None (não é rascunho deste médico)."""
     from psycopg.types.json import Jsonb
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"""update receitas set tipo = %s, itens = %s, status = 'emitida', emitida_em = now(), updated_at = now()
+            cur.execute(f"""update receitas set tipo = %s, itens = %s, orientacoes = coalesce(%s, orientacoes), status = 'emitida',
+                            emitida_em = now(), updated_at = now()
                             where user_id = %s and id = %s and status = 'rascunho' returning {_RX_COLS}""",
-                        (grupos[0][0], Jsonb(grupos[0][1]), user_id, receita_id))
+                        (grupos[0][0], Jsonb(grupos[0][1]), orientacoes, user_id, receita_id))
             r = cur.fetchone()
             if not r:
                 return None
             out = [_receita(r)]
             for tipo, itens in grupos[1:]:
-                cur.execute(f"""insert into receitas (user_id, patient_id, note_id, event_id, tipo, itens, status, emitida_em)
-                                values (%s,%s,%s,%s,%s,%s,'emitida',now()) returning {_RX_COLS}""",
-                            (user_id, r[1], r[2], r[3], tipo, Jsonb(itens)))
+                cur.execute(f"""insert into receitas (user_id, patient_id, note_id, event_id, tipo, itens, orientacoes, status, emitida_em)
+                                values (%s,%s,%s,%s,%s,%s,%s,'emitida',now()) returning {_RX_COLS}""",
+                            (user_id, r[1], r[2], r[3], tipo, Jsonb(itens), r[12] or ""))
                 out.append(_receita(cur.fetchone()))
         conn.commit()
     return out

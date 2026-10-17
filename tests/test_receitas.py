@@ -149,3 +149,15 @@ def test_da_gravacao_so_o_que_continua():
     itens = pr.da_gravacao([{"nome": "losartana", "dose": "50 mg", "posologia": "12/12h", "acao": "mantido"},
                             {"nome": "metformina", "acao": "suspenso"}, {"nome": "dapagliflozina", "dose": "10 mg", "acao": "iniciado"}, "x"])
     assert [(i["nome"], i["continuo"], i["origem"]) for i in itens] == [("Losartana", True, "gravacao"), ("Dapagliflozina", False, "gravacao")]
+
+
+def test_orientacoes_salvam_limpas_e_vao_em_cada_receita_emitida(cli):
+    rx = nova(cli, orientacoes="  Beber   bastante água.  \r\n\n\n\nRetorno em 30 dias. ")
+    assert rx["orientacoes"] == "Beber bastante água.\n\nRetorno em 30 dias."
+    r = cli.patch(f"/prontuario/receitas/{rx['id']}", json={"itens": [LOS]}).json()["receita"]
+    assert r["orientacoes"] == rx["orientacoes"]                                   # sem o campo: ficam como estavam
+    r = cli.patch(f"/prontuario/receitas/{rx['id']}", json={"itens": [LOS], "orientacoes": "x" * 1500}).json()["receita"]
+    assert len(r["orientacoes"]) == 1000
+    amox = {"nome": "Amoxicilina", "dose": "500 mg", "posologia": "1 cápsula de 8/8 h por 7 dias", "quantidade": "21 cápsulas"}
+    out = cli.post(f"/prontuario/receitas/{rx['id']}/emitir", json={"itens": [LOS, amox], "orientacoes": "Repouso."}).json()["receitas"]
+    assert [x["tipo"] for x in out] == ["simples", "antimicrobiano"] and [x["orientacoes"] for x in out] == ["Repouso.", "Repouso."]

@@ -1659,20 +1659,22 @@ async def prontuario_receita_nova(request: Request):
             return JSONResponse({"error": "evolução inválida"}, status_code=400)
     eid = str(b.get("event_id") or "")[:200] or None
     r = await run_in_threadpool(db.create_receita, u["id"], p["id"], prescricao.itens_limpos(b.get("itens")), "simples",
-                                int(nid) if nid is not None else None, eid)
+                                int(nid) if nid is not None else None, eid, prescricao.orientacoes_limpas(b.get("orientacoes")))
     return {"receita": r}
 
 
 @app.patch("/prontuario/receitas/{rid}")
 async def prontuario_receita_muda(rid: str, request: Request):
-    """Itens do rascunho. Emitida não muda (409)."""
+    """Itens e orientações do rascunho. Emitida não muda (409)."""
     u, err = _auth_or_401(request)
     if err:
         return err
     r = await run_in_threadpool(_receita_do_medico, u, rid)
     if not r:
         return JSONResponse({"error": "receita não encontrada"}, status_code=404)
-    novo = await run_in_threadpool(db.update_receita, u["id"], r["id"], prescricao.itens_limpos((await _json(request)).get("itens")))
+    b = await _json(request)
+    ori = prescricao.orientacoes_limpas(b["orientacoes"]) if "orientacoes" in b else None
+    novo = await run_in_threadpool(db.update_receita, u["id"], r["id"], prescricao.itens_limpos(b.get("itens")), ori)
     if not novo:
         return JSONResponse({"error": "receita já emitida"}, status_code=409)
     return {"receita": novo}
@@ -1738,7 +1740,8 @@ async def prontuario_receita_emite(rid: str, request: Request):
     talao = [f"{it['nome']}: {c['talao']}" for it, c in zip(itens, conf) if c["talao"]]
     if talao:
         return JSONResponse({"error": "exige Notificação de Receita (talão)", "talao": talao}, status_code=409)
-    out = await run_in_threadpool(db.emit_receita, u["id"], r["id"], prescricao.grupos(itens, conf))
+    ori = prescricao.orientacoes_limpas(b["orientacoes"]) if "orientacoes" in b else None
+    out = await run_in_threadpool(db.emit_receita, u["id"], r["id"], prescricao.grupos(itens, conf), ori)
     if not out:
         return JSONResponse({"error": "receita já emitida"}, status_code=409)
     await run_in_threadpool(db.log_access, u["id"], "receita_emitida", p["id"], r["note_id"])

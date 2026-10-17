@@ -30,10 +30,12 @@ class FakeReceitas:
     def _pub(r):
         return {k: v for k, v in r.items() if k != "user_id"}
 
-    def _nova(self, user_id, patient_id, itens, tipo="simples", note_id=None, event_id=None, status="rascunho", emitida_em=None):
+    def _nova(self, user_id, patient_id, itens, tipo="simples", note_id=None, event_id=None, status="rascunho", emitida_em=None,
+              orientacoes=""):
         r = {"id": str(uuid.uuid4()), "user_id": user_id, "patient_id": patient_id, "note_id": note_id, "event_id": event_id,
              "tipo": tipo, "status": status, "itens": [dict(i) for i in itens], "emitida_em": emitida_em, "cancelada_em": None,
-             "motivo_cancelamento": None, "created_at": emitida_em or self._agora(), "updated_at": emitida_em or self._agora()}
+             "motivo_cancelamento": None, "created_at": emitida_em or self._agora(), "updated_at": emitida_em or self._agora(),
+             "orientacoes": orientacoes or ""}
         self.rx[r["id"]] = r
         return r
 
@@ -46,14 +48,16 @@ class FakeReceitas:
         r = self.rx.get(receita_id)
         return self._pub(r) if r and r["user_id"] == user_id else None
 
-    def create_receita(self, user_id, patient_id, itens, tipo="simples", note_id=None, event_id=None):
-        return self._pub(self._nova(user_id, patient_id, itens, tipo, note_id, event_id))
+    def create_receita(self, user_id, patient_id, itens, tipo="simples", note_id=None, event_id=None, orientacoes=""):
+        return self._pub(self._nova(user_id, patient_id, itens, tipo, note_id, event_id, orientacoes=orientacoes))
 
-    def update_receita(self, user_id, receita_id, itens):
+    def update_receita(self, user_id, receita_id, itens, orientacoes=None):
         r = self.rx.get(receita_id)
         if not r or r["user_id"] != user_id or r["status"] != "rascunho":
             return None
         r.update(itens=[dict(i) for i in itens], updated_at=self._agora())
+        if orientacoes is not None:
+            r["orientacoes"] = orientacoes
         return self._pub(r)
 
     def delete_receita(self, user_id, receita_id):
@@ -62,15 +66,18 @@ class FakeReceitas:
             return None
         return self.rx.pop(receita_id)["patient_id"]
 
-    def emit_receita(self, user_id, receita_id, grupos):
+    def emit_receita(self, user_id, receita_id, grupos, orientacoes=None):
         r = self.rx.get(receita_id)
         if not r or r["user_id"] != user_id or r["status"] != "rascunho":
             return None
         agora = self._agora()
         r.update(tipo=grupos[0][0], itens=[dict(i) for i in grupos[0][1]], status="emitida", emitida_em=agora, updated_at=agora)
+        if orientacoes is not None:
+            r["orientacoes"] = orientacoes
         out = [self._pub(r)]
         for tipo, itens in grupos[1:]:
-            out.append(self._pub(self._nova(user_id, r["patient_id"], itens, tipo, r["note_id"], r["event_id"], "emitida", agora)))
+            out.append(self._pub(self._nova(user_id, r["patient_id"], itens, tipo, r["note_id"], r["event_id"], "emitida", agora,
+                                            r["orientacoes"])))
         return out
 
     def cancel_receita(self, user_id, receita_id, motivo):

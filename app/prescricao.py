@@ -255,6 +255,13 @@ def itens_limpos(itens):
     return [x for x in (item_limpo(i) for i in (itens if isinstance(itens, list) else [])[:MAX_ITENS]) if x]
 
 
+def orientacoes_limpas(t):
+    """As orientações ao paciente (texto livre da receita): linhas sem espaço sobrando, no máximo uma linha em branco
+    seguida, até 1000 caracteres."""
+    linhas = [re.sub(r"[ \t]+", " ", x).strip() for x in str(t or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(linhas)).strip()[:1000]
+
+
 def conferir(itens, alergias, tfg_=None):
     """Avisos de cada item: alergia (família e marca), dose fora da faixa usual, função renal, remédio repetido, nome
     fora da lista conhecida e o tipo de receita: simples, controle especial (2 vias) ou antimicrobiano (2 vias); o que

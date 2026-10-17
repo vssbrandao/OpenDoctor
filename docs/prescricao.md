@@ -45,7 +45,8 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 
 ### Rotas (privadas, sempre do médico)
 - `GET /prontuario/receitas?patient_id=` e `POST /prontuario/receitas` (cria o rascunho).
-- `PATCH` e `DELETE /prontuario/receitas/{id}`: só no rascunho.
+- `PATCH` e `DELETE /prontuario/receitas/{id}`: só no rascunho. POST, PATCH e emitir aceitam `orientacoes` (texto livre,
+  limpo, até 1000 caracteres; sem o campo, ficam como estão).
 - `POST /prontuario/receitas/conferir`: avisos de cada item; nada é gravado.
 - `POST /prontuario/receitas/{id}/emitir`:
   - confere de novo;
@@ -68,61 +69,70 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 - **Antimicrobiano** (`app/data/antimicrobianos.tsv`, RDC 471/2021): 2 vias, válida por 10 dias.
 
 ### Tela: o componente Receita (`Receita(raiz, op)` em `web/opendoctor-agenda.html`)
-É o centro da aba. Tem poucas funções: busca, posologia, quantidade, avisos, tirar com Desfazer, emitir e imprimir, e
-uso contínuo. Saíram o texto livre, trocar a dose no item, Copiar e o `confirm()`. De cima para baixo:
-- **Cabeçalho:** "Receita" e o estado do rascunho. Se não salvar, tenta de novo a cada 10 s.
-- **Renovar:** o uso contínuo da última emissão (as receitas emitidas no mesmo dia) que não está nesta receita.
-  - Um clique traz tudo com a posologia da última vez e a quantidade de 30 dias.
-  - O foco vai para Emitir.
-- **A lista:** cada item lê como o papel:
-  - nome e dose;
-  - forma e via (a via sai da forma: comprimido → oral, creme → tópica…; injetável fica sem);
-  - a posologia e a quantidade, que se editam no lugar;
-  - os avisos da conferência.
+É o centro da aba. Tem poucas funções: busca, posologia, quantidade, avisos, tirar com Desfazer, emitir e imprimir, uso
+contínuo e orientações. O visual segue a referência do usuário (print 2x, medidas pela metade): dois blocos, cada um
+com título 14 Medium, descrição 13 #848486 e um cartão branco (borda #EBEBEB, canto 12).
+- **Bloco 1 · Prescrever:**
+  - a busca sempre aberta: linha cinza #F7F7F7 de 44, canto 12;
+  - uma linha por remédio para renovar: o uso contínuo da última emissão (as receitas emitidas no mesmo dia) que não
+    está nesta receita. Cada uma tem o seu "Renovar", com a posologia da última vez e a quantidade de 30 dias;
+  - até 2 possíveis prescrições da IA, no mesmo desenho, com "Adicionar". A alergia pede um segundo clique. A linha
+    some quando o remédio entra na receita (o cartão antigo de Possíveis prescrições saiu);
+  - as alergias do cadastro, em roxo itálico #A177E0 (como o "Next run on…" da referência).
+- **A busca:**
+  - lista direto as apresentações, até 8, a primeira marcada. A marca entra como "Marca (substância)";
+  - ordem: o que o paciente já usou ("Já usou"), depois a substância, depois as marcas;
+  - alergia em vermelho na linha, e o Enter pede um segundo Enter;
+  - "Já na receita": o Enter leva até o item, sem repetir;
+  - Enter antes do resultado chegar vale para o primeiro.
+- **Bloco 2 · Receita:** a folha em texto, num painel cinza (13/22), que já nasce grande (340 de altura) com:
+  - o médico (nome; CRM/UF e especialidade, ou "Completar meus dados de médico") e a data por extenso;
+  - o paciente.
   
-  O "×" aparece ao passar o mouse e tem Desfazer.
-- **Posologia:** enquanto está em foco, mostra sugestões:
-  - "Como da última vez" (da receita anterior com o mesmo remédio);
-  - as comuns da forma (comprimido: 1x ao dia, 12/12 h, 8/8 h, à noite; líquido com o volume a digitar; tópico,
-    colírio, nasal, inalatório);
-  - a duração: 7 dias, 10 dias, uso contínuo.
+  Cada remédio é um parágrafo numerado que corre como texto, como a lista da referência:
+  - a etiqueta branca inline (nome e dose; borda #E3E3E3, canto 7, 22 de altura, como o "JumpCloud");
+  - a forma e a via, em cinza;
+  - "— posologia" e "Quantidade:", trechos editáveis no meio da frase (`contenteditable="plaintext-only"`);
+  - o × na ponta da linha, ao passar o mouse.
   
-  O uso contínuo é o texto "uso contínuo" na posologia: o que se vê é o que sai.
+  No fim da folha vêm as orientações ao paciente: texto livre, salvo com o rascunho (`receitas.orientacoes`, migração
+  0016), que sai impresso abaixo dos remédios e vai em cada receita emitida.
+- **Ao escolher um remédio:** a posologia entra como da última vez ou em modelo da forma, com lacunas "_":
+  - comprimido: "Tomar 1 comprimido a cada _ horas, por _ dias.";
+  - também há modelo para cápsula, líquido, gotas, tópico, colírio, nasal e inalatório;
+  - injetável fica em branco.
+  
+  O cursor fica na primeira lacuna, já selecionada, e Tab passa para a próxima. Lacuna que sobrou impede a emissão.
 - **Quantidade calculada** (`Receita.quantidade`):
   - a conta é unidades por tomada × tomadas por dia × dias, com uso contínuo = 30 dias. Ex.: "1 cápsula a cada 8 horas,
-    por 7 dias" → 21 cápsulas;
+    por 7 dias" → 21 cápsulas, com "calculada" em roxo;
   - só vale para o que se conta (comprimido, cápsula…);
-  - "se dor", "se necessário", líquido ou texto que não dá para ler usam a embalagem da apresentação (a de 30, quando
-    existe);
+  - "se dor", "se necessário", líquido ou lacuna aberta usam a embalagem da apresentação;
   - digitar a quantidade à mão desliga a conta.
-- **A barra "Adicionar medicamento":** fica no fim da lista. É a barra e o painel da busca do Google Finance (48 px,
-  #F0F2F5; painel #E9EBF0 com sombra; linhas de 8 px com o branco ao passar).
-  - O painel lista direto as apresentações, até 8, a primeira marcada. A marca entra como "Marca (substância)".
-  - Ordem: o que o paciente já usou ("Já usou"), depois a substância, depois as marcas.
-  - **Alergia:** aparece em vermelho na linha, e o Enter pede um segundo Enter.
-  - **Já na receita:** o Enter leva até o item, sem repetir.
-  - **Enter antes do resultado chegar:** vale para o primeiro resultado.
-  - O item entra com o foco na posologia.
+- **Uso contínuo:** é o texto "uso contínuo" na posologia. O que se vê é o que sai.
+- **Avisos:** a etiqueta fica vermelha (alergia, talão), âmbar (dose, rim) ou azul (controle especial,
+  antimicrobiano), e as frases ficam numa lista logo abaixo do texto.
 - **Teclado:**
   - ↑↓, Enter e Esc na busca;
-  - Enter na posologia → quantidade → barra;
-  - ↓ entra nas sugestões;
+  - Tab nas lacunas;
+  - Enter na posologia → quantidade → busca;
+  - ← ↑ no começo e → ↓ no fim de um trecho passam ao anterior ou ao próximo;
+  - Backspace na posologia vazia tira o remédio (com Desfazer);
   - ⌘/Ctrl+Enter emite.
   
   Para o leitor de tela: combobox com `aria-activedescendant` e entrar, sair e a conta anunciados (`aria-live`).
 - **Rodapé:** o que vai sair, ao vivo ("Saem 2 receitas: simples e antimicrobiano (2 vias)"), e Emitir.
-  - Emitir confirma na própria receita: o que sai, os avisos, Voltar e "Emitir e imprimir".
-  - Falta posologia ou quantidade: diz o quê e leva o foco até lá.
-  - Talão: o recado de sempre.
+  - Emitir confirma na própria tela: o que sai, os avisos, Voltar e "Emitir e imprimir".
+  - Falta posologia ou quantidade: diz o quê e leva o cursor até lá.
 - **Redesenhar:** cada item guarda o seu nó. Salvar ou conferir não recria o campo em que se está escrevendo.
-- **Possíveis prescrições:** o "Adicionar" leva à posologia do item, para revisar.
-- **Histórico:** o "Usar nesta consulta" põe o item na lista.
+- **Possíveis prescrições:** o "Adicionar" do bloco de cima leva à posologia do item, para revisar.
+- **Histórico:** o "Usar nesta consulta" põe o item no texto.
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
   - entra o remédio de uso contínuo que não está no cadastro;
   - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta).
 - **Histórico:** as emitidas aparecem no card da consulta e, com ele, no "Exportar PDF".
 - **Impressão:** a linha do remédio leva a forma ("Losartana potássica 50 mg, comprimido revestido") e o uso
-  contínuo uma vez só. Só a folha vai para o papel enquanto `body.rxp` estiver ligado; desliga no `afterprint`. No Safari, o
+  contínuo uma vez só; as orientações vêm depois dos remédios. Só a folha vai para o papel enquanto `body.rxp` estiver ligado; desliga no `afterprint`. No Safari, o
   `window.print()` não espera a impressão terminar.
 - **Papel:** A4 ou A5 (meia folha), em Configurações. O `<style id="rxPapel">` põe o `@page` só enquanto a receita
   imprime; o PDF do prontuário continua em A4.
@@ -156,8 +166,10 @@ linha.
 5. **Guarda em memória** por 24 h, enquanto o perfil não muda.
 
 ### Na tela
-- **Cartão minimalista:** cada sugestão mostra remédio, dose e posologia, e o motivo numa linha (inteiro ao passar o
-  mouse). A única ação é **Adicionar**, que leva o item à receita; de novo ("Na receita") tira.
+- **Na tela:** as sugestões ficam no bloco "Prescrever" da receita, até 2, no desenho das linhas de Renovar. Cada uma
+  mostra remédio, dose e posologia, e "Sugestão da IA · motivo" numa linha (inteiro ao passar o mouse). A única ação é
+  **Adicionar**, que leva o item à receita, com o cursor na posologia para revisar. A linha some quando o remédio está
+  na receita.
 - **Avisos:** os de alergia, dose e função renal aparecem quando houver.
 - **Observação da IA:** não aparece (o servidor ainda a devolve).
 - **Nada com indicação clara:** aparece "Nenhum remédio novo com indicação clara agora."

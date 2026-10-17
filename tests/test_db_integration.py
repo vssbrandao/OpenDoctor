@@ -216,9 +216,13 @@ def test_receitas_rascunho_emitida_cancelada(novo_usuario):
     r = db.create_receita(ana, p["id"], [{"nome": "Losartana"}])
     assert r["status"] == "rascunho" and r["note_id"] is None
     assert db.get_receita(beto, r["id"]) is None and db.update_receita(beto, r["id"], []) is None
-    assert db.update_receita(ana, r["id"], [{"nome": "Losartana", "dose": "50 mg"}])["itens"][0]["dose"] == "50 mg"
+    assert r["orientacoes"] == ""
+    u = db.update_receita(ana, r["id"], [{"nome": "Losartana", "dose": "50 mg"}], "Beber água")
+    assert u["itens"][0]["dose"] == "50 mg" and u["orientacoes"] == "Beber água"
+    assert db.update_receita(ana, r["id"], [{"nome": "Losartana", "dose": "50 mg"}])["orientacoes"] == "Beber água"   # None: fica
     out = db.emit_receita(ana, r["id"], [("simples", [{"nome": "Losartana"}]), ("especial", [{"nome": "Sertralina"}])])
     assert [(x["tipo"], x["status"]) for x in out] == [("simples", "emitida"), ("especial", "emitida")] and out[0]["id"] == r["id"]
+    assert [x["orientacoes"] for x in out] == ["Beber água", "Beber água"]              # vai em cada receita emitida
     assert db.emit_receita(ana, r["id"], [("simples", [])]) is None                     # emitida não emite de novo
     assert db.update_receita(ana, r["id"], []) is None and db.delete_receita(ana, r["id"]) is None
     assert db.cancel_receita(beto, out[1]["id"], "x") is None
