@@ -197,13 +197,13 @@
     .pr-trow.rh-cols{grid-template-columns:minmax(0,1.1fr) minmax(0,1.4fr) minmax(0,1fr) 180px}
     .rh-item .pr-tcell{white-space:normal}
     .rh-item .pr-tdate{white-space:normal}
-    .rh-head{display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:32px 0 20px;border-bottom:1px solid #F0F2F5}
+    .rh-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 16px;padding:32px 0 20px;border-bottom:1px solid #F0F2F5}
     .rh-ht{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;min-width:0;font-family:var(--disp)}
     .rh-hd{font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
     .rh-hs{font-size:12px;line-height:16px;color:#56595E}
     .rh-hs.rh-cx{flex-basis:100%;color:#B3261E}
     .rh-ht .pr-badge{height:22px;padding:0 8px;font-size:12px}
-    .rh-head .rh-acts{margin-top:0;gap:12px}
+    .rh-head .rh-acts{margin-top:0;margin-left:auto;gap:12px}
     .rh-item + .rh-head{margin-top:32px}                        /* espaço entre a receita de uma data e a seguinte */
     /* edição: os mesmos campos em pílula (borda #CCCFD9 das etiquetas do gráfico), título 12/16 em cima */
     .rx-edit{padding:4px 0 16px;border-bottom:1px solid rgba(0,0,0,.08)}
@@ -7394,16 +7394,15 @@
                   r.status === 'emitida' ? 'Emitida' : r.status === 'rascunho' ? 'Rascunho' : 'Cancelada');
       }
       function rhChip(t, f, cls) { var b = el('button', 'gq-chip sg-add' + (cls || '')); b.type = 'button'; b.innerHTML = t; b.addEventListener('click', f); return b; }
-      // cabeçalho de cada receita: data, consulta, tipo e situação; embaixo, as ações da receita inteira
+      // cabeçalho de cada receita: data, consulta, tipo e situação; à direita, na mesma linha, as ações da receita inteira
       function rhHead(r) {
-        var d = new Date(r.emitida_em || r.created_at), can = rxCan(), novos = r.itens.filter(function (x) { return !rxHas(x); });
+        var d = new Date(r.emitida_em || r.created_at), can = rxCan();
         var h = el('div', 'rh-head'), t = el('div', 'rh-ht'), acts = el('div', 'rh-acts');
         t.appendChild(el('span', 'rh-hd', dayMon(d)));
         t.appendChild(el('span', 'rh-hs', [DOWS[d.getDay()] + ' · ' + hm(d), rxConsulta(r), TIPO[r.tipo] || 'Receita'].join(' · ')));
         t.appendChild(rhBadge(r));
         if (r.status === 'cancelada') t.appendChild(el('span', 'rh-hs rh-cx', 'Motivo: ' + (r.motivo_cancelamento || '—')));
         h.appendChild(t);
-        if (novos.length > 1) acts.appendChild(rhChip(RXI.plus + 'Usar todos', function () { if (rxCan()) rhUsa(novos); })).disabled = !can;
         if (r.status === 'emitida') {
           acts.appendChild(rhChip('Imprimir 2ª via', function () { rxImprimir([r], true); })).title = 'Imprime de novo, marcada como 2ª via';
           acts.appendChild(rhChip('Cancelar receita', function () {
