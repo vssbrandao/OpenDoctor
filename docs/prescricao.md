@@ -104,8 +104,8 @@ linha.
 - **Cartão minimalista:** cada sugestão mostra remédio, dose e posologia, e o motivo numa linha (inteiro ao passar o
   mouse). A única ação é **Adicionar**, que leva o item à receita; de novo ("Na receita") tira.
 - **Avisos:** os de alergia, dose e função renal aparecem quando houver.
-- **Observação da IA:** em texto pequeno, em até 2 linhas.
-- **Nada com indicação clara:** a lista vem vazia, com a observação da IA.
+- **Observação da IA:** não aparece (o servidor ainda a devolve).
+- **Nada com indicação clara:** aparece "Nenhum remédio novo com indicação clara agora."
 - **Perfil mudou:** gera de novo ao abrir a aba. Conta como mudança o cadastro e o último valor de cada sinal e exame.
   - **Com a aba aberta:** não gera sozinho, porque gerar gasta crédito e troca a lista. O que o médico muda pela
     própria aba (atualizar as em uso) não conta.
