@@ -168,18 +168,37 @@ const cenarios = [
     certo(u.includes('Metformina 1000 mg 1 comprimido 2x/dia') && u.includes('Losartana 50 mg 12/12h'), 'em uso: ' + u.join('; '));
     return 'trocou a dose da Metformina nas medicações em uso';
   }],
-  ['possíveis prescrições: só 2 remédios novos, só com Adicionar; nome do remédio com sugestão', async () => {
+  ['possíveis prescrições: só 2 remédios novos, só com Adicionar; a barra volta vazia depois de adicionar', async () => {
     await abre();
     certo(await ev(n('#rnList .sg')) === 2 && await ev(`!!${sg('Dapagliflozina')} && !!${sg('Semaglutida')}`), 'só 2 remédios novos');
     certo(await ev(`[...document.querySelectorAll('#rnBox button, #rnBox a')].filter((b) => b.offsetParent !== null).map((b) => b.textContent.trim()).join('|')`) === 'Adicionar|Adicionar',
       'só o Adicionar no cartão');
     await ev(`${sg('Dapagliflozina')}.querySelector('.sg-add').click()`); await salvo();
     certo((await ev(linhas)).some((l) => l.startsWith('Dapagliflozina 10 mg')), 'foi para a receita');
-    certo(await ev(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .rx-q').getAttribute('list') === 'rxRemedios'`), 'barra sempre aberta, com a lista de remédios');
+    certo(await ev(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .rx-q').getAttribute('role') === 'combobox'`), 'barra sempre aberta, com a busca');
     await item('Omeprazol', '20 mg', '1 cápsula em jejum', '30 cápsulas');
     certo(await ev(`document.querySelector('#rxNew .rx-q').value === '' && document.querySelector('#rxNew .rx-busca').offsetParent !== null`), 'volta para a barra vazia depois de adicionar');
-    await ate(`document.getElementById('rxRemedios').options.length > 500`, 4000, 'lista de remédios');
-    return 'Dapagliflozina e Semaglutida, só com Adicionar; ' + (await ev(`document.getElementById('rxRemedios').options.length`)) + ' nomes na sugestão';
+    return 'Dapagliflozina e Semaglutida, só com Adicionar; a barra volta vazia';
+  }],
+  ['adicionar pela base de medicamentos: escolher a marca, dose e quantidade da apresentação', async () => {
+    await abre(false);
+    await ev(`(() => { const q = document.querySelector('#rxNew .rx-q'); q.focus(); q.value = 'glifage'; q.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await ate(n('#rxNew .rx-sug-i') + ' > 0', 5000, 'resultados da busca');
+    const r = await ev(`[...document.querySelectorAll('#rxNew .rx-sug-i')].map((b) => b.innerText.replace(/\\s+/g, ' ')).slice(0, 2)`);
+    certo(r[0].startsWith('Glifage Cloridrato de metformina'), 'resultado: ' + r.join(' / '));
+    await ev(`(() => { document.querySelector('#rxNew .rx-sug-i').dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); return 1; })()`);
+    const p = (k) => `document.querySelector('#rxNew .rx-p[data-k=${k}]')`;
+    certo(await ev(`${p('nome')}.value`) === 'Glifage (cloridrato de metformina)', 'nome na receita: Marca (substância)');
+    const doses = await ev(`[...document.getElementById('rxDoses').options].map((o) => o.value)`);
+    certo(doses.includes('850 mg') && doses.includes('500 mg'), 'doses da marca: ' + doses.join(', '));
+    await ev(`(() => { const d = ${p('dose')}; d.value = '850 mg'; d.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    const qs = await ev(`[...document.getElementById('rxQtds').options].map((o) => o.value)`);
+    certo(qs.includes('30 comprimidos') && (await ev(`${p('posologia')}.placeholder`)).includes('comprimido revestido'), 'quantidades e forma: ' + qs.join(', '));
+    await ev(`(() => { ${p('posologia')}.value = '1 comprimido 2x/dia'; ${p('quantidade')}.value = '60 comprimidos'; document.querySelector('#rxNew .rx-ok').click(); return 1; })()`);
+    await salvo();
+    const l = await ev(linhas);
+    certo(l.some((x) => x.startsWith('Glifage (cloridrato de metformina) 850 mg | 60 comprimidos')), 'na receita: ' + l.join('; '));
+    return 'Glifage (cloridrato de metformina) 850 mg · 60 comprimidos';
   }],
   ['histórico de receitas: busca por remédio e escolha dos itens', async () => {
     await abre(); await ate(n('#rhList .rh-item') + ' > 0', 5000, 'histórico');

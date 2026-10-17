@@ -29,7 +29,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer, exemplo
-from . import prescricao, scribe, stt
+from . import medicamentos, prescricao, scribe, stt
 
 mimetypes.add_type("text/javascript", ".mjs")   # pdf.js (web/vendor) é módulo: o navegador exige esse tipo
 
@@ -1799,6 +1799,16 @@ async def prontuario_remedios(request: Request):
     if err:
         return err
     return {"nomes": prescricao.nomes_remedios()}
+
+
+@app.get("/prontuario/remedios/busca")
+async def prontuario_remedios_busca(request: Request, q: str = ""):
+    """Substâncias e marcas da base de medicamentos (CMED/Anvisa, app/medicamentos.py) para a barra "Adicionar
+    remédio…", cada uma com as apresentações (dose, forma e quantidades de embalagem)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    return {"itens": await run_in_threadpool(medicamentos.buscar, q[:80])}
 
 
 @app.get("/me/medico")

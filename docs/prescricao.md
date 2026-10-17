@@ -20,6 +20,23 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 - **Paciente:** excluir o paciente apaga os rascunhos. Receita emitida ou cancelada é prontuário: segura a exclusão
   (`has_notes`), como as evoluções.
 
+### Base de medicamentos (`app/medicamentos.py`, `GET /prontuario/remedios/busca?q=`)
+- **Fonte:** a Lista de Preços de Medicamentos da CMED/Anvisa (pública, sai todo mês, em gov.br/anvisa → CMED →
+  Preços).
+- **Script:** `scripts/cmed_medicamentos.py` gera `app/data/medicamentos.tsv.gz` (cerca de 270 KB; 20 mil
+  apresentações) com:
+  - substância, marca, laboratório, tipo (genérico, similar, novo…), tarja e se foi comercializado no último ano;
+  - dose, forma e quantidade da embalagem, lidas da apresentação;
+  - a apresentação original.
+  
+  Fica de fora o que tem restrição hospitalar, e os preços não entram.
+- **Atualizar** (todo mês, ou quando quiser): baixar a planilha PMC e rodar
+  `.venv/bin/python -m scripts.cmed_medicamentos lista_PMC__AAAAMMDD.xlsx`. O script precisa do `openpyxl` (só no
+  desenvolvimento).
+- **Busca:** todas as palavras precisam bater, até 12 resultados. Vem primeiro o que começa com o termo, a substância
+  antes das marcas dela e as comercializadas antes. A substância junta todas as apresentações dela, de qualquer
+  laboratório.
+
 ### Rotas (privadas, sempre do médico)
 - `GET /prontuario/receitas?patient_id=` e `POST /prontuario/receitas` (cria o rascunho).
 - `PATCH` e `DELETE /prontuario/receitas/{id}`: só no rascunho.
@@ -47,9 +64,13 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 ### Tela
 - **Lista:** cada linha mostra os avisos e tem "×" com "Desfazer". Clicar edita: remédio, dose, posologia,
   quantidade, via e uso contínuo.
-- **Novo item:** a barra "Adicionar remédio…" fica sempre aberta embaixo da lista, com a sugestão de nomes.
-  - Escolher o remédio (ou apertar Enter) troca a barra pela linha de pílulas: remédio, dose, posologia, quantidade e
-    "Adicionar".
+- **Novo item:** a barra "Adicionar remédio…" fica sempre aberta embaixo da lista.
+  - Ela busca na base de medicamentos (veja "Base de medicamentos") por substância ou marca. As setas ↑↓ e o Enter
+    escolhem; Enter sem escolher aceita o texto livre.
+  - Escolher troca a barra pela linha de pílulas: remédio, dose, posologia, quantidade e "Adicionar".
+  - A marca entra como "Marca (substância)", por exemplo "Glifage (cloridrato de metformina)".
+  - As doses e as quantidades de embalagem daquele produto aparecem como sugestão nas pílulas, e a forma (ex.:
+    comprimido revestido) vem como dica na posologia.
   - "Adicionar" põe o item na receita e volta para a barra vazia; Esc também volta.
   - Via e uso contínuo ficam na edição do item.
   - É montada uma vez só, então redesenhar a lista não apaga o que está sendo digitado. O nome do remédio tem sugestão enquanto digita (`GET /prontuario/remedios`, a lista

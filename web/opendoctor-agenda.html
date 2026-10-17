@@ -180,10 +180,17 @@
       font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A;box-shadow:inset 0 0 0 1px #CCCFD9}
     .rx-q::placeholder{color:#80868B}
     .rx-q:focus{box-shadow:inset 0 0 0 2px #0B57D0}
+    .rx-sug{position:absolute;left:0;right:0;top:46px;z-index:30;max-height:340px;overflow-y:auto;padding:6px 0;border-radius:16px;background:#fff;
+      box-shadow:0 1px 3px rgba(60,64,67,.2),0 4px 16px rgba(60,64,67,.15)}
+    .rx-sug[hidden]{display:none}
+    .rx-sug-i{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 16px;border:0;background:none;text-align:left;cursor:pointer;font-family:var(--disp)}
+    .rx-sug-i:hover,.rx-sug-i.on{background:#F0F2F5}
+    .rx-sug-n{font-size:14px;line-height:20px;color:#0A0A0A}
+    .rx-sug-d{font-size:12px;line-height:16px;color:#56595E}
     .rx-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
     .rx-linha[hidden]{display:none}
     .rx-linha .rx-p{width:auto;flex:1 1 120px;min-width:0}
-    .rx-linha .rx-p[data-k=nome]{flex:1.3 1 150px}
+    .rx-linha .rx-p[data-k=nome]{flex:1 1 100%}                 /* o nome ("Marca (substância)") na linha toda */
     .rx-linha .rx-p[data-k=posologia]{flex:1.8 1 180px}
     .rx-linha .rx-ok{flex:none;height:40px;border-radius:20px;padding:0 20px}
     .rx-sync-t{margin-bottom:4px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
@@ -7284,33 +7291,78 @@
         setTimeout(function () { ins.nome.focus(); ins.nome.select(); }, 0);
         return box;
       }
-      // novo item: a barra "Adicionar remédio…" (com a lista de remédios). Escolhido o remédio (ou Enter), ela vira a linha
-      // de pílulas: remédio, dose, posologia, quantidade e Adicionar. Montada uma vez (redesenhar a lista não apaga nada).
-      // Via e uso contínuo ficam na edição do item (clicar nele na lista).
+      // novo item: a barra "Adicionar remédio…" busca na base de medicamentos (CMED/Anvisa: /prontuario/remedios/busca)
+      // substâncias e marcas. Escolhido (ou Enter com o texto livre), ela vira a linha de pílulas: remédio ("Marca
+      // (substância)"), dose e quantidade com as apresentações daquele produto como sugestão, posologia e Adicionar.
+      // Montada uma vez (redesenhar a lista não apaga nada). Via e uso contínuo ficam na edição do item.
       var rxNovoIns = null;
       function rxNovoMonta() {
         if (rxNovoIns) return;
         var box = $('rxNew'); box.innerHTML = '';
-        var bar = el('label', 'rx-busca'), q = el('input', 'rx-q'); q.type = 'text'; q.placeholder = 'Adicionar remédio…'; q.setAttribute('list', 'rxRemedios');
-        q.setAttribute('aria-label', 'Adicionar remédio à receita'); q.autocomplete = 'off'; q.maxLength = 120;
+        var bar = el('div', 'rx-busca'), q = el('input', 'rx-q'), sug = el('div', 'rx-sug'); q.type = 'text'; q.placeholder = 'Adicionar remédio…';
+        q.setAttribute('aria-label', 'Adicionar remédio à receita (substância ou marca)'); q.autocomplete = 'off'; q.maxLength = 120;
+        q.setAttribute('role', 'combobox'); q.setAttribute('aria-expanded', 'false'); sug.setAttribute('role', 'listbox'); sug.hidden = true;
         bar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14" fill="currentColor"/></svg>';
-        bar.appendChild(q);
+        bar.appendChild(q); bar.appendChild(sug);
         var linha = el('div', 'rx-linha'), ins = {}; linha.hidden = true;
+        var dlDose = document.createElement('datalist'), dlQtd = document.createElement('datalist'); dlDose.id = 'rxDoses'; dlQtd.id = 'rxQtds';
         [['nome', 'Remédio'], ['dose', 'Dose'], ['posologia', 'Posologia'], ['quantidade', 'Quantidade']].forEach(function (c) {
           var i = el('input', 'rx-f rx-p'); i.type = 'text'; i.placeholder = c[1]; i.setAttribute('aria-label', c[1]); i.dataset.k = c[0];
-          i.maxLength = c[0] === 'posologia' ? 160 : 120; if (c[0] === 'nome') i.setAttribute('list', 'rxRemedios');
+          i.maxLength = c[0] === 'posologia' ? 160 : 120; i.autocomplete = 'off';
           i.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ok(); } else if (e.key === 'Escape') { e.preventDefault(); volta(); } });
           linha.appendChild(i); ins[c[0]] = i;
         });
+        ins.dose.setAttribute('list', 'rxDoses'); ins.quantidade.setAttribute('list', 'rxQtds');
         var bo = el('button', 'pr-save rx-ok', 'Adicionar'); bo.type = 'button'; linha.appendChild(bo);
-        box.appendChild(bar); box.appendChild(linha);
-        function abre() {                                   // a barra vira a linha de pílulas, com o remédio escolhido
-          var nome = q.value.replace(/\s+/g, ' ').trim(); if (!nome) return;
-          ins.nome.value = nome[0].toUpperCase() + nome.slice(1); bar.hidden = true; linha.hidden = false; ins.dose.focus();
+        box.appendChild(bar); box.appendChild(linha); box.appendChild(dlDose); box.appendChild(dlQtd);
+        var res = [], sel = -1, esc = null, tBusca = null, seq = 0;
+        function fecha() { sug.hidden = true; sug.innerHTML = ''; sel = -1; q.setAttribute('aria-expanded', 'false'); }
+        function desenha() {
+          sug.innerHTML = ''; if (!res.length) { fecha(); return; }
+          res.forEach(function (it, k) {
+            var b = el('button', 'rx-sug-i' + (k === sel ? ' on' : '')); b.type = 'button'; b.setAttribute('role', 'option');
+            b.appendChild(el('span', 'rx-sug-n', it.marca || it.substancia));
+            b.appendChild(el('span', 'rx-sug-d', it.marca ? it.substancia + ' · ' + it.laboratorios.join(', ') : 'Substância' + (it.generico ? ' · tem genérico' : '')));
+            b.addEventListener('mousedown', function (e) { e.preventDefault(); escolhe(it); });
+            sug.appendChild(b);
+          });
+          sug.hidden = false; q.setAttribute('aria-expanded', 'true');
         }
+        function busca() {
+          clearTimeout(tBusca); var t = q.value.trim(); if (t.length < 2) { res = []; fecha(); return; }
+          tBusca = setTimeout(function () {
+            var n = ++seq;
+            api('GET', '/prontuario/remedios/busca?q=' + encodeURIComponent(t)).then(function (r) {
+              if (n !== seq || q.value.trim() !== t || bar.hidden) return;
+              res = r.ok ? r.j.itens || [] : []; sel = -1; desenha();
+            });
+          }, 150);
+        }
+        function opcoes(dl, valores) {
+          dl.innerHTML = '';
+          valores.forEach(function (v) { var o = document.createElement('option'); o.value = v[0]; if (v[1]) o.label = v[1]; dl.appendChild(o); });
+        }
+        function qtds() {                                   // quantidades e a forma da dose escolhida
+          if (!esc) { opcoes(dlQtd, []); ins.posologia.placeholder = 'Posologia'; return; }
+          var d = norm(ins.dose.value).trim(), aps = esc.apresentacoes.filter(function (a) { return !d || norm(a.dose) === d; }), vistos = {}, l = [];
+          aps.forEach(function (a) { a.quantidades.forEach(function (x) { if (!vistos[x]) { vistos[x] = 1; l.push([x]); } }); });
+          opcoes(dlQtd, l);
+          var f = aps.length && aps.every(function (a) { return a.forma === aps[0].forma; }) ? aps[0].forma : '';
+          ins.posologia.placeholder = f ? 'Posologia (' + f + ')' : 'Posologia';
+        }
+        function abre(it) {                                 // a barra vira a linha de pílulas
+          var nome = q.value.replace(/\s+/g, ' ').trim(); if (!it && !nome) return;
+          esc = it || null; fecha();
+          ins.nome.value = it ? it.nome : nome[0].toUpperCase() + nome.slice(1);
+          var vistos = {}, doses = [];
+          (it ? it.apresentacoes : []).forEach(function (a) { var k = a.dose + '|' + a.forma; if (a.dose && !vistos[k]) { vistos[k] = 1; doses.push([a.dose, a.forma]); } });
+          opcoes(dlDose, doses); ins.dose.value = doses.length === 1 ? doses[0][0] : ''; qtds();
+          bar.hidden = true; linha.hidden = false; ins.dose.focus();
+        }
+        function escolhe(it) { abre(it); }
         function volta() {                                  // de volta à barra (vazia)
           ['nome', 'dose', 'posologia', 'quantidade'].forEach(function (k) { ins[k].value = ''; });
-          q.value = ''; linha.hidden = true; bar.hidden = false;
+          esc = null; opcoes(dlDose, []); qtds(); q.value = ''; res = []; fecha(); linha.hidden = true; bar.hidden = false;
         }
         function ok() {
           if (!rxCan()) return;
@@ -7319,8 +7371,18 @@
           ['nome', 'dose', 'posologia', 'quantidade'].forEach(function (k) { x[k] = ins[k].value.replace(/\s+/g, ' ').trim(); });
           rxItems.push(x); volta(); rxChanged(); q.focus();
         }
-        q.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); abre(); } else if (e.key === 'Escape') { q.value = ''; } });
-        q.addEventListener('input', function (e) { if (e.inputType === 'insertReplacementText') abre(); });   // escolheu da lista
+        q.addEventListener('input', busca);
+        q.addEventListener('keydown', function (e) {
+          if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            if (!res.length) return; e.preventDefault();
+            if (e.key === 'ArrowDown') sel = sel + 1 >= res.length ? -1 : sel + 1;    // -1: o texto digitado, sem escolher
+            else sel = sel - 1 < -1 ? res.length - 1 : sel - 1;
+            desenha();
+          } else if (e.key === 'Enter') { e.preventDefault(); abre(sel >= 0 ? res[sel] : null); }
+          else if (e.key === 'Escape') { e.preventDefault(); if (!sug.hidden) fecha(); else q.value = ''; }
+        });
+        q.addEventListener('blur', function () { setTimeout(fecha, 150); });
+        ins.dose.addEventListener('input', qtds);
         bo.addEventListener('click', ok);
         rxNovoIns = { limpa: volta };
       }
