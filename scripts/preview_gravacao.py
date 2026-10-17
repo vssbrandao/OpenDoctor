@@ -190,7 +190,9 @@ def _agenda():
 @mock.get("/_preview/tab.js")
 def _tab_js():
     js = """(function(){var t=null;try{t=sessionStorage.getItem('od_preview_tab')}catch(e){}if(!t)return;
-      setTimeout(function(){var b=document.querySelector('#prTabs [data-tab='+t+']');if(b)b.click();},900);})();"""
+      var n=0,ok=0;function tenta(){var b=document.querySelector('#prTabs [data-tab='+t+']');   // até ficar 1 s na aba (o prontuário pode abrir depois)
+        if(b&&b.offsetParent){if(b.classList.contains('on')){if(++ok>=4)return;}else{ok=0;b.click();}}if(++n<40)setTimeout(tenta,250);}
+      setTimeout(tenta,900);})();"""
     return Response(js, media_type="application/javascript")
 
 

@@ -62,6 +62,16 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 - **Antimicrobiano** (`app/data/antimicrobianos.tsv`, RDC 471/2021): 2 vias, válida por 10 dias.
 
 ### Tela
+- **A folha:** a nova receita aparece como a folha que vai ser impressa e é o centro da aba: papel branco com sombra,
+  com:
+  - o cabeçalho do médico (com "Completar meus dados de médico" se faltar CRM ou UF);
+  - "Receita", com o estado do rascunho;
+  - o paciente e a data;
+  - a busca;
+  - os remédios numerados e agrupados por via de uso, como na impressão;
+  - a linha de assinatura e Copiar · Emitir.
+  
+  Vazia, mostra onde começar.
 - **Lista:** cada linha mostra os avisos e tem "×" com "Desfazer". Clicar edita: remédio, dose, posologia,
   quantidade, via e uso contínuo.
 - **Novo item:** a busca no padrão da do Google Finance, com as medidas tiradas da página de verdade. Fica sempre
