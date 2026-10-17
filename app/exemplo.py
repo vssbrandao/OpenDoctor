@@ -46,7 +46,7 @@ RECEITAS = [[_LOS1, _MET5], [_LOS2, _MET5], [_LOS2, _MET8], [_LOS2, _MET8, _ATO]
 
 def receita_itens(i):
     """Itens da receita emitida na consulta i (mesmo formato de prescricao.item_limpo)."""
-    return [{"nome": n, "dose": dz, "posologia": po, "quantidade": q, "via": "oral", "continuo": n != "Paracetamol",
+    return [{"nome": n, "dose": dz, "forma": "", "posologia": po, "quantidade": q, "via": "oral", "continuo": n != "Paracetamol",
              "origem": "manual", "fonte": "", "ia": ""} for n, dz, po, q in RECEITAS[i]]
 
 

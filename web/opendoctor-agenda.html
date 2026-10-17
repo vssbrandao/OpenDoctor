@@ -172,42 +172,50 @@
     .rx-msg .pr-link{font-size:12px}
     .rx-sync{display:flex;flex-direction:column;gap:4px;padding:16px 20px;border-radius:24px;background:#fff}
     .rx-sync[hidden]{display:none}
-    /* a nova receita = a folha impressa: papel branco com sombra, cabeçalho do médico, título, busca, itens numerados
-       por via de uso, assinatura; é o centro da aba */
-    .rx-papel{display:flex;flex-direction:column;gap:20px;padding:40px 48px 32px;border:1px solid #E1E3E1;border-radius:8px;background:#fff;
-      box-shadow:0 1px 3px rgba(60,64,67,.12),0 8px 24px rgba(60,64,67,.12);font-family:var(--disp);color:#0A0A0A}
-    .rxp-med{display:flex;flex-direction:column;gap:2px;padding-bottom:16px;border-bottom:1px solid #0A0A0A;font-size:13px;line-height:18px;color:#36373A}
-    .rxp-med b{font-weight:500;font-size:18px;line-height:24px;color:#0A0A0A}
-    .rxp-med .pr-link{align-self:flex-start;margin-top:2px;font-size:13px}
-    .rxp-tit{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px 24px}
-    .rxp-h{font-weight:500;font-size:28px;line-height:36px;color:#0A0A0A}
-    .rxp-st{margin-left:8px;font-weight:400;font-size:12px;line-height:16px;color:#56595E;vertical-align:middle}
-    .rxp-pac{display:flex;align-items:baseline;gap:4px;font-size:15px;line-height:20px;color:#36373A}
-    .rxp-pac b{font-weight:500;color:#0A0A0A}
-    .rxp-dia{margin-left:16px;color:#56595E}
-    .rxp-uso{margin-top:4px;font-weight:500;font-size:15px;line-height:20px;text-decoration:underline;color:#0A0A0A}
-    .rxp-num{flex:none;width:24px;font-size:16px;line-height:20px;color:#0A0A0A;align-self:flex-start}
-    .rxp-vazio{padding:24px 0;font-size:15px;line-height:20px;color:#80868B;text-align:center}
-    .rxp-vazio[hidden]{display:none}
-    .rxp-ass{align-self:flex-end;width:280px;margin-top:40px;padding-top:6px;border-top:1px solid #0A0A0A;font-size:12px;line-height:16px;color:#56595E;text-align:center}
-    .rx-papel .rx-acts{margin-top:4px}
-    .rx-papel .rx-list{gap:4px}
-    .rx-papel .rx-main{justify-content:flex-start}
-    .rx-papel .rx-l{flex:1}
+    /* a receita = o cartão do Figma (Concept, nó 1079:49100), com as medidas do quadro de 1440: branco, canto 19,34 e
+       sombra; uma linha a 161,99 do topo, os dados (Paciente, Documento, Data de emissão, Validade), outra linha, os
+       remédios numerados (01, 02…) e a barra "Adicionar medicamento"; Copiar · Emitir no pé do cartão */
+    .rx-papel{display:flex;flex-direction:column;box-sizing:border-box;min-height:627.806px;padding:161.18px 54.8px 32px;border-radius:19.342px;
+      background:#fff;box-shadow:3.224px 3.224px 38.684px 8.059px rgba(0,0,0,.08);font-family:var(--disp);color:#0A0A0A}
+    .rxp-dados{display:grid;grid-template-columns:110.9px minmax(0,1fr);align-items:center;margin:0;padding:32.77px 0 28.66px;
+      border-top:.806px solid rgba(0,0,0,.08);border-bottom:.806px solid rgba(0,0,0,.08)}
+    .rxp-dados dt{margin-left:-1.25px;font-size:8.865px;line-height:20.42px;color:#858585}
+    .rxp-dados dd{margin:0;font-weight:700;font-size:9.671px;line-height:20.42px;color:#383838}
+    .rx-papel .rx-list{padding-top:23.47px}
+    .rx-papel .rx-list + .fz{margin-top:21.47px}
+    .rx-papel .rx-list:empty + .fz{margin-top:23.47px}
+    .rx-papel .rx-row{position:relative;display:block;padding:0;border-radius:0}
+    .rx-papel .rx-row + .rx-row,.rx-papel .rx-edit + .rx-row,.rx-papel .rx-row + .rx-edit{margin-top:11.08px}
+    .rx-papel .rx-row:hover{background:none}
+    .rx-papel .rx-row .rx-main{display:flex;align-items:flex-start;justify-content:flex-start;gap:0;width:100%;padding:0}
+    .rx-papel .rx-main:not(:disabled):hover .rx-n{text-decoration:underline}
+    .rxp-num{flex:none;width:111.6px;margin-left:1.6px;font-size:8.865px;line-height:14.88px;color:#858585}
+    .rx-papel .rx-l{flex:1;display:flex;flex-direction:column;min-width:0}
+    .rx-papel .rx-n{margin-bottom:.52px;font-weight:700;font-size:10.477px;line-height:16.2px;color:#303030}
+    .rx-papel .rx-d,.rx-papel .rx-l .rn-w,.rx-papel .rx-tipo{margin:0;font-size:9.268px;line-height:20.55px}
+    .rx-papel .rx-d{color:#555}
+    .rx-papel .rx-q{font:inherit;color:inherit}
+    .rx-papel .rx-x{position:absolute;top:-8px;right:-8px;opacity:0}
+    .rx-papel .rx-row:hover .rx-x,.rx-papel .rx-x:focus-visible{opacity:1}
+    .rx-papel .rx-msg,.rx-papel .rx-sync{margin-top:16px}
+    .rx-papel .rx-acts{align-items:center;margin-top:auto;padding-top:24px}
     .rx-papel .rx-edit{padding:8px 0 16px;border-bottom:0}
     .rx-papel .rx-edit .rx-f{height:48px;border:0;border-radius:24px;background:#F0F2F5;font-size:16px}
     .rx-papel .rx-edit .rx-f:focus{box-shadow:inset 0 0 0 2px #0B57D0}
     .rx-new[hidden]{display:none}
     /* busca da receita = a busca do Google Finance (medida na página): barra 48 px #F0F2F5, painel #E9EBF0 com sombra,
        filtros 36 px (o escolhido #B8D5FF), linhas 8 px de respiro com o branco ao passar, 16/20 + 12/16 */
-    .fz{position:relative}
+    /* a barra = "Adicionar medicamento" do Figma (nó 1079:49107/49108): 518,2 × 40,3, #F3F3F3, canto 8; o "+" do SF
+       (10 × 10) numa caixa de 16,12 e o texto 11,28/16,12 Medium #6B7173. O painel do Finance abre logo abaixo */
+    .fz{position:relative;margin:0 -4.03px 0 3.23px}
     .fz[hidden]{display:none}
-    .fz-bar{display:flex;align-items:center;gap:12px;height:48px;padding:0 16px;border-radius:24px;background:#F0F2F5;color:#5E5E5E}
-    .fz.open .fz-bar{border-radius:24px 24px 0 0}
-    .fz-bar svg{flex:none;width:24px;height:24px}
-    .fz-in{flex:1;min-width:0;height:100%;padding:0;border:0;outline:0;background:none;font-family:var(--disp);font-size:18px;line-height:24px;color:#0A0A0A}
-    .fz-in::placeholder{color:#5E5E5E}
-    .fz-pan{position:absolute;left:0;right:0;top:48px;z-index:40;padding-bottom:8px;border-top:1px solid #DADCE0;border-radius:0 0 24px 24px;
+    .fz-bar{display:flex;align-items:center;gap:4.835px;height:40.296px;padding:0 0 0 15.31px;border-radius:8px;background:#F3F3F3;color:#6B7173;cursor:text}
+    .fz.open .fz-bar{border-radius:8px 8px 0 0}
+    .fz-ic{position:relative;flex:none;width:16.118px;height:16.118px}
+    .fz-ic svg{position:absolute;left:3.19px;top:2.3px;width:10px;height:10px}
+    .fz-in{flex:1;min-width:0;height:100%;padding:0 12px 0 0;border:0;outline:0;background:none;font-family:var(--disp);font-weight:500;font-size:11.283px;line-height:16.118px;color:#0A0A0A}
+    .fz-in::placeholder{color:#6B7173;opacity:1}
+    .fz-pan{position:absolute;left:0;right:0;top:40.296px;z-index:40;padding-bottom:8px;border-top:1px solid #DADCE0;border-radius:0 0 8px 8px;
       background:#E9EBF0;box-shadow:0 8px 16px rgba(0,0,0,.2);font-family:var(--disp)}
     .fz-pan[hidden]{display:none}
     .fz-chips{display:flex;flex-wrap:wrap;gap:8px;padding:16px 16px 8px}
@@ -217,11 +225,12 @@
     .fz-row{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;padding:8px;border:0;border-radius:8px;background:none;cursor:pointer;text-align:left;font-family:var(--disp)}
     .fz-row:hover,.fz-row.on{background:#fff}
     .fz-l,.fz-r{display:flex;flex-direction:column;min-width:0}
-    .fz-r{flex:none;align-items:flex-end;text-align:right}
+    .fz-l{flex:1 1 auto}
+    .fz-r{flex:0 1 auto;max-width:50%;align-items:flex-end;text-align:right}   /* doses longas não empurram o nome para fora */
     .fz-t{font-size:16px;line-height:20px;color:#0A0A0A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .fz-s{margin-top:2px;font-size:12px;line-height:16px;color:#56595E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .fz-v{font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A}
-    .fz-vs{margin-top:2px;font-weight:500;font-size:12px;line-height:16px;color:#56595E}
+    .fz-v{max-width:100%;font-weight:500;font-size:16px;line-height:20px;color:#0A0A0A;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .fz-vs{max-width:100%;margin-top:2px;font-weight:500;font-size:12px;line-height:16px;color:#56595E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .fz-vazio{padding:8px;font-size:14px;line-height:20px;color:#56595E}
     .fz-foot{margin-top:8px;padding:16px 16px 0;border-top:1px solid #DADCE0}
     .fz-ia{display:flex;align-items:center;gap:12px;width:100%;height:36px;padding:0 8px;border:0;border-radius:8px;background:none;cursor:pointer;font-family:var(--disp);font-size:16px;line-height:20px;color:#0A0A0A}
@@ -2237,22 +2246,17 @@
             <!-- Prescrições: receita da consulta (tabela receitas), possíveis prescrições e receitas anteriores (docs/prescricao.md) -->
             <section class="pr-panel" data-panel="prescricoes" hidden>
               <!-- receita da consulta aberta: o rascunho (salvo sozinho) até emitir -->
-              <!-- a nova receita como a folha que vai ser impressa: cabeçalho do médico, paciente e data, a busca, os remédios
-                   numerados por via de uso, a assinatura e Copiar · Emitir -->
+              <!-- a nova receita (cartão do Figma): os dados do paciente e da receita, os remédios numerados, a barra
+                   "Adicionar medicamento" e Copiar · Emitir -->
               <div class="rx-papel" id="rxBox">
-                <div class="rxp-med" id="rxMed"></div>
-                <div class="rxp-tit">
-                  <div class="rxp-h">Receita <span class="rxp-st" id="rxSt">rascunho</span></div>
-                  <div class="rxp-pac" id="rxPac"></div>
-                </div>
-                <div class="fz" id="rxNew" hidden></div>   <!-- novo item: a busca no padrão do Google Finance (barra + painel) -->
+                <dl class="rxp-dados" id="rxDados"></dl>   <!-- Paciente, Documento, Data de emissão, Validade -->
                 <div class="rx-list" id="rxBody"></div>
-                <div class="rxp-vazio" id="rxVazio" hidden>Busque o primeiro remédio acima, pela substância ou pela marca.</div>
+                <div class="fz" id="rxNew" hidden></div>   <!-- novo item: a barra; o painel de busca (padrão do Google Finance) abre embaixo -->
                 <div class="rx-msg" id="rxMsg" role="status" hidden></div>
                 <div class="rx-sync" id="rxSync" hidden></div>
                 <datalist id="rxRemedios"></datalist>
-                <div class="rxp-ass">Assinatura e carimbo do médico</div>
                 <div class="rx-acts" id="rxActs" hidden>
+                  <span class="pr-status" id="rxSt">rascunho</span>
                   <button class="pr-ghost" type="button" id="rxCopy">Copiar</button>
                   <button class="pr-save" type="button" id="rxEmit">Emitir receita</button>
                 </div>
@@ -7212,7 +7216,7 @@
           rxEd = -1; if (rxNovoIns) rxNovoIns.limpa(); rxSt(rxDraft ? 'rascunho salvo' : 'rascunho'); rxMsg('');
           renderRx(); renderRh(); drawSg(); rxConferir();
         });
-        if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) { medico = res.j.medico; rxPapel(); } });
+        if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) { medico = res.j.medico; } });
         if (!$('rxRemedios').children.length) api('GET', '/prontuario/remedios').then(function (res) {
           if (!res.ok || $('rxRemedios').children.length) return;
           var dl = $('rxRemedios'); (res.j.nomes || []).forEach(function (n) { var o = document.createElement('option'); o.value = n; dl.appendChild(o); });
@@ -7271,45 +7275,32 @@
       var rxEd = -1;                                      // linha aberta para editar
       var RXF = [['nome', 'Remédio', 'Ex.: losartana'], ['dose', 'Dose', 'Ex.: 50 mg'], ['posologia', 'Posologia', 'Ex.: 1 comprimido de 12/12 h'],
                  ['quantidade', 'Quantidade', 'Ex.: 60 comprimidos']];
-      function rxPapel() {                                 // o cabeçalho da folha: médico, paciente e data (como a impressa)
-        var m = medico || {}, h = $('rxMed'); h.innerHTML = '';
-        if (m.name) {
-          h.appendChild(el('b', null, m.name));
-          var l1 = [m.crm ? 'CRM ' + m.crm + (m.crm_uf ? '/' + m.crm_uf : '') : '', m.especialidade || ''].filter(Boolean).join(' · ');
-          var l2 = [m.consultorio_endereco || '', m.consultorio_telefone || ''].filter(Boolean).join(' · ');
-          if (l1) h.appendChild(el('span', null, l1)); if (l2) h.appendChild(el('span', null, l2));
-        }
-        if (!m.crm || !m.crm_uf) { var a = el('a', 'pr-link', 'Completar meus dados de médico'); a.href = 'opendoctor-configuracoes.html?volta=1'; h.appendChild(a); }
-        var pc = $('rxPac'); pc.innerHTML = ''; pc.appendChild(document.createTextNode('Paciente: ')); pc.appendChild(el('b', null, (patient && patient.name) || ''));
-        pc.appendChild(el('span', 'rxp-dia', rxDia(null)));
+      var MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+      function rxDados() {                                 // o topo do cartão: Paciente, Documento (CPF do cadastro) e Data de emissão
+        var p = patient || {}, d = new Date(), L = $('rxDados'); L.innerHTML = '';
+        [['Paciente', p.name || ''], ['Documento', p.cpf ? fmtCpf(p.cpf) : '—'],
+         ['Data de emissão', d.getDate() + ' de ' + MESES[d.getMonth()] + ' de ' + d.getFullYear()]].forEach(function (r) {
+          L.appendChild(el('dt', null, r[0])); L.appendChild(el('dd', null, r[1]));
+        });
       }
       function renderRx() {
         var L = $('rxBody'), can = rxCan(); L.innerHTML = '';
         if (!can) rxEd = -1;
-        var cheios = rxCheios().length;
-        $('rxActs').hidden = !cheios; $('rxNew').hidden = !can; if (can) rxNovoMonta();
-        $('rxVazio').hidden = !can || !!rxItems.length; rxPapel();
-        // como na impressão: agrupado por via de uso (na ordem em que a via aparece), numerado em sequência
-        var ordem = [], grupos = {};
-        rxItems.forEach(function (x, i) { var g = x.via || ''; if (!(g in grupos)) { grupos[g] = []; ordem.push(g); } grupos[g].push(i); });
-        var seq = [], num = {}, n = 0;
-        ordem.forEach(function (g) { grupos[g].forEach(function (i) { seq.push(i); num[i] = ++n; }); });
-        var ultimo = null;
-        seq.forEach(function (i) {
-          var x = rxItems[i], g = x.via || '';
-          if (g !== ultimo) { ultimo = g; if (g) L.appendChild(el('div', 'rxp-uso', USO[g] || g)); }
+        $('rxActs').hidden = !rxCheios().length; $('rxNew').hidden = !can; if (can) rxNovoMonta();
+        rxDados();
+        // como no Figma: 01, 02… na ordem em que entraram; o nome com a dose, a forma (da base CMED), a posologia e a
+        // quantidade, e os avisos da conferência. A linha abre a edição; o × aparece ao passar o mouse
+        rxItems.forEach(function (x, i) {
           if (i === rxEd) { L.appendChild(rxForm(x, i)); return; }
           var row = el('div', 'rx-row'), b = el('button', 'rx-main'); b.type = 'button'; b.disabled = !can; if (can) b.title = 'Editar';
-          var l = el('span', 'rx-l'), r = el('span', 'rx-r');
-          b.appendChild(el('span', 'rxp-num', num[i] + '.'));
+          var l = el('span', 'rx-l'), q = el('span', 'rx-d', 'Quantidade: ');
+          b.appendChild(el('span', 'rxp-num', (i < 9 ? '0' : '') + (i + 1)));
           l.appendChild(el('span', 'rx-n', [x.nome, x.dose].filter(Boolean).join(' ')));
+          if (x.forma) l.appendChild(el('span', 'rx-d', 'Forma farmacêutica: ' + x.forma[0].toUpperCase() + x.forma.slice(1)));
           l.appendChild(el('span', 'rx-d', [x.posologia || 'Sem posologia', x.continuo ? 'uso contínuo' : ''].filter(Boolean).join(' · ')));
+          q.appendChild(el('span', 'rx-q', x.quantidade || '—')); l.appendChild(q);
           rxAvisos(x).forEach(function (a) { l.appendChild(el('span', a[0], a[1])); });
-          r.appendChild(el('span', 'rx-q', x.quantidade || '—'));
-          r.appendChild(el('span', 'rx-o' + (x.origem === 'ia' ? ' ia' : ''),
-                           { ia: 'Sugestão da IA', uso: 'Em uso', anterior: 'Receita anterior', gravacao: 'Da gravação' }[x.origem] || 'Adicionado'));
-          if (x.fonte) r.title = x.fonte;
-          b.appendChild(l); b.appendChild(r); b.addEventListener('click', function () { rxOpen(i); });
+          b.appendChild(l); b.addEventListener('click', function () { rxOpen(i); });
           row.appendChild(b);
           if (can) {
             var del = el('button', 'rx-x'); del.type = 'button'; del.innerHTML = RXI.x; del.title = 'Tirar da receita';
@@ -7342,7 +7333,9 @@
       }
       function rxLe(ins, x) {                              // os campos → o item (false sem o nome do remédio)
         if (!ins.nome.value.trim()) return false;
+        var nome = x.nome;
         RXF.forEach(function (c) { x[c[0]] = ins[c[0]].value.replace(/\s+/g, ' ').trim(); });
+        if (x.nome !== nome) x.forma = '';                 // outro remédio: a forma da apresentação escolhida não vale mais
         x.via = ins.via.value; x.continuo = ins.continuo.checked; x._av = null;
         return true;
       }
@@ -7370,15 +7363,18 @@
       var FZI = {
         busca: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14" fill="currentColor"/></svg>',
         volta: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z" fill="currentColor"/></svg>',
-        mais: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="currentColor"/></svg>'
+        mais: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="currentColor"/></svg>',
+        // o "+" do Figma (SF Symbol "plus", exportado do nó 1079:49110)
+        add: '<span class="fz-ic"><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M0.670232 5.66793C0.305899 5.66793 0.00129235 5.3693 0.00129235 4.999C0.00129235 4.63466 0.305899 4.33006 0.670232 4.33006H4.33148V0.668808C4.33148 0.304475 4.63609 -0.000131358 5.00042 -0.000131358C5.36475 -0.000131358 5.66936 0.304475 5.66936 0.668808V4.33006H9.33061C9.69494 4.33006 9.99955 4.63466 9.99955 4.999C9.99955 5.3693 9.69494 5.66793 9.33061 5.66793H5.66936V9.32918C5.66936 9.69352 5.36475 9.99812 5.00042 9.99812C4.63609 9.99812 4.33148 9.69352 4.33148 9.32918V5.66793H0.670232Z" fill="currentColor"/></svg></span>'
       };
       function rxNovoMonta() {
         if (rxNovoIns) return;
         var box = $('rxNew'); box.innerHTML = '';
         var bar = el('div', 'fz-bar'), q = el('input', 'fz-in'), pan = el('div', 'fz-pan'); pan.hidden = true;
-        bar.innerHTML = FZI.busca; q.type = 'text'; q.placeholder = 'Adicionar remédio: substância ou marca'; q.autocomplete = 'off'; q.maxLength = 120;
+        bar.innerHTML = FZI.add; q.type = 'text'; q.placeholder = 'Adicionar medicamento'; q.autocomplete = 'off'; q.maxLength = 120;
         q.setAttribute('role', 'combobox'); q.setAttribute('aria-expanded', 'false'); q.setAttribute('aria-label', 'Adicionar remédio à receita');
         bar.appendChild(q); box.appendChild(bar); box.appendChild(pan);
+        bar.addEventListener('mousedown', function (e) { if (e.target !== q) { e.preventDefault(); q.focus(); } });   // a barra toda é o campo
         var dl = document.createElement('datalist'); dl.id = 'rxQtds'; box.appendChild(dl);
         var st = { passo: 'busca', res: [], filtro: 'todas', sel: -1, prod: null, ap: null, livre: '' }, tBusca = null, seq = 0, ins = {};
         function aberto(on) { box.classList.toggle('open', on); pan.hidden = !on; q.setAttribute('aria-expanded', on ? 'true' : 'false'); }
@@ -7470,8 +7466,8 @@
         function limpa() { q.value = ''; st.res = []; fecha(); }
         function ok() {
           if (!rxCan()) return;
-          var x = { nome: st.prod ? st.prod.nome : st.livre, dose: st.ap ? st.ap.dose || '' : '', posologia: '', quantidade: '', via: '', continuo: false,
-                    origem: 'manual', fonte: '', ia: '' };
+          var x = { nome: st.prod ? st.prod.nome : st.livre, dose: st.ap ? st.ap.dose || '' : '', forma: st.ap ? st.ap.forma || '' : '', posologia: '',
+                    quantidade: '', via: '', continuo: false, origem: 'manual', fonte: '', ia: '' };
           if (!x.nome) return;
           ['dose', 'posologia', 'quantidade'].forEach(function (k) { if (ins[k]) x[k] = ins[k].value.replace(/\s+/g, ' ').trim(); });
           rxItems.push(x); limpa(); rxChanged(); q.focus();
