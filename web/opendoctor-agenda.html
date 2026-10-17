@@ -173,6 +173,19 @@
     .rx-sync{display:flex;flex-direction:column;gap:4px;padding:16px 20px;border-radius:24px;background:#fff}
     .rx-sync[hidden]{display:none}
     .rx-new[hidden]{display:none}
+    .rx-busca{position:relative;display:flex;align-items:center}
+    .rx-busca[hidden]{display:none}
+    .rx-busca svg{position:absolute;left:14px;width:20px;height:20px;color:#5F6368;pointer-events:none}
+    .rx-q{width:100%;height:40px;box-sizing:border-box;padding:0 16px 0 44px;border:0;border-radius:20px;background:#fff;outline:0;
+      font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A;box-shadow:inset 0 0 0 1px #CCCFD9}
+    .rx-q::placeholder{color:#80868B}
+    .rx-q:focus{box-shadow:inset 0 0 0 2px #0B57D0}
+    .rx-linha{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .rx-linha[hidden]{display:none}
+    .rx-linha .rx-p{width:auto;flex:1 1 120px;min-width:0}
+    .rx-linha .rx-p[data-k=nome]{flex:1.3 1 150px}
+    .rx-linha .rx-p[data-k=posologia]{flex:1.8 1 180px}
+    .rx-linha .rx-ok{flex:none;height:40px;border-radius:20px;padding:0 20px}
     .rx-sync-t{margin-bottom:4px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
     .rx-sync .rx-ck{height:auto;align-self:auto;font-size:13px;line-height:18px}
     .pr-toast.pr-desfaz{display:flex;align-items:center;gap:16px;max-width:calc(100vw - 64px)}
@@ -2180,7 +2193,7 @@
                   </div>
                 </div>
                 <div class="rx-list" id="rxBody"></div>
-                <div class="rx-edit rx-new" id="rxNew" hidden></div>   <!-- novo item: os campos ficam sempre abertos -->
+                <div class="rx-new" id="rxNew" hidden></div>   <!-- novo item: a barra "Adicionar remédio…" e, escolhido o remédio, a linha de pílulas -->
                 <div class="rx-msg" id="rxMsg" role="status" hidden></div>
                 <div class="rx-sync" id="rxSync" hidden></div>
                 <datalist id="rxRemedios"></datalist>
@@ -7271,20 +7284,45 @@
         setTimeout(function () { ins.nome.focus(); ins.nome.select(); }, 0);
         return box;
       }
-      // novo item: os campos ficam sempre abertos, montados uma vez (redesenhar a lista não apaga o que foi digitado)
+      // novo item: a barra "Adicionar remédio…" (com a lista de remédios). Escolhido o remédio (ou Enter), ela vira a linha
+      // de pílulas: remédio, dose, posologia, quantidade e Adicionar. Montada uma vez (redesenhar a lista não apaga nada).
+      // Via e uso contínuo ficam na edição do item (clicar nele na lista).
       var rxNovoIns = null;
       function rxNovoMonta() {
         if (rxNovoIns) return;
-        var box = $('rxNew'), grid = el('div', 'rx-ef'), err; box.innerHTML = '';
-        function limpa() { RXF.forEach(function (c) { rxNovoIns[c[0]].value = ''; }); rxNovoIns.via.value = ''; rxNovoIns.continuo.checked = false; err.hidden = true; }
+        var box = $('rxNew'); box.innerHTML = '';
+        var bar = el('label', 'rx-busca'), q = el('input', 'rx-q'); q.type = 'text'; q.placeholder = 'Adicionar remédio…'; q.setAttribute('list', 'rxRemedios');
+        q.setAttribute('aria-label', 'Adicionar remédio à receita'); q.autocomplete = 'off'; q.maxLength = 120;
+        bar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14" fill="currentColor"/></svg>';
+        bar.appendChild(q);
+        var linha = el('div', 'rx-linha'), ins = {}; linha.hidden = true;
+        [['nome', 'Remédio'], ['dose', 'Dose'], ['posologia', 'Posologia'], ['quantidade', 'Quantidade']].forEach(function (c) {
+          var i = el('input', 'rx-f rx-p'); i.type = 'text'; i.placeholder = c[1]; i.setAttribute('aria-label', c[1]); i.dataset.k = c[0];
+          i.maxLength = c[0] === 'posologia' ? 160 : 120; if (c[0] === 'nome') i.setAttribute('list', 'rxRemedios');
+          i.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); ok(); } else if (e.key === 'Escape') { e.preventDefault(); volta(); } });
+          linha.appendChild(i); ins[c[0]] = i;
+        });
+        var bo = el('button', 'pr-save rx-ok', 'Adicionar'); bo.type = 'button'; linha.appendChild(bo);
+        box.appendChild(bar); box.appendChild(linha);
+        function abre() {                                   // a barra vira a linha de pílulas, com o remédio escolhido
+          var nome = q.value.replace(/\s+/g, ' ').trim(); if (!nome) return;
+          ins.nome.value = nome[0].toUpperCase() + nome.slice(1); bar.hidden = true; linha.hidden = false; ins.dose.focus();
+        }
+        function volta() {                                  // de volta à barra (vazia)
+          ['nome', 'dose', 'posologia', 'quantidade'].forEach(function (k) { ins[k].value = ''; });
+          q.value = ''; linha.hidden = true; bar.hidden = false;
+        }
         function ok() {
           if (!rxCan()) return;
+          if (!ins.nome.value.trim()) { ins.nome.focus(); return; }
           var x = { nome: '', dose: '', posologia: '', quantidade: '', via: '', continuo: false, origem: 'manual', fonte: '', ia: '' };
-          if (!rxLe(rxNovoIns, x)) { err.hidden = false; rxNovoIns.nome.focus(); return; }
-          rxItems.push(x); limpa(); rxChanged(); rxNovoIns.nome.focus();
+          ['nome', 'dose', 'posologia', 'quantidade'].forEach(function (k) { x[k] = ins[k].value.replace(/\s+/g, ' ').trim(); });
+          rxItems.push(x); volta(); rxChanged(); q.focus();
         }
-        rxNovoIns = rxCampos(grid, {}, ok, limpa); err = rxRodape(grid, 'Limpar', 'Adicionar', ok, limpa); box.appendChild(grid);
-        rxNovoIns.limpa = limpa;
+        q.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); abre(); } else if (e.key === 'Escape') { q.value = ''; } });
+        q.addEventListener('input', function (e) { if (e.inputType === 'insertReplacementText') abre(); });   // escolheu da lista
+        bo.addEventListener('click', ok);
+        rxNovoIns = { limpa: volta };
       }
       function rxOpen(i) {
         if (!rxCan()) return;

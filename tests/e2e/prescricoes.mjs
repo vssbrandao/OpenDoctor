@@ -53,10 +53,12 @@ async function abre(exemplo = true) {
   await ate(`!!document.getElementById('rnList') && document.querySelectorAll('#rnList .sg').length > 0`, 20000, 'sugestões');
 }
 async function item(nome, dose, pos, qtd) {
-  // os campos de novo item ficam sempre abertos (#rxNew): preenche e "Adicionar"
-  await ate(n('#rxNew:not([hidden]) .rx-f') + ' >= 4', 3000, 'campos do item');
-  await ev(`(() => { const f = document.querySelectorAll('#rxNew .rx-f'); f[0].value = ${JSON.stringify(nome)}; f[1].value = ${JSON.stringify(dose)};
-    f[2].value = ${JSON.stringify(pos)}; f[3].value = ${JSON.stringify(qtd)}; document.querySelector('#rxNew .pr-save').click(); return 1; })()`);
+  // a barra "Adicionar remédio…" (#rxNew): o nome + Enter abre a linha de pílulas; preenche e "Adicionar"
+  await ate(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .rx-busca').offsetParent !== null`, 3000, 'barra de novo item');
+  await ev(`(() => { const q = document.querySelector('#rxNew .rx-q'); q.value = ${JSON.stringify(nome)};
+    q.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1; })()`);
+  await ev(`(() => { const p = (k) => document.querySelector('#rxNew .rx-p[data-k=' + k + ']'); p('dose').value = ${JSON.stringify(dose)};
+    p('posologia').value = ${JSON.stringify(pos)}; p('quantidade').value = ${JSON.stringify(qtd)}; document.querySelector('#rxNew .rx-ok').click(); return 1; })()`);
 }
 // o rascunho salva sozinho 600 ms depois da última mudança: espera a gravação começar e terminar
 const salvo = async () => { await sleep(900); await ate(`document.getElementById('rxSt').textContent === 'rascunho salvo'`, 8000, 'rascunho salvo'); };
@@ -173,8 +175,9 @@ const cenarios = [
       'só o Adicionar no cartão');
     await ev(`${sg('Dapagliflozina')}.querySelector('.sg-add').click()`); await salvo();
     certo((await ev(linhas)).some((l) => l.startsWith('Dapagliflozina 10 mg')), 'foi para a receita');
-    certo(await ev(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .rx-f').getAttribute('list') === 'rxRemedios'`), 'campos sempre abertos, com a lista no nome');
-    certo(await ev(`document.querySelector('#rxNew .rx-f').value === ''`), 'os campos se esvaziam depois de adicionar');
+    certo(await ev(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .rx-q').getAttribute('list') === 'rxRemedios'`), 'barra sempre aberta, com a lista de remédios');
+    await item('Omeprazol', '20 mg', '1 cápsula em jejum', '30 cápsulas');
+    certo(await ev(`document.querySelector('#rxNew .rx-q').value === '' && document.querySelector('#rxNew .rx-busca').offsetParent !== null`), 'volta para a barra vazia depois de adicionar');
     await ate(`document.getElementById('rxRemedios').options.length > 500`, 4000, 'lista de remédios');
     return 'Dapagliflozina e Semaglutida, só com Adicionar; ' + (await ev(`document.getElementById('rxRemedios').options.length`)) + ' nomes na sugestão';
   }],
