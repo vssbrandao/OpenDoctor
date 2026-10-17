@@ -176,22 +176,10 @@
     .sg.oculta{opacity:.5}
     .sg-av{display:flex;align-items:center;gap:8px;margin-left:auto;font-family:var(--disp);font-size:12px;line-height:16px;color:#80868B}
     .sg-mais .sg-av .pr-link.on{color:#0B57D0;font-weight:500}
-    .rx-f.rh-q{flex:none;width:200px}
-    #rhBox .pr-cardhead{flex-wrap:nowrap}
-    .sg-tx:has(.rh-esc){flex:1}
     .sg-tx:has(.sg-av){flex:1}                                  /* "Útil?" alinhado à direita em todas as sugestões */
-    .rh-q[hidden]{display:none}
-    .rh-esc{display:flex;flex-direction:column;gap:4px;margin-top:8px;padding:12px 16px;border-radius:16px;background:#fff}
+    .rh-esc{display:flex;flex-direction:column;gap:4px;margin-top:16px;padding:12px 16px;border-radius:16px;background:#fff}
     .rh-esc .rx-ck{height:auto;align-self:auto;font-size:13px;line-height:18px}
     .rh-esc .rx-ck input:disabled + span{color:#80868B}
-    .rt-wrap{overflow-x:auto}
-    table.rt-table th:first-child,table.rt-table td:first-child{position:static;background:none}
-    table.rt-table th,table.rt-table td{padding-left:12px;padding-right:12px}
-    table.rt-table th:first-child,table.rt-table td:first-child{padding-left:0}
-    table.rt-table th:last-child,table.rt-table td:last-child{width:45%;padding-right:0;white-space:normal;text-align:left}   /* a dose quebra linha */
-    .rt-table tbody tr{cursor:default}
-    .rt-table tbody tr:hover td{background:none}
-    .rt-table tbody tr:last-child td{border-bottom:0}
     .sg-mudou{color:#B06000;font-weight:500}
     .rx-sync{display:flex;flex-direction:column;gap:4px;padding:16px 20px;border-radius:24px;background:#fff}
     .rx-sync[hidden]{display:none}
@@ -208,7 +196,6 @@
     .rx-o{font-size:12px;line-height:16px;color:#56595E}
     .rx-o.ia{color:#0B57D0}
     .rh-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-    #rhMore[hidden]{display:none}
     /* edição: os mesmos campos em pílula (borda #CCCFD9 das etiquetas do gráfico), título 12/16 em cima */
     .rx-edit{padding:4px 0 16px;border-bottom:1px solid rgba(0,0,0,.08)}
     .rx-ef{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,2fr) minmax(0,1.4fr);gap:12px 16px}
@@ -2217,28 +2204,13 @@
                 <div class="rn-foot" id="rnFoot"></div>
               </div>
               <!-- receitas anteriores: emitidas, canceladas e rascunhos de outras consultas, da mais nova para a mais velha -->
-              <div class="pr-bigcard gcard" id="rhBox" hidden>
-                <div class="pr-cardhead">
-                  <div>
-                    <div class="pr-h2">Receitas anteriores</div>
-                    <div class="pr-cardsub">Emitidas para este paciente</div>
-                  </div>
-                  <input class="rx-f rh-q" id="rhQ" type="search" placeholder="Buscar remédio" aria-label="Buscar remédio nas receitas anteriores" autocomplete="off" hidden>
+              <!-- Histórico de receitas: o mesmo visual da tabela de Consultas (linha abre o cartão) -->
+              <div class="gsub rh-hist" id="rhBox" hidden>
+                <div class="pr-histbar">
+                  <div class="gh gh-col"><span class="gh-t">Histórico</span><span class="gh-s" id="rhCount">Receitas deste paciente</span></div>
+                  <input class="srch-in pr-histq" id="rhQ" type="search" placeholder="Buscar nas receitas" aria-label="Buscar remédio nas receitas" autocomplete="off" spellcheck="false">
                 </div>
-                <div class="rn-list" id="rhList"></div>
-                <button class="ga-btn" type="button" id="rhMore" hidden>Mostrar mais</button>
-              </div>
-              <div class="pr-bigcard gcard" id="rtBox" hidden>
-                <div class="pr-cardhead">
-                  <div>
-                    <div class="pr-h2">Remédios ao longo do tempo</div>
-                    <div class="pr-cardsub">Pelas receitas emitidas (as canceladas ficam de fora)</div>
-                  </div>
-                </div>
-                <div class="rt-wrap"><table class="gf-table rt-table">
-                  <thead><tr><th>Remédio</th><th>Desde</th><th>Última receita</th><th>Dose</th></tr></thead>
-                  <tbody id="rtBody"></tbody>
-                </table></div>
+                <div class="pr-table" id="rhList"></div>
               </div>
             </section>
 
@@ -7165,7 +7137,7 @@
         if (!patient) return;
         var key = patient.id + '|' + ((ctx && ctx.event_id) || 'avulsa'), pid = patient.id;
         if (!force && key === rxKey) return;
-        if (key !== rxKey) { rxSusp = {}; $('rxSync').hidden = true; rhEsc = null; $('rhQ').value = ''; }
+        if (key !== rxKey) { rxSusp = {}; $('rxSync').hidden = true; rhEsc = null; rhAberta = null; rhAll = false; $('rhQ').value = ''; }
         rxKey = key;
         api('GET', '/prontuario/receitas?patient_id=' + pid).then(function (res) {
           if (!patient || patient.id !== pid || rxKey !== key) return;
@@ -7404,102 +7376,99 @@
         var n = notes.filter(function (x) { return (r.note_id && x.id === r.note_id) || (r.event_id && x.event_id === r.event_id); })[0];
         return n ? eventTitle(n.event_title || (n.event_id ? '' : 'Evolução avulsa')) : r.note_id || r.event_id ? 'Consulta' : 'Sem consulta';
       }
-      var rhEsc = null;                                   // receita em que o médico escolhe os itens para usar hoje
+      var rhAberta = null, rhEsc = null;                    // a receita aberta abaixo da linha; a que está escolhendo os itens
       function rhUsa(lista) {
         lista.forEach(function (x) { if (!rxHas(x)) rxItems.push(Object.assign({}, x, { origem: 'anterior', fonte: '', ia: '', _av: null })); });
         rhEsc = null; rxChanged(); toast(lista.length === 1 ? lista[0].nome + ' na receita de hoje' : 'Itens na receita de hoje');
       }
+      function rhBadge(r) {
+        return el('span', 'pr-badge' + (r.status === 'emitida' ? ' ok' : r.status === 'rascunho' ? ' draft' : ''),
+                  r.status === 'emitida' ? 'Emitida' : r.status === 'rascunho' ? 'Rascunho' : 'Cancelada');
+      }
+      function rhData(r) { return new Date(r.emitida_em || r.created_at); }
+      // linha da tabela (Data · Remédios · Consulta · Receita), como em Consultas; clicar abre o cartão abaixo
+      function rhRow(r) {
+        var d = rhData(r), b = el('button', 'pr-trow' + (rhAberta === r.id ? ' open' : '')); b.type = 'button';
+        var dc = el('span', 'pr-tdate', dayMon(d)); dc.appendChild(el('small', null, DOWS[d.getDay()] + ' · ' + hm(d))); b.appendChild(dc);
+        b.appendChild(el('span', 'pr-tcell', r.itens.map(function (x) { return [x.nome, x.dose].filter(Boolean).join(' '); }).join(' · ')));
+        b.appendChild(el('span', 'pr-tcell pr-tmuted pr-tloc', rxConsulta(r)));
+        var st = el('span', 'pr-tst'), cv = el('span', 'pr-tchev'); cv.innerHTML = HI.down;
+        st.appendChild(rhBadge(r)); st.appendChild(cv); b.appendChild(st);
+        b.setAttribute('aria-expanded', rhAberta === r.id ? 'true' : 'false'); b.title = 'Ver a receita';
+        b.addEventListener('click', function () { rhAberta = rhAberta === r.id ? null : r.id; rhEsc = null; renderRh(); });
+        return b;
+      }
+      // cartão da receita (como o da evolução): tipo, data e situação, "Documentos e ações", remédios e consulta
+      function rhCard(r) {
+        var it = el('div', 'pr-item hc in-cs rh-card'), can = rxCan(), novos = r.itens.filter(function (x) { return !rxHas(x); });
+        var hd = el('div', 'hc-hd'), tt = el('div', 'hc-t');
+        tt.appendChild(el('span', null, TIPO[r.tipo] || 'Receita')); tt.appendChild(el('small', null, fmtDay(rhData(r)))); tt.appendChild(rhBadge(r));
+        hd.appendChild(tt);
+        var dd = el('div', 'gq-dd hc-dd'), db = el('button', 'hc-docs'), dm = el('div', 'gq-menu'); db.type = 'button';
+        db.setAttribute('aria-haspopup', 'menu'); db.setAttribute('aria-expanded', 'false'); dm.setAttribute('role', 'menu'); dm.hidden = true;
+        db.innerHTML = HI.doc + '<span>Documentos e ações</span>' + HI.caret;
+        function item(t, f) { var b = el('button', 'gq-mi', t); b.type = 'button'; b.setAttribute('role', 'menuitem'); b.addEventListener('click', function (e) { e.stopPropagation(); dm.hidden = true; db.setAttribute('aria-expanded', 'false'); f(); }); dm.appendChild(b); }
+        if (can && novos.length) item('Usar nesta consulta', function () {
+          if (novos.length > 1) { rhEsc = r.id; renderRh(); } else rhUsa(novos);
+        });
+        if (r.status === 'emitida') {
+          item('Imprimir 2ª via', function () { rxImprimir([r], true); });
+          if (can) item('Cancelar receita', function () {
+            var m = prompt('Por que cancelar esta receita? (fica registrado no prontuário)'); if (!m || !m.trim()) return;
+            api('POST', '/prontuario/receitas/' + r.id + '/cancelar', { motivo: m.trim() }).then(function (res) {
+              if (res.ok) { toast('Receita cancelada'); rxLoad(true); } else toast('Não foi possível cancelar');
+            });
+          });
+        }
+        item('Copiar texto', function () { try { navigator.clipboard.writeText(rxLinhas(r.itens)); toast('Texto copiado'); } catch (_) {} });
+        db.addEventListener('click', function (e) { e.stopPropagation(); var o = dm.hidden; closeMenus(); [].forEach.call(document.querySelectorAll('.hc-dd .gq-menu'), function (m) { m.hidden = true; }); dm.hidden = !o; db.setAttribute('aria-expanded', o ? 'true' : 'false'); });
+        dd.appendChild(db); dd.appendChild(dm); hd.appendChild(dd); it.appendChild(hd);
+        var tx = el('div', 'hc-tx');
+        tx.appendChild(el('div', 'hc-sp', 'Remédios')); tx.appendChild(el('div', 'hc-p', rxLinhas(r.itens)));
+        tx.appendChild(el('div', 'hc-sp', 'Consulta')); tx.appendChild(el('div', 'hc-p', rxConsulta(r)));
+        if (r.status === 'cancelada') {
+          tx.appendChild(el('div', 'hc-sp', 'Cancelamento'));
+          tx.appendChild(el('div', 'hc-p', (r.cancelada_em ? rxDia(r.cancelada_em) + ' · ' : '') + (r.motivo_cancelamento || '')));
+        }
+        it.appendChild(tx);
+        if (rhEsc === r.id && novos.length > 1) {            // escolher os itens: os que já estão na receita de hoje vêm travados
+          var esc = el('div', 'rh-esc'), cbs = [];
+          r.itens.forEach(function (x) {
+            var lb = el('label', 'rx-ck'), cb = el('input'), ja = rxHas(x); cb.type = 'checkbox'; cb.checked = !ja; cb.disabled = ja;
+            lb.appendChild(cb); lb.appendChild(el('span', null, [x.nome, x.dose].filter(Boolean).join(' ') + (x.posologia ? ' · ' + x.posologia : '') + (ja ? ' (já na receita)' : '')));
+            esc.appendChild(lb); if (!ja) cbs.push([cb, x]);
+          });
+          var ef = el('div', 'rx-ef-foot'), nao = el('button', 'pr-ghost', 'Cancelar'), sim = el('button', 'pr-save', 'Usar os marcados'); nao.type = sim.type = 'button';
+          nao.addEventListener('click', function () { rhEsc = null; renderRh(); });
+          sim.addEventListener('click', function () {
+            var l = cbs.filter(function (c) { return c[0].checked; }).map(function (c) { return c[1]; });
+            if (l.length) rhUsa(l); else { rhEsc = null; renderRh(); }
+          });
+          ef.appendChild(nao); ef.appendChild(sim); esc.appendChild(ef); it.appendChild(esc);
+        }
+        return it;
+      }
       function renderRh() {
         var todas = rxs.filter(function (r) { return r !== rxDraft && (r.status !== 'rascunho' || r.itens.length); });
-        var L = $('rhList'), can = rxCan(), q = norm($('rhQ').value).trim(); L.innerHTML = ''; $('rhBox').hidden = !todas.length;
-        $('rhQ').hidden = todas.length < 4 && !q;
+        var L = $('rhList'), q = norm($('rhQ').value).trim(); L.innerHTML = ''; $('rhBox').hidden = !todas.length;
+        var conta = function (st) { return todas.filter(function (r) { return r.status === st; }).length; }, ne = conta('emitida'), nc = conta('cancelada'), nr = conta('rascunho');
+        $('rhCount').textContent = [ne ? ne + (ne === 1 ? ' receita emitida' : ' receitas emitidas') : '', nc ? nc + (nc === 1 ? ' cancelada' : ' canceladas') : '',
+                                    nr ? nr + (nr === 1 ? ' rascunho' : ' rascunhos') : ''].filter(Boolean).join(' · ') || 'Receitas deste paciente';
         var list = q ? todas.filter(function (r) { return r.itens.some(function (x) { return norm(x.nome).indexOf(q) >= 0; }); }) : todas;
-        if (q && !list.length) L.appendChild(el('div', 'pr-empty', 'Nenhuma receita com esse remédio.'));
-        renderRt();
-        (rhAll || q ? list : list.slice(0, 5)).forEach(function (r) {
-          var its = r.itens, row = el('div', 'sg'), tx = el('div', 'sg-tx'), src = el('span', 'ov-post-src');
-          src.appendChild(el('i', r.status === 'cancelada' ? 'cx' : r.status === 'rascunho' ? 'draft' : null));
-          src.appendChild(document.createTextNode(TIPO[r.tipo] || 'Receita'));
-          src.appendChild(el('small', null, '· ' + rxDia(r.emitida_em || r.created_at) + ' · ' + rxConsulta(r) +
-                                          (r.status === 'cancelada' ? ' · cancelada' : r.status === 'rascunho' ? ' · rascunho não emitido' : '')));
-          tx.appendChild(src);
-          tx.appendChild(el('span', 'ov-post-t', its.map(function (x) { return [x.nome, x.dose].filter(Boolean).join(' '); }).join(' · ')));
-          tx.appendChild(el('span', 'sg-why', its.map(function (x) { return x.nome + (x.posologia ? ': ' + x.posologia : ''); }).join(' · ')));
-          if (r.status === 'cancelada') tx.appendChild(el('span', 'rn-w', 'Cancelada' + (r.motivo_cancelamento ? ': ' + r.motivo_cancelamento : '')));
-          var acts = el('div', 'rh-acts'), novos = its.filter(function (x) { return !rxHas(x); });
-          var u = el('button', 'gq-chip sg-add' + (novos.length ? '' : ' on')); u.type = 'button'; u.disabled = !can || !novos.length;
-          u.innerHTML = (novos.length ? RXI.plus : RXI.ok) + (novos.length ? 'Usar nesta consulta' : 'Já na receita');
-          u.title = novos.length > 1 ? 'Escolha os itens que vão para a receita de hoje' : novos.length ? 'Copia o item para a receita de hoje' : 'Todos os itens já estão na receita de hoje';
-          u.addEventListener('click', function () {
-            if (!rxCan()) return;
-            if (novos.length > 1) { rhEsc = rhEsc === r.id ? null : r.id; renderRh(); } else rhUsa(novos);
-          });
-          acts.appendChild(u);
-          if (r.status === 'emitida') {
-            var g = el('button', 'gq-chip sg-add', '2ª via'); g.type = 'button'; g.title = 'Imprime de novo, marcada como 2ª via';
-            g.addEventListener('click', function () { rxImprimir([r], true); });
-            var cx = el('button', 'gq-chip sg-add', 'Cancelar'); cx.type = 'button'; cx.disabled = !can;
-            cx.addEventListener('click', function () {
-              var m = prompt('Por que cancelar esta receita? (fica registrado no prontuário)'); if (!m || !m.trim()) return;
-              api('POST', '/prontuario/receitas/' + r.id + '/cancelar', { motivo: m.trim() }).then(function (res) {
-                if (res.ok) { toast('Receita cancelada'); rxLoad(true); } else toast('Não foi possível cancelar');
-              });
-            });
-            acts.appendChild(g); acts.appendChild(cx);
-          }
-          tx.appendChild(acts);
-          if (rhEsc === r.id && novos.length > 1) {          // escolher os itens: os que já estão na receita de hoje vêm travados
-            var esc = el('div', 'rh-esc'), cbs = [];
-            its.forEach(function (x) {
-              var lb = el('label', 'rx-ck'), cb = el('input'), ja = rxHas(x); cb.type = 'checkbox'; cb.checked = !ja; cb.disabled = ja;
-              lb.appendChild(cb); lb.appendChild(el('span', null, [x.nome, x.dose].filter(Boolean).join(' ') + (x.posologia ? ' · ' + x.posologia : '') + (ja ? ' (já na receita)' : '')));
-              esc.appendChild(lb); if (!ja) cbs.push([cb, x]);
-            });
-            var ef = el('div', 'rx-ef-foot'), nao = el('button', 'pr-ghost', 'Cancelar'), sim = el('button', 'pr-save', 'Usar os marcados'); nao.type = sim.type = 'button';
-            nao.addEventListener('click', function () { rhEsc = null; renderRh(); });
-            sim.addEventListener('click', function () {
-              var l = cbs.filter(function (c) { return c[0].checked; }).map(function (c) { return c[1]; });
-              if (l.length) rhUsa(l); else { rhEsc = null; renderRh(); }
-            });
-            ef.appendChild(nao); ef.appendChild(sim); esc.appendChild(ef); tx.appendChild(esc);
-          }
-          row.appendChild(tx); L.appendChild(row);
+        if (!list.length) { if (todas.length) L.appendChild(el('div', 'pr-empty', 'Nenhuma receita com esse remédio.')); return; }
+        var th = el('div', 'pr-trow th');
+        ['Data', 'Remédios', 'Consulta', 'Receita'].forEach(function (t, i) { th.appendChild(el('span', i === 2 ? 'pr-tloc' : null, t)); });
+        L.appendChild(th); L.appendChild(el('div', 'pr-tgroup', 'Anteriores'));
+        list.forEach(function (r, i) {
+          if (!rhAll && !q && i >= 10) return;
+          L.appendChild(rhRow(r)); if (rhAberta === r.id) L.appendChild(rhCard(r));
         });
-        $('rhMore').hidden = rhAll || !!q || list.length <= 5;
+        if (!rhAll && !q && list.length > 10) {
+          var m = el('button', 'pr-ghost pr-more10', 'Mostrar todas (' + list.length + ')'); m.type = 'button'; m.style.alignSelf = 'flex-start'; m.style.marginTop = '12px';
+          m.addEventListener('click', function () { rhAll = true; renderRh(); }); L.appendChild(m);
+        }
       }
-      $('rhMore').addEventListener('click', function () { rhAll = true; renderRh(); });
       $('rhQ').addEventListener('input', function () { rhEsc = null; renderRh(); });
-
-      // ----- remédios ao longo do tempo: por remédio, desde quando, a última receita e a dose (e a de antes, se mudou) -----
-      function renderRt() {
-        var por = {}, ordem = [], B = $('rtBody'); B.innerHTML = '';
-        rxs.filter(function (r) { return r.status === 'emitida' && r.emitida_em; })
-           .sort(function (a, b) { return new Date(a.emitida_em) - new Date(b.emitida_em); })
-           .forEach(function (r) {
-             r.itens.forEach(function (x) {
-               var k = norm(x.nome).replace(/\s+/g, ' ').trim(); if (!k) return;
-               if (!por[k]) { por[k] = { nome: x.nome, l: [] }; ordem.push(k); }
-               por[k].l.push({ t: r.emitida_em, x: x });
-             });
-           });
-        var meds = lines(patient && patient.medications);
-        var rows = ordem.map(function (k) {
-          var g = por[k], l = g.l, ant = null;
-          for (var i = l.length - 1; i > 0; i--) {             // a última mudança de dose (ou, sem ela, de posologia)
-            var a = l[i - 1].x, b = l[i].x, dose = norm(a.dose) !== norm(b.dose);
-            if (dose || norm(a.posologia) !== norm(b.posologia)) { ant = { v: dose ? a.dose || '—' : a.posologia || '—', ate: l[i - 1].t }; break; }
-          }
-          return { g: g, u: l[l.length - 1], ant: ant, uso: meds.some(function (m) { return rxMesmo(m, g.nome); }) };
-        }).sort(function (a, b) { return (b.uso - a.uso) || (new Date(b.u.t) - new Date(a.u.t)); });
-        $('rtBox').hidden = !rows.length;
-        rows.forEach(function (r) {
-          var tr = el('tr'), nm = el('td', null, r.g.nome), dose = el('td', null, [r.u.x.dose, r.u.x.posologia].filter(Boolean).join(' · ') || '—');
-          var n = r.g.l.length; nm.appendChild(el('small', null, (r.uso ? 'Em uso' : 'Não está em uso') + ' · ' + n + (n === 1 ? ' receita' : ' receitas')));
-          if (r.ant) dose.appendChild(el('small', null, 'Antes ' + r.ant.v + ', até ' + rxDia(r.ant.ate)));
-          tr.appendChild(nm); tr.appendChild(el('td', null, rxDia(r.g.l[0].t))); tr.appendChild(el('td', null, rxDia(r.u.t)));
-          tr.appendChild(dose); B.appendChild(tr);
-        });
-      }
       // receitas emitidas de uma evolução (card do Histórico e PDF do prontuário)
       function rxDaEvolucao(n) {
         return rxs.filter(function (r) { return r.status !== 'rascunho' && ((r.note_id && r.note_id === n.id) || (r.event_id && r.event_id === n.event_id)); });

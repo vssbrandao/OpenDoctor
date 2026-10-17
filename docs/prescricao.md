@@ -1,12 +1,12 @@
 # Prescrições: receitas, possíveis prescrições e receitas anteriores
 
-A aba Prescrições do prontuário tem quatro cartões (fases 1, 2 e 3 do plano; o que falta está em "Pendências"):
+A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o que falta está em "Pendências"):
 
 1. **Prescrições:** a receita da consulta aberta, que fica no rascunho até ser emitida.
 2. **Possíveis prescrições:** sugestões da IA (ou só a renovação, sem IA). O "+" leva o item à receita; nada entra sem
    esse clique.
-3. **Receitas anteriores:** as emitidas, as canceladas e os rascunhos de outras consultas.
-4. **Remédios ao longo do tempo:** um remédio por linha, pelas receitas emitidas.
+3. **Histórico:** as emitidas, as canceladas e os rascunhos de outras consultas, numa tabela com o mesmo visual da
+   de Consultas.
 
 ## Receitas (tabela própria, migração `0014_receitas.sql`)
 - **Ciclo:** `rascunho` → `emitida` (não muda mais) → `cancelada`, com o motivo e a hora.
@@ -52,19 +52,23 @@ A aba Prescrições do prontuário tem quatro cartões (fases 1, 2 e 3 do plano;
 - **Emitir receita:** confirma mostrando os avisos e imprime as folhas, com o cabeçalho do médico e os itens agrupados
   por via de uso.
 - **Copiar:** copia o texto da receita.
-- **Receitas anteriores:**
-  - "Buscar remédio" filtra a lista (aparece a partir de 4 receitas);
-  - "Usar nesta consulta" copia os itens para a receita de hoje; com mais de um item novo, abre a escolha (os que já
-    estão na receita vêm travados);
-  - "2ª via" imprime marcada, com a data original;
-  - "Cancelar" pede o motivo.
+- **Histórico** (o visual da tabela de Consultas):
+  - **Tabela:** Data, Remédios, Consulta e Receita (Emitida, Cancelada ou Rascunho). Com a coluna estreita, a coluna
+    Consulta some, como a Local em Consultas.
+  - **Busca:** "Buscar nas receitas" filtra por remédio. Mostra 10 linhas, com "Mostrar todas".
+  - **Cartão:** clicar na linha abre o cartão da receita, como o da evolução: tipo, data, situação, remédios,
+    consulta e o motivo do cancelamento.
+  - **"Documentos e ações":**
+    - "Usar nesta consulta" copia os itens para a receita de hoje; com mais de um item novo, abre a escolha (os que
+      já estão na receita vêm travados);
+    - "Imprimir 2ª via" sai marcada, com a data original;
+    - "Cancelar receita" pede o motivo;
+    - "Copiar texto".
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
   - entra o remédio de uso contínuo que não está no cadastro;
   - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta);
   - "Tirar" o que foi suspenso e o médico quis manter nas em uso aparece desmarcado.
 - **Histórico:** as emitidas aparecem no card da consulta e, com ele, no "Exportar PDF".
-- **Remédios ao longo do tempo:** desde quando, a última receita e a dose de hoje, com a de antes quando mudou
-  (dose ou, sem ela, posologia). Diz se o remédio está nas medicações em uso; as canceladas ficam de fora.
 - **Impressão:** só a folha vai para o papel enquanto `body.rxp` estiver ligado; desliga no `afterprint`. No Safari, o
   `window.print()` não espera a impressão terminar.
 - **Papel:** A4 ou A5 (meia folha), em Configurações. O `<style id="rxPapel">` põe o `@page` só enquanto a receita
@@ -141,8 +145,7 @@ falhar, aparece a renovação sem IA (`POST /prontuario/renovacao` → `scribe.r
   - "Não sugerir" depois de recarregar, "Perguntar ao assistente" sem o nome e a sugestão do nome do remédio;
   - sinal novo na consulta: aviso de perfil mudado;
   - útil / não útil (grava, troca, desmarca e volta ao recarregar);
-  - busca e escolha dos itens nas receitas anteriores;
-  - remédios ao longo do tempo;
+  - busca e escolha dos itens no Histórico;
   - receita em A5.
 
   As sugestões da IA desses cenários são trocadas no próprio Chrome (`Fetch.fulfillRequest`); o servidor nem é
