@@ -72,10 +72,9 @@ const SUG = { ok: true, prompt: 'teste', modelo: 'teste', observacoes: '', fonte
 const comSugestoes = async (s) => { sug = s; await send('Fetch.enable', { patterns: [{ urlPattern: '*/prontuario/prescricao/sugerir*' }] }); };
 const sg = (nome) => `[...document.querySelectorAll('#rnList .sg')].find((r) => r.querySelector('.ov-post-t').textContent.toLowerCase().startsWith(${JSON.stringify(nome.toLowerCase())}))`;
 const emUso = async () => (await srv('/patients')).patients.find((p) => p.id === 9001).medications.split('\n');
-// Histórico (tabela como a de Consultas): abre a linha i e usa o menu "Documentos e ações" do cartão
+// Histórico (tabela como a de Consultas): abre a linha i e clica num botão de ação do cartão
 const abreRh = async (i = 0) => { await ev(`[...document.querySelectorAll('#rhList button.pr-trow')][${i}].click()`); await ate(n('#rhList .rh-card') + ' === 1', 3000, 'cartão da receita'); };
-const menuRh = (t) => ev(`(() => { document.querySelector('#rhList .rh-card .hc-docs').click();
-  [...document.querySelectorAll('#rhList .rh-card .gq-mi')].find((b) => b.textContent === ${JSON.stringify(t)}).click(); return 1; })()`);
+const menuRh = (t) => ev(`(() => { [...document.querySelectorAll('#rhList .rh-card .rh-acts button')].find((b) => b.textContent === ${JSON.stringify(t)}).click(); return 1; })()`);
 const daApi = () => ev(`fetch('/prontuario/receitas?patient_id=9001').then((r) => r.json()).then((j) => j.receitas.map((r) => [r.tipo, r.status, r.itens.map((i) => i.nome).join('+'), r.motivo_cancelamento || '']))`);
 
 const cenarios = [

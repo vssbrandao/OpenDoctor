@@ -58,7 +58,7 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   - **Busca:** "Buscar nas receitas" filtra por remédio. Mostra 10 linhas, com "Mostrar todas".
   - **Cartão:** clicar na linha abre o cartão da receita, como o da evolução: tipo, data, situação, remédios,
     consulta e o motivo do cancelamento.
-  - **"Documentos e ações":**
+  - **Botões no cartão:**
     - "Usar nesta consulta" copia os itens para a receita de hoje; com mais de um item novo, abre a escolha (os que
       já estão na receita vêm travados);
     - "Imprimir 2ª via" sai marcada, com a data original;
