@@ -53,10 +53,10 @@ async function abre(exemplo = true) {
   await ate(`!!document.getElementById('rnList') && document.querySelectorAll('#rnList .sg').length > 0`, 20000, 'sugestões');
 }
 async function item(nome, dose, pos, qtd) {
-  await ev(`document.getElementById('rxAdd').click()`);
-  await ate(n('#rxBody .rx-edit .rx-f') + ' >= 4', 3000, 'campos do item');
-  await ev(`(() => { const f = document.querySelectorAll('#rxBody .rx-edit .rx-f'); f[0].value = ${JSON.stringify(nome)}; f[1].value = ${JSON.stringify(dose)};
-    f[2].value = ${JSON.stringify(pos)}; f[3].value = ${JSON.stringify(qtd)}; document.querySelector('#rxBody .rx-edit .pr-save').click(); return 1; })()`);
+  // os campos de novo item ficam sempre abertos (#rxNew): preenche e "Adicionar"
+  await ate(n('#rxNew:not([hidden]) .rx-f') + ' >= 4', 3000, 'campos do item');
+  await ev(`(() => { const f = document.querySelectorAll('#rxNew .rx-f'); f[0].value = ${JSON.stringify(nome)}; f[1].value = ${JSON.stringify(dose)};
+    f[2].value = ${JSON.stringify(pos)}; f[3].value = ${JSON.stringify(qtd)}; document.querySelector('#rxNew .pr-save').click(); return 1; })()`);
 }
 // o rascunho salva sozinho 600 ms depois da última mudança: espera a gravação começar e terminar
 const salvo = async () => { await sleep(900); await ate(`document.getElementById('rxSt').textContent === 'rascunho salvo'`, 8000, 'rascunho salvo'); };
@@ -173,8 +173,8 @@ const cenarios = [
       'só o Adicionar no cartão');
     await ev(`${sg('Dapagliflozina')}.querySelector('.sg-add').click()`); await salvo();
     certo((await ev(linhas)).some((l) => l.startsWith('Dapagliflozina 10 mg')), 'foi para a receita');
-    await ev(`document.getElementById('rxAdd').click()`);
-    certo(await ev(`document.querySelector('#rxBody .rx-edit .rx-f').getAttribute('list') === 'rxRemedios'`), 'campo do nome com a lista');
+    certo(await ev(`!document.getElementById('rxNew').hidden && document.querySelector('#rxNew .rx-f').getAttribute('list') === 'rxRemedios'`), 'campos sempre abertos, com a lista no nome');
+    certo(await ev(`document.querySelector('#rxNew .rx-f').value === ''`), 'os campos se esvaziam depois de adicionar');
     await ate(`document.getElementById('rxRemedios').options.length > 500`, 4000, 'lista de remédios');
     return 'Dapagliflozina e Semaglutida, só com Adicionar; ' + (await ev(`document.getElementById('rxRemedios').options.length`)) + ' nomes na sugestão';
   }],

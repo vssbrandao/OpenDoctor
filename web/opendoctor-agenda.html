@@ -172,6 +172,7 @@
     .rx-msg .pr-link{font-size:12px}
     .rx-sync{display:flex;flex-direction:column;gap:4px;padding:16px 20px;border-radius:24px;background:#fff}
     .rx-sync[hidden]{display:none}
+    .rx-new[hidden]{display:none}
     .rx-sync-t{margin-bottom:4px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
     .rx-sync .rx-ck{height:auto;align-self:auto;font-size:13px;line-height:18px}
     .pr-toast.pr-desfaz{display:flex;align-items:center;gap:16px;max-width:calc(100vw - 64px)}
@@ -208,7 +209,6 @@
     .rx-ef-foot{grid-column:1 / -1;display:flex;align-items:center;justify-content:flex-end;gap:8px}
     .rx-ef-foot .rx-rm{margin-right:auto;color:#C0151D}
     .rx-ef-foot .pr-err{margin-right:8px}
-    #rxAdd[hidden]{display:none}
     @container pr (max-width:640px){
       .rx-ef{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
     }
@@ -2180,8 +2180,7 @@
                   </div>
                 </div>
                 <div class="rx-list" id="rxBody"></div>
-                <div class="pr-empty" id="rxEmpty">Nenhum item na receita. Escolha nas possíveis prescrições abaixo ou adicione um item.</div>
-                <button class="ga-btn" type="button" id="rxAdd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z" fill="#0A0A0A"/></svg>Adicionar item</button>
+                <div class="rx-edit rx-new" id="rxNew" hidden></div>   <!-- novo item: os campos ficam sempre abertos -->
                 <div class="rx-msg" id="rxMsg" role="status" hidden></div>
                 <div class="rx-sync" id="rxSync" hidden></div>
                 <datalist id="rxRemedios"></datalist>
@@ -7142,7 +7141,7 @@
           rxs = res.ok ? res.j.receitas || [] : [];
           rxDraft = rxs.filter(rxDaConsulta)[0] || null;
           rxItems = rxDraft ? rxDraft.itens.map(function (x) { return Object.assign({}, x); }) : [];
-          rxEd = -1; rxNovo = false; rxSt(rxDraft ? 'rascunho salvo' : 'rascunho'); rxMsg('');
+          rxEd = -1; if (rxNovoIns) rxNovoIns.limpa(); rxSt(rxDraft ? 'rascunho salvo' : 'rascunho'); rxMsg('');
           renderRx(); renderRh(); drawSg(); rxConferir();
         });
         if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) medico = res.j.medico; });
@@ -7201,14 +7200,14 @@
       }
 
       // ----- a lista do rascunho (lista "Mais ativas" do Finance) com × e Desfazer; a linha abre a edição -----
-      var rxEd = -1, rxNovo = false;                      // linha aberta para editar (e se é um item novo, ainda vazio)
+      var rxEd = -1;                                      // linha aberta para editar
       var RXF = [['nome', 'Remédio', 'Ex.: losartana'], ['dose', 'Dose', 'Ex.: 50 mg'], ['posologia', 'Posologia', 'Ex.: 1 comprimido de 12/12 h'],
                  ['quantidade', 'Quantidade', 'Ex.: 60 comprimidos']];
       function renderRx() {
         var L = $('rxBody'), can = rxCan(); L.innerHTML = '';
-        if (!can) { rxEd = -1; rxNovo = false; }
+        if (!can) rxEd = -1;
         var cheios = rxCheios().length;
-        $('rxEmpty').hidden = !!rxItems.length; $('rxActs').hidden = !cheios || rxNovo; $('rxAdd').hidden = !can || rxEd >= 0;
+        $('rxActs').hidden = !cheios; $('rxNew').hidden = !can; if (can) rxNovoMonta();
         rxItems.forEach(function (x, i) {
           if (i === rxEd) { L.appendChild(rxForm(x, i)); return; }
           var row = el('div', 'rx-row'), b = el('button', 'rx-main'); b.type = 'button'; b.disabled = !can; if (can) b.title = 'Editar';
@@ -7226,8 +7225,7 @@
             var del = el('button', 'rx-x'); del.type = 'button'; del.innerHTML = RXI.x; del.title = 'Tirar da receita';
             del.setAttribute('aria-label', 'Tirar ' + x.nome + ' da receita');
             del.addEventListener('click', function () {
-              if (rxNovo && rxEd >= 0) rxItems.splice(rxEd, 1);   // o item novo (sempre o último) ainda vazio sai junto
-              var at = rxItems.indexOf(x); rxItems.splice(at, 1); rxEd = -1; rxNovo = false; rxChanged();
+              var at = rxItems.indexOf(x); rxItems.splice(at, 1); rxEd = -1; rxChanged();
               toastAct(x.nome + ' saiu da receita', 'Desfazer', function () { rxItems.splice(Math.min(at, rxItems.length), 0, x); rxChanged(); });
             });
             row.appendChild(del);
@@ -7235,8 +7233,8 @@
           L.appendChild(row);
         });
       }
-      function rxForm(x, i) {                              // a linha aberta: os campos em pílula, via, uso contínuo; Cancelar · Salvar
-        var box = el('div', 'rx-edit'), grid = el('div', 'rx-ef'), ins = {};
+      function rxCampos(grid, x, ok, cancel) {             // remédio, dose, posologia, quantidade, via e uso contínuo
+        var ins = {};
         RXF.forEach(function (c) {
           var lb = el('label', 'rx-fl'), inp = el('input', 'rx-f'); inp.type = 'text'; inp.value = x[c[0]] || ''; inp.placeholder = c[2];
           if (c[0] === 'nome') inp.setAttribute('list', 'rxRemedios');
@@ -7249,30 +7247,49 @@
         sv.value = x.via || ''; lv.appendChild(document.createTextNode('Via')); lv.appendChild(sv); grid.appendChild(lv);
         var lc = el('label', 'rx-ck'), cb = el('input'); cb.type = 'checkbox'; cb.checked = !!x.continuo;
         lc.appendChild(cb); lc.appendChild(document.createTextNode('Uso contínuo')); grid.appendChild(lc);
+        ins.via = sv; ins.continuo = cb;
+        return ins;
+      }
+      function rxLe(ins, x) {                              // os campos → o item (false sem o nome do remédio)
+        if (!ins.nome.value.trim()) return false;
+        RXF.forEach(function (c) { x[c[0]] = ins[c[0]].value.replace(/\s+/g, ' ').trim(); });
+        x.via = ins.via.value; x.continuo = ins.continuo.checked; x._av = null;
+        return true;
+      }
+      function rxRodape(grid, nao, sim, ok, cancel) {
         var foot = el('div', 'rx-ef-foot'), err = el('span', 'pr-err', 'Escreva o nome do remédio.'); err.hidden = true;
-        var bc = el('button', 'pr-ghost', 'Cancelar'), bo = el('button', 'pr-save', 'Salvar'); bc.type = bo.type = 'button';
-        function ok() {
-          var nome = ins.nome.value.trim(); if (!nome) { err.hidden = false; ins.nome.focus(); return; }
-          RXF.forEach(function (c) { x[c[0]] = ins[c[0]].value.replace(/\s+/g, ' ').trim(); });
-          x.via = sv.value; x.continuo = cb.checked; x._av = null;
-          rxEd = -1; rxNovo = false; rxChanged();
-        }
-        function cancel() { if (rxNovo) rxItems.splice(i, 1); rxEd = -1; rxNovo = false; renderRx(); drawSg(); }
+        var bc = el('button', 'pr-ghost', nao), bo = el('button', 'pr-save', sim); bc.type = bo.type = 'button';
         bc.addEventListener('click', cancel); bo.addEventListener('click', ok);
-        foot.appendChild(err); foot.appendChild(bc); foot.appendChild(bo); grid.appendChild(foot); box.appendChild(grid);
-        setTimeout(function () { ins.nome.focus(); if (!rxNovo) ins.nome.select(); }, 0);
+        foot.appendChild(err); foot.appendChild(bc); foot.appendChild(bo); grid.appendChild(foot);
+        return err;
+      }
+      function rxForm(x, i) {                              // a linha aberta para editar: Cancelar · Salvar
+        var box = el('div', 'rx-edit'), grid = el('div', 'rx-ef'), ins, err;
+        function ok() { if (!rxLe(ins, x)) { err.hidden = false; ins.nome.focus(); return; } rxEd = -1; rxChanged(); }
+        function cancel() { rxEd = -1; renderRx(); drawSg(); }
+        ins = rxCampos(grid, x, ok, cancel); err = rxRodape(grid, 'Cancelar', 'Salvar', ok, cancel); box.appendChild(grid);
+        setTimeout(function () { ins.nome.focus(); ins.nome.select(); }, 0);
         return box;
+      }
+      // novo item: os campos ficam sempre abertos, montados uma vez (redesenhar a lista não apaga o que foi digitado)
+      var rxNovoIns = null;
+      function rxNovoMonta() {
+        if (rxNovoIns) return;
+        var box = $('rxNew'), grid = el('div', 'rx-ef'), err; box.innerHTML = '';
+        function limpa() { RXF.forEach(function (c) { rxNovoIns[c[0]].value = ''; }); rxNovoIns.via.value = ''; rxNovoIns.continuo.checked = false; err.hidden = true; }
+        function ok() {
+          if (!rxCan()) return;
+          var x = { nome: '', dose: '', posologia: '', quantidade: '', via: '', continuo: false, origem: 'manual', fonte: '', ia: '' };
+          if (!rxLe(rxNovoIns, x)) { err.hidden = false; rxNovoIns.nome.focus(); return; }
+          rxItems.push(x); limpa(); rxChanged(); rxNovoIns.nome.focus();
+        }
+        rxNovoIns = rxCampos(grid, {}, ok, limpa); err = rxRodape(grid, 'Limpar', 'Adicionar', ok, limpa); box.appendChild(grid);
+        rxNovoIns.limpa = limpa;
       }
       function rxOpen(i) {
         if (!rxCan()) return;
-        if (rxNovo && rxEd >= 0) rxItems.splice(rxEd, 1);   // um item novo deixado vazio não fica (é sempre o último)
-        rxNovo = false; rxEd = Math.min(i, rxItems.length - 1); renderRx();
+        rxEd = Math.min(i, rxItems.length - 1); renderRx();
       }
-      $('rxAdd').addEventListener('click', function () {
-        if (!rxCan() || rxEd >= 0) return;
-        rxItems.push({ nome: '', dose: '', posologia: '', quantidade: '', via: '', continuo: false, origem: 'manual', fonte: '', ia: '' });
-        rxEd = rxItems.length - 1; rxNovo = true; renderRx();
-      });
       function rxLinhas(itens) {
         return itens.map(function (x, i) {
           return (i + 1) + '. ' + [[x.nome, x.dose].filter(Boolean).join(' '), x.posologia, x.quantidade].filter(Boolean).join(' — ');

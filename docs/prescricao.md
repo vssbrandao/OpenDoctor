@@ -46,7 +46,9 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 
 ### Tela
 - **Lista:** cada linha mostra os avisos e tem "×" com "Desfazer". Clicar edita: remédio, dose, posologia,
-  quantidade, via e uso contínuo. O nome do remédio tem sugestão enquanto digita (`GET /prontuario/remedios`, a lista
+  quantidade, via e uso contínuo.
+- **Novo item:** os campos ficam sempre abertos embaixo da lista. "Adicionar" põe o item na receita e esvazia os
+  campos; "Limpar" esvazia. São montados uma vez só, então redesenhar a lista não apaga o que está sendo digitado. O nome do remédio tem sugestão enquanto digita (`GET /prontuario/remedios`, a lista
   de `app/data/remedios.txt`, num `<datalist>`).
 - **Emitir receita:** confirma mostrando os avisos e imprime as folhas, com o cabeçalho do médico e os itens agrupados
   por via de uso.
