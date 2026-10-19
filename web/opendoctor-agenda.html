@@ -991,6 +991,76 @@
     .rc-final .t b{font-weight:500}
     .rc-final .pr-ghost,.rc-final .pr-save{height:32px;border-radius:16px}
     @media (prefers-reduced-motion:reduce){.rc-pill i,.rc-live::after,.rc-u.typing .rc-t::after,.rc-step.rc-now i{animation:none}.hc-played.rc-run{transition:none}}
+    /* ===== aba Consulta no design do Figma "Consulta" (nó 1089:32631; quadro de 1440: coluna de 604, cartão a 76 do topo) =====
+       O cartão (#F7F8F8, canto 40, 8 de respiro) enche a altura da tela junto com o que fica abaixo dele; dentro, o player
+       (branco, 96 de altura, canto 32) depois da consulta e o cartão branco com as abas, o conteúdo e o pé */
+    #prEvoBox{min-height:calc(100vh - 96px);padding-top:12px;gap:16px}
+    .cs-card{flex:1 0 440px;margin-bottom:8px;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:40px;background:#F7F8F8;font-family:var(--disp)}
+    .cs-card[hidden]{display:none}
+    .cs-main{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:32px;background:#fff}
+    /* abas Transcrição | SOAP: trilho #F3F3F3 de 36, a escolhida branca com borda; 12 Medium */
+    .cs-seg{flex:none;align-self:center;display:flex;height:36px;margin-top:24px;border-radius:24px;background:#F3F3F3}
+    .cs-seg button{position:relative;height:36px;padding:0 42px;border:1px solid transparent;border-radius:24px;background:none;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:140%;color:#666C6F}
+    .cs-seg button.on{background:#fff;border-color:rgba(0,0,0,.08);color:#000}
+    .cs-seg button.dot::after{content:'';position:absolute;top:9px;right:30px;width:6px;height:6px;border-radius:50%;background:#FF5500}
+    .cs-pane{position:relative;flex:1;min-height:0;overflow:auto;margin-top:24px;padding:0 24px 24px;overscroll-behavior:contain;
+      -webkit-mask-image:linear-gradient(#000 calc(100% - 24px),transparent);mask-image:linear-gradient(#000 calc(100% - 24px),transparent)}
+    .cs-pane[hidden]{display:none}
+    .cs-card .rc-tx{max-height:none;overflow:visible;margin:0;padding:0 2px;border-radius:0;background:none}
+    .cs-vazio{font-size:14px;line-height:22px;color:#666C6F}
+    .cs-vazio[hidden]{display:none}
+    #csLockedN{text-align:center}
+    /* o pé: "Iniciar consulta" (pílula preta de 56, ícone pontilhado) ou, gravando, "Finalizar" acima da barra preta */
+    .cs-foot{flex:none;display:flex;flex-direction:column;align-items:center;gap:24px;padding:16px 24px 30px}
+    .cs-foot[hidden]{display:none}
+    .cs-foot.bar{padding-bottom:41px}
+    .cs-go{display:flex;align-items:center;justify-content:center;gap:8px;height:56px;padding:0 42px;border:0;border-radius:999px;background:#000;
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:12px;line-height:20px;color:#fff}
+    .cs-go svg{flex:none;width:17px;height:17px}
+    .cs-go:disabled{background:#C4C7C5;cursor:default}
+    .cs-nota{max-width:420px;font-size:12px;line-height:16px;color:#666C6F;text-align:center}
+    .cs-fim{height:30px;padding:0 24px;border:0;border-radius:999px;background:#000;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:14px;color:#fff}
+    .cs-bar{display:flex;align-items:center;gap:16px;width:517px;max-width:100%;height:56px;padding:0 10px 0 34px;border-radius:40px;background:#000;color:#fff}
+    .cs-cv{display:block;flex:1;min-width:0;height:22px}
+    .cs-msg{flex:1;min-width:0;font-weight:500;font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cs-tm{flex:none;min-width:33px;font-weight:400;font-size:12px;line-height:20px}
+    .cs-bar > :last-child.cs-tm{margin-right:24px}
+    .cs-stop{flex:none;display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;
+      background:#F3F3F3;cursor:pointer;color:#000}
+    .cs-stop svg{display:block}
+    /* o player: trilha de 416 (#F7F8F8) com o progresso preto e a bolinha de 10; marcadores laranja de 36 (O, A e P); os
+       botões redondos de 48 (#F7F8F8) com o som e o play/pausa */
+    .cs-play{flex:none;display:flex;align-items:center;gap:24px;height:96px;padding:0 24px;border-radius:32px;background:#fff}
+    .cs-play[hidden]{display:none}
+    .cs-trk{position:relative;flex:1;min-width:0;height:36px;cursor:pointer}
+    .cs-trk i{position:absolute;top:17px;left:0;height:2px;border-radius:1px}
+    .cs-trk .cs-line{right:0;background:#F7F8F8}
+    .cs-trk .cs-feito{width:0;background:#000}
+    .cs-bola{position:absolute;top:13px;left:0;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#000;pointer-events:none}
+    .cs-mk{position:absolute;top:0;width:36px;height:36px;margin-left:-18px;padding:0;border:0;border-radius:50%;background:rgba(255,85,0,.2);cursor:pointer}
+    .cs-mk::after{content:'';position:absolute;left:16px;top:16px;width:5px;height:5px;border-radius:50%;background:#FF5500}
+    .cs-btns{flex:none;display:flex;gap:4px}
+    .cs-rb{display:flex;align-items:center;justify-content:center;width:48px;height:48px;padding:0;border:0;border-radius:50%;background:#F7F8F8;
+      cursor:pointer;color:#000}
+    .cs-rb:hover,.cs-stop:hover{filter:brightness(.96)}
+    .cs-card .rc-tx.pb .rc-u.on .rc-h{color:#000}
+    .cs-card .rc-tx.pb .rc-u.on .rc-t{color:#000}
+    /* abaixo do cartão (a página é branca): microfone, autorização, etapas, resumo, revisão — em caixas #F7F8F8 */
+    #prEvoBox > .rc-consent,#prEvoBox > .rc-steps,#prEvoBox > .rc-note,#prEvoBox > .rc-review,#prEvoBox > .rc-alert{margin-top:0}
+    #prEvoBox > .rc-consent,#prEvoBox > .rc-steps,#prEvoBox > .rc-note,#prEvoBox > .rc-review{background:#F7F8F8}
+    .rc-consent .rc-pede{display:none;margin-top:6px;font-style:normal;font-weight:500;font-size:12px;line-height:16px;color:#0B57D0}
+    .rc-consent.pede{box-shadow:inset 0 0 0 2px #0B57D0}
+    .rc-consent.pede .rc-pede{display:block}
+    .cs-mic{display:flex;align-items:center;gap:16px;padding:10px 16px;border-radius:12px;background:#F7F8F8;font-family:var(--disp);font-size:12px;line-height:16px}
+    .cs-mic[hidden]{display:none}
+    .cs-mic .rc-mic{position:relative}
+    .cs-mic .rc-cv{display:block;flex:none;width:213px;height:16px}
+    .cs-mic .ok{color:#137333}.cs-mic .low{color:#B06000}
+    .cs-mic .r{margin-left:auto}
+    .cs-sum{padding:10px 8px 10px 16px;border-radius:12px;background:#F7F8F8}
+    .cs-sum[hidden]{display:none}
     .gcard{padding:16px;border-radius:16px;background:#F7F8FA}
     .gcard .pr-h2{font-size:16px;line-height:24px}
     .gcard .pr-cardsub{font-size:12px;line-height:16px}
@@ -2165,40 +2235,20 @@
               </div>
             </section>
 
-            <!-- Consulta atual: evolução (texto livre ou SOAP) -->
+            <!-- Consulta atual: o cartão do Figma "Consulta" (nó 1089:32631): Transcrição | SOAP, o pé com Iniciar consulta ou a
+                 barra gravando e, depois da consulta, o player em cima. O que o design não mostra fica abaixo do cartão -->
             <section class="pr-panel" data-panel="atual" hidden>
               <div class="pr-bigcard" id="prEvoBox">
-                <div class="gc">
-                <div class="pr-cardhead">
-                  <div>
-                    <div class="pr-h2" id="prEvoLabel">Evolução</div>
-                    <div class="pr-cardsub" id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
-                  </div>
-                  <div class="pr-cardacts">
-                    <div class="pr-visit" id="prVisitBox">
-                      <span class="pr-timer" id="prTimer" hidden></span>
-                      <button class="pr-save" id="prVisit" type="button">Iniciar consulta</button>
+                <div class="cs-card" id="csCard">
+                  <div class="cs-play" id="csPlay" hidden></div>
+                  <div class="cs-main">
+                    <div class="cs-seg" id="csSeg" role="tablist">
+                      <button type="button" role="tab" data-cs="tx" class="on" aria-selected="true" aria-controls="csTx">Transcrição</button>
+                      <button type="button" role="tab" data-cs="soap" aria-selected="false" aria-controls="csSoap">SOAP</button>
                     </div>
-                    <div class="pr-seg" id="prSeg" role="tablist"><button type="button" data-m="free" class="on">Texto livre</button><button type="button" data-m="soap">SOAP</button></div>
-                  </div>
-                </div>
-                <!-- gravação da consulta (peça principal da aba): player da divulgação do Finance, ao vivo -->
-                <div class="pr-rec" id="prRec"></div>
-                <label class="rc-consent" id="rcConsent" hidden><input type="checkbox" id="rcConsentIn"><span><b>O paciente autorizou a gravação desta consulta</b><small>Fica registrado no prontuário, com data e hora. O áudio não é guardado: vira texto e é descartado. Sem autorização, a evolução é escrita à mão.</small></span></label>
-                <div class="rc-alert" id="rcAlert" role="status" aria-live="polite" hidden></div>
-                <div class="rc-steps" id="rcSteps" hidden></div>
-                <div class="gc-trans" id="gcTrans">
-                  <span class="gc-trans-t">Transcrição da consulta</span>
-                  <svg class="gc-trans-i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8zM16 18H8v-2h8zm0-4H8v-2h8zm-3-5V3.5L18.5 9z" fill="#0A0A0A"/></svg>
-                  <span class="gc-trans-s" id="gcTransS"></span>
-                  <button class="rc-chev" type="button" id="gcTransBtn" aria-expanded="false" aria-controls="rcTx" aria-label="Mostrar a transcrição" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z" fill="currentColor"/></svg></button>
-                </div>
-                <div class="rc-tx" id="rcTx" hidden></div>
-                <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button></div>
-                <div class="rc-review" id="rcReview" hidden></div>
-                </div>
-                <div class="pr-body pr-printcur" id="prPrintCur"></div>
-                <div id="prFree"><textarea class="pr-note" id="prNote" placeholder="Anamnese, exame físico, hipóteses, conduta…"></textarea></div>
+                    <div class="cs-pane" id="csTx" role="tabpanel"><div class="rc-tx" id="rcTx"></div></div>
+                    <div class="cs-pane" id="csSoap" role="tabpanel" hidden>
+                      <div class="cs-vazio" id="csLockedN" hidden>A evolução desta consulta foi finalizada: ela aparece abaixo.</div>
                 <div class="pr-soap" id="prSoap" hidden>
                   <label class="pr-soapf"><span>S — Subjetivo</span><textarea data-f="s" placeholder="Queixa, história, sintomas relatados…"></textarea></label>
                   <div class="pr-soapf"><span>O — Objetivo</span>
@@ -2227,6 +2277,18 @@
                   </div>
                   <label class="pr-soapf"><span>P — Plano</span><textarea data-f="p" placeholder="Conduta, prescrições, exames solicitados, retorno…"></textarea></label>
                 </div>
+                    </div>
+                    <div class="cs-foot" id="prRec"></div>
+                  </div>
+                </div>
+                <div class="cs-mic" id="csMic" hidden></div>
+                <label class="rc-consent" id="rcConsent" hidden><input type="checkbox" id="rcConsentIn"><span><b>O paciente autorizou a gravação desta consulta</b><small>Fica registrado no prontuário, com data e hora. O áudio não é guardado: vira texto e é descartado. Sem autorização, a evolução é escrita à mão.</small><em class="rc-pede">Marque a autorização para começar a gravar.</em></span></label>
+                <div class="rc-alert" id="rcAlert" role="status" aria-live="polite" hidden></div>
+                <div class="rc-steps" id="rcSteps" hidden></div>
+                <div class="rc-sum cs-sum" id="csSum" hidden></div>
+                <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button></div>
+                <div class="rc-review" id="rcReview" hidden></div>
+                <div class="pr-body pr-printcur" id="prPrintCur"></div>
                 <div class="pr-locked" id="prLocked" hidden>
                   <div class="pr-signed" id="prSigned"></div>
                   <div class="pr-body" id="prLockedBody"></div>
@@ -2245,6 +2307,13 @@
                   <button class="pr-ghost" id="prAddBtn" type="button">Adicionar adendo</button>
                 </div>
                 <div class="pr-addbox" id="prAddBox" hidden></div>
+                <!-- versão de teste: o cabeçalho antigo (consulta, relógio "Iniciar consulta", Texto livre | SOAP) fica fora da tela -->
+                <div hidden>
+                  <div id="prEvoLabel"></div><div id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
+                  <div id="prVisitBox"><span id="prTimer" hidden></span><button id="prVisit" type="button">Iniciar consulta</button></div>
+                  <div id="prSeg"><button type="button" data-m="free">Texto livre</button><button type="button" data-m="soap" class="on">SOAP</button></div>
+                  <div id="prFree" hidden><textarea class="pr-note" id="prNote"></textarea></div>
+                </div>
               </div>
             </section>
 
@@ -3846,7 +3915,7 @@
       var MAX = 50000;                                     // = MAX_NOTE_CHARS do servidor
       var ctx = null;          // {patient_id, patient, from, event_id, title, start, end, all_day, location, note_id}
       var patient = null, notes = [], cur = null;          // cadastro, evoluções e a evolução aberta (do servidor)
-      var mode = 'free', cids = [], ready = false, recovered = false;
+      var mode = 'soap', cids = [], ready = false, recovered = false;      // versão de teste do Figma: a evolução é só em SOAP
       var saved = '', timer = null, saving = false, queued = [], retry = 0, retryTimer = null;
       var DOWS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
       var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -4158,9 +4227,10 @@
       function fillEditor(n) {                             // n: {content, data} ou null
         [].forEach.call(document.querySelectorAll('.pr-soapf.rc-from'), function (f) { f.classList.remove('rc-from'); });
         var d = n && n.data || null, soap = !!(d && d.mode === 'soap');
-        setMode(soap ? 'soap' : 'free', true);
-        note.value = soap ? '' : (n && n.content || '');
+        // só SOAP: um rascunho antigo em texto livre aparece no S (e só é gravado assim quando o médico mexer)
+        setMode('soap', true); note.value = '';
         soapEls.forEach(function (e) { e.value = soap ? (d[e.getAttribute('data-f')] || '') : ''; });
+        if (!soap && n && n.content) soapEls[0].value = n.content;
         vitEls.forEach(function (e) { e.value = soap && d.vitals ? (d.vitals[e.getAttribute('data-v')] || '') : ''; checkVital(e); });
         cids = soap && d.cid ? d.cid.slice() : []; renderCids(); updImc();
       }
@@ -4724,53 +4794,129 @@
         var b = el('button', cls); b.type = 'button'; b.innerHTML = html; b.setAttribute('aria-label', label); b.title = label;
         b.addEventListener('click', function (e) { e.stopPropagation(); f(b); }); return b;
       }
-      // ondas: uma barra a cada 100 ms, a mais nova encostada no ponto vermelho (agora)
+      // ----- o cartão da aba Consulta (Figma "Consulta", nó 1089:32631) -----
+      // Abas Transcrição | SOAP; no pé, "Iniciar consulta" ou, gravando, "Finalizar" acima da barra preta (ondas, tempo, pausar);
+      // depois da consulta, o player em cima percorre as falas no tempo. A demonstração e a gravação real usam os mesmos.
+      // O que o design não mostra (microfone, autorização, avisos, etapas, revisão) fica abaixo do cartão.
+      var CSI = {                                          // ícones do Figma (SF Symbols exportados), na cor do texto
+        dots: '<svg width="17" height="17" viewBox="0 0 17 17" aria-hidden="true"><path d="M3.70443 1.22878C3.36082 1.22878 3.08954 0.957506 3.08954 0.613889C3.08954 0.279314 3.36082 -0.00100473 3.70443 -0.00100473C4.04805 -0.00100473 4.31933 0.279314 4.31933 0.613889C4.31933 0.957506 4.04805 1.22878 3.70443 1.22878ZM6.79699 1.22878C6.46241 1.22878 6.18209 0.957506 6.18209 0.613889C6.18209 0.279314 6.46241 -0.00100473 6.79699 -0.00100473C7.1406 -0.00100473 7.41188 0.279314 7.41188 0.613889C7.41188 0.957506 7.1406 1.22878 6.79699 1.22878ZM9.88954 1.22878C9.54592 1.22878 9.27465 0.957506 9.27465 0.613889C9.27465 0.279314 9.54592 -0.00100473 9.88954 -0.00100473C10.2332 -0.00100473 10.5044 0.279314 10.5044 0.613889C10.5044 0.957506 10.2332 1.22878 9.88954 1.22878ZM12.9821 1.22878C12.6475 1.22878 12.3672 0.957506 12.3672 0.613889C12.3672 0.279314 12.6475 -0.00100473 12.9821 -0.00100473C13.3257 -0.00100473 13.606 0.279314 13.606 0.613889C13.606 0.957506 13.3257 1.22878 12.9821 1.22878ZM6.79699 4.75538C6.25443 4.75538 5.81135 4.30325 5.81135 3.76974C5.81135 3.22719 6.25443 2.7841 6.79699 2.7841C7.33954 2.7841 7.78262 3.22719 7.78262 3.76974C7.78262 4.30325 7.33954 4.75538 6.79699 4.75538ZM9.88954 4.75538C9.35603 4.75538 8.9039 4.30325 8.9039 3.76974C8.9039 3.22719 9.35603 2.7841 9.88954 2.7841C10.4321 2.7841 10.8752 3.22719 10.8752 3.76974C10.8752 4.30325 10.4321 4.75538 9.88954 4.75538ZM3.70443 4.53836C3.27039 4.53836 2.92677 4.20378 2.92677 3.76974C2.92677 3.3357 3.27039 2.99208 3.70443 2.99208C4.13848 2.99208 4.48209 3.3357 4.48209 3.76974C4.48209 4.20378 4.13848 4.53836 3.70443 4.53836ZM12.9821 4.53836C12.5571 4.53836 12.2135 4.20378 12.2135 3.76974C12.2135 3.3357 12.5571 2.99208 12.9821 2.99208C13.4161 2.99208 13.7598 3.3357 13.7598 3.76974C13.7598 4.20378 13.4161 4.53836 12.9821 4.53836ZM0.611879 4.38463C0.268262 4.38463 -0.00301418 4.11336 -0.00301418 3.76974C-0.00301418 3.42612 0.268262 3.15485 0.611879 3.15485C0.955496 3.15485 1.22677 3.42612 1.22677 3.76974C1.22677 4.11336 0.955496 4.38463 0.611879 4.38463ZM16.0746 4.38463C15.7401 4.38463 15.4598 4.11336 15.4598 3.76974C15.4598 3.42612 15.7401 3.15485 16.0746 3.15485C16.4183 3.15485 16.6895 3.42612 16.6895 3.76974C16.6895 4.11336 16.4183 4.38463 16.0746 4.38463ZM9.88954 7.90219C9.35603 7.90219 8.9039 7.45006 8.9039 6.91655C8.9039 6.374 9.35603 5.93091 9.88954 5.93091C10.4321 5.93091 10.8752 6.374 10.8752 6.91655C10.8752 7.45006 10.4321 7.90219 9.88954 7.90219ZM6.79699 7.90219C6.26348 7.90219 5.81135 7.45006 5.81135 6.91655C5.81135 6.374 6.26348 5.93091 6.79699 5.93091C7.33954 5.93091 7.78262 6.374 7.78262 6.91655C7.78262 7.45006 7.33954 7.90219 6.79699 7.90219ZM3.70443 7.90219C3.16188 7.90219 2.71879 7.4591 2.71879 6.91655C2.71879 6.374 3.16188 5.93091 3.70443 5.93091C4.24699 5.93091 4.69007 6.374 4.69007 6.91655C4.69007 7.4591 4.24699 7.90219 3.70443 7.90219ZM12.9821 7.90219C12.4486 7.90219 11.9965 7.4591 11.9965 6.91655C11.9965 6.374 12.4486 5.93091 12.9821 5.93091C13.5246 5.93091 13.9768 6.374 13.9768 6.91655C13.9768 7.4591 13.5246 7.90219 12.9821 7.90219ZM0.611879 7.54048C0.268262 7.54048 -0.00301418 7.26921 -0.00301418 6.92559C-0.00301418 6.58197 0.268262 6.30165 0.611879 6.30165C0.955496 6.30165 1.22677 6.58197 1.22677 6.92559C1.22677 7.26921 0.955496 7.54048 0.611879 7.54048ZM16.0746 7.54048C15.7401 7.54048 15.4598 7.26921 15.4598 6.92559C15.4598 6.58197 15.7401 6.30165 16.0746 6.30165C16.4183 6.30165 16.6895 6.58197 16.6895 6.92559C16.6895 7.26921 16.4183 7.54048 16.0746 7.54048ZM9.88954 11.058C9.35603 11.058 8.9039 10.615 8.9039 10.0724C8.9039 9.52985 9.35603 9.08676 9.88954 9.08676C10.4321 9.08676 10.8752 9.52985 10.8752 10.0724C10.8752 10.615 10.4321 11.058 9.88954 11.058ZM6.79699 11.058C6.26348 11.058 5.81135 10.615 5.81135 10.0724C5.81135 9.52985 6.26348 9.08676 6.79699 9.08676C7.33954 9.08676 7.78262 9.52985 7.78262 10.0724C7.78262 10.615 7.33954 11.058 6.79699 11.058ZM3.70443 11.058C3.16188 11.058 2.71879 10.615 2.71879 10.0724C2.71879 9.53889 3.16188 9.08676 3.70443 9.08676C4.24699 9.08676 4.69007 9.53889 4.69007 10.0724C4.69007 10.615 4.24699 11.058 3.70443 11.058ZM12.9821 11.058C12.4486 11.058 11.9965 10.615 11.9965 10.0724C11.9965 9.53889 12.4486 9.08676 12.9821 9.08676C13.5246 9.08676 13.9768 9.53889 13.9768 10.0724C13.9768 10.615 13.5246 11.058 12.9821 11.058ZM16.0746 10.6873C15.7401 10.6873 15.4598 10.407 15.4598 10.0724C15.4598 9.72878 15.7401 9.44846 16.0746 9.44846C16.4183 9.44846 16.6895 9.72878 16.6895 10.0724C16.6895 10.407 16.4183 10.6873 16.0746 10.6873ZM0.611879 10.6873C0.268262 10.6873 -0.00301418 10.407 -0.00301418 10.0724C-0.00301418 9.72878 0.268262 9.44846 0.611879 9.44846C0.955496 9.44846 1.22677 9.72878 1.22677 10.0724C1.22677 10.407 0.955496 10.6873 0.611879 10.6873ZM6.79699 14.2139C6.25443 14.2139 5.81135 13.7618 5.81135 13.2283C5.81135 12.6857 6.25443 12.2426 6.79699 12.2426C7.33954 12.2426 7.78262 12.6857 7.78262 13.2283C7.78262 13.7618 7.33954 14.2139 6.79699 14.2139ZM9.88954 14.2139C9.35603 14.2139 8.9039 13.7618 8.9039 13.2283C8.9039 12.6857 9.35603 12.2426 9.88954 12.2426C10.4321 12.2426 10.8752 12.6857 10.8752 13.2283C10.8752 13.7618 10.4321 14.2139 9.88954 14.2139ZM3.70443 14.0059C3.27039 14.0059 2.92677 13.6623 2.92677 13.2283C2.92677 12.7942 3.27039 12.4506 3.70443 12.4506C4.13848 12.4506 4.48209 12.7942 4.48209 13.2283C4.48209 13.6623 4.13848 14.0059 3.70443 14.0059ZM12.9821 14.0059C12.5571 14.0059 12.2135 13.6623 12.2135 13.2283C12.2135 12.7942 12.5571 12.4506 12.9821 12.4506C13.4161 12.4506 13.7598 12.7942 13.7598 13.2283C13.7598 13.6623 13.4161 14.0059 12.9821 14.0059ZM0.611879 13.8431C0.268262 13.8431 -0.00301418 13.5719 -0.00301418 13.2283C-0.00301418 12.8846 0.268262 12.6134 0.611879 12.6134C0.955496 12.6134 1.22677 12.8846 1.22677 13.2283C1.22677 13.5719 0.955496 13.8431 0.611879 13.8431ZM16.0746 13.8431C15.7401 13.8431 15.4598 13.5719 15.4598 13.2283C15.4598 12.8846 15.7401 12.6134 16.0746 12.6134C16.4183 12.6134 16.6895 12.8846 16.6895 13.2283C16.6895 13.5719 16.4183 13.8431 16.0746 13.8431ZM3.70443 16.999C3.36082 16.999 3.08954 16.7187 3.08954 16.3841C3.08954 16.0405 3.36082 15.7602 3.70443 15.7602C4.04805 15.7602 4.31933 16.0405 4.31933 16.3841C4.31933 16.7187 4.04805 16.999 3.70443 16.999ZM6.79699 16.999C6.46241 16.999 6.18209 16.7187 6.18209 16.3841C6.18209 16.0405 6.46241 15.7602 6.79699 15.7602C7.1406 15.7602 7.41188 16.0405 7.41188 16.3841C7.41188 16.7187 7.1406 16.999 6.79699 16.999ZM9.88954 16.999C9.54592 16.999 9.27465 16.7187 9.27465 16.3841C9.27465 16.0405 9.54592 15.7602 9.88954 15.7602C10.2332 15.7602 10.5044 16.0405 10.5044 16.3841C10.5044 16.7187 10.2332 16.999 9.88954 16.999ZM12.9821 16.999C12.6475 16.999 12.3672 16.7187 12.3672 16.3841C12.3672 16.0405 12.6475 15.7602 12.9821 15.7602C13.3257 15.7602 13.606 16.0405 13.606 16.3841C13.606 16.7187 13.3257 16.999 12.9821 16.999Z" fill="currentColor"/></svg>',
+        stop: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8C6 6.89543 6.89543 6 8 6H16C17.1046 6 18 6.89543 18 8V16C18 17.1046 17.1046 18 16 18H8C6.89543 18 6 17.1046 6 16V8Z" fill="currentColor"/></svg>',
+        play: '<svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M0 12.3295V1.17348C0 0.377763 0.458138 0 1.00469 0C1.24581 0 1.49498 0.0723376 1.74414 0.208975L11.1078 5.68252C11.7749 6.06832 12 6.32552 12 6.75151C12 7.16946 11.7749 7.4347 11.1078 7.8205L1.74414 13.294C1.49498 13.4226 1.24581 13.503 1.00469 13.503C0.458138 13.503 0 13.1253 0 12.3295Z" fill="currentColor"/></svg>',
+        pause: '<svg width="10" height="13" viewBox="0 0 10 13" aria-hidden="true"><path d="M1.04534 13C0.361548 13 0 12.6385 0 11.9468V1.04534C0 0.353688 0.361548 0 1.04534 0H2.83736C3.52116 0 3.88271 0.322249 3.88271 1.04534V11.9468C3.88271 12.6385 3.52116 13 2.83736 13H1.04534ZM6.75937 13C6.06771 13 5.70617 12.6385 5.70617 11.9468V1.04534C5.70617 0.353688 6.06771 0 6.75937 0H8.54353C9.23519 0 9.58888 0.322249 9.58888 1.04534V11.9468C9.58888 12.6385 9.23519 13 8.54353 13H6.75937Z" fill="currentColor"/></svg>',
+        som: '<svg width="10" height="14" viewBox="0 0 10 14" aria-hidden="true"><path d="M8.55556 14C8.19048 14 7.88095 13.8492 7.51587 13.5L4.13492 10.2937C4.07937 10.246 4.01587 10.2222 3.93651 10.2222H1.65873C0.587302 10.2222 0 9.63492 0 8.48413V5.53175C0 4.38889 0.587302 3.79365 1.65873 3.79365H3.93651C4.01587 3.79365 4.07937 3.76984 4.13492 3.72222L7.51587 0.547619C7.92063 0.15873 8.1746 0 8.53968 0C9.07937 0 9.45238 0.420635 9.45238 0.936508V13.1111C9.45238 13.627 9.07937 14 8.55556 14Z" fill="currentColor"/></svg>',
+        mute: '<svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M11.0427 9.02054L5.56082 3.5545H5.79779C5.84518 3.5545 5.89258 3.52291 5.93207 3.49131L9.10742 0.545024C9.51817 0.165877 9.76303 0 10.1343 0C10.6714 0 11.0427 0.418641 11.0427 0.93207V9.02054ZM13.7678 14.763L0.236967 1.24013C0 1.01106 0 0.608215 0.236967 0.379147C0.473934 0.14218 0.868878 0.14218 1.10585 0.379147L14.6288 13.9021C14.8657 14.139 14.8657 14.5182 14.6288 14.763C14.3997 15 14.0047 15 13.7678 14.763ZM3.24645 10.1738C2.1722 10.1738 1.63507 9.63665 1.63507 8.49131V5.46603C1.63507 4.93681 1.75355 4.54186 1.98262 4.2812L10.9874 13.278C10.861 13.7283 10.5529 13.9336 10.1422 13.9336C9.77883 13.9336 9.47867 13.7836 9.10742 13.436L5.6951 10.2449C5.63981 10.1975 5.57662 10.1738 5.49763 10.1738H3.24645Z" fill="currentColor"/></svg>'
+      };
+      var csAba = 'tx';                                    // aba aberta no cartão: tx (Transcrição) ou soap
+      function csTab(t) {
+        csAba = t;
+        [].forEach.call($('csSeg').children, function (b) {
+          var on = b.getAttribute('data-cs') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
+        $('csTx').hidden = t !== 'tx'; $('csSoap').hidden = t !== 'soap';
+        if (ready) csDot(csRec());                       // antes de o prontuário carregar, nenhuma gravação é criada
+      }
+      [].forEach.call($('csSeg').children, function (b) { b.addEventListener('click', function () {
+        var t = b.getAttribute('data-cs'), r = csRec(); if (t === 'soap' && r) r.soapVisto = true;     // abriu a evolução: o ponto some
+        csTab(t);
+      }); });
+      function csRec() { return rrActive() ? rrCur() : recCur(); }
+      function csDone(r) { return !!r && (r.st === 'done' || r.st === 'saved'); }
+      function csDur(r) { return r.segs ? Math.max(1, r.samples / SR16) : recDur(r); }
+      function csTimes(r) {                                // o minuto de cada fala, na ordem da transcrição na tela
+        return r.segs ? r.segs.filter(function (s) { return s.st !== 'silent'; }).map(function (s) { return s.at; }) : r.u.map(function (u) { return u.at; });
+      }
+      // a aba SOAP ganha um ponto quando a evolução gerada pela gravação fica pronta, até ser aberta
+      function csDot(r) { $('csSeg').children[1].classList.toggle('dot', !!r && !!r.gerou && !r.soapVisto && csAba !== 'soap'); }
+      // o cartão aparece na consulta aberta; com a evolução finalizada, só se ela foi gravada (a assinada aparece abaixo)
+      function csShow(gravada) {
+        var show = !locked() || !!gravada;
+        $('csCard').hidden = !show; $('csLockedN').hidden = !locked();
+        $('csPlay').hidden = true; $('csPlay')._pl = null;
+        if (locked()) $('prRec').hidden = true;
+        return show;
+      }
+      // a aba que abre com a consulta: Transcrição quando dá para gravar (ou já foi gravada); senão, SOAP
+      function csAbaInicial() { csTab(recDemo() || (RR && RR.on) ? 'tx' : 'soap'); }
+      function mm2(x) { x = Math.max(0, Math.floor(x)); return pad(Math.floor(x / 60)) + ':' + pad(x % 60); }   // 00:06, como no Figma
+      // o pé: a pílula preta ("Iniciar consulta", "Tentar de novo"…); o.nota vai acima dela, o.off a desativa
+      function csGo(label, f, o) {
+        o = o || {};
+        var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot';
+        if (o.nota) box.appendChild(el('div', 'cs-nota', o.nota));
+        var b = el('button', 'cs-go'); b.type = 'button'; b.innerHTML = CSI.dots; b.appendChild(el('span', null, label));
+        b.disabled = !!o.off; b.addEventListener('click', function () { f(b); }); box.appendChild(b);
+        return b;
+      }
+      // gravando: "Finalizar" acima e a barra (ondas do volume, tempo e o botão redondo que pausa e continua);
+      // o.msg troca as ondas por um texto (enviando, gerando) e some com o botão
+      function csBar(o) {
+        var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot bar';
+        if (o.fim) { var f = el('button', 'cs-fim', 'Finalizar'); f.type = 'button'; f.title = 'Encerrar a gravação e gerar a evolução';
+          f.addEventListener('click', o.fim); box.appendChild(f); }
+        var bar = el('div', 'cs-bar'); box.appendChild(bar);
+        if (o.msg != null) { var m = el('span', 'cs-msg', o.msg); m.id = 'rcStep'; bar.appendChild(m); }
+        else bar.appendChild(el('canvas', 'cs-cv'));
+        var t = el('span', 'cs-tm', o.t || ''); t.id = 'rcTime'; bar.appendChild(t);
+        if (o.btn) {
+          var lab = o.live ? 'Pausar a gravação' : 'Continuar gravando', b = el('button', 'cs-stop'); b.type = 'button';
+          b.innerHTML = o.live ? CSI.stop : CSI.play; b.title = lab + ' (⌘/Ctrl + Shift + Espaço)'; b.setAttribute('aria-label', lab);
+          b.addEventListener('click', o.btn); bar.appendChild(b);
+        }
+        if (o.msg == null) recDraw({ amps: o.amps || [], st: o.live ? 'live' : 'paused' });
+      }
+      // ondas: barras de 2 px a cada 5 px, de 4 a 22 de altura, a mais nova à direita; antes do começo, pontos cinza
       function recDraw(r) {
-        var cv = $('prRec').querySelector('.rc-cv'); if (!cv || !cv.clientWidth) return;
-        var w = cv.clientWidth, h = 44, dpr = window.devicePixelRatio || 1, cy = 24;
+        var cv = $('prRec').querySelector('.cs-cv'); if (!cv || !cv.clientWidth) return;
+        var w = cv.clientWidth, h = 22, dpr = window.devicePixelRatio || 1, a = r.amps, k = a.length, n = Math.floor((w + 3) / 5);
         if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
         var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-        var right = w - 19, n = Math.min(r.amps.length, Math.floor(right / 5)), x0 = right - n * 5;
-        g.fillStyle = '#CCCFD9'; g.fillRect(0, cy - 1.5, Math.max(0, x0), 3);
-        g.fillStyle = r.st === 'live' ? '#0B57D0' : '#A3A7AE'; g.beginPath();
-        for (var i = 0; i < n; i++) {
-          var bh = Math.max(3, Math.round(r.amps[r.amps.length - 1 - i] * 24)), x = right - (i + 1) * 5 + 1;
-          if (g.roundRect) g.roundRect(x, cy - bh / 2, 3, bh, 1.5); else g.rect(x, cy - bh / 2, 3, bh);
+        g.fillStyle = '#6B7173';
+        for (var i = k; i < n; i++) g.fillRect(w - 2 - i * 5, h / 2 - 1, 2, 2);
+        g.fillStyle = r.st === 'live' ? '#fff' : 'rgba(255,255,255,.5)'; g.beginPath();
+        for (var j = 0; j < Math.min(k, n); j++) {
+          var bh = Math.max(4, Math.min(22, Math.round(4 + a[k - 1 - j] * 18))), x = w - 2 - j * 5;
+          if (g.roundRect) g.roundRect(x, (h - bh) / 2, 2, bh, 1); else g.rect(x, (h - bh) / 2, 2, bh);
         }
         g.fill();
       }
-      function rcPlayer(kind, time, right, buttons) {
-        var box = $('prRec'); box.innerHTML = ''; box.hidden = false;
-        var tk = el('div', 'hc-trk'), lab = el('div', 'hc-lab'); box.appendChild(tk);
-        if (kind === 'live' || kind === 'paused') {
-          tk.appendChild(el('canvas', 'rc-cv')); tk.appendChild(el('span', 'rc-live' + (kind === 'live' ? '' : ' off')));
-          lab.appendChild(el('span', 'hc-chip' + (kind === 'live' ? ' rec' : ''), kind === 'live' ? 'Gravando' : (time.chip || 'Pausada')));
-        } else if (kind === 'meter') {
-          tk.appendChild(el('canvas', 'rc-cv'));
-          var mic = el('button', 'rc-mic'); mic.type = 'button'; mic.id = 'rcMicBtn';
-          mic.innerHTML = '<span>Microfone: ' + (time.mic || 'padrão do computador').replace(/</g, '&lt;') + '</span>' + RCI.caret; lab.appendChild(mic);
-        } else {
-          var line = el('div', 'hc-line'), played = el('i', 'hc-played'), rest = el('i', 'hc-rest'), thumb = el('span', 'hc-thumb');
-          line.appendChild(played); line.appendChild(rest); tk.appendChild(line); tk.appendChild(thumb);
-          played.style.width = kind === 'gen' ? 'calc((100% - 13px) * .62)' : '0'; rest.style.left = kind === 'gen' ?
-            'calc((100% - 13px) * .62 + 13px)' : '13px';
-          thumb.style.left = kind === 'gen' ? 'calc((100% - 13px) * .62)' : '0'; if (kind === 'gen') thumb.hidden = true;
-          lab.appendChild(el('span', 'hc-chip' + (kind === 'gen' ? ' gen' : ''), time.chip || 'Gravação'));
-        }
-        if (time.t) { var tt = el('span', null, time.t); tt.id = 'rcTime'; lab.appendChild(tt); }
-        if (right) { var r = el('span', 'rc-r'); r.id = 'rcRight'; r.innerHTML = right; lab.appendChild(r); }
-        tk.appendChild(lab);
-        (buttons || []).forEach(function (b) { box.appendChild(b); });
-        if (kind === 'live' || kind === 'paused') recDraw({ amps: time.amps || [], st: kind });
-        if (kind === 'meter') rcMeter(time.level == null ? 0.62 : time.level);
+      // o player (depois da consulta): trilha com o progresso, marcadores laranja no começo de O, A e P (demonstração) e os
+      // botões redondos: som (só na demonstração; a gravação real não guarda áudio) e percorrer/pausar
+      function csPlayer(r, marks, som) {
+        var p = $('csPlay'); p.innerHTML = ''; p.hidden = false;
+        var tk = el('div', 'cs-trk'), feito = el('i', 'cs-feito'), bola = el('span', 'cs-bola'), dur = csDur(r);
+        tk.appendChild(el('i', 'cs-line')); tk.appendChild(feito);
+        (marks || []).forEach(function (m) {
+          var b = el('button', 'cs-mk'); b.type = 'button'; b.style.left = (Math.min(1, m.at / dur) * 100).toFixed(3) + '%';
+          b.title = m.nome; b.setAttribute('aria-label', 'Ir para ' + m.nome);
+          b.addEventListener('click', function (e) { e.stopPropagation(); r.pos = m.at; csTab('tx'); recSeekUi(r); recScrollTo(m.i); });
+          tk.appendChild(b);
+        });
+        tk.appendChild(bola);
+        tk.addEventListener('click', function (e) {
+          var rc = tk.getBoundingClientRect(); r.pos = Math.max(0, Math.min(1, (e.clientX - rc.left) / rc.width)) * dur; recSeekUi(r);
+        });
+        p.appendChild(tk); p._pl = { feito: feito, bola: bola };
+        var bs = el('div', 'cs-btns');
+        if (som) { var s = el('button', 'cs-rb'); s.type = 'button'; s.id = 'csSom'; s.addEventListener('click', function () { r.mute = !r.mute; csIcons(r); });
+          bs.appendChild(s); }
+        var pb = el('button', 'cs-rb'); pb.type = 'button'; pb.id = 'rcPlay'; pb.addEventListener('click', function () { recPlay(r); }); bs.appendChild(pb);
+        p.appendChild(bs); csIcons(r); recSeekUi(r);
       }
-      function rcMeter(level) {               // medidor do microfone: 24 barras (verde, laranja no alto)
-        var cv = $('prRec').querySelector('.rc-cv'); if (!cv || !cv.clientWidth) return;
-        var w = cv.clientWidth, dpr = window.devicePixelRatio || 1, on = Math.round(Math.max(0, Math.min(1, level)) * 24);
-        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(44 * dpr); }
-        var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, 44);
+      // como no Figma: parado, play e o som mudo; tocando, pausa e o som (a não ser que tenha sido silenciado)
+      function csIcons(r) {
+        var on = !!recPb && recPb.r === r, pb = $('rcPlay'), s = $('csSom');
+        if (pb) { var l = on ? 'Pausar' : 'Percorrer a transcrição'; pb.innerHTML = on ? CSI.pause : CSI.play; pb.title = l; pb.setAttribute('aria-label', l); }
+        if (s) { s.innerHTML = on && !r.mute ? CSI.som : CSI.mute; s.title = r.mute ? 'Ativar o som' : 'Sem som'; s.setAttribute('aria-label', s.title);
+          s.setAttribute('aria-pressed', r.mute ? 'true' : 'false'); }
+      }
+      // medidor do microfone (abaixo do cartão, antes de gravar): 24 barras (verde, laranja no alto)
+      function rcMeter(level) {
+        var cv = $('csMic').querySelector('.rc-cv'); if (!cv || !cv.clientWidth) return;
+        var w = cv.clientWidth, h = 16, dpr = window.devicePixelRatio || 1, on = Math.round(Math.max(0, Math.min(1, level)) * 24);
+        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+        var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
         for (var i = 0; i < 24; i++) { g.fillStyle = i < on ? (i < 17 ? '#137333' : '#E37400') : '#CCCFD9'; g.beginPath(); (g.roundRect ?
-          g.roundRect(i * 9, 16, 6, 16, 2) : g.rect(i * 9, 16, 6, 16)); g.fill(); }
+          g.roundRect(i * 9, 0, 6, h, 2) : g.rect(i * 9, 0, 6, h)); g.fill(); }
       }
       function rcAlert(kind, icon, html, acts) {
         var a = $('rcAlert'); a.className = 'rc-alert ' + kind; a.innerHTML = RCI[icon] + '<span class="t">' + html + '</span>'; a.hidden = false;
@@ -4826,68 +4972,29 @@
       }
       function recSecs(r) { return (r.ms + (r.st === 'live' ? performance.now() - r.t0 : 0)) / 1000; }
       function recDur(r) { return Math.max(1, r.ms / 1000); }
-      // player: parado → gravando/pausado (ondas) → gerando (barra azul) → gravação pronta (trilha com S, O, A, P)
+      // o cartão: Iniciar consulta → gravando/pausada (Finalizar e a barra) → gerando → pronta (o player com O, A e P)
       function recDemoRender() {
-        var box = $('prRec'), r = recCur(), lk = locked();
+        var r = recCur(), lk = locked();
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);      // trocou de consulta gravando: pausa
         if (recPb && recPb.r !== r) recStopPb();
         if (lk && r && r.st === 'live') recPause(r);                  // finalizou gravando: para o relógio
-        box.innerHTML = ''; box._pl = null;
-        var show = !!r && (!lk || r.st === 'done');
-        box.hidden = !show; $('gcTrans').hidden = !show;
-        if (!show) { $('rcTx').hidden = true; $('rcNote').hidden = true; return; }
+        if (!r) $('csCard').hidden = true;
+        if (!r || !csShow(r.st === 'done')) { $('rcNote').hidden = true; return; }
         if (r.pending && !lk && ready) { r.pending = false; recApply(r); }
-        var tk = el('div', 'hc-trk'), lab = el('div', 'hc-lab'), live = r.st === 'live' || r.st === 'paused';
-        box.appendChild(tk);
-        if (live) {
-          tk.appendChild(el('canvas', 'rc-cv')); tk.appendChild(el('span', 'rc-live' + (r.st === 'live' ? '' : ' off')));
-          lab.appendChild(el('span', 'hc-chip' + (r.st === 'live' ? ' rec' : ''), r.st === 'live' ? 'Gravando' : 'Pausada'));
-          var tm = el('span', null, mmss(recSecs(r))); tm.id = 'rcTime'; lab.appendChild(tm);
-          lab.appendChild(el('span', 'rc-r', r.st === 'live' ? 'Transcrevendo ao vivo' : 'Continue quando quiser'));
-          box.appendChild(rcBtn('hc-btn rc-b', r.st === 'live' ? RI.pause : RI.mic, r.st === 'live' ? 'Pausar a gravação' : 'Continuar gravando', function () {
-            if (r.st === 'live') recPause(r); else recResume(r); recRender();
-          }));
-          box.appendChild(rcBtn('rc-go', RI.stop + '<span>Encerrar</span>', 'Encerrar a gravação e gerar a evolução', function () { recEnd(r); }));
-        } else {
-          var line = el('div', 'hc-line'), played = el('i', 'hc-played'), rest = el('i', 'hc-rest'), thumb = el('span', 'hc-thumb');
-          line.appendChild(played); line.appendChild(rest); tk.appendChild(line); tk.appendChild(thumb);
-          box._pl = { played: played, rest: rest, thumb: thumb };
-          if (r.st === 'idle') {
-            lab.appendChild(el('span', 'hc-chip', 'Gravação')); lab.appendChild(el('span', null, '0:00'));
-            lab.appendChild(el('span', 'rc-r', recDemo() ? 'Peça a autorização do paciente antes de gravar' : 'Em breve para os seus pacientes · experimente na paciente de exemplo'));
-            var go = rcBtn('rc-go', RI.mic + '<span>Gravar consulta</span>', 'Gravar a consulta', recStart);
-            go.disabled = !recDemo(); box.appendChild(go);
-          } else if (r.st === 'proc') {
-            lab.appendChild(el('span', 'hc-chip gen', 'Gerando evolução')); lab.appendChild(el('span', null, mmss(recDur(r))));
-            var st = el('span', 'rc-r', r.step || ''); st.id = 'rcStep'; lab.appendChild(st);
-            var wait = rcBtn('rc-go', '<span>Gerando…</span>', 'Gerando a evolução', function () {}); wait.disabled = true; box.appendChild(wait);
-            played.classList.add('rc-run'); thumb.hidden = true; rest.style.left = '0';
-            played.style.width = r.pw || '0'; requestAnimationFrame(function () { requestAnimationFrame(function () { r.pw = '100%'; played.style.width = '100%'; }); });
-          } else {                                             // pronta: trilha clicável com marcadores de O, A e P
-            var dur = recDur(r), mks = el('div', 'hc-mks'), seen = {};
-            r.u.forEach(function (u, i) {
-              if (seen[u.k] || !i) { seen[u.k] = 1; return; } seen[u.k] = 1;
-              var m = el('button', 'hc-mk'), at = Math.min(1, u.at / dur); m.type = 'button';
-              m.style.left = 'calc((100% - 13px) * ' + at.toFixed(4) + ' + 6.5px)'; m.title = SOAPN[u.k]; m.setAttribute('aria-label', 'Ir para ' + SOAPN[u.k]); m.appendChild(el('i'));
-              m.addEventListener('click', function (e) { e.stopPropagation(); r.pos = u.at; recSeekUi(r); recOpenTx(r, true); recScrollTo(i); });
-              mks.appendChild(m);
-            });
-            tk.insertBefore(mks, line); tk.classList.add('rc-seek');
-            tk.addEventListener('click', function (e) {
-              var rc = line.getBoundingClientRect(); r.pos = Math.max(0, Math.min(1, (e.clientX - rc.left - 6.5) / (rc.width - 13))) * dur; recSeekUi(r);
-            });
-            lab.appendChild(el('span', 'hc-chip', 'Gravação')); var pt = el('span', null, mmss(r.pos)); pt.id = 'rcTime'; lab.appendChild(pt);
-            lab.appendChild(el('span', 'hc-dur', mmss(dur)));
-            box.appendChild(rcBtn('hc-btn rc-b', r.mute ? RI.mute : RI.vol, r.mute ? 'Ativar o som' : 'Sem som', function (b) { r.mute = !r.mute; b.innerHTML = r.mute ? RI.mute : RI.vol; b.title = r.mute ? 'Ativar o som' : 'Sem som'; }));
-            var pb = rcBtn('hc-btn rc-b', recPb ? RI.pause : RI.play, recPb ? 'Pausar' : 'Ouvir a gravação', function () { recPlay(r); });
-            pb.id = 'rcPlay'; box.appendChild(pb);
-            var sp = rcBtn('hc-btn hc-spd rc-b', '', 'Velocidade', function (b) { r.spd = (r.spd + 1) % RC_SPD.length; b.textContent = String(RC_SPD[r.spd]).replace('.', ',') + 'x'; });
-            sp.textContent = String(RC_SPD[r.spd]).replace('.', ',') + 'x'; box.appendChild(sp);
-          }
+        if (r.st === 'live' || r.st === 'paused') {
+          csBar({ live: r.st === 'live', t: mm2(recSecs(r)), amps: r.amps, fim: function () { recEnd(r); },
+                  btn: function () { if (r.st === 'live') recPause(r); else recResume(r); recRender(); } });
+        } else if (r.st === 'idle') {
+          if (!lk) csGo('Iniciar consulta', recStart, recDemo() ? null :
+            { off: true, nota: 'A gravação chega em breve para os seus pacientes: experimente na paciente de exemplo.' });
+        } else if (r.st === 'proc') csBar({ t: mm2(recDur(r)), msg: r.step || 'Gerando a evolução…' });
+        else {                                             // pronta: o player, com os marcadores no começo de O, A e P
+          $('prRec').hidden = true;
+          var mks = [], seen = {};
+          r.u.forEach(function (u, i) { if (!seen[u.k] && i) mks.push({ at: u.at, nome: SOAPN[u.k], i: i }); seen[u.k] = 1; });
+          csPlayer(r, mks, true);
         }
-        tk.appendChild(lab);
-        if (live) recDraw(r); else if (r.st !== 'proc') recSeekUi(r);
-        recTxAll(r); recTransS(r); recOpenTx(r, r.open); recNote(r);
+        recTxAll(r); csDot(r); recNote(r);
       }
       function recTick() {
         var r = recLive; if (!r || r.st !== 'live') return;
@@ -4896,7 +5003,7 @@
           if (r.gap > 0) r.gap -= RC_TICK;
           else {
             var words = s[2].split(' ');
-            if (!r.wi && !r.acc) { r.u.push({ k: s[0], who: s[1], at: recSecs(r), t: '' }); if (mine) { recTxAdd(r); recTransS(r); } }
+            if (!r.wi && !r.acc) { r.u.push({ k: s[0], who: s[1], at: recSecs(r), t: '' }); if (mine) recTxAdd(r); }
             r.acc += RC_TICK; speaking = true;
             var u = r.u[r.u.length - 1];
             while (r.acc >= RC_WORD && r.wi < words.length) { r.acc -= RC_WORD; u.t += (r.wi ? ' ' : '') + words[r.wi]; r.wi++; }
@@ -4908,11 +5015,11 @@
         var t = performance.now() / 1000;
         r.amps.push(speaking ? Math.min(1, (0.3 + 0.7 * Math.random()) * (0.55 + 0.45 * Math.abs(Math.sin(t * 7.3))) * (s[1] === 'p' ? 0.8 : 1)) : 0.04 + 0.06 * Math.random());
         if (r.amps.length > 800) r.amps.splice(0, r.amps.length - 800);
-        if (mine) { recDraw(r); var te = $('rcTime'); if (te) te.textContent = mmss(recSecs(r)); }
+        if (mine) { recDraw(r); var te = $('rcTime'); if (te) te.textContent = mm2(recSecs(r)); }
       }
       function recStart() {
         var r = recCur(); if (!r || !recDemo() || !ready || locked() || r.st !== 'idle') return;
-        r.open = true; recResume(r); recRender();
+        csTab('tx'); recResume(r); recRender();
       }
       function recResume(r) {
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);
@@ -4932,12 +5039,12 @@
         if (r.wi) { r.u[r.u.length - 1].t = RC_SCRIPT[r.si][2]; r.si++; r.wi = 0; r.acc = 0; }
         while (r.si < RC_SCRIPT.length) { var s = RC_SCRIPT[r.si++]; at += 2 + s[2].split(' ').length * 0.35; r.u.push({ k: s[0], who: s[1], at: at, t: s[2] }); }
         r.ms = Math.max(r.ms, (at + 3) * 1000);
-        r.st = 'proc'; r.open = false; r.pw = '0'; r.step = 'Transcrevendo o áudio…';
+        r.st = 'proc'; r.step = 'Transcrevendo o áudio…';
         recRender();
         var steps = ['Organizando em SOAP…', 'Sugerindo CID-10…'], k = 0;
         var iv = setInterval(function () { r.step = steps[k++] || ''; var e = $('rcStep'); if (e && recCur() === r) e.textContent = r.step; if (k >= steps.length) clearInterval(iv); }, 870);
         setTimeout(function () {
-          clearInterval(iv); r.st = 'done'; r.pos = 0;
+          clearInterval(iv); r.st = 'done'; r.pos = 0; r.gerou = true; r.soapVisto = false;
           if (recCur() === r) { recApply(r); recRender(); } else r.pending = true;
         }, 2600);
       }
@@ -4974,86 +5081,61 @@
         return d;
       }
       function recTxAll(r) {
-        var tx = $('rcTx'); tx.innerHTML = '';
+        var tx = $('rcTx'), sc = $('csTx'); tx.innerHTML = '';
         r.u.forEach(function (u, i) { tx.appendChild(recU(u, i)); });
         tx.classList.toggle('done', r.st === 'done'); tx.classList.toggle('pb', !!recPb && recPb.r === r);
-        if (r.st === 'live' || r.st === 'paused') { if (r.wi && tx.lastChild) tx.lastChild.classList.add('typing'); tx.scrollTop = tx.scrollHeight; }
+        if (r.st === 'live' || r.st === 'paused') { if (r.wi && tx.lastChild) tx.lastChild.classList.add('typing'); sc.scrollTop = sc.scrollHeight; }
       }
-      function recNear(tx) { return tx.scrollHeight - tx.scrollTop - tx.clientHeight < 48; }
+      function recNear(sc) { return sc.scrollHeight - sc.scrollTop - sc.clientHeight < 48; }   // sc: a aba Transcrição (rola no cartão)
       function recTxAdd(r) {
-        var tx = $('rcTx'), near = recNear(tx);
+        var tx = $('rcTx'), sc = $('csTx'), near = recNear(sc);
         [].forEach.call(tx.querySelectorAll('.typing'), function (x) { x.classList.remove('typing'); });
         var d = recU(r.u[r.u.length - 1], r.u.length - 1); d.classList.add('typing'); tx.appendChild(d);
-        recOpenTx(r, r.open); if (near) tx.scrollTop = tx.scrollHeight;
+        if (near) sc.scrollTop = sc.scrollHeight;
       }
       function recTxUpd(r, end) {
-        var tx = $('rcTx'), d = tx.lastChild; if (!d) return;
-        var near = recNear(tx); d.querySelector('.rc-t').textContent = r.u[r.u.length - 1].t;
+        var tx = $('rcTx'), sc = $('csTx'), d = tx.lastChild; if (!d) return;
+        var near = recNear(sc); d.querySelector('.rc-t').textContent = r.u[r.u.length - 1].t;
         if (end) d.classList.remove('typing');
-        if (near) tx.scrollTop = tx.scrollHeight;
+        if (near) sc.scrollTop = sc.scrollHeight;
       }
-      function recTransS(r) {
-        var s = $('gcTransS'), n = r.u.length, f = n + (n === 1 ? ' fala' : ' falas'); s.innerHTML = '';
-        if (r.st === 'idle') s.textContent = recDemo() ? 'Aparece aqui, ao vivo, assim que você começar a gravar' : 'Disponível quando a gravação estiver ativa';
-        else if (r.st === 'live' || r.st === 'paused') {
-          if (r.st === 'live') s.appendChild(el('span', 'rc-dot'));
-          s.appendChild(document.createTextNode((r.st === 'live' ? 'Ao vivo' : 'Pausada') + ' · ' + (n ? f : 'aguardando a primeira fala')));
-        } else if (r.st === 'proc') s.textContent = 'Organizando ' + f + ' em S, O, A e P…';
-        else s.textContent = f + ' · ' + mmss(recDur(r));
-      }
-      function recOpenTx(r, on) {
-        var can = r.u.length > 0 && r.st !== 'proc';
-        r.open = !!on; $('rcTx').hidden = !(can && r.open);
-        $('gcTransBtn').hidden = !can; $('gcTrans').classList.toggle('can', can);
-        $('gcTransBtn').setAttribute('aria-expanded', can && r.open ? 'true' : 'false');
-        $('gcTransBtn').setAttribute('aria-label', can && r.open ? 'Esconder a transcrição' : 'Mostrar a transcrição');
-      }
-      $('gcTrans').addEventListener('click', function () {
-        if (rrActive()) {
-          var q = rrCur(); if (!q || q.st === 'gen' || !$('rcTx').children.length) return;
-          var o = $('rcTx').hidden; $('rcTx').hidden = !o; $('gcTransBtn').setAttribute('aria-expanded', o ? 'true' : 'false'); return;
-        }
-        var r = recCur(); if (r && r.u.length && r.st !== 'proc') recOpenTx(r, !r.open);
-      });
+      // depois da consulta, tocar numa fala leva o player até ela
       $('rcTx').addEventListener('click', function (e) {
-        var r = recCur(), d = e.target.closest && e.target.closest('.rc-u'); if (!r || r.st !== 'done' || !d) return;
-        r.pos = r.u[d._i].at; recSeekUi(r);
+        var d = e.target.closest && e.target.closest('.rc-u'), r = csRec(); if (!d || !csDone(r)) return;
+        var at = csTimes(r)[[].indexOf.call($('rcTx').children, d)]; if (at == null) return;
+        r.pos = at; recSeekUi(r);
       });
       function recScrollTo(i) {
-        var tx = $('rcTx'), d = tx.children[i]; if (!d || tx.hidden) return;
-        tx.scrollTop = Math.max(0, d.offsetTop - tx.offsetTop - 16);
+        var sc = $('csTx'), d = $('rcTx').children[i]; if (!d || sc.hidden) return;
+        sc.scrollTop = Math.max(0, d.offsetTop - 16);
       }
-      // ouvir a gravação: o cursor anda e a fala do momento fica em destaque
+      // percorrer a transcrição: o cursor anda e a fala do momento fica em destaque
       function recSeekUi(r) {
-        var p = $('prRec')._pl; if (!p) return;
-        var x = r.st === 'done' ? Math.min(1, r.pos / recDur(r)) : 0;
-        p.played.style.width = 'calc((100% - 13px) * ' + x + ')'; p.thumb.style.left = 'calc((100% - 13px) * ' + x + ')';
-        p.rest.style.left = 'calc((100% - 13px) * ' + x + ' + 13px)';
-        var te = $('rcTime'); if (te && r.st === 'done') te.textContent = mmss(r.pos);
-        if (r.st !== 'done') return;
-        var on = -1; r.u.forEach(function (u, i) { if (u.at <= r.pos + 0.05) on = i; });
-        var tx = $('rcTx'), prev = tx.querySelector('.rc-u.on');
-        if (prev && prev._i !== on) prev.classList.remove('on');
-        var cur2 = tx.children[on];
+        var p = $('csPlay')._pl; if (!p || !csDone(r)) return;
+        var x = Math.min(1, (r.pos || 0) / csDur(r));
+        p.feito.style.width = (x * 100).toFixed(3) + '%'; p.bola.style.left = (x * 100).toFixed(3) + '%';
+        var on = -1; csTimes(r).forEach(function (at, i) { if (at <= (r.pos || 0) + 0.05) on = i; });
+        var tx = $('rcTx'), sc = $('csTx'), prev = tx.querySelector('.rc-u.on'), cur2 = tx.children[on];
+        if (prev && prev !== cur2) prev.classList.remove('on');
         if (cur2 && !cur2.classList.contains('on')) {
           cur2.classList.add('on');
-          if (recPb && !tx.hidden) { var top = cur2.offsetTop - tx.offsetTop; if (top < tx.scrollTop || top > tx.scrollTop + tx.clientHeight - 60) tx.scrollTop = Math.max(0, top - 16); }
+          if (recPb && !sc.hidden) { var top = cur2.offsetTop; if (top < sc.scrollTop || top > sc.scrollTop + sc.clientHeight - 60) sc.scrollTop = Math.max(0, top - 16); }
         }
       }
       function recPlay(r) {
         if (recPb) { recStopPb(); return; }
-        var dur = recDur(r); if (r.pos >= dur - 0.1) r.pos = 0;
+        var dur = csDur(r); if ((r.pos || 0) >= dur - 0.1) r.pos = 0;
         var last = performance.now();
         recPb = { r: r, iv: setInterval(function () {
-          var now = performance.now(); r.pos = Math.min(dur, r.pos + (now - last) / 1000 * RC_SPD[r.spd]); last = now;
+          var now = performance.now(); r.pos = Math.min(dur, (r.pos || 0) + (now - last) / 1000 * RC_SPD[r.spd || 0]); last = now;
           recSeekUi(r); if (r.pos >= dur) recStopPb();
         }, 100) };
-        $('rcTx').classList.add('pb'); var b = $('rcPlay'); if (b) { b.innerHTML = RI.pause; b.title = 'Pausar'; b.setAttribute('aria-label', 'Pausar'); }
+        $('rcTx').classList.add('pb'); csIcons(r);
       }
       function recStopPb() {
         if (!recPb) return;
-        clearInterval(recPb.iv); recPb = null;
-        $('rcTx').classList.remove('pb'); var b = $('rcPlay'); if (b) { b.innerHTML = RI.play; b.title = 'Ouvir a gravação'; b.setAttribute('aria-label', 'Ouvir a gravação'); }
+        var r = recPb.r; clearInterval(recPb.iv); recPb = null;
+        $('rcTx').classList.remove('pb'); csIcons(r);
       }
       window.addEventListener('resize', function () { if (recLive && recLive === recCur()) recDraw(recLive); });
 
@@ -5200,7 +5282,7 @@
         var blocks = Math.round(r.samples / 1600);
         if (blocks === SEG.warnAt) { r.warn = 'longa'; rrRender(r); }
         if (blocks >= SEG.stopAt) { rrEnd(r); return; }
-        if (rrMine(r)) { var te = $('rcTime'); if (te) te.textContent = mmss(r.samples / SR16); recDraw({ amps: r.amps, st: 'live' }); }
+        if (rrMine(r)) { var te = $('rcTime'); if (te) te.textContent = mm2(r.samples / SR16); recDraw({ amps: r.amps, st: 'live' }); }
         rrPill();
       }
       // fora da aba Consulta, um aviso fixo mostra que a consulta está sendo gravada (e leva de volta a ela)
@@ -5432,7 +5514,7 @@
             if (!last || !last.ok) throw new Error((last && last.error) || 'resposta incompleta');
             my.result = last.result; my.flags = last.flags || []; my.segTable = last.segs || []; my.meta = last.meta || null;
             if (last.receita) { rxLoad(true); toast(last.receita === 1 ? '1 remédio da gravação foi para a receita (aba Prescrições)' : last.receita + ' remédios da gravação foram para a receita (aba Prescrições)'); }
-            my.checked = {}; my.st = 'done'; my.finalOk = false; my.doneAt = Date.now();
+            my.checked = {}; my.st = 'done'; my.gerou = true; my.soapVisto = false; my.finalOk = false; my.doneAt = Date.now();
             my.genS = Math.round((my.doneAt - (my.endAt || my.doneAt)) / 1000);
             if (my === rrCur() && ready && !locked()) rrApply(my); else my.pending = true;
             rrRender(my);
@@ -5669,6 +5751,8 @@
           }
           d.appendChild(t); tx.appendChild(d);
         });
+        tx.classList.toggle('done', csDone(r));
+        if (!tx.children.length && r.st === 'live') tx.appendChild(el('div', 'cs-vazio', 'Ouvindo… as falas aparecem aqui a cada trecho de 15 a 30 segundos.'));
         return tx;
       }
       function rrSummary(r) {
@@ -5696,9 +5780,9 @@
           if (go) {
             var ver = el('button', 'pr-ghost lk', 'Ver na transcrição'); ver.type = 'button';
             ver.addEventListener('click', function () {
-              rrTx(r, go.seq); $('rcTx').hidden = false; $('gcTransBtn').setAttribute('aria-expanded', 'true');
+              csTab('tx'); rrTx(r, go.seq);
               var u = [].filter.call($('rcTx').children, function (c) { return c._seq === go.seq; })[0];
-              if (u) $('rcTx').scrollTop = u.offsetTop - $('rcTx').offsetTop - 16;
+              if (u) $('csTx').scrollTop = Math.max(0, u.offsetTop - 16);
             });
             a.appendChild(ver);
           }
@@ -5708,56 +5792,31 @@
       }
       function rrRender(r) {
         if (!r || r !== rrCur() || recDemo()) return;
-        ['rcConsent', 'rcAlert', 'rcSteps', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
-        var lk = locked(), S = $('gcTransS'), txOpen = !$('rcTx').hidden;
-        $('gcTrans').hidden = false; $('gcTransBtn').hidden = true; $('gcTrans').classList.remove('can');
-        if (lk && r.st !== 'saved' && r.st !== 'done') { $('prRec').hidden = true; $('gcTrans').hidden = true; $('rcTx').hidden = true; return; }
-        var stopB = rcBtn('rc-go', RI.stop + '<span>Encerrar</span>', 'Encerrar a gravação e gerar a evolução', function () { rrEnd(r); }),
-            pauseB = rcBtn('hc-btn rc-b', RI.pause, 'Pausar a gravação (⌘/Ctrl + Shift + Espaço)', function () { rrPause(r); }),
-            resumeB = rcBtn('hc-btn rc-b', RI.mic, 'Continuar gravando (⌘/Ctrl + Shift + Espaço)', function () { r.warn = ''; rrStart(r); });
-        var pend = rrPending(r), t = mmss(r.samples / SR16);
-        function txLive(label) {
-          rrTx(r); var has = $('rcTx').children.length;
-          $('rcTx').hidden = !has || !(txOpen || r.st === 'live'); $('gcTransBtn').hidden = !has; $('gcTrans').classList.toggle('can', !!has);
-          $('gcTransBtn').setAttribute('aria-expanded', $('rcTx').hidden ? 'false' : 'true');
-          S.innerHTML = label; if (!$('rcTx').hidden && r.st === 'live') $('rcTx').scrollTop = 1e6;
-        }
+        ['csMic', 'rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
+        var lk = locked(), gravada = csDone(r);
+        if (!csShow(gravada)) return;
+        var pend = rrPending(r), t = mm2(r.samples / SR16), sc = $('csTx'), near = recNear(sc);
+        var fim = function () { rrEnd(r); };
+        rrTx(r); if (r.st === 'live' && near) sc.scrollTop = 1e6;
         var sendTxt = pend ? pend + (pend === 1 ? ' trecho esperando envio' : ' trechos esperando envio') : 'tudo enviado';
         if (r.st === 'idle' || r.st === 'nomic') {
           if (r.st === 'nomic') {
-            var again = rcBtn('rc-go', RI.mic + '<span>Tentar de novo</span>', 'Tentar de novo', function () { r.st = 'idle'; rrTest(r); });
-            rcPlayer('idle', { chip: 'Sem microfone' }, r.err === 'NotFoundError' ? 'Nenhum microfone encontrado' :
-              'O navegador bloqueou o microfone', [again]);
+            csGo('Tentar de novo', function () { r.st = 'idle'; rrTest(r); });
             rcAlert('warn', 'micoff', r.err === 'NotFoundError' ? '<b>Nenhum microfone encontrado.</b> Conecte um microfone e toque em Tentar de novo.'
               : '<b>O navegador não deixou usar o microfone.</b> Clique no cadeado ao lado do endereço do site, escolha <b>Permitir</b> em Microfone e toque em Tentar de novo.');
-            S.textContent = 'A evolução pode ser escrita à mão enquanto isso.';
-          } else {
-            var go = rcBtn('rc-go', RI.mic + '<span>Gravar consulta</span>', 'Gravar a consulta', function () { rrStart(r); });
-            go.disabled = !r.consent;
-            var right = r.testing ? 'Fale algo para testar…' : r.testPeak == null ? '<button class="pr-link2 rc-test" type="button">Testar microfone</button>'
-              : r.testPeak > 0.02 ? '<span class="ok">Ouvindo bem</span>' : r.testPeak > 0.005 ?
-                '<span class="low">Volume baixo: aproxime o microfone</span>' : '<span class="low">Não chegou som</span>';
-            rcPlayer('meter', { mic: devLabel(), level: r.testing ? r.level : 0 }, right, [go]);
-            var tb = $('prRec').querySelector('.rc-test'); if (tb) tb.addEventListener('click', function () { rrTest(r); });
-            var mb = $('rcMicBtn'); if (mb) mb.addEventListener('click', function (e) { e.stopPropagation(); if (!RR.devs.length) listDevices();
-              pickDevice(mb); });
+          } else if (!lk) {
+            csGo('Iniciar consulta', function () { rrIniciar(r); });
+            csMic(r);
             $('rcConsent').hidden = false; $('rcConsentIn').checked = r.consent;
-            $('rcConsentIn').onchange = function () { r.consent = this.checked; go.disabled = !this.checked; };
-            S.textContent = 'Aparece aqui, ao vivo, enquanto você grava';
+            $('rcConsentIn').onchange = function () {
+              r.consent = this.checked; $('rcConsent').classList.remove('pede');
+              if (this.checked && r.pede) { r.pede = false; csTab('tx'); rrStart(r); $('prView').scrollTo({ top: 0, behavior: 'smooth' }); }
+            };
           }
         } else if (r.st === 'live') {
-          rcPlayer('live', { t: t, amps: r.amps }, r.warn === 'silencio' ? '<span class="low">Sem som há 20 s</span>' : (Q.down || Q.auth ||
-            Q.erro) && pend ? sendTxt
-                    : 'Transcrevendo ao vivo' + (pend ? '' : ' · tudo enviado'), [pauseB, stopB]);
-          txLive('<span class="rc-dot"></span>Ao vivo · ' + rrSummary(r));
+          csBar({ live: true, t: t, amps: r.amps, fim: fim, btn: function () { rrPause(r); } });
         } else if (r.st === 'paused' || r.st === 'interrupted') {
-          var res2 = r.st === 'interrupted' ? rcBtn('rc-go', RI.mic + '<span>Continuar gravando</span>', 'Continuar gravando',
-            function () { r.consent = true; rrStart(r); }) : resumeB;
-          if (r.warn === 'micoff') res2.disabled = false;
-          rcPlayer('paused', { t: t, amps: r.amps, chip: r.st === 'interrupted' ? 'Interrompida' : 'Pausada' },
-                    r.warn === 'micoff' ? 'Microfone desconectado' : pend ? sendTxt : 'Continue quando quiser', r.st === 'interrupted' ? [res2] :
-                      [res2, stopB]);
-          txLive((r.st === 'interrupted' ? 'Interrompida · ' : 'Pausada · ') + rrSummary(r));
+          csBar({ t: t, amps: r.amps, fim: fim, btn: function () { r.warn = ''; if (r.st === 'interrupted') r.consent = true; rrStart(r); } });
           if (r.st === 'interrupted') {
             var when = r.stoppedAt ? hm(new Date(r.stoppedAt)) : '';
             rcAlert('info', 'info', '<b>A gravação foi interrompida' + (when ? ' às ' + when : '') + '.</b> ' + mmss(r.samples / SR16) + ' já gravados' +
@@ -5766,34 +5825,26 @@
             $('rcAlert').querySelector('button').addEventListener('click', function () { rrEnd(r); });
           }
         } else if (r.st === 'ending') {
-          var w8 = rcBtn('rc-go', '<span>Enviando…</span>', 'Enviando os últimos trechos', function () {}); w8.disabled = true;
-          rcPlayer('paused', { t: t, amps: r.amps, chip: 'Encerrada' }, pend ? sendTxt : 'Tudo enviado', [w8]);
-          txLive('Encerrada · ' + rrSummary(r));
+          csBar({ t: t, msg: pend ? 'Enviando: ' + sendTxt : 'Tudo enviado' });
         } else if (r.st === 'gen') {
-          var g8 = rcBtn('rc-go', '<span>Gerando…</span>', 'Gerando a evolução', function () {}); g8.disabled = true;
-          rcPlayer('gen', { chip: 'Gerando evolução', t: t }, 'Leva uns 10 segundos', [g8]);
+          csBar({ t: t, msg: 'Gerando a evolução…' });
           var st8 = $('rcSteps'); st8.innerHTML = ''; st8.hidden = false;
           var conf = r.genStep === 'conferindo';
-          [['rc-done', 'Transcrição completa', rrSummary(r)], [conf ? 'rc-done' : 'rc-now', 'Escrevendo a evolução' + (mode === 'soap' ? ' em SOAP' : ''), ''],
+          [['rc-done', 'Transcrição completa', rrSummary(r)], [conf ? 'rc-done' : 'rc-now', 'Escrevendo a evolução em SOAP', ''],
            [conf ? 'rc-now' : 'rc-wait', 'Conferindo doses, alergias e números', '']].forEach(function (x) {
             var row = el('div', 'rc-step ' + x[0]); row.appendChild(el('i')); row.appendChild(el('span', null, x[1]));
               if (x[2]) row.appendChild(el('small', null, x[2])); st8.appendChild(row); });
-          S.textContent = rrSummary(r);
         } else if (r.st === 'fail') {
-          var ag = rcBtn('rc-go', '<span>Gerar de novo</span>', 'Gerar a evolução de novo', function () { rrGenerate(r); });
-          rcPlayer('idle', { chip: 'Gravação', t: t }, 'Transcrição guardada', [ag]);
-          txLive(rrSummary(r));
+          csGo('Gerar de novo', function () { rrGenerate(r); });
           rcAlert('bad', 'err', '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');
-        } else if (r.st === 'done' || r.st === 'saved') {
-          var box = $('prRec'); box.innerHTML = ''; box.hidden = false;
-          var sm = el('div', 'rc-sum'); sm.innerHTML = RI.mic; var tt = el('div', 't');
-          tt.appendChild(el('b', null, 'Consulta gravada · ' + t)); tt.appendChild(el('small', null,
-            'O áudio foi descartado; a transcrição fica guardada com a evolução.'));
-          sm.appendChild(tt);
+        } else if (gravada) {                          // o player percorre as falas no tempo, sem som (o áudio foi descartado)
+          $('prRec').hidden = true;
+          csPlayer(r, [], false);
+          var sm = $('csSum'); sm.innerHTML = RI.mic; sm.hidden = false; var tt = el('div', 't');
+          tt.appendChild(el('b', null, 'Consulta gravada · ' + rrSummary(r)));
+          tt.appendChild(el('small', null, 'O áudio foi descartado; a transcrição fica guardada com a evolução.')); sm.appendChild(tt);
           if (!lk) { var more = el('button', 'pr-ghost', 'Gravar mais um trecho'); more.type = 'button'; more.addEventListener('click',
-            function () { rrMore(r); }); sm.appendChild(more); }
-          box.appendChild(sm);
-          txLive(rrSummary(r));
+            function () { csTab('tx'); rrMore(r); }); sm.appendChild(more); }
           if (r.st === 'done' && !lk) {
             $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise antes de finalizar.' +
               (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') :
@@ -5803,7 +5854,29 @@
             rrReview(r);
           }
         }
+        csDot(r);
         rrAlert(r, pend, lk);
+      }
+      // "Iniciar consulta": sem a autorização marcada, leva até ela (abaixo do cartão) e começa a gravar quando ela for marcada
+      function rrIniciar(r) {
+        if (r.consent) { csTab('tx'); rrStart(r); return; }
+        r.pede = true; $('rcConsent').classList.add('pede');
+        $('rcConsent').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('rcConsentIn').focus({ preventScroll: true });
+      }
+      // abaixo do cartão, antes de gravar: o microfone escolhido, o medidor e "Testar microfone"
+      function csMic(r) {
+        var m = $('csMic'); m.innerHTML = ''; m.hidden = false;
+        var mic = el('button', 'rc-mic'); mic.type = 'button'; mic.id = 'rcMicBtn';
+        mic.appendChild(el('span', null, 'Microfone: ' + devLabel())); mic.insertAdjacentHTML('beforeend', RCI.caret);
+        mic.addEventListener('click', function (e) { e.stopPropagation(); if (!RR.devs.length) listDevices(); pickDevice(mic); });
+        m.appendChild(mic); m.appendChild(el('canvas', 'rc-cv'));
+        var right = el('span', 'r');
+        right.innerHTML = r.testing ? 'Fale algo para testar…' : r.testPeak == null ? '<button class="pr-link2 rc-test" type="button">Testar microfone</button>'
+          : r.testPeak > 0.02 ? '<span class="ok">Ouvindo bem</span>' : r.testPeak > 0.005 ?
+            '<span class="low">Volume baixo: aproxime o microfone</span>' : '<span class="low">Não chegou som</span>';
+        m.appendChild(right);
+        var tb = right.querySelector('.rc-test'); if (tb) tb.addEventListener('click', function () { rrTest(r); });
+        rcMeter(r.testing ? r.level : 0);
       }
       // o aviso do cartão (um de cada vez, do mais grave): microfone, silêncio, gravação longa, armazenamento, trechos fora
       // da evolução, servidor, sessão, internet
@@ -5849,7 +5922,8 @@
       function rrShow() {
         var r = rrCur();
         if (RR.live && RR.live !== r && RR.live.st === 'live') rrPause(RR.live);
-        if (!r) { ['prRec', 'gcTrans', 'rcTx', 'rcConsent', 'rcAlert', 'rcSteps', 'rcNote', 'rcReview',
+        if (recPb && recPb.r !== r) recStopPb();
+        if (!r) { $('csCard').hidden = true; ['csMic', 'rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview',
           'rcFinal'].forEach(function (id) { $(id).hidden = true; }); return; }
         if (locked() && r.st === 'live') rrPause(r);
         if (r.pending && ready && !locked()) { r.pending = false; rrApply(r); }
@@ -8077,7 +8151,7 @@
             cur = notes.filter(function (n) { return (ctx.event_id && n.event_id === ctx.event_id) || (!ctx.event_id && ctx.note_id && n.id === ctx.note_id); })[0] || null;
             if (cur) ctx.note_id = cur.id;
             persistCtx();
-            fillEditor(cur); saved = snap();
+            fillEditor(cur); saved = snap(); csAbaInicial();
             ready = true; setEditable(true); setStatus('');
             $('prExport').hidden = false;
             renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); renderKpis(); updCount(compose().content.length); rxLoad();
@@ -8117,7 +8191,7 @@
         main.hidden = false; msg.hidden = true;
         $('prBack').innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3.5M7.5 3.5L3 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         $('prBack').appendChild(document.createTextNode(ctx.from === 'pacientes' ? 'Pacientes' : 'Agenda'));
-        fillEditor(null); cur = null; renderHeader(); renderConsulta(); renderEvo(); renderVisit(); renderKpis(); updCount(0);
+        fillEditor(null); cur = null; csAbaInicial(); renderHeader(); renderConsulta(); renderEvo(); renderVisit(); renderKpis(); updCount(0);
         $('prVisits').innerHTML = ''; $('prHistQ').value = '';
         cols.forEach(function (col) { col.querySelector('.pr-chips').innerHTML = ''; });
         load();
