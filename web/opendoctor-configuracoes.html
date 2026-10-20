@@ -49,27 +49,64 @@
     .item .ico{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center}
     .item .ico svg{display:block}
 
-    /* ===== CENTER: CONFIGURAÇÕES (mesma coluna e cartão de Integrações) ===== */
+    /* ===== CENTER: CONFIGURAÇÕES — o layout dos prints de referência (cartões com título, subtítulo, campos com rótulo e
+       Salvar), com as medidas e cores da tela de Integrações: coluna de 516, título 14 Medium, cartões com 42 de respiro,
+       canto 40 e borda rgba(26,26,26,.08), 8 entre cartões, 48 entre os blocos do cartão, botão pílula de 64 ===== */
     .center{flex:1;min-width:0;height:100%;overflow-y:auto;display:flex;justify-content:center;padding:42px 20px 40px 0}
     .cfg{width:516px;flex:none;display:flex;flex-direction:column;gap:42px}
-    .cfg-title{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .cfg-card{padding:42px;border-radius:40px;border:1px solid var(--card-border);display:flex;flex-direction:column;gap:24px}
+    .cfg-title{font-family:var(--disp);font-weight:500;font-size:18px;line-height:24px;color:#071216}   /* título da página: 18 (pedido do usuário) */
+    .cfg-list{display:flex;flex-direction:column;gap:8px}
+    .cfg-card{padding:42px;border-radius:40px;border:1px solid var(--card-border);display:flex;flex-direction:column;gap:48px}
     .cfg-name{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .cfg-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    .cfg-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:16px}
-    .cfg-grid .wide{grid-column:1 / -1}
-    .cfg-f{display:flex;flex-direction:column;gap:6px;font-family:var(--disp);font-size:12px;line-height:16px;color:#666C6F}
-    .cfg-in{height:40px;width:100%;padding:0 16px;border:1px solid #CCCFD9;border-radius:20px;background:#fff;outline:0;
-      font-family:var(--disp);font-size:14px;line-height:20px;color:#071216}
-    .cfg-in:focus{border-color:#0B57D0;box-shadow:0 0 0 1px #0B57D0}
-    .cfg-foot{display:flex;align-items:center;justify-content:flex-end;gap:16px}
-    .cfg-st{margin-right:auto;font-family:var(--disp);font-size:12px;line-height:16px;color:#666C6F}
+    /* campos: o mesmo componente do login (rótulo flutuante, Figma 1046-44738): vazio = cinza com o rótulo no meio;
+       digitando ou preenchido = branco, borda #7D7D82, rótulo 12px em cima e texto 15px embaixo */
+    .cfg-fields{display:flex;flex-direction:column;gap:16px}
+    .cfg-row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:16px}
+    .cfg-fld{display:flex;flex-direction:column;gap:8px;min-width:0}
+    .fl{position:relative;width:100%;height:84px;border-radius:24px;background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent;
+      transition:background-color .12s,box-shadow .12s}
+    .fl:focus-within{background:#fff;box-shadow:inset 0 0 0 1px #7D7D82}
+    .fl.bad{box-shadow:inset 0 0 0 1px #D93025}
+    .fl-input{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:24px;outline:none;background:transparent;
+      padding:41.4px 32px 24.6px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:500;font-size:15px;
+      line-height:18px;letter-spacing:-.2px;color:#000}
+    .fl-input::placeholder{color:transparent}
+    .fl-input:-webkit-autofill{-webkit-text-fill-color:#000;transition:background-color 100000s 0s}
+    .fl-label{position:absolute;left:32px;right:32px;top:32.2px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;color:#6B6B70;transition:top .12s,font-size .12s,color .12s}
+    .fl-input:focus + .fl-label,.fl-input:not(:placeholder-shown) + .fl-label,.fl-input:-webkit-autofill + .fl-label,
+    .fl.sel .fl-label,.fl.lock .fl-label{top:24.6px;font-size:12px;color:#7D7D82}
+    /* UF: lista no mesmo campo (sempre com valor, o rótulo fica em cima) */
+    .fl.sel select.fl-input{appearance:none;-webkit-appearance:none;padding-right:56px;cursor:pointer;
+      background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%237D7D82' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 32px center}
+    /* e-mail da conta: só leitura, com o cadeado */
+    .fl.lock:focus-within{background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent}
+    .fl.lock .fl-input{padding-right:64px;color:#7D7D82;cursor:default}
+    .cfg-lock{position:absolute;right:32px;top:50%;margin-top:-9px;width:18px;height:18px;color:#7D7D82;pointer-events:none}
+    .cfg-help{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    /* opções (papel da receita): linhas com divisória, como as do print */
+    .cfg-opts{display:flex;flex-direction:column}
+    .cfg-opt{display:flex;align-items:center;gap:16px;padding:18px 0;border-top:1px solid var(--card-border);cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .cfg-opt:first-child{border-top:0;padding-top:0}
+    .cfg-opt:last-child{padding-bottom:0}
+    .cfg-opt input{appearance:none;-webkit-appearance:none;flex:none;width:20px;height:20px;margin:0;border-radius:50%;
+      box-shadow:inset 0 0 0 1px rgba(26,26,26,.24);background:#fff;cursor:pointer}
+    .cfg-opt input:checked{box-shadow:inset 0 0 0 1px #071216,inset 0 0 0 6px #fff;background:#071216}
+    .cfg-opt input:focus-visible{outline:2px solid #071216;outline-offset:2px}
+    .cfg-opt small{margin-left:auto;font-size:14px;line-height:20px;color:#666C6F}
+    /* rodapé do cartão: o botão de Integrações (h 64, padding 16 48, pílula, borda fina, 14 Bold) e o status ao lado */
+    .cfg-foot{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+    .cfg-btn{flex:none;height:64px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:16px 48px;border:0;
+      background:none;border-radius:999px;box-shadow:inset 0 0 0 1px var(--card-border);cursor:pointer;
+      font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.01em;color:#000}
+    .cfg-btn:hover{background:var(--active)}
+    .cfg-btn[disabled]{opacity:.45;cursor:not-allowed;background:none}
+    .cfg-st{min-width:0;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
     .cfg-st.err{color:#C0151D}
-    .cfg-btn{height:40px;padding:0 24px;border:0;border-radius:20px;background:#1F1F1F;color:#fff;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px}
-    .cfg-btn:hover{background:#000}
-    .cfg-btn:disabled{opacity:.45;cursor:default}
-    .cfg-back{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0B57D0;background:none;border:0;padding:0;cursor:pointer}
+    .cfg-back{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;text-decoration:underline;
+      text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer}
     .cfg-back[hidden]{display:none}
   </style>
 </head>
@@ -103,27 +140,62 @@
     <div class="center">
       <div class="cfg">
         <div class="cfg-title">Configurações</div>
-        <!-- dados que vão no cabeçalho da receita (rotas /me/medico; emitir receita exige nome, CRM e UF) -->
-        <form class="cfg-card" id="cfgMedico" autocomplete="off">
-          <div>
-            <div class="cfg-name">Dados para a receita</div>
-            <div class="cfg-sub">Vão no cabeçalho de toda receita emitida</div>
+        <div class="cfg-list">
+          <!-- dados que vão no cabeçalho da receita (rotas /me/medico; emitir receita exige nome, CRM e UF) -->
+          <form class="cfg-card" id="cfgMedico" autocomplete="off" novalidate>
+            <div>
+              <div class="cfg-name">Dados para a receita</div>
+              <div class="cfg-sub">Vão no cabeçalho de toda receita emitida</div>
+            </div>
+            <div class="cfg-fields">
+              <div class="fl"><input class="fl-input" id="cfName" name="name" maxlength="120" placeholder=" " autocomplete="name"><label class="fl-label" for="cfName">Nome</label></div>
+              <div class="cfg-row">
+                <div class="cfg-fld"><div class="fl"><input class="fl-input" id="cfCrm" name="crm" inputmode="numeric" maxlength="12" placeholder=" " aria-describedby="cfCrmH"><label class="fl-label" for="cfCrm">CRM</label></div>
+                  <span class="cfg-help" id="cfCrmH">Só os números</span></div>
+                <div class="fl sel"><select class="fl-input" id="cfUf" name="crm_uf"><option value="">—</option></select><label class="fl-label" for="cfUf">UF do CRM</label></div>
+              </div>
+              <div class="fl"><input class="fl-input" id="cfEsp" name="especialidade" maxlength="80" placeholder=" "><label class="fl-label" for="cfEsp">Especialidade (opcional)</label></div>
+              <div class="fl"><input class="fl-input" id="cfEnd" name="consultorio_endereco" maxlength="200" placeholder=" " autocomplete="street-address"><label class="fl-label" for="cfEnd">Endereço do consultório</label></div>
+              <div class="fl"><input class="fl-input" id="cfTel" name="consultorio_telefone" maxlength="40" inputmode="tel" placeholder=" " autocomplete="tel"><label class="fl-label" for="cfTel">Telefone do consultório</label></div>
+            </div>
+            <div class="cfg-foot">
+              <button class="cfg-btn" type="submit" id="cfgSave" disabled>Salvar</button>
+              <span class="cfg-st" id="cfgSt" role="status"></span>
+              <button class="cfg-back" type="button" id="cfgBack" hidden>Voltar ao prontuário</button>
+            </div>
+          </form>
+
+          <!-- papel em que a receita é impressa (o mesmo /me/medico, campo receita_papel) -->
+          <form class="cfg-card" id="cfgPapel" autocomplete="off">
+            <div>
+              <div class="cfg-name">Papel da receita</div>
+              <div class="cfg-sub">Tamanho da folha ao imprimir a receita</div>
+            </div>
+            <div class="cfg-opts" role="radiogroup" aria-label="Papel da receita">
+              <label class="cfg-opt"><input type="radio" name="receita_papel" value="A4">A4<small>folha inteira</small></label>
+              <label class="cfg-opt"><input type="radio" name="receita_papel" value="A5">A5<small>meia folha</small></label>
+            </div>
+            <div class="cfg-foot">
+              <button class="cfg-btn" type="submit" id="cfgPapelSave" disabled>Salvar</button>
+              <span class="cfg-st" id="cfgPapelSt" role="status"></span>
+            </div>
+          </form>
+
+          <!-- a conta: o e-mail de entrada (não muda aqui) e sair deste navegador -->
+          <div class="cfg-card" id="cfgConta">
+            <div>
+              <div class="cfg-name">Conta</div>
+              <div class="cfg-sub">Seu acesso ao OpenDoctor</div>
+            </div>
+            <div class="cfg-fields">
+              <div class="cfg-fld"><div class="fl lock"><input class="fl-input" id="cfgEmail" placeholder=" " readonly tabindex="-1" aria-readonly="true" aria-describedby="cfgEmailH"><label class="fl-label" for="cfgEmail">E-mail</label><svg class="cfg-lock" viewBox="0 0 18 18" aria-hidden="true"><path d="M5.5 8V5.75a3.5 3.5 0 0 1 7 0V8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="3.75" y="8" width="10.5" height="7.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></div>
+                <span class="cfg-help" id="cfgEmailH">É o e-mail com que você entra; não muda por aqui</span></div>
+            </div>
+            <div class="cfg-foot">
+              <button class="cfg-btn" type="button" data-href="/auth/logout">Sair</button>
+            </div>
           </div>
-          <div class="cfg-grid">
-            <label class="cfg-f wide">Nome<input class="cfg-in" name="name" maxlength="120" required></label>
-            <label class="cfg-f">CRM<input class="cfg-in" name="crm" inputmode="numeric" maxlength="12" placeholder="Só os números"></label>
-            <label class="cfg-f">UF do CRM<select class="cfg-in" name="crm_uf"><option value="">—</option></select></label>
-            <label class="cfg-f wide">Especialidade (opcional)<input class="cfg-in" name="especialidade" maxlength="80"></label>
-            <label class="cfg-f wide">Endereço do consultório<input class="cfg-in" name="consultorio_endereco" maxlength="200"></label>
-            <label class="cfg-f wide">Telefone do consultório<input class="cfg-in" name="consultorio_telefone" maxlength="40" inputmode="tel"></label>
-            <label class="cfg-f">Papel da receita<select class="cfg-in" name="receita_papel"><option value="A4">A4</option><option value="A5">A5 (meia folha)</option></select></label>
-          </div>
-          <div class="cfg-foot">
-            <span class="cfg-st" id="cfgSt" role="status"></span>
-            <button class="cfg-back" type="button" id="cfgBack" hidden>Voltar ao prontuário</button>
-            <button class="cfg-btn" type="submit" id="cfgSave">Salvar</button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
 
@@ -151,30 +223,91 @@
     (function () {
       var UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR',
                  'SC', 'SP', 'SE', 'TO'];
+      var CAMPOS = ['name', 'crm', 'crm_uf', 'especialidade', 'consultorio_endereco', 'consultorio_telefone'];
       var f = document.getElementById('cfgMedico'), st = document.getElementById('cfgSt'), save = document.getElementById('cfgSave');
-      var back = document.getElementById('cfgBack'), CAMPOS = ['name', 'crm', 'crm_uf', 'especialidade', 'consultorio_endereco', 'consultorio_telefone', 'receita_papel'];
+      var p = document.getElementById('cfgPapel'), pst = document.getElementById('cfgPapelSt'), psave = document.getElementById('cfgPapelSave');
+      var back = document.getElementById('cfgBack'), salvo = {}, papel = '', ultFaltam = [], carregado = false, salvando = false, psalvando = false;
+      var e1 = '', ok1 = '', e2 = '', ok2 = '';        // mensagem de cada cartão: erro (fica até mexer) e "Salvo." (até mudar algo)
       UFS.forEach(function (u) { var o = document.createElement('option'); o.value = o.textContent = u; f.crm_uf.appendChild(o); });
       // veio do prontuário (falta dado para emitir a receita): depois de salvar, volta para lá
       if (new URLSearchParams(location.search).get('volta')) back.hidden = false;
       back.addEventListener('click', function () { if (history.length > 1) history.back(); else location.href = 'opendoctor-agenda.html#prontuario'; });
-      function msg(t, err) { st.textContent = t; st.className = 'cfg-st' + (err ? ' err' : ''); }
-      function fill(m) { CAMPOS.forEach(function (k) { f[k].value = (m && m[k]) || (k === 'receita_papel' ? 'A4' : ''); }); }
+      var retry = document.createElement('button'); retry.type = 'button'; retry.className = 'cfg-back'; retry.textContent = 'Tentar de novo';
+      retry.hidden = true; st.parentNode.insertBefore(retry, st.nextSibling);
       function faltam(l) { return l && l.length ? 'Para emitir receita falta: ' + l.join(', ') + '.' : ''; }
-      fetch('/me/medico', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-        .then(function (res) { if (res.ok) { fill(res.j.medico); msg(faltam(res.j.faltam)); } else msg('Não foi possível carregar seus dados.', true); })
-        .catch(function () { msg('Não foi possível carregar seus dados.', true); });
+      function valores() { var o = {}; CAMPOS.forEach(function (k) { o[k] = f[k].value; }); return o; }
+      function papelAtual() { var r = p.querySelector('input:checked'); return r ? r.value : ''; }
+      function mudou() { var v = valores(); return CAMPOS.some(function (k) { return (v[k] || '') !== (salvo[k] || ''); }); }
+      // até os dados chegarem, nada se edita (salvar sobre um formulário vazio apagaria o que está gravado)
+      function campos(on) {
+        CAMPOS.forEach(function (k) { f[k].disabled = !on; });
+        [].forEach.call(p.querySelectorAll('input'), function (r) { r.disabled = !on; });
+      }
+      // o Salvar de cada cartão só acende com os dados carregados e algo mudado (como no print de referência);
+      // o status mostra, nesta ordem: erro, salvando, mudança pendente, salvo e o que falta para emitir receita
+      function sync() {
+        var pa = papelAtual();
+        save.disabled = !carregado || salvando || !mudou();
+        psave.disabled = !carregado || psalvando || !pa || pa === papel;
+        st.textContent = e1 || (salvando ? 'Salvando…' : mudou() ? 'Alterações não salvas' : ok1 || faltam(ultFaltam));
+        st.className = 'cfg-st' + (e1 ? ' err' : '');
+        pst.textContent = e2 || (psalvando ? 'Salvando…' : pa && pa !== papel ? 'Alteração não salva' : ok2);
+        pst.className = 'cfg-st' + (e2 ? ' err' : '');
+      }
+      function patch(body) {
+        return fetch('/me/medico', { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); });
+      }
+      function carrega() {
+        e1 = ''; retry.hidden = true; sync(); st.textContent = 'Carregando…';
+        fetch('/me/medico', { credentials: 'same-origin' }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (res) {
+            if (!res.ok) throw new Error('carga');
+            var m = res.j.medico || {};
+            CAMPOS.forEach(function (k) { f[k].value = m[k] || ''; salvo[k] = f[k].value; });
+            papel = m.receita_papel || 'A4';
+            [].forEach.call(p.querySelectorAll('input'), function (r) { r.checked = r.value === papel; });
+            ultFaltam = res.j.faltam || []; carregado = true; campos(true); sync();
+          })
+          .catch(function () { e1 = 'Não foi possível carregar seus dados.'; retry.hidden = false; sync(); });
+      }
+      retry.addEventListener('click', carrega);
+      campos(false); carrega();
+      fetch('/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+        .then(function (j) { document.getElementById('cfgEmail').value = (j && j.user && j.user.email) || ''; }).catch(function () {});
+      f.addEventListener('input', function (e) { var b = e.target.closest && e.target.closest('.fl'); if (b) b.classList.remove('bad'); e1 = ''; ok1 = ''; sync(); });
+      f.addEventListener('change', function () { e1 = ''; ok1 = ''; sync(); });
+      p.addEventListener('change', function () { e2 = ''; ok2 = ''; sync(); });
       f.addEventListener('submit', function (e) {
         e.preventDefault();
-        var body = {}; CAMPOS.forEach(function (k) { body[k] = f[k].value; });
-        save.disabled = true; msg('Salvando…');
-        fetch('/me/medico', { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-          .then(function (res) {
-            if (!res.ok) { msg(res.j.error || 'Não foi possível salvar.', true); return; }
-            fill(res.j.medico); msg(faltam(res.j.faltam) || 'Salvo.');
-          })
-          .catch(function () { msg('Não foi possível salvar agora.', true); })
-          .then(function () { save.disabled = false; });
+        if (save.disabled) return;
+        if (!f.name.value.trim()) { e1 = 'O nome não pode ficar vazio.'; f.name.closest('.fl').classList.add('bad'); f.name.focus(); sync(); return; }
+        var v = valores(), body = {};
+        CAMPOS.forEach(function (k) { if ((v[k] || '') !== (salvo[k] || '')) body[k] = v[k]; });   // só o que mudou
+        salvando = true; e1 = ''; ok1 = ''; sync();
+        patch(body).then(function (res) {
+          salvando = false;
+          if (!res.ok) { e1 = res.j.error || 'Não foi possível salvar.'; sync(); return; }
+          var m = res.j.medico || {};
+          CAMPOS.forEach(function (k) {
+            // o servidor limpa (espaços, CRM só números); o que foi digitado durante o salvamento fica como está
+            if (k in body && f[k].value === body[k]) f[k].value = m[k] || '';
+            salvo[k] = m[k] || '';
+          });
+          ultFaltam = res.j.faltam || []; ok1 = ultFaltam.length ? '' : 'Salvo.'; sync();
+        }).catch(function () { salvando = false; e1 = 'Não foi possível salvar agora.'; sync(); });
+      });
+      p.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var v = papelAtual(); if (psave.disabled || !v) return;
+        psalvando = true; e2 = ''; ok2 = ''; sync();
+        patch({ receita_papel: v }).then(function (res) {
+          psalvando = false;
+          if (!res.ok) { e2 = res.j.error || 'Não foi possível salvar.'; sync(); return; }
+          papel = (res.j.medico && res.j.medico.receita_papel) || v;
+          if (res.j.faltam) ultFaltam = res.j.faltam;
+          ok2 = papelAtual() === papel ? 'Salvo.' : ''; sync();
+        }).catch(function () { psalvando = false; e2 = 'Não foi possível salvar agora.'; sync(); });
       });
     })();
   </script>
