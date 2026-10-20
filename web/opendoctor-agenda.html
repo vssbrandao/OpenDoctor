@@ -997,15 +997,14 @@
     #prEvoBox{min-height:calc(100vh - 88px);padding-top:12px;gap:16px}
     .cs-card{flex:1 0 440px;margin-bottom:8px;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:40px;background:#F7F8F8;font-family:var(--disp)}
     .cs-card[hidden]{display:none}
-    .cs-main{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:32px;background:#fff}
+    .cs-main{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;border-radius:32px;background:#fff}
     /* abas Transcrição | SOAP: trilho #F3F3F3 de 36, a escolhida branca com borda; 14 Medium (pedido do usuário; o Figma tem 12) */
     .cs-seg{flex:none;align-self:center;display:flex;height:36px;margin-top:24px;border-radius:24px;background:#F3F3F3}
     .cs-seg button{position:relative;height:36px;padding:0 42px;border:1px solid transparent;border-radius:24px;background:none;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:140%;color:#666C6F}
     .cs-seg button.on{background:#fff;border-color:rgba(0,0,0,.08);color:#000}
     .cs-seg button.dot::after{content:'';position:absolute;top:9px;right:30px;width:6px;height:6px;border-radius:50%;background:#FF5500}
-    .cs-pane{position:relative;flex:1;min-height:0;overflow:auto;margin-top:24px;padding:0 24px 24px;overscroll-behavior:contain;
-      -webkit-mask-image:linear-gradient(#000 calc(100% - 24px),transparent);mask-image:linear-gradient(#000 calc(100% - 24px),transparent)}
+    .cs-pane{position:relative;flex:1;min-height:0;overflow:auto;margin-top:24px;padding:0 24px 24px;overscroll-behavior:contain}
     .cs-pane[hidden]{display:none}
     .cs-card .rc-tx{max-height:none;overflow:visible;margin:0;padding:0 2px;border-radius:0;background:none}
     .cs-vazio{font-size:14px;line-height:22px;color:#666C6F}
@@ -1024,7 +1023,14 @@
     .cs-fim{height:30px;padding:0 24px;border:0;border-radius:999px;background:#000;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
     .cs-fim[hidden]{display:none}
-    .cs-foot.adendo{align-items:flex-end;padding:16px 24px}            /* Figma: 24 da direita, 16 do pé */
+    /* o que flutua no pé, por cima do texto e sem máscara (Figma 1090:32797: 24 da direita, 16 do pé) */
+    .cs-flut{position:absolute;left:24px;right:24px;bottom:16px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+    .cs-flut > *{pointer-events:auto}
+    .cs-flut-pe:empty{display:none}
+    .cs-flut-pe.dir{align-self:flex-end}
+    .cs-flut .rc-note{align-self:stretch;margin:0;background:#F7F8F8;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+    /* a evolução finalizada direto na tela, com a letra da transcrição (sem a caixa cinza) */
+    .cs-pane .pr-locked .pr-body{padding:0;border-radius:0;background:none;font-size:14px;line-height:22px;color:#36373A}
     .cs-pane .pr-addbox{margin-top:16px}
     .cs-bar{display:flex;align-items:center;gap:16px;width:517px;max-width:100%;height:56px;padding:0 10px 0 34px;border-radius:40px;background:#000;color:#fff}
     .cs-cv{display:block;flex:1;min-width:0;height:22px}
@@ -2292,6 +2298,11 @@
                 </div>
                     </div>
                     <div class="cs-foot" id="prRec"></div>
+                    <!-- flutua por cima do conteúdo (sem máscara): o aviso de que a IA preencheu a evolução e o Finalizar / Adicionar adendo -->
+                    <div class="cs-flut" id="csFlut">
+                      <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button></div>
+                      <div class="cs-flut-pe" id="csFlutPe"></div>
+                    </div>
                   </div>
                 </div>
                 <div class="cs-mic" id="csMic" hidden></div>
@@ -2299,7 +2310,6 @@
                 <div class="rc-alert" id="rcAlert" role="status" aria-live="polite" hidden></div>
                 <div class="rc-steps" id="rcSteps" hidden></div>
                 <div class="rc-sum cs-sum" id="csSum" hidden></div>
-                <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button></div>
                 <div class="rc-review" id="rcReview" hidden></div>
                 <div class="pr-body pr-printcur" id="prPrintCur"></div>
                 <div class="rc-final" id="rcFinal" hidden></div>
@@ -4848,7 +4858,7 @@
       // o pé: a pílula preta ("Iniciar consulta", "Tentar de novo"…); o.nota vai acima dela, o.off a desativa
       function csGo(label, f, o) {
         o = o || {};
-        var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot';
+        var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot'; csPe();
         csFimEvo(box);
         if (o.nota) box.appendChild(el('div', 'cs-nota', o.nota));
         var b = el('button', 'cs-go'); b.type = 'button'; b.innerHTML = CSI.dots; b.appendChild(el('span', null, label));
@@ -4862,14 +4872,19 @@
         f.addEventListener('click', function () { $('prFinalize').click(); });
         box.appendChild(f); csSyncFim(); return f;
       }
-      function csSoFim() {                                 // a gravação pronta: no pé, só o Finalizar (finalizada: o adendo)
+      function csSoFim() {                                 // a gravação pronta: o Finalizar flutua no pé (finalizada: o adendo)
         if (locked()) { csAdendo(); return; }
-        var box = $('prRec'); box.innerHTML = ''; box.className = 'cs-foot'; box.hidden = false;
-        csFimEvo(box);
+        $('prRec').hidden = true; csFimEvo(csPe());
       }
+      // a camada que flutua no pé do cartão; kind 'dir' encosta à direita (o adendo)
+      function csPe(kind) { var pe = $('csFlutPe'); pe.innerHTML = ''; pe.className = 'cs-flut-pe' + (kind ? ' ' + kind : ''); return pe; }
+      // o que flutua não cobre o fim do texto: as abas ganham respiro embaixo da altura dela
+      if (window.ResizeObserver) new ResizeObserver(function () {
+        var h = $('csFlut').offsetHeight; ['csTx', 'csSoap'].forEach(function (id) { $(id).style.paddingBottom = h ? (h + 32) + 'px' : ''; });
+      }).observe($('csFlut'));
       // evolução finalizada: "Adicionar adendo" no canto do pé (Figma 1090:32797); o campo abre na aba SOAP, abaixo da assinada
       function csAdendo() {
-        var box = $('prRec'); box.innerHTML = ''; box.className = 'cs-foot adendo'; box.hidden = false;
+        $('prRec').hidden = true; var box = csPe('dir');
         var b = el('button', 'cs-fim', 'Adicionar adendo'); b.type = 'button'; b.hidden = $('prAddBox').children.length > 0;
         b.addEventListener('click', function () {
           csTab('soap'); $('prAddBtn').click(); b.hidden = true;
@@ -4881,7 +4896,7 @@
       // gravando: "Finalizar" acima e a barra (ondas do volume, tempo e o botão redondo que pausa e continua);
       // o.msg troca as ondas por um texto (enviando, gerando) e some com o botão
       function csBar(o) {
-        var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot bar';
+        var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot bar'; csPe();
         if (o.fim) { var f = el('button', 'cs-fim', 'Finalizar'); f.type = 'button'; f.title = 'Encerrar a gravação e gerar a evolução';
           f.addEventListener('click', o.fim); box.appendChild(f); }
         var bar = el('div', 'cs-bar'); box.appendChild(bar);
