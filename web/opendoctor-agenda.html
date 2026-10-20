@@ -1060,6 +1060,26 @@
     .cs-ptm{position:absolute;top:28px;left:0;font-weight:400;font-size:10px;line-height:14px;color:#5D5D5D;pointer-events:none}
     .cs-mk{position:absolute;top:0;width:36px;height:36px;margin-left:-18px;padding:0;border:0;border-radius:50%;background:rgba(255,85,0,.2);cursor:pointer}
     .cs-mk::after{content:'';position:absolute;left:16px;top:16px;width:5px;height:5px;border-radius:50%;background:#FF5500}
+    .cs-mk.on{box-shadow:inset 0 0 0 1.5px #FF5500}                    /* o destaque aberto no card */
+    /* card do destaque (referência: o card do player da divulgação): embaixo do player, com a seta no marcador */
+    .cs-pop{position:absolute;z-index:6;width:min(520px,calc(100% - 16px));padding:24px 28px 20px;border-radius:24px;background:#fff;
+      box-shadow:0 10px 32px rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.08);font-family:var(--disp)}
+    .cs-pop::before{content:'';position:absolute;top:-7px;left:var(--cx,40px);width:16px;height:16px;margin-left:-8px;border-radius:3px;
+      background:#fff;transform:rotate(45deg);box-shadow:-3px -3px 6px rgba(0,0,0,.04)}
+    .cs-pop-h{display:flex;align-items:baseline;gap:16px}
+    .cs-pop-t{flex:1;min-width:0;font-weight:500;font-size:16px;line-height:24px;color:#071216}
+    .cs-pop-tm{flex:none;font-weight:400;font-size:14px;line-height:20px;color:#5D5D5D}
+    .cs-pop-x{margin-top:16px;max-height:220px;overflow:auto;font-size:14px;line-height:22px;color:#36373A;white-space:pre-wrap;overscroll-behavior:contain}
+    .cs-pop-f{display:flex;align-items:center;gap:8px;margin-top:20px}
+    .cs-pop-ouvir{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 20px 0 16px;border:0;border-radius:999px;background:#F3F3F3;
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .cs-pop-ouvir:hover{background:#EAEAEA}
+    .cs-pop-pg{margin-left:auto;display:flex;align-items:center;gap:2px;font-size:14px;line-height:20px;color:#5D5D5D}
+    .cs-pop-pg span{min-width:40px;text-align:center}
+    .cs-pop-pg button{display:flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;
+      background:none;cursor:pointer;color:#071216}
+    .cs-pop-pg button:hover{background:#F3F3F3}
+    .cs-pop-pg button:disabled{opacity:.3;cursor:default;background:none}
     .cs-btns{flex:none;display:flex;gap:4px}
     .cs-rb{display:flex;align-items:center;justify-content:center;width:48px;height:48px;padding:0;border:0;border-radius:50%;background:#F7F8F8;
       cursor:pointer;color:#000}
@@ -4840,6 +4860,7 @@
           var on = b.getAttribute('data-cs') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false');
         });
         $('csTx').hidden = t !== 'tx'; $('csSoap').hidden = t !== 'soap';
+        if (t !== 'tx' && typeof csFecha === 'function') csFecha();
         if (ready) csDot(csRec());                       // antes de o prontuário carregar, nenhuma gravação é criada
       }
       [].forEach.call($('csSeg').children, function (b) { b.addEventListener('click', function () {
@@ -4860,6 +4881,7 @@
         var lk = locked();
         $('csCard').hidden = false; $('csCard').classList.toggle('lk', lk);
         $('csPlay').hidden = true; $('csPlay')._pl = null;
+        if (!gravada) csFecha();                            // sem o player nesta volta, o card fecha (com ele, o player atualiza o card)
         if (lk) csAdendo();
         return !lk || !!gravada;
       }
@@ -4943,14 +4965,27 @@
       // o player (depois da consulta): trilha com o progresso, marcadores laranja no começo de O, A e P (demonstração) e os
       // botões redondos: som (só na demonstração; a gravação real não guarda áudio) e percorrer/pausar
       function csPlayer(r, marks, som) {
-        var p = $('csPlay'); p.innerHTML = ''; p.hidden = false;
+        var p = $('csPlay'); p.innerHTML = ''; p.hidden = false; marks = marks || [];
         var tk = el('div', 'cs-trk'), feito = el('i', 'cs-feito'), bola = el('span', 'cs-bola'), dur = csDur(r);
         tk.appendChild(el('i', 'cs-line')); tk.appendChild(feito);
-        (marks || []).forEach(function (m) {
-          var b = el('button', 'cs-mk'); b.type = 'button'; b.style.left = (Math.min(1, m.at / dur) * 100).toFixed(3) + '%';
-          b.title = m.nome; b.setAttribute('aria-label', 'Ir para ' + m.nome);
-          b.addEventListener('click', function (e) { e.stopPropagation(); r.pos = m.at; csTab('tx'); recSeekUi(r); recScrollTo(m.i); });
-          tk.appendChild(b);
+        // destaques a menos de um marcador (36 px) um do outro viram um marcador só, que abre o primeiro; as setas do card
+        // passam por todos (duas partes do SOAP que vêm do mesmo trecho não ficam uma escondida embaixo da outra)
+        var trilha = Math.max(120, p.clientWidth - 48 - 24 - (som ? 100 : 48)), perto = 36 / trilha, grupos = [];
+        marks.forEach(function (m, j) {
+          var x = Math.min(1, m.at / dur), g = grupos[grupos.length - 1];
+          if (g && x - g.x < perto) g.idx.push(j); else grupos.push({ x: x, idx: [j] });
+        });
+        p._grupoDe = []; p._botoes = [];
+        grupos.forEach(function (g, gi) {
+          var nomes = g.idx.map(function (j) { return marks[j].nome; }).join(', ');
+          var b = el('button', 'cs-mk'); b.type = 'button'; b.style.left = (g.x * 100).toFixed(3) + '%';
+          b.title = nomes; b.setAttribute('aria-label', (g.idx.length > 1 ? 'Destaques: ' : 'Destaque: ') + nomes);
+          b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false');
+          b.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (csPop && csPop.r === r && g.idx.indexOf(csPop.i) >= 0) csFecha('mk'); else csAbre(r, g.idx[0], 'card');
+          });
+          g.idx.forEach(function (j) { p._grupoDe[j] = gi; }); p._botoes.push(b); tk.appendChild(b);
         });
         var tm = el('span', 'cs-ptm', mm2(r.pos || 0)); tm.id = 'csPtm';
         tk.appendChild(tm); tk.appendChild(bola);
@@ -4963,7 +4998,75 @@
           bs.appendChild(s); }
         var pb = el('button', 'cs-rb'); pb.type = 'button'; pb.id = 'rcPlay'; pb.addEventListener('click', function () { recPlay(r); }); bs.appendChild(pb);
         p.appendChild(bs); csIcons(r); recSeekUi(r);
+        p._mks = marks; p._r = r;
+        // redesenho com o card aberto: segue na mesma parte do SOAP (o índice pode mudar ao gerar de novo); sem ela, fecha
+        if (csPop && csPop.r === r) { var k = marks.map(function (m) { return m.k; }).indexOf(csPop.k); if (k >= 0) csAbre(r, k); else csFecha(); }
+        else if (csPop) csFecha();
       }
+      // ----- card do destaque: o nome da parte do SOAP, o minuto, o texto que a IA escreveu para ela, "Ouvir" (o player
+      // vai até ali e toca) e as setas entre os destaques -----
+      var csPop = null;                                    // { r, i, k }: o destaque aberto (k = a parte do SOAP)
+      var CSN = { s: 'Subjetivo', o: 'Objetivo', a: 'Avaliação', p: 'Plano' };
+      function csTempo(s) { s = Math.max(0, Math.floor(s)); var m = Math.floor(s / 60); return m ? m + 'm ' + pad(s % 60) + 's' : s + 's'; }
+      function csMarca(i) {                                // o marcador do destaque i fica com o anel; os outros, sem
+        var p = $('csPlay'), gi = i == null || !p._grupoDe ? -1 : p._grupoDe[i];
+        (p._botoes || []).forEach(function (b, j) { b.classList.toggle('on', j === gi); b.setAttribute('aria-expanded', j === gi ? 'true' : 'false'); });
+      }
+      // volta: para onde vai o foco ao fechar ('mk' = o marcador do destaque; 'play' = o botão de tocar)
+      function csFecha(volta) {
+        var p = $('csPlay'), alvo = null;
+        if (volta === 'mk' && csPop && p._grupoDe) alvo = (p._botoes || [])[p._grupoDe[csPop.i]];
+        else if (volta === 'play') alvo = $('rcPlay');
+        csPop = null; var x = $('csPop'); if (x) x.remove();
+        csMarca(null);
+        if (alvo && alvo.focus) alvo.focus();
+      }
+      // foco: 'card' (abriu agora: vai para o Ouvir), 'ant' / 'prox' (as setas: fica na seta, ou na outra se esta acabou)
+      function csAbre(r, i, foco) {
+        var p = $('csPlay'), mks = p._mks || [], m = mks[i]; if (!m || p.hidden) { csFecha(); return; }
+        csPop = { r: r, i: i, k: m.k };
+        var box = $('csPop'); if (!box) { box = el('div', 'cs-pop'); box.id = 'csPop'; box.setAttribute('role', 'dialog'); p.after(box); }
+        var sig = [m.k, m.at, m.texto, mks.length, i].join('|');
+        if (box._sig !== sig) {                            // só redesenha se mudou (redesenho em segundo plano não perde rolagem nem foco)
+          box._sig = sig; box.innerHTML = ''; box.setAttribute('aria-label', 'Destaque: ' + m.nome);
+          var h = el('div', 'cs-pop-h'); h.appendChild(el('span', 'cs-pop-t', m.nome)); h.appendChild(el('span', 'cs-pop-tm', csTempo(m.at)));
+          box.appendChild(h); box.appendChild(el('div', 'cs-pop-x', m.texto || ''));
+          var f = el('div', 'cs-pop-f'), ouvir = el('button', 'cs-pop-ouvir'); ouvir.type = 'button';
+          ouvir.innerHTML = '<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M4.4 6.6A6.5 6.5 0 1 1 3.5 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M3.6 2.8v4h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.6 7.4 13 10l-4.4 2.6z" fill="currentColor"/></svg><span>Ouvir</span>';
+          ouvir.addEventListener('click', function () {
+            r.pos = m.at; csFecha('play'); csTab('tx'); if (m.ix != null && m.ix >= 0) recScrollTo(m.ix);
+            if (recPb && recPb.r === r) recSeekUi(r); else recPlay(r);
+          });
+          f.appendChild(ouvir);
+          var pg = el('div', 'cs-pop-pg'), ant = el('button', 'cs-ant'), prox = el('button', 'cs-prox');
+          ant.type = prox.type = 'button'; ant.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'; prox.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          ant.setAttribute('aria-label', 'Destaque anterior'); prox.setAttribute('aria-label', 'Próximo destaque');
+          ant.disabled = i === 0; prox.disabled = i >= mks.length - 1;
+          ant.addEventListener('click', function (e) { e.stopPropagation(); csAbre(r, i - 1, 'ant'); });
+          prox.addEventListener('click', function (e) { e.stopPropagation(); csAbre(r, i + 1, 'prox'); });
+          pg.appendChild(ant); pg.appendChild(el('span', null, (i + 1) + ' / ' + mks.length)); pg.appendChild(prox);
+          f.appendChild(pg); box.appendChild(f);
+        }
+        csMarca(i); csPosPop();
+        var alvo = foco === 'card' ? box.querySelector('.cs-pop-ouvir')
+          : foco === 'ant' ? box.querySelector('.cs-ant:not(:disabled)') || box.querySelector('.cs-prox')
+          : foco === 'prox' ? box.querySelector('.cs-prox:not(:disabled)') || box.querySelector('.cs-ant') : null;
+        if (alvo) alvo.focus();
+      }
+      function csPosPop() {                                // embaixo do player, dentro do cartão, com a seta apontando o marcador
+        var box = $('csPop'), p = $('csPlay'); if (!box || !csPop || !p._grupoDe) return;
+        var mk = (p._botoes || [])[p._grupoDe[csPop.i]]; if (!mk) return;
+        var card = $('csCard').getBoundingClientRect(), pr = p.getBoundingClientRect(), mr = mk.getBoundingClientRect();
+        var w = box.offsetWidth, cx = mr.left + mr.width / 2 - card.left, left = Math.max(8, Math.min(card.width - w - 8, cx - 44));
+        box.style.left = left + 'px'; box.style.top = (pr.bottom - card.top + 12) + 'px';
+        box.style.setProperty('--cx', Math.max(24, Math.min(w - 24, cx - left)) + 'px');
+      }
+      window.addEventListener('resize', csPosPop);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && csPop) csFecha('mk'); });
+      document.addEventListener('click', function (e) {    // tocar fora fecha (olha o estado, não só o card na tela)
+        if (!csPop || !e.target.closest) return;
+        if (!e.target.closest('#csPop') && !e.target.closest('.cs-mk')) csFecha();
+      });
       // como no Figma: parado, play e o som mudo; tocando, pausa e o som (a não ser que tenha sido silenciado)
       function csIcons(r) {
         var on = !!recPb && recPb.r === r, pb = $('rcPlay'), s = $('csSom');
@@ -5046,7 +5149,8 @@
         else {                                             // pronta: o player, com os marcadores no começo de O, A e P
           csSoFim();
           var mks = [], seen = {};
-          r.u.forEach(function (u, i) { if (!seen[u.k] && i) mks.push({ at: u.at, nome: SOAPN[u.k], i: i }); seen[u.k] = 1; });
+          r.u.forEach(function (u, i) { var k = u.k.toLowerCase();
+            if (!seen[u.k]) mks.push({ k: k, at: u.at, nome: CSN[k], texto: RC_SOAP[k], ix: i }); seen[u.k] = 1; });
           csPlayer(r, mks, true);
         }
         recTxAll(r); csDot(r); recNote(r);
@@ -5589,6 +5693,21 @@
         if (!t) { var sg = r.segs.filter(function (s) { return s.seq === n; })[0]; return { seq: sg ? n : null, at: sg ? sg.at : null }; }
         return { seq: t.rec_id === r.recId ? t.seq : null, at: t.at };
       }
+      // destaques do player na gravação real: cada parte do SOAP no primeiro trecho DESTA gravação de onde ela veio
+      // (result.fields_src: a numeração da tabela segs; gerações antigas, sem ela, ficam sem destaques)
+      function rrMarcas(r) {
+        var fs = r.result && r.result.fields_src, txt = (r.result && r.result.fields) || {}, vis = r.segs.filter(function (s) { return s.st !== 'silent'; }), out = [];
+        if (!fs) return out;
+        SOAPK.forEach(function (k) {
+          if (!(txt[k] || '').trim()) return;
+          var ns = (fs[k] || []).slice().sort(function (a, b) { return a - b; });
+          for (var j = 0; j < ns.length; j++) {
+            var ref = rrRef(r, ns[j]); if (ref.seq == null || ref.at == null) continue;
+            out.push({ k: k, at: ref.at, nome: CSN[k], texto: txt[k], ix: vis.map(function (s) { return s.seq; }).indexOf(ref.seq) }); break;
+          }
+        });
+        return out.sort(function (a, b) { return a.at - b.at; });
+      }
       // rastreio na evolução (vai em data.scribe; sem texto): versão do prompt, modelo, autorização, pontos conferidos
       function rrMeta() {
         var r = rrActive() && rrCur(); if (!r || !r.meta || !r.applied) return null;
@@ -5900,7 +6019,7 @@
           rcAlert('bad', 'err', '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');
         } else if (gravada) {                          // o player percorre as falas no tempo, sem som (o áudio foi descartado)
           csSoFim();
-          csPlayer(r, [], false);
+          csPlayer(r, rrMarcas(r), false);
           var sm = $('csSum'); sm.innerHTML = RI.mic; sm.hidden = false; var tt = el('div', 't');
           tt.appendChild(el('b', null, 'Consulta gravada · ' + rrSummary(r)));
           tt.appendChild(el('small', null, 'O áudio foi descartado; a transcrição fica guardada com a evolução.')); sm.appendChild(tt);
@@ -8226,6 +8345,7 @@
       }
       function open(c) {
         rrPauseLive();                                     // a gravação não continua na consulta seguinte
+        csFecha();                                         // o card do destaque é desta consulta
         if (ctx && c !== ctx && ready) save();             // salva o que estava aberto
         clearTimeout(timer); clearTimeout(retryTimer); retry = 0;
         ctx = c || null; persistCtx();
@@ -8253,6 +8373,7 @@
       var direct = false;                                  // abriu direto pelo link/recarga: não há tela anterior no histórico
       function closePr(fromPop) {
         if (!isOpen()) return;
+        csFecha();                                         // o card do destaque não fica para a próxima vez
         rrPauseLive();                                     // saiu do prontuário: a gravação pausa (não grava o próximo paciente)
         save();
         stage.classList.remove('prontuario');

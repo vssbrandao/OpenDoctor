@@ -2194,7 +2194,9 @@ async def prontuario_scribe(request: Request):
             "consent_at": recs[0]["consent_at"], "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "pontos": {k: sum(1 for f in flags if f["nivel"] == k) for k in ("alto", "medio", "info")},
             "gen_s": min(3600, espera + round(time.monotonic() - t0))})       # guardado: volta ao recarregar a página
-        result = dict(res, fields=fields)
+        # de quais trechos (a numeração da tabela `segs`) veio cada parte da evolução: a tela põe um destaque no primeiro
+        fsrc = {k: sorted({n for it in v for n in (it.get("src") or [])}) for k, v in res["fields"].items()}
+        result = dict(res, fields=fields, fields_src=fsrc)
 
         def save():
             db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table}), nid)

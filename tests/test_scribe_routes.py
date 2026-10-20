@@ -176,6 +176,7 @@ def test_gerar_evolucao_mascara_o_nome_e_confere_sem_ia(fake, monkeypatch):
     assert ls[0]["step"] == "escrevendo" and {"step": "conferindo"} in ls
     out = ls[-1]
     assert out["ok"] and out["result"]["fields"]["o"] == "PA 128x82 mmHg, FC 74 bpm."
+    assert out["result"]["fields_src"] == {"s": [], "o": [1], "a": [], "p": [2]}   # de que trecho veio cada parte (os destaques)
     assert out["result"]["vitals"] == {"pa_s": "128", "pa_d": "82", "fc": "74"} and out["result"]["cid"][0]["code"] == "I10"
     assert [t["seq"] for t in out["segs"]] == [1, 2] and out["segs"][0]["rec_id"] == REC
     assert any(f["tipo"] == "duvida_grave" for f in out["flags"])          # o 74 foi ouvido com dúvida

@@ -71,8 +71,11 @@ para conferir e a confirmação ao finalizar.
 - **Depois da consulta:**
   - o player aparece em cima do cartão: a trilha, o tempo e o botão que percorre a transcrição. O cursor anda e a fala
     do momento fica em destaque. Tocar numa fala ou na trilha leva o player até ali;
-  - na gravação real, o player não tem som: o áudio foi descartado. A demonstração mostra também o botão de som e os
-    marcadores no começo de O, A e P;
+  - na gravação real, o player não tem som: o áudio foi descartado. A demonstração mostra também o botão de som;
+  - os marcadores laranja são os destaques: um por parte do SOAP, no trecho de onde ela veio (na gravação real, o primeiro
+    trecho desta gravação citado pela parte, de `result.fields_src`; na demonstração, a primeira fala de cada parte).
+    Tocar num marcador abre o card: o nome da parte, o minuto, o texto que a IA escreveu para ela, "Ouvir" (o player
+    vai até ali e toca) e as setas entre os destaques. Esc, tocar fora ou ir para a aba SOAP fecha o card;
   - o aviso da IA ("Evolução preenchida pela gravação: revise na aba SOAP", que fecha no X) e o "Finalizar" flutuam no
     pé, por cima do texto, sem máscara;
   - na gravação real, abaixo do cartão: "Consulta gravada", com "Gravar mais um trecho", e os pontos "Para conferir na
@@ -220,6 +223,7 @@ python -m app.scribe_eval --comparar
 | 19/10/2026 | "Adicionar adendo" e o aviso da IA flutuam por cima do texto, sem máscara; a finalizada aparece só na aba SOAP | como no Figma (1090:32797) |
 | 19/10/2026 | Na gravação real, o player percorre a transcrição sem som | o áudio não é guardado |
 | 20/10/2026 | O aviso "Evolução preenchida pela gravação" perde o Desfazer e ganha um X para fechar | pedido do usuário |
+| 20/10/2026 | Destaques do player com card (parte do SOAP, minuto, texto, Ouvir, setas), também na gravação real | referência do usuário (o card do player da divulgação); sem "Saiba mais" |
 
 ## Pendências
 

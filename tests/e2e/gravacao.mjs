@@ -256,6 +256,24 @@ const cenarios = [
     if (JSON.stringify(await soap()) !== JSON.stringify(gerado)) throw new Error('fechar o aviso mexeu no texto');
     return 'aviso sem Desfazer; o X fecha e o texto fica como estava';
   }],
+  ['destaques do player: cada parte do SOAP no trecho de onde veio, com o card, as setas e o Ouvir', async () => {
+    await grava('/_preview/pr?pid=9003&ev=evH', 36); await encerra();
+    const mks = await ev(`[...document.querySelectorAll('#csPlay .cs-mk')].map((b) => b.title)`);
+    if (!mks.length || mks.some((t) => !['Subjetivo', 'Objetivo', 'Avaliação', 'Plano'].includes(t))) throw new Error('destaques: ' + JSON.stringify(mks));
+    await clica('#csPlay .cs-mk');
+    const card = await ev(`(() => { const p = document.getElementById('csPop'); return p && { t: p.querySelector('.cs-pop-t').textContent, x: p.querySelector('.cs-pop-x').textContent,
+      pg: p.querySelector('.cs-pop-pg span').textContent, on: document.querySelector('#csPlay .cs-mk.on') === document.querySelector('#csPlay .cs-mk') }; })()`);
+    if (!card || card.t !== mks[0] || !card.x.trim() || card.pg !== '1 / ' + mks.length || !card.on) throw new Error('card: ' + JSON.stringify(card));
+    if (mks.length > 1) {
+      await clica('#csPop .cs-pop-pg button:last-child');
+      if ((await ev(`document.querySelector('#csPop .cs-pop-t').textContent`)) !== mks[1]) throw new Error('a seta não foi ao próximo destaque');
+    }
+    await clica('#csPop .cs-pop-ouvir'); await sleep(1200);
+    const tocando = await ev(`!document.getElementById('csPop') && document.getElementById('rcPlay').getAttribute('aria-label') === 'Pausar'`);
+    if (!tocando) throw new Error('Ouvir não fechou o card e tocou');
+    await clica('#rcPlay');
+    return mks.length + ' destaques (' + mks.join(', ') + '); card, setas e Ouvir ok';
+  }],
   ['um trecho que o servidor sempre erra não trava os outros', async () => {
     await srv('/_preview/sim?erro_seq=1');
     await grava('/_preview/pr?pid=9003&ev=evE', 48);
