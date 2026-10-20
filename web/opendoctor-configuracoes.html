@@ -52,8 +52,9 @@
     /* ===== CENTER: CONFIGURAÇÕES — o layout dos prints de referência (cartões com título, subtítulo, campos com rótulo e
        Salvar), com as medidas e cores da tela de Integrações: coluna de 516, título 14 Medium, cartões com 42 de respiro,
        canto 40 e borda rgba(26,26,26,.08), 8 entre cartões, 48 entre os blocos do cartão, botão pílula de 64 ===== */
-    .center{flex:1;min-width:0;height:100%;overflow-y:auto;display:flex;justify-content:center;padding:42px 20px 40px 0}
-    .cfg{width:516px;flex:none;display:flex;flex-direction:column;gap:42px}
+    .center{flex:1;min-width:0;height:100%;overflow-y:auto;display:flex;justify-content:center;padding:42px 20px 0 0}
+    .cfg{width:516px;flex:none;display:flex;flex-direction:column;gap:42px;
+      align-self:flex-start;padding-bottom:42px}   /* respiro de 42 depois do último cartão: a coluna tem a altura do conteúdo (esticada, os cartões passavam por fora dela e o respiro não entrava na rolagem) */
     .cfg-title{font-family:var(--disp);font-weight:500;font-size:18px;line-height:24px;color:#071216}   /* título da página: 18 (pedido do usuário) */
     .cfg-list{display:flex;flex-direction:column;gap:8px}
     .cfg-card{padding:42px;border-radius:40px;border:1px solid var(--card-border);display:flex;flex-direction:column;gap:48px}
