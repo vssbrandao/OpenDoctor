@@ -7,12 +7,13 @@ da conta do fundador. Os itens marcados **[pendente]** precisam de decisão ou d
 ## 1. O que a função faz
 
 O médico grava a consulta no navegador. O áudio vira texto (transcrição) e o texto vira um **rascunho** da
-evolução (SOAP ou texto livre), que o médico revisa, corrige e assina. A função **documenta** o que foi dito:
+evolução em SOAP, que o médico revisa, corrige e assina. A função **documenta** o que foi dito:
 não sugere diagnóstico, exame nem conduta (ver item 8).
 
 - Liga só para contas liberadas (`SCRIBE_EMAILS` / `SCRIBE_ALL` no servidor); `SCRIBE_OFF=1` desliga para
   todos na hora.
-- Sem a marca "O paciente autorizou a gravação desta consulta", o botão de gravar fica bloqueado.
+- Sem a marca "O paciente autorizou a gravação desta consulta", a gravação não começa: "Iniciar consulta" leva até a
+  marca e só grava depois que ela é marcada.
 
 ## 2. Dados tratados
 
@@ -85,7 +86,7 @@ falem na consulta; voz (dado biométrico em potencial — o OpenDoctor não extr
 | Perda de parte da consulta | captura contínua sem buracos entre trechos; cada trecho fica no navegador até a confirmação; o trecho em andamento é salvo a cada 2 s; fila com novas tentativas; recuperação ao reabrir | baixo (no máximo ~2 s se o computador desligar) |
 | Erro clínico no rascunho (remédio, dose, valor, alergia, CID) | o médico revisa e assina; conferências sem IA (número fora da fala, remédio que não aparece, dose fora do usual, alergia, sinal vital impossível, CID inexistente, frase deduzida); palavras ouvidas com dúvida; pedido de confirmação ao finalizar com pontos não conferidos | médio: depende da revisão do médico. Avaliação com 31 casos fictícios, sem nenhum remédio ou dose inventados; **[pendente]** conferência dos gabaritos por um médico e consultas encenadas por pessoas |
 | Texto do médico sobrescrito | o rascunho só preenche campos vazios e entra abaixo do que já foi escrito; "Desfazer" | baixo |
-| Uso sem autorização do paciente | botão bloqueado sem a marca; data e hora registradas | depende da conduta do médico |
+| Uso sem autorização do paciente | a gravação só começa com a marca; data e hora registradas | depende da conduta do médico |
 
 ## 8. Fronteira com dispositivo médico (Anvisa, RDC 657/2022)
 

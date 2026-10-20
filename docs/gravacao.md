@@ -15,21 +15,23 @@ trocados entre página, servidor e banco, como testar e avaliar, e as decisões 
 3. **Servidor → transcrição.** O servidor confere login, paciente, autorização e formato, e manda o áudio à OpenAI
    (`app/stt.py`) com o fim do trecho anterior como contexto. Guarda só o texto (`recording_segments`); o áudio é
    descartado.
-4. **Encerrar → evolução.** `POST /prontuario/scribe` junta os trechos da consulta, mascara o texto (`scribe.mask`) e
-   pede a evolução ao modelo (`app/scribe.py`). Confere a resposta sem IA (números, remédios, doses, alergias, sinais
-   vitais, CID) e responde em linhas JSON, com progresso e depois o resultado.
+4. **Finalizar → evolução.** O "Finalizar" do cartão encerra a gravação. `POST /prontuario/scribe` junta os trechos
+   da consulta, mascara o texto (`scribe.mask`) e pede a evolução ao modelo (`app/scribe.py`). Confere a resposta sem
+   IA (números, remédios, doses, alergias, sinais vitais, CID) e responde em linhas JSON, com progresso e depois o
+   resultado.
    Os remédios extraídos (menos os suspensos) entram no rascunho da receita desta consulta como "Da gravação", sem
    repetir (detalhes em `docs/prescricao.md`); a última linha diz quantos (`receita`).
-5. **Revisão.** A página preenche os campos vazios da evolução, sem apagar o que o médico escreveu, e lista os pontos
-   para conferir. Ao finalizar com pontos abertos, pede confirmação. A evolução guarda o rastreio (`data.scribe`) e,
-   ao finalizar, os números da revisão (`data.timing.scribe`).
+5. **Revisão.** A página preenche os campos vazios da evolução em SOAP, sem apagar o que o médico escreveu, e lista os
+   pontos para conferir. O mesmo "Finalizar" do cartão, com a evolução pronta, finaliza (assina). Com pontos abertos,
+   pede confirmação. A evolução guarda o rastreio (`data.scribe`) e, ao finalizar, os números da revisão
+   (`data.timing.scribe`).
 
 ## Onde está cada parte
 
 | Parte | Arquivo | O que tem |
 |---|---|---|
 | Captura | `web/rec-worklet.js` | 16 kHz, blocos de 100 ms, volume (RMS) |
-| Tela e fila | `web/opendoctor-agenda.html`, seção "gravação da consulta" | componentes do gravador, demonstração (paciente de exemplo) e gravação real |
+| Tela e fila | `web/opendoctor-agenda.html`, seção "gravação da consulta" | cartão da aba Consulta (funções `cs*`), demonstração (paciente de exemplo) e gravação real |
 | Rotas | `app/server.py` | `transcribe`, `recordings/state`, `scribe`, `DELETE recordings/{id}`, `_scribe_rastreio`, ligação ao salvar a evolução |
 | Banco | `app/db.py` (`rec_*`, `_ligar`), `supabase/migrations/0013_scribe.sql` | `recordings`, `recording_segments` |
 | Transcrição | `app/stt.py` | chamada, limpeza de frases-fantasma, confiança por palavra (`DUVIDA`) |
@@ -42,10 +44,57 @@ trocados entre página, servidor e banco, como testar e avaliar, e as decisões 
 As tabelas de `app/data/` ficam fora do código para o médico revisor conferir sem ler Python. Mudou o texto do prompt
 (`escriba_prompt.txt`): suba `scribe.PROMPT_VERSION`. Um teste falha até a versão nova ser registrada.
 
+## A tela
+
+A aba Consulta do prontuário é um cartão (`#csCard`, Figma "Consulta", nó 1089:32631) com as abas **Transcrição** e
+**SOAP** e um pé (`#prRec`). O que o design não mostra fica abaixo do cartão: microfone, autorização, avisos, etapas,
+resumo, pontos para conferir e a confirmação ao finalizar.
+
+- **Abas.** A consulta abre em Transcrição quando dá para gravar (paciente de exemplo ou conta liberada). Nas contas
+  sem a gravação, ou com a evolução finalizada, abre em SOAP. Quando a evolução gerada fica pronta, a aba SOAP ganha
+  um ponto laranja até ser aberta.
+- **Antes de gravar:**
+  - o pé tem "Iniciar consulta";
+  - abaixo do cartão ficam o microfone (escolher, medidor, "Testar microfone") e a autorização do paciente;
+  - sem a autorização marcada, "Iniciar consulta" leva até ela, e a gravação começa ao marcar;
+  - nas contas sem a gravação, fora da paciente de exemplo, o botão fica desativado, com um aviso.
+- **Gravando:**
+  - o pé mostra "Finalizar" acima da barra preta: ondas do volume, o tempo e o botão redondo que pausa e continua
+    (também ⌘/Ctrl + Shift + Espaço);
+  - as falas aparecem na aba Transcrição: na gravação real, a cada trecho; na demonstração, palavra por palavra;
+  - pausada ou interrompida, o mesmo botão redondo continua a gravação;
+  - "Finalizar" encerra e gera a evolução. A barra troca as ondas pelo andamento (enviando, gerando). Na gravação real,
+    as etapas aparecem abaixo do cartão e, se a geração falhar, o pé mostra "Gerar de novo";
+  - na gravação real, fora da aba Consulta, um aviso fixo ("Gravando", "Voltar à consulta") leva de volta a ela.
+- **Depois da consulta:**
+  - o player aparece em cima do cartão: a trilha, o tempo e o botão que percorre a transcrição. O cursor anda e a fala
+    do momento fica em destaque. Tocar numa fala ou na trilha leva o player até ali;
+  - na gravação real, o player não tem som: o áudio foi descartado. A demonstração mostra também o botão de som e os
+    marcadores no começo de O, A e P;
+  - o aviso da IA ("Evolução preenchida pela gravação: revise na aba SOAP", com "Desfazer") e o "Finalizar" flutuam no
+    pé, por cima do texto, sem máscara;
+  - na gravação real, abaixo do cartão: "Consulta gravada", com "Gravar mais um trecho", e os pontos "Para conferir na
+    evolução" ("Ver na transcrição" abre a fala na aba Transcrição).
+- **Evolução:**
+  - só em SOAP. Um rascunho antigo em texto livre aparece no S;
+  - salva sozinha ao parar de digitar. Não há Salvar, "Copiar da última" nem "Finalizar evolução" na tela;
+  - abaixo do cartão fica só o status: falha ao salvar, limite de caracteres.
+- **Finalizar a evolução:**
+  - fora da gravação, o "Finalizar" do pé só aparece com texto na evolução, gerada ou escrita à mão;
+  - finaliza (assina) com a confirmação de sempre;
+  - com pontos não conferidos ou trechos fora da evolução, pergunta antes, abaixo do cartão ("Finalizar mesmo assim?").
+- **Finalizada:**
+  - a aba SOAP mostra a evolução assinada direto na tela, sem caixa cinza, com os adendos;
+  - o pé some. "Adicionar adendo" flutua no canto direito e abre o campo na aba SOAP, abaixo da assinada;
+  - a aba Transcrição mostra a transcrição ou o aviso "Esta consulta não foi gravada". A consulta gravada mantém o player.
+- **Peças antigas escondidas.** O cabeçalho antigo (o relógio "Iniciar consulta", `#prVisit`, e Texto livre | SOAP) e os
+  botões do pé (`#prSave`, `#prCopyLast`, `#prFinalize`, `#prAddBtn`) ficam num bloco `hidden`, porque o código ainda os
+  usa. O "Finalizar" do cartão clica em `#prFinalize`; "Adicionar adendo", em `#prAddBtn`.
+
 ## Na página
 
 A seção da gravação tem três partes:
-- os **componentes** do cartão (player, aviso, medidor, ondas);
+- os **componentes** do cartão (abas, pé, barra com as ondas, player, medidor do microfone);
 - a **demonstração**, que roda sempre na paciente de exemplo e nas contas sem a gravação;
 - a **gravação real**, que liga quando `/me` devolve `scribe: true`.
 
@@ -164,6 +213,10 @@ python -m app.scribe_eval --comparar
 | 15/10/2026 | Prompt `2026-10-15.7` | passou nos critérios de segurança nos dois limites de dúvida |
 | 15/10/2026 | O contexto da transcrição vai sem CPF, telefone e e-mail; o nome falado fica | o áudio já contém o nome; mascarar o nome pode fazer o transcritor escrever "[PACIENTE]" |
 | 15/10/2026 | A paciente de exemplo fica sempre com a demonstração | conta liberada continua mostrando o fluxo sem gravar ninguém |
+| 19/10/2026 | Aba Consulta no design do Figma "Consulta" (nó 1089:32631): Transcrição \| SOAP, o pé com Iniciar consulta ou a barra, o player depois | pedido do usuário, que desenha a tela no Figma |
+| 19/10/2026 | Evolução só em SOAP; sem Salvar, "Copiar da última", "Finalizar evolução" e o relógio "Iniciar consulta" | a evolução salva sozinha; um "Finalizar" só: gravando, encerra e gera; pronta, assina |
+| 19/10/2026 | "Adicionar adendo" e o aviso da IA flutuam por cima do texto, sem máscara; a finalizada aparece só na aba SOAP | como no Figma (1090:32797) |
+| 19/10/2026 | Na gravação real, o player percorre a transcrição sem som | o áudio não é guardado |
 
 ## Pendências
 

@@ -1561,6 +1561,13 @@
       .pr-item-body.clamp{display:block!important;-webkit-line-clamp:unset!important}
       #prFree,#prSoap{display:none!important}
       .pr-printcur{display:block!important}
+      /* aba Consulta (cartão do Figma): sai só a evolução — a assinada inteira, qualquer que seja a aba aberta */
+      #prEvoBox{min-height:0!important;padding:0!important}
+      .cs-card:not([hidden]),.cs-main{display:block!important;flex:none!important;height:auto!important;min-height:0!important;padding:0!important;
+        margin:0!important;border-radius:0!important;background:none!important}
+      #csSoap{display:block!important}
+      .cs-pane{overflow:visible!important;height:auto!important;margin:0!important;padding:0!important}
+      #csTx,.cs-seg,.cs-foot,.cs-flut,.cs-play,.cs-mic,.cs-sum,.rc-consent,.rc-alert,.rc-steps,.rc-review,.rc-final{display:none!important}
       .pr-bigcard,.pr-sumcol{background:none!important;padding:0!important;border-radius:0!important}
       .pr-sumcol,.pr-allergy,.pr-item,.pr-trow,.ov-chart,.ov-dxrow,.ov-post{break-inside:avoid}
     }
@@ -2319,7 +2326,7 @@
                   <span class="pr-status" id="prStatus"></span>
                   <span class="pr-count" id="prCount" hidden></span>
                 </div>
-                <!-- versão de teste: o cabeçalho antigo (consulta, relógio "Iniciar consulta", Texto livre | SOAP) fica fora da tela -->
+                <!-- o cabeçalho antigo (consulta, relógio "Iniciar consulta", Texto livre | SOAP) fica fora da tela: o código ainda usa estas peças -->
                 <div hidden>
                   <div id="prEvoLabel"></div><div id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
                   <div id="prVisitBox"><span id="prTimer" hidden></span><button id="prVisit" type="button">Iniciar consulta</button></div>
@@ -3931,7 +3938,7 @@
       var MAX = 50000;                                     // = MAX_NOTE_CHARS do servidor
       var ctx = null;          // {patient_id, patient, from, event_id, title, start, end, all_day, location, note_id}
       var patient = null, notes = [], cur = null;          // cadastro, evoluções e a evolução aberta (do servidor)
-      var mode = 'soap', cids = [], ready = false, recovered = false;      // versão de teste do Figma: a evolução é só em SOAP
+      var mode = 'soap', cids = [], ready = false, recovered = false;      // a evolução é só em SOAP (aba Consulta do Figma)
       var saved = '', timer = null, saving = false, queued = [], retry = 0, retryTimer = null;
       var DOWS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
       var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -4622,7 +4629,7 @@
         var btn = this; btn.disabled = true; setStatus('Finalizando…');
         var my = ctx;
         whenSaved(function (ok) {
-          if (ctx !== my) return;
+          if (ctx !== my) { btn.disabled = false; return; }
           if (!ok) { btn.disabled = false; setStatus('Não foi possível salvar antes de finalizar. Tente de novo.', true); return; }
           api('POST', '/prontuario/notes/' + cur.id + '/finalize', { timing: tmFinal() }).then(function (res) {
             btn.disabled = false;
@@ -4869,13 +4876,17 @@
       // "Finalizar" fora da gravação: finaliza (assina) a evolução, com a confirmação e os pontos para conferir de sempre.
       // Gravando, o mesmo botão encerra e gera a evolução (csBar); pronta, ele fica sozinho no pé para finalizar
       function csFimEvo(box) {
+        var old = $('csFimEvo'); if (old) old.remove();      // um Finalizar só na página (csSyncFim age nele)
         var f = el('button', 'cs-fim', 'Finalizar'); f.type = 'button'; f.id = 'csFimEvo'; f.title = 'Finalizar a evolução';
-        f.addEventListener('click', function () { $('prFinalize').click(); });
+        f.addEventListener('click', function () {
+          if ($('prFinalize').disabled) { setStatus('Finalizando…'); return; }   // uma finalização ainda em andamento
+          $('prFinalize').click();
+        });
         box.appendChild(f); csSyncFim(); return f;
       }
       function csSoFim() {                                 // a gravação pronta: o Finalizar flutua no pé (finalizada: o adendo)
         if (locked()) { csAdendo(); return; }
-        $('prRec').hidden = true; csFimEvo(csPe());
+        var pr = $('prRec'); pr.innerHTML = ''; pr.hidden = true; csFimEvo(csPe());
       }
       // a camada que flutua no pé do cartão; kind 'dir' encosta à direita (o adendo)
       function csPe(kind) { var pe = $('csFlutPe'); pe.innerHTML = ''; pe.className = 'cs-flut-pe' + (kind ? ' ' + kind : ''); return pe; }
@@ -4885,7 +4896,7 @@
       }).observe($('csFlut'));
       // evolução finalizada: "Adicionar adendo" no canto do pé (Figma 1090:32797); o campo abre na aba SOAP, abaixo da assinada
       function csAdendo() {
-        $('prRec').hidden = true; var box = csPe('dir');
+        var pr = $('prRec'); pr.innerHTML = ''; pr.hidden = true; var box = csPe('dir');
         var b = el('button', 'cs-fim', 'Adicionar adendo'); b.type = 'button'; b.hidden = $('prAddBox').children.length > 0;
         b.addEventListener('click', function () {
           csTab('soap'); $('prAddBtn').click(); b.hidden = true;
@@ -5266,6 +5277,7 @@
             mute.gain.value = 0; src.connect(node); node.connect(mute); mute.connect(actx.destination);
             node.port.onmessage = function (e) { onBlock(e.data.pcm, e.data.rms); };
             var tr = stream.getAudioTracks()[0]; tr.onended = onLost;
+            aeStop();                                        // outro início que terminou no meio-tempo: fecha o microfone dele
             AE = { ctx: actx, stream: stream, node: node, label: tr.label || 'Microfone' };
             RR.dev = (tr.getSettings && tr.getSettings().deviceId) || RR.dev;
             if (actx.state === 'suspended') actx.resume();
@@ -5491,14 +5503,17 @@
 
       // ----- ações -----
       function rrStart(r) {
-        if (!r.consent || locked()) return;
-        r.testing = false; r.warn = '';
+        if (!r.consent || locked() || r.starting) return;     // um início por vez: dois toques não abrem dois microfones
+        r.starting = true; r.testing = false; r.warn = '';
         aeStart(function (p, v) { rrBlock(r, p, v); }, function () { rrMicLost(r); }).then(function () {
+          r.starting = false;
+          // trocou ou fechou a consulta enquanto o navegador pedia o microfone: não grava nesta consulta (a outra está na tela)
+          if (r !== rrCur() || !isOpen() || locked() || !r.consent) { aeStop(); rrRender(r); return; }
           if (!r.recId) { r.recId = uuid(); r.consentAt = new Date().toISOString(); }
           r.st = 'live'; RR.live = r; r.blocos = []; r.blocosRms = [];
           rrWake(); rrRender(r);
         }, function (e) {
-          r.err = (e && e.name) || '';
+          r.starting = false; r.err = (e && e.name) || '';
           if (r.recId) { r.st = r.st === 'interrupted' ? 'interrupted' : 'paused'; r.warn = 'micoff'; } else r.st = 'nomic';
           rrRender(r);
         });
@@ -5530,6 +5545,7 @@
         if (r.testing || r.st !== 'idle') return;
         r.testing = true; r.testPeak = 0; r.err = ''; rrRender(r);
         aeStart(function (p, v) { rrBlock(r, p, v); }, function () {}).then(function () {
+          if (r !== rrCur() || !isOpen() || !r.testing) { r.testing = false; aeStop(); rrRender(r); return; }   // trocou de consulta no meio
           setTimeout(function () { if (r.testing) { r.testing = false; aeStop(); rrRender(r); } }, 5000);
         }, function (e) { r.testing = false; r.st = 'nomic'; r.err = (e && e.name) || ''; rrRender(r); });
       }
@@ -8207,8 +8223,11 @@
             renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); renderKpis(); updCount(compose().content.length); rxLoad();
             if (!document.querySelector('.pr-panel[data-panel=consultas]').hidden) loadAccess();
             // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva
-            var d = draftRead();
-            if (d && !locked() && d.s !== saved && (d.base === saved || (!cur && !d.base))) {
+            var d = draftRead(), lb = null; try { lb = JSON.parse(d && d.base || 'null'); } catch (_) {}
+            // rascunho da versão anterior, em texto livre: a base era a evolução salva em texto livre (o fillEditor leva o texto ao S)
+            var legado = !!(lb && lb.data && lb.data.mode === 'free') && (cur ? !(cur.data && cur.data.mode === 'soap') &&
+              (lb.content || '') === (cur.content || '') : !(lb.content || ''));
+            if (d && !locked() && d.s !== saved && (d.base === saved || legado || (!cur && !d.base))) {
               try { fillEditor(JSON.parse(d.s)); } catch (_) {}
               recovered = true; setStatus('Texto não salvo recuperado deste navegador. Salvando…'); save();
             } else if (d) {
@@ -8230,7 +8249,7 @@
         if (ctx && c !== ctx && ready) save();             // salva o que estava aberto
         clearTimeout(timer); clearTimeout(retryTimer); retry = 0;
         ctx = c || null; persistCtx();
-        patient = null; notes = []; cur = null; saved = ''; ready = false;
+        patient = null; notes = []; cur = null; saved = ''; ready = false; $('prFinalize').disabled = false;
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
         $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prProbTags').innerHTML = ''; $('prExport').hidden = true;
