@@ -1023,6 +1023,7 @@
     .cs-nota{max-width:420px;font-size:12px;line-height:16px;color:#666C6F;text-align:center}
     .cs-fim{height:30px;padding:0 24px;border:0;border-radius:999px;background:#000;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:12px;line-height:14px;color:#fff}
+    .cs-fim[hidden]{display:none}
     .cs-bar{display:flex;align-items:center;gap:16px;width:517px;max-width:100%;height:56px;padding:0 10px 0 34px;border-radius:40px;background:#000;color:#fff}
     .cs-cv{display:block;flex:1;min-width:0;height:22px}
     .cs-msg{flex:1;min-width:0;font-weight:500;font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -4275,6 +4276,7 @@
         setStatus(s === saved ? '' : 'Alterações não salvas');
         draftWrite(s);
         clearTimeout(timer); timer = setTimeout(save, 1500);  // salva sozinho ao parar de digitar
+        csSyncFim();
       }
       note.addEventListener('input', changed);
       soapEls.forEach(function (e) { e.addEventListener('input', changed); e.addEventListener('blur', save); });
@@ -4618,7 +4620,7 @@
             if (!(res.ok && res.j.ok)) { setStatus('Não foi possível finalizar.', true); return; }
             cur.signed_at = res.j.signed_at; cur.addenda = cur.addenda || [];
             try { localStorage.removeItem(dkey()); if (ctx._tk) sessionStorage.removeItem('od_tm_' + ctx._tk); } catch (_) {}
-            renderEvo(); renderHist(); renderKpis(); loadVisits(my);
+            renderEvo(); renderHist(); renderKpis(); loadVisits(my); csTab('soap');   // a assinada aparece na aba SOAP
             setStatus('');
           }).catch(function () { btn.disabled = false; setStatus('Falha de conexão ao finalizar.', true); });
         });
@@ -4848,11 +4850,24 @@
       function csGo(label, f, o) {
         o = o || {};
         var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot';
+        csFimEvo(box);
         if (o.nota) box.appendChild(el('div', 'cs-nota', o.nota));
         var b = el('button', 'cs-go'); b.type = 'button'; b.innerHTML = CSI.dots; b.appendChild(el('span', null, label));
         b.disabled = !!o.off; b.addEventListener('click', function () { f(b); }); box.appendChild(b);
         return b;
       }
+      // "Finalizar" fora da gravação: finaliza (assina) a evolução, com a confirmação e os pontos para conferir de sempre.
+      // Gravando, o mesmo botão encerra e gera a evolução (csBar); pronta, ele fica sozinho no pé para finalizar
+      function csFimEvo(box) {
+        var f = el('button', 'cs-fim', 'Finalizar'); f.type = 'button'; f.id = 'csFimEvo'; f.title = 'Finalizar a evolução';
+        f.addEventListener('click', function () { $('prFinalize').click(); });
+        box.appendChild(f); csSyncFim(); return f;
+      }
+      function csSoFim() {                                 // a gravação pronta: no pé, só o Finalizar
+        var box = $('prRec'); box.innerHTML = ''; box.className = 'cs-foot'; box.hidden = locked();
+        if (!locked()) csFimEvo(box);
+      }
+      function csSyncFim() { var f = $('csFimEvo'); if (f) f.hidden = !ready || locked() || !compose().content.trim(); }   // só com texto
       // gravando: "Finalizar" acima e a barra (ondas do volume, tempo e o botão redondo que pausa e continua);
       // o.msg troca as ondas por um texto (enviando, gerando) e some com o botão
       function csBar(o) {
@@ -4998,7 +5013,7 @@
             { off: true, nota: 'A gravação chega em breve para os seus pacientes: experimente na paciente de exemplo.' });
         } else if (r.st === 'proc') csBar({ t: mm2(recDur(r)), msg: r.step || 'Gerando a evolução…' });
         else {                                             // pronta: o player, com os marcadores no começo de O, A e P
-          $('prRec').hidden = true;
+          csSoFim();
           var mks = [], seen = {};
           r.u.forEach(function (u, i) { if (!seen[u.k] && i) mks.push({ at: u.at, nome: SOAPN[u.k], i: i }); seen[u.k] = 1; });
           csPlayer(r, mks, true);
@@ -5847,7 +5862,7 @@
           csGo('Gerar de novo', function () { rrGenerate(r); });
           rcAlert('bad', 'err', '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');
         } else if (gravada) {                          // o player percorre as falas no tempo, sem som (o áudio foi descartado)
-          $('prRec').hidden = true;
+          csSoFim();
           csPlayer(r, [], false);
           var sm = $('csSum'); sm.innerHTML = RI.mic; sm.hidden = false; var tt = el('div', 't');
           tt.appendChild(el('b', null, 'Consulta gravada · ' + rrSummary(r)));
