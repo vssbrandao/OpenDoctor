@@ -1868,7 +1868,7 @@
     .stage.nav-mini.expanded .big-input,.stage.nav-mini.expanded .bi-note{
       left:max(24px,calc(50% - 350px));right:max(24px,calc(50% - 350px))}
     /* bolha da pergunta nessa versão (Figma 1012:7583): padding 16 x 24, até 466px */
-    .stage.nav-mini.expanded .msg-user{max-width:466px;padding:16px 24px}
+    .stage.nav-mini.expanded .msg-user{max-width:540px;padding:16px 24px}
 
     /* recolher/expandir painéis */
     /* botão do painel (Figma IconButton 36x36 em x 226, y 8; ícone 20x20 no centro) */
@@ -1904,7 +1904,7 @@
     .rp-msgs{position:absolute;left:0;right:0;top:52px;bottom:160px;overflow-y:auto;
       padding:24px;display:none;flex-direction:column;gap:24px;scrollbar-width:thin}
     .rp-msgs.on{display:flex}
-    .msg-user{align-self:flex-end;max-width:255px;background:var(--pill);border-radius:24px;
+    .msg-user{align-self:flex-end;max-width:540px;overflow-wrap:break-word;background:var(--pill);border-radius:24px;   /* até 540 (pedido do usuário) */
       padding:16px;font-family:var(--disp);font-weight:400;font-size:16px;line-height:26px;color:#0D0D0D}
     .msg-ai{align-self:flex-start;max-width:100%;font-family:var(--disp);font-weight:400;
       font-size:16px;line-height:26px;color:#0D0D0D;word-wrap:break-word}
@@ -1984,7 +1984,7 @@
     /* editable input */
     .bi-input{flex:1;border:0;outline:0;resize:none;background:transparent;overflow:hidden;
       font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#071216;
-      max-height:120px}
+      max-height:120px;scrollbar-width:thin}
     .bi-input::placeholder{color:var(--ink2)}
     .bi-note{position:absolute;left:24px;right:24px;bottom:4px;
       font-family:var(--disp);font-weight:400;font-size:11px;line-height:16px;color:var(--muted);
@@ -3454,6 +3454,7 @@
       function autogrow() {
         input.style.height = 'auto';
         input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+        input.style.overflowY = input.scrollHeight > 120 ? 'auto' : 'hidden';   // passou de 120: rola por dentro
       }
       input.addEventListener('input', function () {
         autogrow();
