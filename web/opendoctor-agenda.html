@@ -912,13 +912,18 @@
     .rc-tx.pb .rc-t{color:#80868B}
     .rc-tx.pb .rc-u.on .rc-t{color:#0A0A0A}
     .rc-tx.pb .rc-u.on .rc-h{color:#0B57D0}
-    /* aviso: evolução preenchida pela gravação (revisar / desfazer) */
+    /* aviso: evolução preenchida pela gravação (revisar; fecha no X) */
     .rc-note{display:flex;align-items:center;gap:12px;margin-top:16px;padding:6px 6px 6px 16px;border-radius:12px;background:#fff;font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A}
     .rc-note[hidden]{display:none}
     .rc-note svg{flex:none;width:18px;height:18px;color:#0B57D0}
     .rc-note span{flex:1;min-width:0}
     .rc-note .pr-ghost{flex:none;height:32px;padding:0 12px;border-radius:16px;color:#0B57D0}
     .rc-note .pr-ghost:hover{background:rgba(11,87,208,.08)}
+    .rc-note .pr-ghost[hidden]{display:none}
+    .rc-note .rc-x{flex:none;display:flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:0;border-radius:50%;
+      background:none;cursor:pointer;color:#666C6F}
+    .rc-note .rc-x:hover{background:rgba(0,0,0,.06);color:#0A0A0A}
+    .rc-note .rc-x svg{width:14px;height:14px;color:currentColor}
     .pr-soapf.rc-from > span::after{content:'Da gravação';display:inline-block;margin-left:8px;padding:0 8px;border-radius:8px;background:#D3E3FD;
       font-weight:500;font-size:10px;line-height:18px;color:#0842A0;vertical-align:1px}
     /* gravação real: autorização, microfone, avisos, etapas, resumo e pontos para conferir (linguagem do Finance) */
@@ -2304,7 +2309,7 @@
                     <div class="cs-foot" id="prRec"></div>
                     <!-- flutua por cima do conteúdo (sem máscara): o aviso de que a IA preencheu a evolução e o Finalizar / Adicionar adendo -->
                     <div class="cs-flut" id="csFlut">
-                      <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button></div>
+                      <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button><button class="rc-x" type="button" id="rcNoteX" aria-label="Fechar o aviso" title="Fechar"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
                       <div class="cs-flut-pe" id="csFlutPe"></div>
                     </div>
                   </div>
@@ -5091,15 +5096,15 @@
         var steps = ['Organizando em SOAP…', 'Sugerindo CID-10…'], k = 0;
         var iv = setInterval(function () { r.step = steps[k++] || ''; var e = $('rcStep'); if (e && recCur() === r) e.textContent = r.step; if (k >= steps.length) clearInterval(iv); }, 870);
         setTimeout(function () {
-          clearInterval(iv); r.st = 'done'; r.pos = 0; r.gerou = true; r.soapVisto = false;
+          clearInterval(iv); r.st = 'done'; r.pos = 0; r.gerou = true; r.soapVisto = false; r.notaFechada = false;
           if (recCur() === r) { recApply(r); recRender(); } else r.pending = true;
         }, 2600);
       }
-      // preenche a evolução (SOAP + sinais vitais + CID-10) com o que a gravação gerou; dá para desfazer
+      // preenche a evolução (SOAP + sinais vitais + CID-10) com o que a gravação gerou
       function recApply(r) {
         if (locked() || !ready) return false;
         var x = compose();
-        if (x.content.trim() && !confirm('Substituir o texto da evolução pelo que a gravação gerou?\n\nDá para desfazer em seguida.')) { r.applied = false; recNote(r); return false; }
+        if (x.content.trim() && !confirm('Substituir o texto da evolução pelo que a gravação gerou?')) { r.applied = false; recNote(r); return false; }
         r.undo = { content: x.content, data: x.data };
         fillEditor({ content: '', data: Object.assign({ mode: 'soap' }, RC_SOAP, { vitals: Object.assign({}, RC_SOAP.vitals), cid: RC_SOAP.cid.slice() }) });
         [].forEach.call($('prSoap').querySelectorAll('.pr-soapf'), function (f) { f.classList.add('rc-from'); });
@@ -5110,12 +5115,14 @@
         fillEditor(r.undo); r.applied = false; changed(); recNote(r);
       }
       function recNote(r) {
-        var n = $('rcNote'); n.hidden = !(r && r.st === 'done' && !locked() && ready);
+        var n = $('rcNote'); n.hidden = !(r && r.st === 'done' && !locked() && ready && !r.notaFechada);
         if (n.hidden) return;
         $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise na aba SOAP.'
                                              : 'A evolução gerada pela gravação não está no texto abaixo.';
-        $('rcNoteBtn').textContent = r.applied ? 'Desfazer' : 'Preencher a evolução';
+        $('rcNoteBtn').textContent = 'Preencher a evolução'; $('rcNoteBtn').hidden = !!r.applied;   // preenchida: só o X para fechar
       }
+      // fechar o aviso (volta só se a evolução for gerada de novo)
+      $('rcNoteX').addEventListener('click', function () { var r = csRec(); if (r) r.notaFechada = true; $('rcNote').hidden = true; });
       $('rcNoteBtn').addEventListener('click', function () {
         if (rrActive()) { var q = rrCur(); if (q) { if (q.applied) rrUndo(q); else rrApply(q); rrRender(q); } return; }
         var r = recCur(); if (!r) return; if (r.applied) recUndo(r); else recApply(r);
@@ -5566,7 +5573,7 @@
             if (!last || !last.ok) throw new Error((last && last.error) || 'resposta incompleta');
             my.result = last.result; my.flags = last.flags || []; my.segTable = last.segs || []; my.meta = last.meta || null;
             if (last.receita) { rxLoad(true); toast(last.receita === 1 ? '1 remédio da gravação foi para a receita (aba Prescrições)' : last.receita + ' remédios da gravação foram para a receita (aba Prescrições)'); }
-            my.checked = {}; my.st = 'done'; my.gerou = true; my.soapVisto = false; my.finalOk = false; my.doneAt = Date.now();
+            my.checked = {}; my.st = 'done'; my.gerou = true; my.soapVisto = false; my.notaFechada = false; my.finalOk = false; my.doneAt = Date.now();
             my.genS = Math.round((my.doneAt - (my.endAt || my.doneAt)) / 1000);
             if (my === rrCur() && ready && !locked()) rrApply(my); else my.pending = true;
             rrRender(my);
@@ -5900,8 +5907,8 @@
             $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise na aba SOAP.' +
               (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') :
                 'A evolução gerada pela gravação não está no texto.';
-            $('rcNoteBtn').textContent = r.applied ? 'Desfazer' : 'Preencher a evolução'; $('rcNote').hidden = false;
-            $('rcNoteBtn').hidden = !!(r.applied && !r.undo);           // revisão noutra sessão: o texto anterior já não existe
+            $('rcNoteBtn').textContent = 'Preencher a evolução'; $('rcNoteBtn').hidden = !!r.applied;   // preenchida: só o X para fechar
+            $('rcNote').hidden = !!r.notaFechada;
             rrReview(r);
           }
         }

@@ -73,7 +73,7 @@ para conferir e a confirmação ao finalizar.
     do momento fica em destaque. Tocar numa fala ou na trilha leva o player até ali;
   - na gravação real, o player não tem som: o áudio foi descartado. A demonstração mostra também o botão de som e os
     marcadores no começo de O, A e P;
-  - o aviso da IA ("Evolução preenchida pela gravação: revise na aba SOAP", com "Desfazer") e o "Finalizar" flutuam no
+  - o aviso da IA ("Evolução preenchida pela gravação: revise na aba SOAP", que fecha no X) e o "Finalizar" flutuam no
     pé, por cima do texto, sem máscara;
   - na gravação real, abaixo do cartão: "Consulta gravada", com "Gravar mais um trecho", e os pontos "Para conferir na
     evolução" ("Ver na transcrição" abre a fala na aba Transcrição).
@@ -127,7 +127,7 @@ A seção da gravação tem três partes:
   - o texto da gravação entra nos campos vazios ou abaixo do que já existe;
   - ao gerar de novo, troca campo por campo o texto gerado antes, se continua igual;
   - campo que o médico editou fica como está;
-  - "Desfazer" volta ao texto anterior à primeira geração.
+  - não há "Desfazer" na tela: o médico revisa e corrige no SOAP; o aviso da IA só fecha no X (e volta se gerar de novo).
 - **Microfone:** se o escolhido saiu (fone Bluetooth, USB), usa o padrão do computador. A tela fica acordada enquanto
   grava, inclusive ao voltar para a aba.
 
@@ -219,6 +219,7 @@ python -m app.scribe_eval --comparar
 | 19/10/2026 | Evolução só em SOAP; sem Salvar, "Copiar da última", "Finalizar evolução" e o relógio "Iniciar consulta" | a evolução salva sozinha; um "Finalizar" só: gravando, encerra e gera; pronta, assina |
 | 19/10/2026 | "Adicionar adendo" e o aviso da IA flutuam por cima do texto, sem máscara; a finalizada aparece só na aba SOAP | como no Figma (1090:32797) |
 | 19/10/2026 | Na gravação real, o player percorre a transcrição sem som | o áudio não é guardado |
+| 20/10/2026 | O aviso "Evolução preenchida pela gravação" perde o Desfazer e ganha um X para fechar | pedido do usuário |
 
 ## Pendências
 

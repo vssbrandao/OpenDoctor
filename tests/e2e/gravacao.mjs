@@ -242,23 +242,19 @@ const cenarios = [
     await ate(est('interrompida'), 15000, 'achar a gravação pela evolução dela');
     return 'ficou na evolução dela e só aparece nela';
   }],
-  ['Desfazer pergunta antes de apagar o que o médico escreveu depois', async () => {
+  ['o aviso da IA não tem Desfazer e fecha no X, sem mexer no texto da médica', async () => {
     await abre('/_preview/pr?pid=9003&ev=evD');
     await escreve('s', 'Texto da médica antes.');
     await grava('', 18); await encerra();
     const gerado = await soap();
     if (!gerado.s.startsWith('Texto da médica antes.') || !/Refere boa adesão/.test(gerado.s)) throw new Error('a gravação não entrou depois do texto da médica: ' + JSON.stringify(gerado.s));
-    await escreve('p', ' Conduta acrescentada pela médica.', true);
-    dialogo = false; const d0 = dialogos;
-    await clica('#rcNoteBtn', 'Desfazer'); await sleep(600);
-    const texto = await soap();
-    dialogo = true;
-    if (dialogos === d0) throw new Error('não perguntou antes de desfazer');
-    if (!texto.p.includes('Conduta acrescentada pela médica.') || texto.s !== gerado.s) throw new Error('apagou o que a médica escreveu: ' + JSON.stringify(texto));
-    await clica('#rcNoteBtn', 'Desfazer'); await sleep(600);
-    const volta = await soap();
-    if (volta.s !== 'Texto da médica antes.' || volta.o || volta.a || volta.p) throw new Error('Desfazer confirmado não voltou ao texto anterior: ' + JSON.stringify(volta));
-    return 'perguntou; cancelando, nada mudou; confirmando, voltou ao texto anterior';
+    const aviso = await ev(`(() => { const n = document.getElementById('rcNote'), b = document.getElementById('rcNoteBtn');
+      return { visivel: !n.hidden, texto: document.getElementById('rcNoteT').textContent, desfazer: !b.hidden && b.offsetParent !== null }; })()`);
+    if (!aviso.visivel || !/revise na aba SOAP/.test(aviso.texto) || aviso.desfazer) throw new Error('aviso errado: ' + JSON.stringify(aviso));
+    await clica('#rcNoteX'); await sleep(400);
+    if (!(await ev(`document.getElementById('rcNote').hidden`))) throw new Error('o X não fechou o aviso');
+    if (JSON.stringify(await soap()) !== JSON.stringify(gerado)) throw new Error('fechar o aviso mexeu no texto');
+    return 'aviso sem Desfazer; o X fecha e o texto fica como estava';
   }],
   ['um trecho que o servidor sempre erra não trava os outros', async () => {
     await srv('/_preview/sim?erro_seq=1');
