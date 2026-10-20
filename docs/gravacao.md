@@ -47,15 +47,17 @@ As tabelas de `app/data/` ficam fora do código para o médico revisor conferir 
 ## A tela
 
 A aba Consulta do prontuário é um cartão (`#csCard`, Figma "Consulta", nó 1089:32631) com as abas **Transcrição** e
-**SOAP** e um pé (`#prRec`). O que o design não mostra fica abaixo do cartão: microfone, autorização, avisos, etapas,
-resumo, pontos para conferir e a confirmação ao finalizar.
+**SOAP** e um pé (`#prRec`). O que o design não mostra fica abaixo do cartão: autorização, avisos, etapas, resumo, pontos
+para conferir e a confirmação ao finalizar.
 
 - **Abas.** A consulta abre em Transcrição quando dá para gravar (paciente de exemplo ou conta liberada). Nas contas
   sem a gravação, ou com a evolução finalizada, abre em SOAP. Quando a evolução gerada fica pronta, a aba SOAP ganha
   um ponto laranja até ser aberta.
 - **Antes de gravar:**
   - o pé tem "Iniciar consulta";
-  - abaixo do cartão ficam o microfone (escolher, medidor, "Testar microfone") e a autorização do paciente;
+  - abaixo do cartão fica só a autorização do paciente ("O paciente autorizou a gravação desta consulta"). Sem
+    seletor de microfone na tela: grava o padrão do computador (ou o último usado); trocar de microfone aparece nos
+    avisos de microfone desconectado ou sem som;
   - sem a autorização marcada, "Iniciar consulta" leva até ela, e a gravação começa ao marcar;
   - nas contas sem a gravação, fora da paciente de exemplo, o botão fica desativado, com um aviso.
 - **Gravando:**
@@ -94,7 +96,7 @@ resumo, pontos para conferir e a confirmação ao finalizar.
 ## Na página
 
 A seção da gravação tem três partes:
-- os **componentes** do cartão (abas, pé, barra com as ondas, player, medidor do microfone);
+- os **componentes** do cartão (abas, pé, barra com as ondas, player);
 - a **demonstração**, que roda sempre na paciente de exemplo e nas contas sem a gravação;
 - a **gravação real**, que liga quando `/me` devolve `scribe: true`.
 

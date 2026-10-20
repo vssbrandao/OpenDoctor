@@ -296,7 +296,7 @@ const cenarios = [
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });
     await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && !b.disabled)`, 20000, 'gravador');
     await sleep(1500);                                                              // (a gravação real, se fosse ligar, já teria aparecido)
-    const real = await ev(`['rcConsent', 'csMic'].filter((i) => !document.getElementById(i).hidden)`);
+    const real = await ev(`['rcConsent'].filter((i) => !document.getElementById(i).hidden)`);
     if (real.length || await ev(`!!document.querySelector('#prRec .cs-nota')`)) throw new Error('não está na demonstração: ' + JSON.stringify(real));
     await clica('#prRec .cs-go', 'Iniciar consulta');
     await ate(`/dona Maria/.test(document.getElementById('rcTx').textContent)`, 15000, 'o roteiro da demonstração');

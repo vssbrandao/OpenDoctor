@@ -1013,19 +1013,19 @@
     #csTxLk{display:none}
     .cs-card.lk .rc-tx:empty + #csTxLk{display:block}       /* evolução finalizada sem gravação */
     /* o pé: "Iniciar consulta" (pílula preta de 56, ícone pontilhado) ou, gravando, "Finalizar" acima da barra preta */
-    .cs-foot{flex:none;display:flex;flex-direction:column;align-items:center;gap:24px;padding:16px 24px 30px}
+    .cs-foot{flex:none;display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px 24px 24px}   /* Figma: 24 do pé; Finalizar a 16 */
     .cs-foot[hidden]{display:none}
-    .cs-foot.bar{padding-bottom:41px}
-    .cs-go{display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%;height:56px;padding:0 clamp(20px, 7.2cqi, 42px);white-space:nowrap;border:0;border-radius:999px;background:#000;
+    .cs-go{display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%;height:68px;padding:0 clamp(20px, 7.2cqi, 42px);white-space:nowrap;border:0;border-radius:999px;background:#000;
       cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
-    .cs-go svg{flex:none;width:17px;height:17px}
+    .cs-go svg{flex:none;width:24px;height:19px}                       /* o pontilhado em 20 pt, numa caixa de 24 (Figma 1081:49342) */
     .cs-go:disabled{background:#C4C7C5;cursor:default}
     .cs-nota{max-width:420px;font-size:12px;line-height:16px;color:#666C6F;text-align:center}
-    .cs-fim{height:30px;padding:0 24px;white-space:nowrap;border:0;border-radius:999px;background:#000;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
+    .cs-fim{height:34px;padding:0 24px;white-space:nowrap;border:0;border-radius:999px;background:#D3E3FD;cursor:pointer;   /* Figma 1091:33344 */
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0842A0}
+    .cs-flut-pe.dir .cs-fim{height:40px}                               /* Adicionar adendo (Figma 1090:32797) */
     .cs-fim[hidden]{display:none}
-    /* o que flutua no pé, por cima do texto e sem máscara (Figma 1090:32797: 24 da direita, 16 do pé) */
-    .cs-flut{position:absolute;left:24px;right:24px;bottom:16px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+    /* o que flutua no pé, por cima do texto e sem máscara (Figma 1090:32797: 24 da direita e do pé) */
+    .cs-flut{position:absolute;left:24px;right:24px;bottom:24px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
     .cs-flut > *{pointer-events:auto}
     .cs-flut-pe:empty{display:none}
     .cs-flut-pe.dir{align-self:flex-end}
@@ -1066,14 +1066,10 @@
     .rc-consent .rc-pede{display:none;margin-top:6px;font-style:normal;font-weight:500;font-size:12px;line-height:16px;color:#0B57D0}
     .rc-consent.pede{box-shadow:inset 0 0 0 2px #0B57D0}
     .rc-consent.pede .rc-pede{display:block}
-    .cs-mic{display:flex;align-items:center;gap:16px;padding:10px 16px;border-radius:12px;background:#F7F8F8;font-family:var(--disp);font-size:12px;line-height:16px}
-    .cs-mic[hidden]{display:none}
-    .cs-mic .rc-mic{position:relative}
-    .cs-mic .rc-cv{display:block;flex:none;width:213px;height:16px}
-    .cs-mic .ok{color:#137333}.cs-mic .low{color:#B06000}
-    .cs-mic .r{margin-left:auto}
     .cs-sum{padding:10px 8px 10px 16px;border-radius:12px;background:#F7F8F8}
-    #prEditFoot.cs-status{padding-top:0;border-top:0}
+    .cs-card{position:relative}
+    #prEditFoot.cs-status{position:absolute;left:24px;right:24px;top:100%;margin-top:4px;justify-content:center;gap:8px;padding-top:0;border-top:0}
+    #prEditFoot.cs-status .pr-status{min-width:0;margin-right:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #prEditFoot.cs-status:not(:has(.pr-status:not(:empty), .pr-count:not([hidden]))){display:none}
     .cs-sum[hidden]{display:none}
     .gcard{padding:16px;border-radius:16px;background:#F7F8FA}
@@ -1567,7 +1563,7 @@
         margin:0!important;border-radius:0!important;background:none!important}
       #csSoap{display:block!important}
       .cs-pane{overflow:visible!important;height:auto!important;margin:0!important;padding:0!important}
-      #csTx,.cs-seg,.cs-foot,.cs-flut,.cs-play,.cs-mic,.cs-sum,.rc-consent,.rc-alert,.rc-steps,.rc-review,.rc-final{display:none!important}
+      #csTx,.cs-seg,.cs-foot,.cs-flut,.cs-play,.cs-sum,.rc-consent,.rc-alert,.rc-steps,.rc-review,.rc-final{display:none!important}
       .pr-bigcard,.pr-sumcol{background:none!important;padding:0!important;border-radius:0!important}
       .pr-sumcol,.pr-allergy,.pr-item,.pr-trow,.ov-chart,.ov-dxrow,.ov-post{break-inside:avoid}
     }
@@ -2312,20 +2308,19 @@
                       <div class="cs-flut-pe" id="csFlutPe"></div>
                     </div>
                   </div>
+                  <!-- o status do salvar automático (Salvando…, Salvo às…, falhas) fica na faixa logo abaixo do cartão, sem mudar a altura dele -->
+                  <div class="pr-foot cs-status" id="prEditFoot">
+                    <span class="pr-status" id="prStatus"></span>
+                    <span class="pr-count" id="prCount" hidden></span>
+                  </div>
                 </div>
-                <div class="cs-mic" id="csMic" hidden></div>
-                <label class="rc-consent" id="rcConsent" hidden><input type="checkbox" id="rcConsentIn"><span><b>O paciente autorizou a gravação desta consulta</b><small>Fica registrado no prontuário, com data e hora. O áudio não é guardado: vira texto e é descartado. Sem autorização, a evolução é escrita à mão.</small><em class="rc-pede">Marque a autorização para começar a gravar.</em></span></label>
+                <label class="rc-consent" id="rcConsent" hidden><input type="checkbox" id="rcConsentIn"><span><b>O paciente autorizou a gravação desta consulta</b><em class="rc-pede">Marque a autorização para começar a gravar.</em></span></label>
                 <div class="rc-alert" id="rcAlert" role="status" aria-live="polite" hidden></div>
                 <div class="rc-steps" id="rcSteps" hidden></div>
                 <div class="rc-sum cs-sum" id="csSum" hidden></div>
                 <div class="rc-review" id="rcReview" hidden></div>
                 <div class="pr-body pr-printcur" id="prPrintCur"></div>
                 <div class="rc-final" id="rcFinal" hidden></div>
-                <!-- a evolução salva sozinha: o pé só mostra o status (falha ao salvar, limite de caracteres) -->
-                <div class="pr-foot cs-status" id="prEditFoot">
-                  <span class="pr-status" id="prStatus"></span>
-                  <span class="pr-count" id="prCount" hidden></span>
-                </div>
                 <!-- o cabeçalho antigo (consulta, relógio "Iniciar consulta", Texto livre | SOAP) fica fora da tela: o código ainda usa estas peças -->
                 <div hidden>
                   <div id="prEvoLabel"></div><div id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
@@ -4968,15 +4963,6 @@
         if (s) { s.innerHTML = on && !r.mute ? CSI.som : CSI.mute; s.title = r.mute ? 'Ativar o som' : 'Sem som'; s.setAttribute('aria-label', s.title);
           s.setAttribute('aria-pressed', r.mute ? 'true' : 'false'); }
       }
-      // medidor do microfone (abaixo do cartão, antes de gravar): 24 barras (verde, laranja no alto)
-      function rcMeter(level) {
-        var cv = $('csMic').querySelector('.rc-cv'); if (!cv || !cv.clientWidth) return;
-        var w = cv.clientWidth, h = 16, dpr = window.devicePixelRatio || 1, on = Math.round(Math.max(0, Math.min(1, level)) * 24);
-        if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
-        var g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
-        for (var i = 0; i < 24; i++) { g.fillStyle = i < on ? (i < 17 ? '#137333' : '#E37400') : '#CCCFD9'; g.beginPath(); (g.roundRect ?
-          g.roundRect(i * 9, 0, 6, h, 2) : g.rect(i * 9, 0, 6, h)); g.fill(); }
-      }
       function rcAlert(kind, icon, html, acts) {
         var a = $('rcAlert'); a.className = 'rc-alert ' + kind; a.innerHTML = RCI[icon] + '<span class="t">' + html + '</span>'; a.hidden = false;
         if (acts && acts.length) { var w = el('span', 'a'); acts.forEach(function (b) { var x = el('button', b[1] ? 'pr-save' : 'pr-ghost', b[0]);
@@ -5035,7 +5021,7 @@
       function recDemoRender() {
         var r = recCur(), lk = locked();
         // as peças da gravação real (microfone, autorização, avisos, revisão) não aparecem na demonstração
-        ['csMic', 'rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
+        ['rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);      // trocou de consulta gravando: pausa
         if (recPb && recPb.r !== r) recStopPb();
         if (lk && r && r.st === 'live') recPause(r);                  // finalizou gravando: para o relógio
@@ -5326,7 +5312,7 @@
       function rrBlock(r, pcm, rms) {
         var db = rms > 0 ? 20 * Math.log10(rms) : -100;                // medidor em dB (-60 a -10), com queda suave
         r.level = Math.max(Math.max(0, Math.min(1, (db + 60) / 50)), (r.level || 0) * 0.8);
-        if (r.testing) { r.testPeak = Math.max(r.testPeak || 0, rms); if (rrMine(r)) rcMeter(r.level); return; }
+        if (r.testing) { r.testPeak = Math.max(r.testPeak || 0, rms); return; }
         if (r.st !== 'live') return;
         r.blocos.push(pcm); r.blocosRms.push(rms); r.samples += pcm.length;
         if (r.blocos.length % 20 === 0) rrSavePart(r);
@@ -5858,7 +5844,7 @@
       }
       function rrRender(r) {
         if (!r || r !== rrCur() || recDemo()) return;
-        ['csMic', 'rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
+        ['rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
         var lk = locked(), gravada = csDone(r);
         if (!csShow(gravada)) { rrTx(r); return; }
         var pend = rrPending(r), t = mm2(r.samples / SR16), sc = $('csTx'), near = recNear(sc);
@@ -5872,7 +5858,6 @@
               : '<b>O navegador não deixou usar o microfone.</b> Clique no cadeado ao lado do endereço do site, escolha <b>Permitir</b> em Microfone e toque em Tentar de novo.');
           } else if (!lk) {
             csGo('Iniciar consulta', function () { rrIniciar(r); });
-            csMic(r);
             $('rcConsent').hidden = false; $('rcConsentIn').checked = r.consent;
             $('rcConsentIn').onchange = function () {
               r.consent = this.checked; $('rcConsent').classList.remove('pede');
@@ -5929,21 +5914,6 @@
         r.pede = true; $('rcConsent').classList.add('pede');
         $('rcConsent').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('rcConsentIn').focus({ preventScroll: true });
       }
-      // abaixo do cartão, antes de gravar: o microfone escolhido, o medidor e "Testar microfone"
-      function csMic(r) {
-        var m = $('csMic'); m.innerHTML = ''; m.hidden = false;
-        var mic = el('button', 'rc-mic'); mic.type = 'button'; mic.id = 'rcMicBtn';
-        mic.appendChild(el('span', null, 'Microfone: ' + devLabel())); mic.insertAdjacentHTML('beforeend', RCI.caret);
-        mic.addEventListener('click', function (e) { e.stopPropagation(); if (!RR.devs.length) listDevices(); pickDevice(mic); });
-        m.appendChild(mic); m.appendChild(el('canvas', 'rc-cv'));
-        var right = el('span', 'r');
-        right.innerHTML = r.testing ? 'Fale algo para testar…' : r.testPeak == null ? '<button class="pr-link2 rc-test" type="button">Testar microfone</button>'
-          : r.testPeak > 0.02 ? '<span class="ok">Ouvindo bem</span>' : r.testPeak > 0.005 ?
-            '<span class="low">Volume baixo: aproxime o microfone</span>' : '<span class="low">Não chegou som</span>';
-        m.appendChild(right);
-        var tb = right.querySelector('.rc-test'); if (tb) tb.addEventListener('click', function () { rrTest(r); });
-        rcMeter(r.testing ? r.level : 0);
-      }
       // o aviso do cartão (um de cada vez, do mais grave): microfone, silêncio, gravação longa, armazenamento, trechos fora
       // da evolução, servidor, sessão, internet
       function rrAlert(r, pend, lk) {
@@ -5989,7 +5959,7 @@
         var r = rrCur();
         if (RR.live && RR.live !== r && RR.live.st === 'live') rrPause(RR.live);
         if (recPb && recPb.r !== r) recStopPb();
-        if (!r) { $('csCard').hidden = true; ['csMic', 'rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview',
+        if (!r) { $('csCard').hidden = true; ['rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview',
           'rcFinal'].forEach(function (id) { $(id).hidden = true; }); return; }
         if (locked() && r.st === 'live') rrPause(r);
         if (r.pending && ready && !locked()) { r.pending = false; rrApply(r); }
