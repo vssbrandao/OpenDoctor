@@ -4972,13 +4972,14 @@
         // passam por todos (duas partes do SOAP que vêm do mesmo trecho não ficam uma escondida embaixo da outra)
         var trilha = Math.max(120, p.clientWidth - 48 - 24 - (som ? 100 : 48)), perto = 36 / trilha, grupos = [];
         marks.forEach(function (m, j) {
-          var x = Math.min(1, m.at / dur), g = grupos[grupos.length - 1];
+          // no começo da trilha o marcador fica a 40 px do início, longe da bolinha (só a posição; o minuto é o de verdade)
+          var x = Math.max(40 / trilha, Math.min(1, m.at / dur)), g = grupos[grupos.length - 1];
           if (g && x - g.x < perto) g.idx.push(j); else grupos.push({ x: x, idx: [j] });
         });
         p._grupoDe = []; p._botoes = [];
         grupos.forEach(function (g, gi) {
           var nomes = g.idx.map(function (j) { return marks[j].nome; }).join(', ');
-          var b = el('button', 'cs-mk'); b.type = 'button'; b.style.left = (g.x * 100).toFixed(3) + '%';
+          var b = el('button', 'cs-mk'); b.type = 'button'; b.style.left = 'max(40px, ' + (g.x * 100).toFixed(3) + '%)';
           b.title = nomes; b.setAttribute('aria-label', (g.idx.length > 1 ? 'Destaques: ' : 'Destaque: ') + nomes);
           b.setAttribute('aria-haspopup', 'dialog'); b.setAttribute('aria-expanded', 'false');
           b.addEventListener('click', function (e) {
