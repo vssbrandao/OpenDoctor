@@ -994,7 +994,7 @@
     /* ===== aba Consulta no design do Figma "Consulta" (nó 1089:32631; quadro de 1440: coluna de 604, cartão a 76 do topo) =====
        O cartão (#F7F8F8, canto 40, 8 de respiro) enche a altura da tela junto com o que fica abaixo dele; dentro, o player
        (branco, 96 de altura, canto 32) depois da consulta e o cartão branco com as abas, o conteúdo e o pé */
-    #prEvoBox{min-height:calc(100vh - 96px);padding-top:12px;gap:16px}
+    #prEvoBox{min-height:calc(100vh - 88px);padding-top:12px;gap:16px}
     .cs-card{flex:1 0 440px;margin-bottom:8px;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:40px;background:#F7F8F8;font-family:var(--disp)}
     .cs-card[hidden]{display:none}
     .cs-main{flex:1;min-height:0;display:flex;flex-direction:column;border-radius:32px;background:#fff}
@@ -1010,7 +1010,8 @@
     .cs-card .rc-tx{max-height:none;overflow:visible;margin:0;padding:0 2px;border-radius:0;background:none}
     .cs-vazio{font-size:14px;line-height:22px;color:#666C6F}
     .cs-vazio[hidden]{display:none}
-    #csLockedN{text-align:center}
+    #csTxLk{display:none}
+    .cs-card.lk .rc-tx:empty + #csTxLk{display:block}       /* evolução finalizada sem gravação */
     /* o pé: "Iniciar consulta" (pílula preta de 56, ícone pontilhado) ou, gravando, "Finalizar" acima da barra preta */
     .cs-foot{flex:none;display:flex;flex-direction:column;align-items:center;gap:24px;padding:16px 24px 30px}
     .cs-foot[hidden]{display:none}
@@ -1039,6 +1040,8 @@
     .cs-trk .cs-line{right:0;background:#F7F8F8}
     .cs-trk .cs-feito{width:0;background:#000}
     .cs-bola{position:absolute;top:13px;left:0;width:10px;height:10px;margin-left:-5px;border-radius:50%;background:#000;pointer-events:none}
+    /* o tempo de onde o player está: embaixo do começo da trilha (Figma: x 24, y 58 no cartão de 96), 10 Regular #A0A0A0 */
+    .cs-ptm{position:absolute;top:28px;left:0;font-weight:400;font-size:10px;line-height:14px;color:#A0A0A0;pointer-events:none}
     .cs-mk{position:absolute;top:0;width:36px;height:36px;margin-left:-18px;padding:0;border:0;border-radius:50%;background:rgba(255,85,0,.2);cursor:pointer}
     .cs-mk::after{content:'';position:absolute;left:16px;top:16px;width:5px;height:5px;border-radius:50%;background:#FF5500}
     .cs-btns{flex:none;display:flex;gap:4px}
@@ -1060,6 +1063,8 @@
     .cs-mic .ok{color:#137333}.cs-mic .low{color:#B06000}
     .cs-mic .r{margin-left:auto}
     .cs-sum{padding:10px 8px 10px 16px;border-radius:12px;background:#F7F8F8}
+    #prEditFoot.cs-status{padding-top:0;border-top:0}
+    #prEditFoot.cs-status:not(:has(.pr-status:not(:empty), .pr-count:not([hidden]))){display:none}
     .cs-sum[hidden]{display:none}
     .gcard{padding:16px;border-radius:16px;background:#F7F8FA}
     .gcard .pr-h2{font-size:16px;line-height:24px}
@@ -2246,9 +2251,13 @@
                       <button type="button" role="tab" data-cs="tx" class="on" aria-selected="true" aria-controls="csTx">Transcrição</button>
                       <button type="button" role="tab" data-cs="soap" aria-selected="false" aria-controls="csSoap">SOAP</button>
                     </div>
-                    <div class="cs-pane" id="csTx" role="tabpanel"><div class="rc-tx" id="rcTx"></div></div>
+                    <div class="cs-pane" id="csTx" role="tabpanel"><div class="rc-tx" id="rcTx"></div><div class="cs-vazio" id="csTxLk">Esta consulta não foi gravada.</div></div>
                     <div class="cs-pane" id="csSoap" role="tabpanel" hidden>
-                      <div class="cs-vazio" id="csLockedN" hidden>A evolução desta consulta foi finalizada: ela aparece abaixo.</div>
+                      <div class="pr-locked" id="prLocked" hidden>
+                        <div class="pr-signed" id="prSigned"></div>
+                        <div class="pr-body" id="prLockedBody"></div>
+                        <div id="prLockedAdds"></div>
+                      </div>
                 <div class="pr-soap" id="prSoap" hidden>
                   <label class="pr-soapf"><span>S — Subjetivo</span><textarea data-f="s" placeholder="Queixa, história, sintomas relatados…"></textarea></label>
                   <div class="pr-soapf"><span>O — Objetivo</span>
@@ -2289,18 +2298,11 @@
                 <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button></div>
                 <div class="rc-review" id="rcReview" hidden></div>
                 <div class="pr-body pr-printcur" id="prPrintCur"></div>
-                <div class="pr-locked" id="prLocked" hidden>
-                  <div class="pr-signed" id="prSigned"></div>
-                  <div class="pr-body" id="prLockedBody"></div>
-                  <div id="prLockedAdds"></div>
-                </div>
                 <div class="rc-final" id="rcFinal" hidden></div>
-                <div class="pr-foot" id="prEditFoot">
+                <!-- a evolução salva sozinha: o pé só mostra o status (falha ao salvar, limite de caracteres) -->
+                <div class="pr-foot cs-status" id="prEditFoot">
                   <span class="pr-status" id="prStatus"></span>
                   <span class="pr-count" id="prCount" hidden></span>
-                  <button class="pr-ghost" id="prCopyLast" type="button" hidden>Copiar da última</button>
-                  <button class="pr-ghost" id="prSave" type="button">Salvar</button>
-                  <button class="pr-save" id="prFinalize" type="button">Finalizar evolução</button>
                 </div>
                 <div class="pr-foot" id="prLockedFoot" hidden>
                   <span class="pr-status"></span>
@@ -2313,6 +2315,9 @@
                   <div id="prVisitBox"><span id="prTimer" hidden></span><button id="prVisit" type="button">Iniciar consulta</button></div>
                   <div id="prSeg"><button type="button" data-m="free">Texto livre</button><button type="button" data-m="soap" class="on">SOAP</button></div>
                   <div id="prFree" hidden><textarea class="pr-note" id="prNote"></textarea></div>
+                  <!-- os botões do pé da evolução saíram da tela a pedido; ficam aqui porque o código ainda os usa -->
+                  <button id="prCopyLast" type="button" hidden>Copiar da última</button><button id="prSave" type="button">Salvar</button>
+                  <button id="prFinalize" type="button">Finalizar evolução</button>
                 </div>
               </div>
             </section>
@@ -4827,16 +4832,17 @@
       }
       // a aba SOAP ganha um ponto quando a evolução gerada pela gravação fica pronta, até ser aberta
       function csDot(r) { $('csSeg').children[1].classList.toggle('dot', !!r && !!r.gerou && !r.soapVisto && csAba !== 'soap'); }
-      // o cartão aparece na consulta aberta; com a evolução finalizada, só se ela foi gravada (a assinada aparece abaixo)
+      // o cartão aparece sempre na consulta aberta. Com a evolução finalizada, a aba SOAP mostra a assinada e o pé some;
+      // devolve se ainda há gravação a desenhar (aberta, ou finalizada depois de gravada)
       function csShow(gravada) {
-        var show = !locked() || !!gravada;
-        $('csCard').hidden = !show; $('csLockedN').hidden = !locked();
+        var lk = locked();
+        $('csCard').hidden = false; $('csCard').classList.toggle('lk', lk);
         $('csPlay').hidden = true; $('csPlay')._pl = null;
-        if (locked()) $('prRec').hidden = true;
-        return show;
+        if (lk) $('prRec').hidden = true;
+        return !lk || !!gravada;
       }
-      // a aba que abre com a consulta: Transcrição quando dá para gravar (ou já foi gravada); senão, SOAP
-      function csAbaInicial() { csTab(recDemo() || (RR && RR.on) ? 'tx' : 'soap'); }
+      // a aba que abre com a consulta: a evolução finalizada abre no SOAP; senão, Transcrição quando dá para gravar
+      function csAbaInicial() { csTab(!locked() && (recDemo() || (RR && RR.on)) ? 'tx' : 'soap'); }
       function mm2(x) { x = Math.max(0, Math.floor(x)); return pad(Math.floor(x / 60)) + ':' + pad(x % 60); }   // 00:06, como no Figma
       // o pé: a pílula preta ("Iniciar consulta", "Tentar de novo"…); o.nota vai acima dela, o.off a desativa
       function csGo(label, f, o) {
@@ -4891,11 +4897,12 @@
           b.addEventListener('click', function (e) { e.stopPropagation(); r.pos = m.at; csTab('tx'); recSeekUi(r); recScrollTo(m.i); });
           tk.appendChild(b);
         });
-        tk.appendChild(bola);
+        var tm = el('span', 'cs-ptm', mm2(r.pos || 0)); tm.id = 'csPtm';
+        tk.appendChild(tm); tk.appendChild(bola);
         tk.addEventListener('click', function (e) {
           var rc = tk.getBoundingClientRect(); r.pos = Math.max(0, Math.min(1, (e.clientX - rc.left) / rc.width)) * dur; recSeekUi(r);
         });
-        p.appendChild(tk); p._pl = { feito: feito, bola: bola };
+        p.appendChild(tk); p._pl = { feito: feito, bola: bola, tm: tm };
         var bs = el('div', 'cs-btns');
         if (som) { var s = el('button', 'cs-rb'); s.type = 'button'; s.id = 'csSom'; s.addEventListener('click', function () { r.mute = !r.mute; csIcons(r); });
           bs.appendChild(s); }
@@ -4975,11 +4982,13 @@
       // o cartão: Iniciar consulta → gravando/pausada (Finalizar e a barra) → gerando → pronta (o player com O, A e P)
       function recDemoRender() {
         var r = recCur(), lk = locked();
+        // as peças da gravação real (microfone, autorização, avisos, revisão) não aparecem na demonstração
+        ['csMic', 'rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);      // trocou de consulta gravando: pausa
         if (recPb && recPb.r !== r) recStopPb();
         if (lk && r && r.st === 'live') recPause(r);                  // finalizou gravando: para o relógio
-        if (!r) $('csCard').hidden = true;
-        if (!r || !csShow(r.st === 'done')) { $('rcNote').hidden = true; return; }
+        if (!r) { $('csCard').hidden = true; $('rcNote').hidden = true; return; }
+        if (!csShow(r.st === 'done')) { $('rcNote').hidden = true; recTxAll(r); return; }
         if (r.pending && !lk && ready) { r.pending = false; recApply(r); }
         if (r.st === 'live' || r.st === 'paused') {
           csBar({ live: r.st === 'live', t: mm2(recSecs(r)), amps: r.amps, fim: function () { recEnd(r); },
@@ -5065,7 +5074,7 @@
       function recNote(r) {
         var n = $('rcNote'); n.hidden = !(r && r.st === 'done' && !locked() && ready);
         if (n.hidden) return;
-        $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise antes de finalizar.'
+        $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise na aba SOAP.'
                                              : 'A evolução gerada pela gravação não está no texto abaixo.';
         $('rcNoteBtn').textContent = r.applied ? 'Desfazer' : 'Preencher a evolução';
       }
@@ -5113,7 +5122,7 @@
       function recSeekUi(r) {
         var p = $('csPlay')._pl; if (!p || !csDone(r)) return;
         var x = Math.min(1, (r.pos || 0) / csDur(r));
-        p.feito.style.width = (x * 100).toFixed(3) + '%'; p.bola.style.left = (x * 100).toFixed(3) + '%';
+        p.feito.style.width = (x * 100).toFixed(3) + '%'; p.bola.style.left = (x * 100).toFixed(3) + '%'; p.tm.textContent = mm2(r.pos || 0);
         var on = -1; csTimes(r).forEach(function (at, i) { if (at <= (r.pos || 0) + 0.05) on = i; });
         var tx = $('rcTx'), sc = $('csTx'), prev = tx.querySelector('.rc-u.on'), cur2 = tx.children[on];
         if (prev && prev !== cur2) prev.classList.remove('on');
@@ -5766,7 +5775,7 @@
         if (!r.flags.length) { box.hidden = true; return; }
         box.hidden = false;
         var h = el('div', 'rc-rv-h'), left = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; }).length;
-        h.appendChild(document.createTextNode('Para conferir antes de finalizar')); h.appendChild(el('span', null, String(left)));
+        h.appendChild(document.createTextNode('Para conferir na evolução')); h.appendChild(el('span', null, String(left)));
         h.appendChild(el('small', null, 'os mais importantes primeiro')); box.appendChild(h);
         r.flags.forEach(function (f, i) {
           var row = el('div', 'rc-pt ' + f.nivel + (r.checked[i] ? ' ok' : '')), t = el('div', 't');
@@ -5794,7 +5803,7 @@
         if (!r || r !== rrCur() || recDemo()) return;
         ['csMic', 'rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
         var lk = locked(), gravada = csDone(r);
-        if (!csShow(gravada)) return;
+        if (!csShow(gravada)) { rrTx(r); return; }
         var pend = rrPending(r), t = mm2(r.samples / SR16), sc = $('csTx'), near = recNear(sc);
         var fim = function () { rrEnd(r); };
         rrTx(r); if (r.st === 'live' && near) sc.scrollTop = 1e6;
@@ -5846,7 +5855,7 @@
           if (!lk) { var more = el('button', 'pr-ghost', 'Gravar mais um trecho'); more.type = 'button'; more.addEventListener('click',
             function () { csTab('tx'); rrMore(r); }); sm.appendChild(more); }
           if (r.st === 'done' && !lk) {
-            $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise antes de finalizar.' +
+            $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise na aba SOAP.' +
               (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') :
                 'A evolução gerada pela gravação não está no texto.';
             $('rcNoteBtn').textContent = r.applied ? 'Desfazer' : 'Preencher a evolução'; $('rcNote').hidden = false;
