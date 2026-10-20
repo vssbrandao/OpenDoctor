@@ -1024,6 +1024,8 @@
     .cs-fim{height:30px;padding:0 24px;border:0;border-radius:999px;background:#000;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
     .cs-fim[hidden]{display:none}
+    .cs-foot.adendo{align-items:flex-end;padding:16px 24px}            /* Figma: 24 da direita, 16 do pé */
+    .cs-pane .pr-addbox{margin-top:16px}
     .cs-bar{display:flex;align-items:center;gap:16px;width:517px;max-width:100%;height:56px;padding:0 10px 0 34px;border-radius:40px;background:#000;color:#fff}
     .cs-cv{display:block;flex:1;min-width:0;height:22px}
     .cs-msg{flex:1;min-width:0;font-weight:500;font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -2259,6 +2261,7 @@
                         <div class="pr-body" id="prLockedBody"></div>
                         <div id="prLockedAdds"></div>
                       </div>
+                      <div class="pr-addbox" id="prAddBox" hidden></div>
                 <div class="pr-soap" id="prSoap" hidden>
                   <label class="pr-soapf"><span>S — Subjetivo</span><textarea data-f="s" placeholder="Queixa, história, sintomas relatados…"></textarea></label>
                   <div class="pr-soapf"><span>O — Objetivo</span>
@@ -2305,11 +2308,6 @@
                   <span class="pr-status" id="prStatus"></span>
                   <span class="pr-count" id="prCount" hidden></span>
                 </div>
-                <div class="pr-foot" id="prLockedFoot" hidden>
-                  <span class="pr-status"></span>
-                  <button class="pr-ghost" id="prAddBtn" type="button">Adicionar adendo</button>
-                </div>
-                <div class="pr-addbox" id="prAddBox" hidden></div>
                 <!-- versão de teste: o cabeçalho antigo (consulta, relógio "Iniciar consulta", Texto livre | SOAP) fica fora da tela -->
                 <div hidden>
                   <div id="prEvoLabel"></div><div id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
@@ -2319,6 +2317,7 @@
                   <!-- os botões do pé da evolução saíram da tela a pedido; ficam aqui porque o código ainda os usa -->
                   <button id="prCopyLast" type="button" hidden>Copiar da última</button><button id="prSave" type="button">Salvar</button>
                   <button id="prFinalize" type="button">Finalizar evolução</button>
+                  <div id="prLockedFoot" hidden><button id="prAddBtn" type="button">Adicionar adendo</button></div>
                 </div>
               </div>
             </section>
@@ -4840,7 +4839,7 @@
         var lk = locked();
         $('csCard').hidden = false; $('csCard').classList.toggle('lk', lk);
         $('csPlay').hidden = true; $('csPlay')._pl = null;
-        if (lk) $('prRec').hidden = true;
+        if (lk) csAdendo();
         return !lk || !!gravada;
       }
       // a aba que abre com a consulta: a evolução finalizada abre no SOAP; senão, Transcrição quando dá para gravar
@@ -4863,9 +4862,20 @@
         f.addEventListener('click', function () { $('prFinalize').click(); });
         box.appendChild(f); csSyncFim(); return f;
       }
-      function csSoFim() {                                 // a gravação pronta: no pé, só o Finalizar
-        var box = $('prRec'); box.innerHTML = ''; box.className = 'cs-foot'; box.hidden = locked();
-        if (!locked()) csFimEvo(box);
+      function csSoFim() {                                 // a gravação pronta: no pé, só o Finalizar (finalizada: o adendo)
+        if (locked()) { csAdendo(); return; }
+        var box = $('prRec'); box.innerHTML = ''; box.className = 'cs-foot'; box.hidden = false;
+        csFimEvo(box);
+      }
+      // evolução finalizada: "Adicionar adendo" no canto do pé (Figma 1090:32797); o campo abre na aba SOAP, abaixo da assinada
+      function csAdendo() {
+        var box = $('prRec'); box.innerHTML = ''; box.className = 'cs-foot adendo'; box.hidden = false;
+        var b = el('button', 'cs-fim', 'Adicionar adendo'); b.type = 'button'; b.hidden = $('prAddBox').children.length > 0;
+        b.addEventListener('click', function () {
+          csTab('soap'); $('prAddBtn').click(); b.hidden = true;
+          $('prAddBox').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+        box.appendChild(b);
       }
       function csSyncFim() { var f = $('csFimEvo'); if (f) f.hidden = !ready || locked() || !compose().content.trim(); }   // só com texto
       // gravando: "Finalizar" acima e a barra (ondas do volume, tempo e o botão redondo que pausa e continua);

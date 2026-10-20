@@ -230,6 +230,18 @@ RX = FakeReceitas({UID: {"name": "Dra. Teste"}})
 RX.install(setattr)
 db.get_note = lambda uid, nid: dict(_note_out(NOTES[nid]), patient_id=NOTES[nid]["pid"]) if nid in NOTES else None
 
+
+def _add_addendum(uid, nid, content):            # adendo em memória (como db.add_addendum: só em evolução finalizada)
+    n = NOTES.get(nid)
+    if not n or not n["signed_at"]:
+        return None
+    a = {"id": len(n["addenda"]) + 1, "content": content, "created_at": dt.datetime.now(dt.timezone.utc).isoformat()}
+    n["addenda"].append(a)
+    return a
+
+
+db.add_addendum = _add_addendum
+
 # ----- transcritor e modelo simulados: consulta FICTÍCIA -----
 SIM = {"rede": False, "ia": False, "lento": 1.2, "erro_seq": set(), "recusar_seq": set()}
 FALAS = [("Bom dia. Como passou desde a última consulta? Bem, graças a Deus. Estou tomando os remédios certinho: a losartana, a metformina e o do colesterol. E a caminhada, conseguiu manter?", []),
