@@ -995,12 +995,13 @@
        O cartão (#F7F8F8, canto 40, 8 de respiro) enche a altura da tela junto com o que fica abaixo dele; dentro, o player
        (branco, 96 de altura, canto 32) depois da consulta e o cartão branco com as abas, o conteúdo e o pé */
     #prEvoBox{min-height:calc(100vh - 88px);padding-top:12px;gap:16px}
-    .cs-card{flex:1 0 440px;margin-bottom:8px;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:40px;background:#F7F8F8;font-family:var(--disp)}
+    .cs-card{flex:1 0 440px;margin-bottom:8px;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:40px;background:#F7F8F8;font-family:var(--disp);
+      container-type:inline-size}             /* coluna estreita: as abas e os botões encolhem o respiro em vez de quebrar a linha */
     .cs-card[hidden]{display:none}
     .cs-main{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;border-radius:32px;background:#fff}
     /* abas Transcrição | SOAP: trilho #F3F3F3 de 36, a escolhida branca com borda; 14 Medium (pedido do usuário; o Figma tem 12) */
-    .cs-seg{flex:none;align-self:center;display:flex;height:36px;margin-top:24px;border-radius:24px;background:#F3F3F3}
-    .cs-seg button{position:relative;height:36px;padding:0 42px;border:1px solid transparent;border-radius:24px;background:none;cursor:pointer;
+    .cs-seg{flex:none;align-self:center;display:flex;max-width:calc(100% - 32px);height:36px;margin-top:24px;border-radius:24px;background:#F3F3F3}
+    .cs-seg button{position:relative;min-width:0;height:36px;padding:0 clamp(12px, 7.2cqi, 42px);white-space:nowrap;border:1px solid transparent;border-radius:24px;background:none;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:140%;color:#666C6F}
     .cs-seg button.on{background:#fff;border-color:rgba(0,0,0,.08);color:#000}
     .cs-seg button.dot::after{content:'';position:absolute;top:9px;right:30px;width:6px;height:6px;border-radius:50%;background:#FF5500}
@@ -1015,12 +1016,12 @@
     .cs-foot{flex:none;display:flex;flex-direction:column;align-items:center;gap:24px;padding:16px 24px 30px}
     .cs-foot[hidden]{display:none}
     .cs-foot.bar{padding-bottom:41px}
-    .cs-go{display:flex;align-items:center;justify-content:center;gap:8px;height:56px;padding:0 42px;border:0;border-radius:999px;background:#000;
+    .cs-go{display:flex;align-items:center;justify-content:center;gap:8px;max-width:100%;height:56px;padding:0 clamp(20px, 7.2cqi, 42px);white-space:nowrap;border:0;border-radius:999px;background:#000;
       cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
     .cs-go svg{flex:none;width:17px;height:17px}
     .cs-go:disabled{background:#C4C7C5;cursor:default}
     .cs-nota{max-width:420px;font-size:12px;line-height:16px;color:#666C6F;text-align:center}
-    .cs-fim{height:30px;padding:0 24px;border:0;border-radius:999px;background:#000;cursor:pointer;
+    .cs-fim{height:30px;padding:0 24px;white-space:nowrap;border:0;border-radius:999px;background:#000;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
     .cs-fim[hidden]{display:none}
     /* o que flutua no pé, por cima do texto e sem máscara (Figma 1090:32797: 24 da direita, 16 do pé) */
