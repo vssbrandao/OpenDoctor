@@ -68,6 +68,9 @@
       transition:background-color .12s,box-shadow .12s}
     .fl:focus-within{background:#fff;box-shadow:inset 0 0 0 1px #7D7D82}
     .fl.bad{box-shadow:inset 0 0 0 1px #D93025}
+    /* preenchido (fora do foco): branco com o contorno fino das linhas de Integrações, em vez do cinza do campo vazio */
+    /* (a classe .cheio vem do script: o :has() não percebe valores postos por código) */
+    .fl.cheio:not(.bad):not(:focus-within),.fl.lock.cheio{background:#fff;box-shadow:inset 0 0 0 1px var(--card-border)}
     .fl-input{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:24px;outline:none;background:transparent;
       padding:41.4px 32px 24.6px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:500;font-size:15px;
       line-height:18px;letter-spacing:-.2px;color:#000}
@@ -76,12 +79,11 @@
     .fl-label{position:absolute;left:32px;right:32px;top:32.2px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;color:#6B6B70;transition:top .12s,font-size .12s,color .12s}
     .fl-input:focus + .fl-label,.fl-input:not(:placeholder-shown) + .fl-label,.fl-input:-webkit-autofill + .fl-label,
-    .fl.sel .fl-label,.fl.lock .fl-label{top:24.6px;font-size:12px;color:#7D7D82}
+    .fl.sel.cheio .fl-label,.fl.sel:focus-within .fl-label,.fl.lock .fl-label{top:24.6px;font-size:12px;color:#7D7D82}
     /* UF: lista no mesmo campo (sempre com valor, o rótulo fica em cima) */
     .fl.sel select.fl-input{appearance:none;-webkit-appearance:none;padding-right:56px;cursor:pointer;
       background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%237D7D82' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 32px center}
     /* e-mail da conta: só leitura, com o cadeado */
-    .fl.lock:focus-within{background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent}
     .fl.lock .fl-input{padding-right:64px;color:#7D7D82;cursor:default}
     .cfg-lock{position:absolute;right:32px;top:50%;margin-top:-9px;width:18px;height:18px;color:#7D7D82;pointer-events:none}
     .cfg-help{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
@@ -152,7 +154,7 @@
               <div class="cfg-row">
                 <div class="cfg-fld"><div class="fl"><input class="fl-input" id="cfCrm" name="crm" inputmode="numeric" maxlength="12" placeholder=" " aria-describedby="cfCrmH"><label class="fl-label" for="cfCrm">CRM</label></div>
                   <span class="cfg-help" id="cfCrmH">Só os números</span></div>
-                <div class="fl sel"><select class="fl-input" id="cfUf" name="crm_uf"><option value="">—</option></select><label class="fl-label" for="cfUf">UF do CRM</label></div>
+                <div class="fl sel"><select class="fl-input" id="cfUf" name="crm_uf"><option value=""></option></select><label class="fl-label" for="cfUf">UF do CRM</label></div>
               </div>
               <div class="fl"><input class="fl-input" id="cfEsp" name="especialidade" maxlength="80" placeholder=" "><label class="fl-label" for="cfEsp">Especialidade (opcional)</label></div>
               <div class="fl"><input class="fl-input" id="cfEnd" name="consultorio_endereco" maxlength="200" placeholder=" " autocomplete="street-address"><label class="fl-label" for="cfEnd">Endereço do consultório</label></div>
@@ -245,7 +247,10 @@
       }
       // o Salvar de cada cartão só acende com os dados carregados e algo mudado (como no print de referência);
       // o status mostra, nesta ordem: erro, salvando, mudança pendente, salvo e o que falta para emitir receita
+      // campo preenchido = branco com o contorno de Integrações (classe .cheio no .fl)
+      function marca() { [].forEach.call(document.querySelectorAll('.fl'), function (b) { var i = b.querySelector('.fl-input'); b.classList.toggle('cheio', !!(i && i.value)); }); }
       function sync() {
+        marca();
         var pa = papelAtual();
         save.disabled = !carregado || salvando || !mudou();
         psave.disabled = !carregado || psalvando || !pa || pa === papel;
@@ -274,7 +279,7 @@
       retry.addEventListener('click', carrega);
       campos(false); carrega();
       fetch('/me', { credentials: 'same-origin' }).then(function (r) { return r.json(); })
-        .then(function (j) { document.getElementById('cfgEmail').value = (j && j.user && j.user.email) || ''; }).catch(function () {});
+        .then(function (j) { document.getElementById('cfgEmail').value = (j && j.user && j.user.email) || ''; marca(); }).catch(function () {});
       f.addEventListener('input', function (e) { var b = e.target.closest && e.target.closest('.fl'); if (b) b.classList.remove('bad'); e1 = ''; ok1 = ''; sync(); });
       f.addEventListener('change', function () { e1 = ''; ok1 = ''; sync(); });
       p.addEventListener('change', function () { e2 = ''; ok2 = ''; sync(); });
