@@ -188,7 +188,8 @@ const cenarios = [
     await grava('/_preview/pr?pid=9003&ev=evH', 18); await encerra(); await sleep(2500);
     await send('Page.reload', { ignoreCache: true });
     await ate(est('pronta'), 20000, 'tela depois de recarregar'); await sleep(1500);
-    await finalizaEvo(); await sleep(600); await clica('#rcFinal button', 'Finalizar mesmo assim', true);   // (sem pontos abertos, só o confirm)
+    await finalizaEvo(); await sleep(600);
+    if (await ev(`!document.getElementById('rcFinal').hidden`)) await finalizaEvo();   // com o aviso na tela, o 2º Finalizar finaliza
     const nota = () => estado().then((e) => Object.values(e.evolucoes).find((n) => n.event_id === 'evH'));
     await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evH' && n.timing))`, 15000, 'finalizar');
     const m = ((await nota()).timing || {}).scribe || {};
@@ -286,7 +287,11 @@ const cenarios = [
     await finalizaEvo(); await sleep(600);
     const f = await ev(`(document.getElementById('rcFinal')||{}).textContent || ''`);
     if (!/não entrou na evolução/.test(f)) throw new Error('o Finalizar não avisou: ' + f);
-    return a.slice(0, 70) + '…';
+    const fins = await ev(`[...document.querySelectorAll('button')].filter((b) => b.getClientRects().length && /Finalizar/.test(b.textContent)).map((b) => b.textContent.trim())`);
+    if (fins.join() !== 'Finalizar') throw new Error('com o aviso, deveria haver um Finalizar só: ' + fins.join(' | '));
+    await finalizaEvo();                                                            // o mesmo Finalizar finaliza mesmo assim
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evG' && n.timing))`, 15000, 'finalizar mesmo assim');
+    return a.slice(0, 70) + '… (um Finalizar só; o 2º toque finaliza)';
   }],
   ['a paciente de exemplo continua com a demonstração', async () => {
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });

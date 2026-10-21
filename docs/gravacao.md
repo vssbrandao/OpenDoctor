@@ -87,7 +87,8 @@ confirmação ao finalizar.
 - **Finalizar a evolução:**
   - fora da gravação, o "Finalizar" do pé só aparece com texto na evolução, gerada ou escrita à mão;
   - finaliza (assina) com a confirmação de sempre;
-  - com pontos não conferidos ou trechos fora da evolução, pergunta antes, abaixo do cartão ("Finalizar mesmo assim?").
+  - com pontos não conferidos ou trechos fora da evolução, avisa antes, abaixo do cartão, com "Voltar e conferir". Com o
+    aviso na tela, tocar de novo no "Finalizar" do cartão finaliza mesmo assim (não há um segundo botão Finalizar).
 - **Finalizada:**
   - a aba SOAP mostra a evolução assinada direto na tela, sem caixa cinza, com os adendos;
   - o pé some. "Adicionar adendo" flutua no canto direito e abre o campo na aba SOAP, abaixo da assinada;
@@ -227,6 +228,7 @@ python -m app.scribe_eval --comparar
 | 20/10/2026 | Destaques do player com card (parte do SOAP, minuto, texto, Ouvir, setas), também na gravação real | referência do usuário (o card do player da divulgação); sem "Saiba mais" |
 | 20/10/2026 | Sai a marca "O paciente autorizou a gravação": "Iniciar consulta" grava direto | pedido do usuário; o RIPD registra a mudança e fica pendente de revisão jurídica |
 | 20/10/2026 | Sai o card "Consulta gravada" (com "Gravar mais um trecho") | pedido do usuário, sabendo que não dá mais para gravar outro trecho depois de gerar |
+| 20/10/2026 | Sai o "Finalizar mesmo assim" do aviso de pontos: o 2º toque no Finalizar do cartão finaliza | pedido do usuário (um Finalizar só na tela) |
 
 ## Pendências
 

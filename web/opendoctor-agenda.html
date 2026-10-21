@@ -984,7 +984,7 @@
     .rc-t.wait{color:#80868B}
     .rc-final .t{flex:1;min-width:0}
     .rc-final .t b{font-weight:500}
-    .rc-final .pr-ghost,.rc-final .pr-save{height:32px;border-radius:16px}
+    .rc-final .pr-ghost{height:32px;border-radius:16px}
     @media (prefers-reduced-motion:reduce){.rc-pill i,.rc-live::after,.rc-u.typing .rc-t::after,.rc-step.rc-now i{animation:none}.hc-played.rc-run{transition:none}}
     /* ===== aba Consulta no design do Figma "Consulta" (nó 1089:32631; quadro de 1440: coluna de 604, cartão de 68 a 756) =====
        O cartão (#F7F8F8, canto 40, 8 de respiro) enche a altura da tela junto com o que fica abaixo dele; dentro, o player
@@ -5805,9 +5805,11 @@
                  !r.segTable.some(function (t) { return t.rec_id === r.recId && t.seq === s.seq; });
         });
       }
-      // finalizar com pontos ainda não conferidos (ou trechos fora da evolução) pede confirmação (uma vez)
+      // finalizar com pontos ainda não conferidos (ou trechos fora da evolução) avisa abaixo do cartão (uma vez); com o aviso
+      // na tela, o mesmo "Finalizar" do cartão finaliza mesmo assim (um botão Finalizar só)
       function rrHoldFinalize() {
         var r = rrActive() && rrCur(); if (!r || r.st !== 'done' || r.finalOk) return false;
+        if (!$('rcFinal').hidden) { $('rcFinal').hidden = true; r.finalOk = true; return false; }
         var open = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; }), falta = rrFaltam(r).length;
         if (!open.length && !falta) return false;
         var hi = open.filter(function (f) { return f.nivel === 'alto'; }).length, box = $('rcFinal'); box.innerHTML = ''; box.hidden = false;
@@ -5815,11 +5817,10 @@
           ' para conferir</b>' +
           (hi ? ', ' + hi + (hi === 1 ? ' importante' : ' importantes') : '') : '') +
           (falta ? (open.length ? ' e ' : '<b>') + falta + (falta === 1 ? ' trecho da gravação não entrou' : ' trechos da gravação não entraram') +
-                   ' na evolução' + (open.length ? '' : '</b>') : '') + '. Finalizar mesmo assim?';
-        var b1 = el('button', 'pr-ghost', 'Voltar e conferir'), b2 = el('button', 'pr-save', 'Finalizar mesmo assim'); b1.type = b2.type = 'button';
+                   ' na evolução' + (open.length ? '' : '</b>') : '') + '. Para finalizar mesmo assim, toque em Finalizar de novo.';
+        var b1 = el('button', 'pr-ghost', 'Voltar e conferir'); b1.type = 'button';
         b1.addEventListener('click', function () { box.hidden = true; $('rcReview').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
-        b2.addEventListener('click', function () { box.hidden = true; r.finalOk = true; $('prFinalize').click(); });
-        box.appendChild(b1); box.appendChild(b2); box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        box.appendChild(b1); box.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return true;
       }
       // recuperação: ao abrir a consulta, o servidor diz o que já foi transcrito; o aparelho, o que ainda não subiu
