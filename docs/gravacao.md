@@ -22,7 +22,7 @@ trocados entre página, servidor e banco, como testar e avaliar, e as decisões 
    Os remédios extraídos (menos os suspensos) entram no rascunho da receita desta consulta como "Da gravação", sem
    repetir (detalhes em `docs/prescricao.md`); a última linha diz quantos (`receita`).
 5. **Revisão.** A página preenche os campos vazios da evolução em SOAP, sem apagar o que o médico escreveu, e lista os
-   pontos para conferir. O mesmo "Finalizar" do cartão, com a evolução pronta, finaliza (assina). Com pontos abertos,
+   pontos para conferir. Com a evolução pronta, o "Assinar" do cartão a assina (finaliza). Com pontos abertos,
    pede confirmação. A evolução guarda o rastreio (`data.scribe`) e, ao finalizar, os números da revisão
    (`data.timing.scribe`).
 
@@ -75,7 +75,7 @@ confirmação ao finalizar.
     trecho desta gravação citado pela parte, de `result.fields_src`; na demonstração, a primeira fala de cada parte).
     Tocar num marcador abre o card: o nome da parte, o minuto, o texto que a IA escreveu para ela, "Ouvir" (o player
     vai até ali e toca) e as setas entre os destaques. Esc, tocar fora ou ir para a aba SOAP fecha o card;
-  - o aviso da IA ("Evolução preenchida pela gravação: revise na aba SOAP", que fecha no X) e o "Finalizar" flutuam no
+  - o aviso da IA ("Evolução preenchida pela gravação: revise na aba SOAP", que fecha no X) e o "Assinar" flutuam no
     pé, por cima do texto, sem máscara;
   - na gravação real, abaixo do cartão, os pontos "Para conferir na evolução" ("Ver na transcrição" abre a fala na aba
     Transcrição). O card "Consulta gravada" e o "Gravar mais um trecho" saíram (20/10/2026): depois de gerada a evolução,
@@ -84,18 +84,18 @@ confirmação ao finalizar.
   - só em SOAP. Um rascunho antigo em texto livre aparece no S;
   - salva sozinha ao parar de digitar. Não há Salvar, "Copiar da última" nem "Finalizar evolução" na tela;
   - abaixo do cartão fica só o status: falha ao salvar, limite de caracteres.
-- **Finalizar a evolução:**
-  - fora da gravação, o "Finalizar" do pé só aparece com texto na evolução, gerada ou escrita à mão;
+- **Assinar a evolução** (o botão "Assinar"; "Finalizar" é só o da gravação, que encerra e gera):
+  - fora da gravação, o "Assinar" do pé só aparece com texto na evolução, gerada ou escrita à mão;
   - finaliza (assina) com a confirmação de sempre;
   - com pontos não conferidos ou trechos fora da evolução, avisa antes, abaixo do cartão, com "Voltar e conferir". Com o
-    aviso na tela, tocar de novo no "Finalizar" do cartão finaliza mesmo assim (não há um segundo botão Finalizar).
+    aviso na tela, tocar de novo no "Assinar" do cartão assina mesmo assim (não há um segundo botão).
 - **Finalizada:**
   - a aba SOAP mostra a evolução assinada direto na tela, sem caixa cinza, com os adendos;
   - o pé some. "Adicionar adendo" flutua no canto direito e abre o campo na aba SOAP, abaixo da assinada;
   - a aba Transcrição mostra a transcrição ou o aviso "Esta consulta não foi gravada". A consulta gravada mantém o player.
 - **Peças antigas escondidas.** O cabeçalho antigo (o relógio "Iniciar consulta", `#prVisit`, e Texto livre | SOAP) e os
   botões do pé (`#prSave`, `#prCopyLast`, `#prFinalize`, `#prAddBtn`) ficam num bloco `hidden`, porque o código ainda os
-  usa. O "Finalizar" do cartão clica em `#prFinalize`; "Adicionar adendo", em `#prAddBtn`.
+  usa. O "Assinar" do cartão clica em `#prFinalize`; "Adicionar adendo", em `#prAddBtn`.
 
 ## Na página
 
@@ -228,7 +228,8 @@ python -m app.scribe_eval --comparar
 | 20/10/2026 | Destaques do player com card (parte do SOAP, minuto, texto, Ouvir, setas), também na gravação real | referência do usuário (o card do player da divulgação); sem "Saiba mais" |
 | 20/10/2026 | Sai a marca "O paciente autorizou a gravação": "Iniciar consulta" grava direto | pedido do usuário; o RIPD registra a mudança e fica pendente de revisão jurídica |
 | 20/10/2026 | Sai o card "Consulta gravada" (com "Gravar mais um trecho") | pedido do usuário, sabendo que não dá mais para gravar outro trecho depois de gerar |
-| 20/10/2026 | Sai o "Finalizar mesmo assim" do aviso de pontos: o 2º toque no Finalizar do cartão finaliza | pedido do usuário (um Finalizar só na tela) |
+| 20/10/2026 | Sai o "Finalizar mesmo assim" do aviso de pontos: o 2º toque no botão do cartão assina | pedido do usuário (um botão só na tela) |
+| 20/10/2026 | O botão que assina a evolução passa de "Finalizar" para "Assinar" (também a confirmação e os avisos) | pedido do usuário: "Finalizar" fica só o da gravação, que encerra e gera; assinar sozinho ao finalizar trancaria o texto da IA antes da revisão |
 
 ## Pendências
 

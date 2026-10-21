@@ -2314,7 +2314,7 @@
                 </div>
                     </div>
                     <div class="cs-foot" id="prRec"></div>
-                    <!-- flutua por cima do conteúdo (sem máscara): o aviso de que a IA preencheu a evolução e o Finalizar / Adicionar adendo -->
+                    <!-- flutua por cima do conteúdo (sem máscara): o aviso de que a IA preencheu a evolução e o Assinar / Adicionar adendo -->
                     <div class="cs-flut" id="csFlut">
                       <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button><button class="rc-x" type="button" id="rcNoteX" aria-label="Fechar o aviso" title="Fechar"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
                       <div class="cs-flut-pe" id="csFlutPe"></div>
@@ -4629,23 +4629,23 @@
       $('prFinalize').addEventListener('click', function () {
         if (rrHoldFinalize()) return;                      // gravação com pontos ainda não conferidos: confirma antes
         var x = compose();
-        if (!x.content.trim()) { setStatus('Escreva a evolução antes de finalizar.', true); return; }
-        if (x.content.length > MAX) { setStatus('Reduza o texto antes de finalizar.', true); return; }
-        if (!confirm('Finalizar a evolução?\n\nDepois de finalizada ela não pode mais ser alterada. Correções e complementos entram como adendos, com data e hora.')) return;
-        var btn = this; btn.disabled = true; setStatus('Finalizando…');
+        if (!x.content.trim()) { setStatus('Escreva a evolução antes de assinar.', true); return; }
+        if (x.content.length > MAX) { setStatus('Reduza o texto antes de assinar.', true); return; }
+        if (!confirm('Assinar a evolução?\n\nDepois de assinada ela não pode mais ser alterada. Correções e complementos entram como adendos, com data e hora.')) return;
+        var btn = this; btn.disabled = true; setStatus('Assinando…');
         var my = ctx;
         whenSaved(function (ok) {
           if (ctx !== my) { btn.disabled = false; return; }
-          if (!ok) { btn.disabled = false; setStatus('Não foi possível salvar antes de finalizar. Tente de novo.', true); return; }
+          if (!ok) { btn.disabled = false; setStatus('Não foi possível salvar antes de assinar. Tente de novo.', true); return; }
           api('POST', '/prontuario/notes/' + cur.id + '/finalize', { timing: tmFinal() }).then(function (res) {
             btn.disabled = false;
             if (ctx !== my) return;
-            if (!(res.ok && res.j.ok)) { setStatus('Não foi possível finalizar.', true); return; }
+            if (!(res.ok && res.j.ok)) { setStatus('Não foi possível assinar.', true); return; }
             cur.signed_at = res.j.signed_at; cur.addenda = cur.addenda || [];
             try { localStorage.removeItem(dkey()); if (ctx._tk) sessionStorage.removeItem('od_tm_' + ctx._tk); } catch (_) {}
             renderEvo(); renderHist(); renderKpis(); loadVisits(my); csTab('soap');   // a assinada aparece na aba SOAP
             setStatus('');
-          }).catch(function () { btn.disabled = false; setStatus('Falha de conexão ao finalizar.', true); });
+          }).catch(function () { btn.disabled = false; setStatus('Falha de conexão ao assinar.', true); });
         });
       });
       function renderAdds(box, adds) {
@@ -4881,18 +4881,18 @@
         b.disabled = !!o.off; b.addEventListener('click', function () { f(b); }); box.appendChild(b);
         return b;
       }
-      // "Finalizar" fora da gravação: finaliza (assina) a evolução, com a confirmação e os pontos para conferir de sempre.
-      // Gravando, o mesmo botão encerra e gera a evolução (csBar); pronta, ele fica sozinho no pé para finalizar
+      // "Assinar": assina (finaliza) a evolução, com a confirmação e os pontos para conferir de sempre. O "Finalizar" é só o da
+      // gravação, que encerra e gera a evolução (csBar); pronta, o "Assinar" fica sozinho no pé
       function csFimEvo(box) {
-        var old = $('csFimEvo'); if (old) old.remove();      // um Finalizar só na página (csSyncFim age nele)
-        var f = el('button', 'cs-fim', 'Finalizar'); f.type = 'button'; f.id = 'csFimEvo'; f.title = 'Finalizar a evolução';
+        var old = $('csFimEvo'); if (old) old.remove();      // um Assinar só na página (csSyncFim age nele)
+        var f = el('button', 'cs-fim', 'Assinar'); f.type = 'button'; f.id = 'csFimEvo'; f.title = 'Assinar a evolução';
         f.addEventListener('click', function () {
-          if ($('prFinalize').disabled) { setStatus('Finalizando…'); return; }   // uma finalização ainda em andamento
+          if ($('prFinalize').disabled) { setStatus('Assinando…'); return; }     // uma assinatura ainda em andamento
           $('prFinalize').click();
         });
         box.appendChild(f); csSyncFim(); return f;
       }
-      function csSoFim() {                                 // a gravação pronta: o Finalizar flutua no pé (finalizada: o adendo)
+      function csSoFim() {                                 // a gravação pronta: o Assinar flutua no pé (assinada: o adendo)
         if (locked()) { csAdendo(); return; }
         var pr = $('prRec'); pr.innerHTML = ''; pr.hidden = true; csFimEvo(csPe());
       }
@@ -5805,8 +5805,8 @@
                  !r.segTable.some(function (t) { return t.rec_id === r.recId && t.seq === s.seq; });
         });
       }
-      // finalizar com pontos ainda não conferidos (ou trechos fora da evolução) avisa abaixo do cartão (uma vez); com o aviso
-      // na tela, o mesmo "Finalizar" do cartão finaliza mesmo assim (um botão Finalizar só)
+      // assinar com pontos ainda não conferidos (ou trechos fora da evolução) avisa abaixo do cartão (uma vez); com o aviso
+      // na tela, o mesmo "Assinar" do cartão assina mesmo assim (um botão só)
       function rrHoldFinalize() {
         var r = rrActive() && rrCur(); if (!r || r.st !== 'done' || r.finalOk) return false;
         if (!$('rcFinal').hidden) { $('rcFinal').hidden = true; r.finalOk = true; return false; }
@@ -5817,7 +5817,7 @@
           ' para conferir</b>' +
           (hi ? ', ' + hi + (hi === 1 ? ' importante' : ' importantes') : '') : '') +
           (falta ? (open.length ? ' e ' : '<b>') + falta + (falta === 1 ? ' trecho da gravação não entrou' : ' trechos da gravação não entraram') +
-                   ' na evolução' + (open.length ? '' : '</b>') : '') + '. Para finalizar mesmo assim, toque em Finalizar de novo.';
+                   ' na evolução' + (open.length ? '' : '</b>') : '') + '. Para assinar mesmo assim, toque em Assinar de novo.';
         var b1 = el('button', 'pr-ghost', 'Voltar e conferir'); b1.type = 'button';
         b1.addEventListener('click', function () { box.hidden = true; $('rcReview').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
         box.appendChild(b1); box.scrollIntoView({ behavior: 'smooth', block: 'center' });

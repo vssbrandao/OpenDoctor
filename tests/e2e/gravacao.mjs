@@ -38,7 +38,7 @@ async function ate(expr, ms, oque) {
 const srv = async (p) => (await fetch(BASE + p)).json();
 // A tela é o cartão "Consulta" (Figma): no pé (#prRec), "Iniciar consulta" (.cs-go) ou, gravando, "Finalizar" (.cs-fim) acima da
 // barra preta (.cs-bar) com o botão redondo .cs-stop (aria-label "Pausar a gravação" / "Continuar gravando"); enviando e gerando,
-// .cs-msg na barra; pronta, o player (#csPlay); o Finalizar da evolução flutua (#csFlut .cs-fim). Não há marca de autorização:
+// .cs-msg na barra; pronta, o player (#csPlay); o "Assinar" da evolução flutua (#csFlut .cs-fim). Não há marca de autorização:
 // "Iniciar consulta" grava direto.
 // "on": o elemento não está escondido dentro do cartão (vale também com outra aba do prontuário aberta, como o chip antigo).
 const UI = `(() => { const q = (s) => document.querySelector(s);
@@ -82,7 +82,7 @@ async function grava(url, segundos) {
   await sleep(segundos * 1000);
 }
 const fimGravacao = () => clica('#prRec.bar .cs-fim', 'Finalizar');   // gravando: o Finalizar acima da barra encerra e gera
-const finalizaEvo = () => clica('#csFlut .cs-fim', 'Finalizar');         // pronta: o Finalizar que flutua no pé finaliza a evolução
+const finalizaEvo = () => clica('#csFlut .cs-fim', 'Assinar');           // pronta: o Assinar que flutua no pé assina a evolução
 async function encerra() {
   await fimGravacao();
   await ate(est('pronta'), 60000, 'evolução pronta');
@@ -189,7 +189,7 @@ const cenarios = [
     await send('Page.reload', { ignoreCache: true });
     await ate(est('pronta'), 20000, 'tela depois de recarregar'); await sleep(1500);
     await finalizaEvo(); await sleep(600);
-    if (await ev(`!document.getElementById('rcFinal').hidden`)) await finalizaEvo();   // com o aviso na tela, o 2º Finalizar finaliza
+    if (await ev(`!document.getElementById('rcFinal').hidden`)) await finalizaEvo();   // com o aviso na tela, o 2º Assinar assina
     const nota = () => estado().then((e) => Object.values(e.evolucoes).find((n) => n.event_id === 'evH'));
     await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evH' && n.timing))`, 15000, 'finalizar');
     const m = ((await nota()).timing || {}).scribe || {};
@@ -279,19 +279,19 @@ const cenarios = [
     await encerra();
     return 'trechos enviados sem o IndexedDB';
   }],
-  ['trecho recusado aparece como fora da evolução e o Finalizar avisa', async () => {
+  ['trecho recusado aparece como fora da evolução e o Assinar avisa', async () => {
     await srv('/_preview/sim?recusar_seq=1');
     await grava('/_preview/pr?pid=9003&ev=evG', 34); await encerra();
     const a = (await ev(UI)).alerta;
     if (!/trecho da gravação não entrou/.test(a)) throw new Error('sem aviso do trecho que ficou de fora: ' + a);
     await finalizaEvo(); await sleep(600);
     const f = await ev(`(document.getElementById('rcFinal')||{}).textContent || ''`);
-    if (!/não entrou na evolução/.test(f)) throw new Error('o Finalizar não avisou: ' + f);
-    const fins = await ev(`[...document.querySelectorAll('button')].filter((b) => b.getClientRects().length && /Finalizar/.test(b.textContent)).map((b) => b.textContent.trim())`);
-    if (fins.join() !== 'Finalizar') throw new Error('com o aviso, deveria haver um Finalizar só: ' + fins.join(' | '));
-    await finalizaEvo();                                                            // o mesmo Finalizar finaliza mesmo assim
+    if (!/não entrou na evolução/.test(f)) throw new Error('o Assinar não avisou: ' + f);
+    const fins = await ev(`[...document.querySelectorAll('button')].filter((b) => b.getClientRects().length && /Finalizar|Assinar/.test(b.textContent)).map((b) => b.textContent.trim())`);
+    if (fins.join() !== 'Assinar') throw new Error('pronta, com o aviso, deveria haver só o Assinar: ' + fins.join(' | '));
+    await finalizaEvo();                                                            // o mesmo Assinar assina mesmo assim
     await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evG' && n.timing))`, 15000, 'finalizar mesmo assim');
-    return a.slice(0, 70) + '… (um Finalizar só; o 2º toque finaliza)';
+    return a.slice(0, 70) + '… (só o Assinar; o 2º toque assina)';
   }],
   ['a paciente de exemplo continua com a demonstração', async () => {
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });
