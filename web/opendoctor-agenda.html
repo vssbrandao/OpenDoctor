@@ -926,12 +926,7 @@
     .rc-note .rc-x svg{width:14px;height:14px;color:currentColor}
     .pr-soapf.rc-from > span::after{content:'Da gravação';display:inline-block;margin-left:8px;padding:0 8px;border-radius:8px;background:#D3E3FD;
       font-weight:500;font-size:10px;line-height:18px;color:#0842A0;vertical-align:1px}
-    /* gravação real: autorização, microfone, avisos, etapas, resumo e pontos para conferir (linguagem do Finance) */
-    .rc-consent{display:flex;align-items:flex-start;gap:12px;margin-top:12px;padding:12px 16px;border-radius:12px;background:#fff;font-family:var(--disp);cursor:pointer}
-    .rc-consent[hidden]{display:none}
-    .rc-consent input{flex:none;width:18px;height:18px;margin:1px 0 0;accent-color:#0B57D0;cursor:pointer}
-    .rc-consent b{display:block;font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
-    .rc-consent small{display:block;margin-top:2px;font-size:12px;line-height:16px;color:#56595E}
+    /* gravação real: microfone, avisos, etapas, resumo e pontos para conferir (linguagem do Finance) */
     .rc-mic{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 6px 0 8px;border:0;border-radius:8px;background:#E1E3E8;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:10px;line-height:18px;color:#001D35}
     .rc-mic svg{width:14px;height:14px}
@@ -957,11 +952,6 @@
     .rc-step.rc-wait{color:#80868B}
     .rc-step small{margin-left:auto;font-size:12px;color:#56595E}
     @keyframes rcSpin{to{transform:rotate(360deg)}}
-    .rc-sum{display:flex;align-items:center;gap:12px;font-family:var(--disp);width:100%}
-    .rc-sum > svg{flex:none;width:20px;height:20px;color:#56595E}
-    .rc-sum .t{flex:1;min-width:0}
-    .rc-sum b{display:block;font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
-    .rc-sum small{display:block;font-size:12px;line-height:16px;color:#56595E}
     .rc-dv{background:none;color:inherit;text-decoration:underline dotted #B06000 2px;text-underline-offset:3px;cursor:help}
     .rc-u.hl{background:#FEF7E0;box-shadow:0 0 0 8px #FEF7E0}
     .rc-review{margin-top:12px;padding:4px 0;border-radius:12px;background:#fff;font-family:var(--disp)}
@@ -1086,18 +1076,13 @@
     .cs-rb:hover,.cs-stop:hover{filter:brightness(.96)}
     .cs-card .rc-tx.pb .rc-u.on .rc-h{color:#000}
     .cs-card .rc-tx.pb .rc-u.on .rc-t{color:#000}
-    /* abaixo do cartão (a página é branca): microfone, autorização, etapas, resumo, revisão — em caixas #F7F8F8 */
-    #prEvoBox > .rc-consent,#prEvoBox > .rc-steps,#prEvoBox > .rc-note,#prEvoBox > .rc-review,#prEvoBox > .rc-alert{margin-top:0}
-    #prEvoBox > .rc-consent,#prEvoBox > .rc-steps,#prEvoBox > .rc-note,#prEvoBox > .rc-review{background:#F7F8F8}
-    .rc-consent .rc-pede{display:none;margin-top:6px;font-style:normal;font-weight:500;font-size:12px;line-height:16px;color:#0B57D0}
-    .rc-consent.pede{box-shadow:inset 0 0 0 2px #0B57D0}
-    .rc-consent.pede .rc-pede{display:block}
-    .cs-sum{padding:10px 8px 10px 16px;border-radius:12px;background:#F7F8F8}
+    /* abaixo do cartão (a página é branca): microfone, etapas, resumo, revisão — em caixas #F7F8F8 */
+    #prEvoBox > .rc-steps,#prEvoBox > .rc-note,#prEvoBox > .rc-review,#prEvoBox > .rc-alert{margin-top:0}
+    #prEvoBox > .rc-steps,#prEvoBox > .rc-note,#prEvoBox > .rc-review{background:#F7F8F8}
     .cs-card{position:relative}
     #prEditFoot.cs-status{position:absolute;left:24px;right:24px;top:100%;margin-top:4px;justify-content:center;gap:8px;padding-top:0;border-top:0}
     #prEditFoot.cs-status .pr-status{min-width:0;margin-right:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     #prEditFoot.cs-status:not(:has(.pr-status:not(:empty), .pr-count:not([hidden]))){display:none}
-    .cs-sum[hidden]{display:none}
     .gcard{padding:16px;border-radius:16px;background:#F7F8FA}
     .gcard .pr-h2{font-size:16px;line-height:24px}
     .gcard .pr-cardsub{font-size:12px;line-height:16px}
@@ -1589,7 +1574,7 @@
         margin:0!important;border-radius:0!important;background:none!important}
       #csSoap{display:block!important}
       .cs-pane{overflow:visible!important;height:auto!important;margin:0!important;padding:0!important}
-      #csTx,.cs-seg,.cs-foot,.cs-flut,.cs-play,.cs-sum,.rc-consent,.rc-alert,.rc-steps,.rc-review,.rc-final{display:none!important}
+      #csTx,.cs-seg,.cs-foot,.cs-flut,.cs-play,.rc-alert,.rc-steps,.rc-review,.rc-final{display:none!important}
       .pr-bigcard,.pr-sumcol{background:none!important;padding:0!important;border-radius:0!important}
       .pr-sumcol,.pr-allergy,.pr-item,.pr-trow,.ov-chart,.ov-dxrow,.ov-post{break-inside:avoid}
     }
@@ -2341,10 +2326,8 @@
                     <span class="pr-count" id="prCount" hidden></span>
                   </div>
                 </div>
-                <label class="rc-consent" id="rcConsent" hidden><input type="checkbox" id="rcConsentIn"><span><b>O paciente autorizou a gravação desta consulta</b><em class="rc-pede">Marque a autorização para começar a gravar.</em></span></label>
                 <div class="rc-alert" id="rcAlert" role="status" aria-live="polite" hidden></div>
                 <div class="rc-steps" id="rcSteps" hidden></div>
-                <div class="rc-sum cs-sum" id="csSum" hidden></div>
                 <div class="rc-review" id="rcReview" hidden></div>
                 <div class="pr-body pr-printcur" id="prPrintCur"></div>
                 <div class="rc-final" id="rcFinal" hidden></div>
@@ -5132,8 +5115,8 @@
       // o cartão: Iniciar consulta → gravando/pausada (Finalizar e a barra) → gerando → pronta (o player com O, A e P)
       function recDemoRender() {
         var r = recCur(), lk = locked();
-        // as peças da gravação real (microfone, autorização, avisos, revisão) não aparecem na demonstração
-        ['rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
+        // as peças da gravação real (microfone, avisos, revisão) não aparecem na demonstração
+        ['rcAlert', 'rcSteps', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
         if (recLive && recLive !== r && recLive.st === 'live') recPause(recLive);      // trocou de consulta gravando: pausa
         if (recPb && recPb.r !== r) recStopPb();
         if (lk && r && r.st === 'live') recPause(r);                  // finalizou gravando: para o relógio
@@ -5625,7 +5608,6 @@
         try { navigator.wakeLock.request('screen').then(function (l) { RR.lock = l; }, function () {}); } catch (_) {}
       }
       document.addEventListener('visibilitychange', function () { if (RR.live && RR.live.st === 'live') rrWake(); });
-      function rrMore(r) { if (locked()) return; r.st = 'paused'; r.finalOk = false; rrStart(r); }   // "Gravar mais um trecho"
       function rrPause(r) {
         if (r.st !== 'live') return;
         rrCutAll(r); aeStop(); r.st = 'paused'; RR.live = null; r.quiet = 0; if (r.warn === 'silencio') r.warn = ''; rrPill();
@@ -5974,7 +5956,7 @@
       }
       function rrRender(r) {
         if (!r || r !== rrCur() || recDemo()) return;
-        ['rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
+        ['rcAlert', 'rcSteps', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
         var lk = locked(), gravada = csDone(r);
         if (!csShow(gravada)) { rrTx(r); return; }
         var pend = rrPending(r), t = mm2(r.samples / SR16), sc = $('csTx'), near = recNear(sc);
@@ -5988,11 +5970,6 @@
               : '<b>O navegador não deixou usar o microfone.</b> Clique no cadeado ao lado do endereço do site, escolha <b>Permitir</b> em Microfone e toque em Tentar de novo.');
           } else if (!lk) {
             csGo('Iniciar consulta', function () { rrIniciar(r); });
-            $('rcConsent').hidden = false; $('rcConsentIn').checked = r.consent;
-            $('rcConsentIn').onchange = function () {
-              r.consent = this.checked; $('rcConsent').classList.remove('pede');
-              if (this.checked && r.pede) { r.pede = false; csTab('tx'); rrStart(r); $('prView').scrollTo({ top: 0, behavior: 'smooth' }); }
-            };
           }
         } else if (r.st === 'live') {
           csBar({ live: true, t: t, amps: r.amps, fim: fim, btn: function () { rrPause(r); } });
@@ -6021,11 +5998,6 @@
         } else if (gravada) {                          // o player percorre as falas no tempo, sem som (o áudio foi descartado)
           csSoFim();
           csPlayer(r, rrMarcas(r), false);
-          var sm = $('csSum'); sm.innerHTML = RI.mic; sm.hidden = false; var tt = el('div', 't');
-          tt.appendChild(el('b', null, 'Consulta gravada · ' + rrSummary(r)));
-          tt.appendChild(el('small', null, 'O áudio foi descartado; a transcrição fica guardada com a evolução.')); sm.appendChild(tt);
-          if (!lk) { var more = el('button', 'pr-ghost', 'Gravar mais um trecho'); more.type = 'button'; more.addEventListener('click',
-            function () { csTab('tx'); rrMore(r); }); sm.appendChild(more); }
           if (r.st === 'done' && !lk) {
             $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise na aba SOAP.' +
               (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') :
@@ -6038,12 +6010,9 @@
         csDot(r);
         rrAlert(r, pend, lk);
       }
-      // "Iniciar consulta": sem a autorização marcada, leva até ela (abaixo do cartão) e começa a gravar quando ela for marcada
-      function rrIniciar(r) {
-        if (r.consent) { csTab('tx'); rrStart(r); return; }
-        r.pede = true; $('rcConsent').classList.add('pede');
-        $('rcConsent').scrollIntoView({ behavior: 'smooth', block: 'center' }); $('rcConsentIn').focus({ preventScroll: true });
-      }
+      // "Iniciar consulta" grava direto: a marca "O paciente autorizou a gravação" saiu da tela (20/10/2026, pedido do usuário);
+      // consentAt guarda a hora em que a gravação começou e segue em cada trecho (X-Consent), como antes
+      function rrIniciar(r) { r.consent = true; csTab('tx'); rrStart(r); }
       // o aviso do cartão (um de cada vez, do mais grave): microfone, silêncio, gravação longa, armazenamento, trechos fora
       // da evolução, servidor, sessão, internet
       function rrAlert(r, pend, lk) {
@@ -6089,8 +6058,8 @@
         var r = rrCur();
         if (RR.live && RR.live !== r && RR.live.st === 'live') rrPause(RR.live);
         if (recPb && recPb.r !== r) recStopPb();
-        if (!r) { $('csCard').hidden = true; ['rcConsent', 'rcAlert', 'rcSteps', 'csSum', 'rcNote', 'rcReview',
-          'rcFinal'].forEach(function (id) { $(id).hidden = true; }); return; }
+        if (!r) { $('csCard').hidden = true; ['rcAlert', 'rcSteps', 'rcNote', 'rcReview', 'rcFinal'].forEach(function (id) { $(id).hidden = true; });
+          return; }
         if (locked() && r.st === 'live') rrPause(r);
         if (r.pending && ready && !locked()) { r.pending = false; rrApply(r); }
         rrLoad(r); rrRender(r);

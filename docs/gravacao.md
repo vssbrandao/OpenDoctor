@@ -12,7 +12,7 @@ trocados entre página, servidor e banco, como testar e avaliar, e as decisões 
 2. **Trecho → aparelho → servidor.** Cada trecho vira WAV e vai para o IndexedDB **antes** de subir. Se o armazenamento
    falhar, fica na memória (`RR.mem`). Uma fila sobe um trecho por vez para `POST /prontuario/transcribe` e só apaga o
    trecho quando o servidor devolve o texto. O trecho em andamento também é guardado a cada 2 s.
-3. **Servidor → transcrição.** O servidor confere login, paciente, autorização e formato, e manda o áudio à OpenAI
+3. **Servidor → transcrição.** O servidor confere login, paciente, a hora do início (`X-Consent`) e o formato, e manda o áudio à OpenAI
    (`app/stt.py`) com o fim do trecho anterior como contexto. Guarda só o texto (`recording_segments`); o áudio é
    descartado.
 4. **Finalizar → evolução.** O "Finalizar" do cartão encerra a gravação. `POST /prontuario/scribe` junta os trechos
@@ -47,18 +47,17 @@ As tabelas de `app/data/` ficam fora do código para o médico revisor conferir 
 ## A tela
 
 A aba Consulta do prontuário é um cartão (`#csCard`, Figma "Consulta", nó 1089:32631) com as abas **Transcrição** e
-**SOAP** e um pé (`#prRec`). O que o design não mostra fica abaixo do cartão: autorização, avisos, etapas, resumo, pontos
-para conferir e a confirmação ao finalizar.
+**SOAP** e um pé (`#prRec`). O que o design não mostra fica abaixo do cartão: avisos, etapas, pontos para conferir e a
+confirmação ao finalizar.
 
 - **Abas.** A consulta abre em Transcrição quando dá para gravar (paciente de exemplo ou conta liberada). Nas contas
   sem a gravação, ou com a evolução finalizada, abre em SOAP. Quando a evolução gerada fica pronta, a aba SOAP ganha
   um ponto laranja até ser aberta.
 - **Antes de gravar:**
-  - o pé tem "Iniciar consulta";
-  - abaixo do cartão fica só a autorização do paciente ("O paciente autorizou a gravação desta consulta"). Sem
-    seletor de microfone na tela: grava o padrão do computador (ou o último usado); trocar de microfone aparece nos
+  - o pé tem "Iniciar consulta", que grava direto: não há marca de autorização na tela (saiu em 20/10/2026, pedido do
+    usuário). A hora em que a gravação começa vai em `consentAt` / `X-Consent`, como antes;
+  - sem seletor de microfone na tela: grava o padrão do computador (ou o último usado); trocar de microfone aparece nos
     avisos de microfone desconectado ou sem som;
-  - sem a autorização marcada, "Iniciar consulta" leva até ela, e a gravação começa ao marcar;
   - nas contas sem a gravação, fora da paciente de exemplo, o botão fica desativado, com um aviso.
 - **Gravando:**
   - o pé mostra "Finalizar" acima da barra preta: ondas do volume, o tempo e o botão redondo que pausa e continua
@@ -78,8 +77,9 @@ para conferir e a confirmação ao finalizar.
     vai até ali e toca) e as setas entre os destaques. Esc, tocar fora ou ir para a aba SOAP fecha o card;
   - o aviso da IA ("Evolução preenchida pela gravação: revise na aba SOAP", que fecha no X) e o "Finalizar" flutuam no
     pé, por cima do texto, sem máscara;
-  - na gravação real, abaixo do cartão: "Consulta gravada", com "Gravar mais um trecho", e os pontos "Para conferir na
-    evolução" ("Ver na transcrição" abre a fala na aba Transcrição).
+  - na gravação real, abaixo do cartão, os pontos "Para conferir na evolução" ("Ver na transcrição" abre a fala na aba
+    Transcrição). O card "Consulta gravada" e o "Gravar mais um trecho" saíram (20/10/2026): depois de gerada a evolução,
+    não se grava outro trecho na mesma consulta.
 - **Evolução:**
   - só em SOAP. Um rascunho antigo em texto livre aparece no S;
   - salva sozinha ao parar de digitar. Não há Salvar, "Copiar da última" nem "Finalizar evolução" na tela;
@@ -138,7 +138,8 @@ A seção da gravação tem três partes:
 
 **`POST /prontuario/transcribe`**: o corpo é o WAV (16 kHz, mono, 16 bits, até 5 MB e 60 s). Os cabeçalhos são
 `X-Patient-Id`, `X-Rec-Id` (UUID criado na página), `X-Seq`, `X-At` (início do trecho, em s), `X-Event-Id`, `X-Note-Id`
-e `X-Consent` (ISO: quando a gravação começou, com a autorização do paciente marcada). O nome do paciente nunca vai.
+e `X-Consent` (ISO: quando a gravação começou; desde 20/10/2026 não há marca de autorização na tela). O nome do paciente
+nunca vai.
 - Mesmo `rec_id` + `seq` já transcrito: devolve o texto guardado sem cobrar.
 - Mesmo trecho chegando ao mesmo tempo: o segundo espera o primeiro (`_EM_ANDAMENTO`).
 - Teto: 6 h de gravação por médico em 24 h.
@@ -224,6 +225,8 @@ python -m app.scribe_eval --comparar
 | 19/10/2026 | Na gravação real, o player percorre a transcrição sem som | o áudio não é guardado |
 | 20/10/2026 | O aviso "Evolução preenchida pela gravação" perde o Desfazer e ganha um X para fechar | pedido do usuário |
 | 20/10/2026 | Destaques do player com card (parte do SOAP, minuto, texto, Ouvir, setas), também na gravação real | referência do usuário (o card do player da divulgação); sem "Saiba mais" |
+| 20/10/2026 | Sai a marca "O paciente autorizou a gravação": "Iniciar consulta" grava direto | pedido do usuário; o RIPD registra a mudança e fica pendente de revisão jurídica |
+| 20/10/2026 | Sai o card "Consulta gravada" (com "Gravar mais um trecho") | pedido do usuário, sabendo que não dá mais para gravar outro trecho depois de gerar |
 
 ## Pendências
 

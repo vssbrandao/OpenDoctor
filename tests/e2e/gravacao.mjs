@@ -38,7 +38,8 @@ async function ate(expr, ms, oque) {
 const srv = async (p) => (await fetch(BASE + p)).json();
 // A tela é o cartão "Consulta" (Figma): no pé (#prRec), "Iniciar consulta" (.cs-go) ou, gravando, "Finalizar" (.cs-fim) acima da
 // barra preta (.cs-bar) com o botão redondo .cs-stop (aria-label "Pausar a gravação" / "Continuar gravando"); enviando e gerando,
-// .cs-msg na barra; pronta, o player (#csPlay) e o resumo abaixo do cartão (#csSum); o Finalizar da evolução flutua (#csFlut .cs-fim).
+// .cs-msg na barra; pronta, o player (#csPlay); o Finalizar da evolução flutua (#csFlut .cs-fim). Não há marca de autorização:
+// "Iniciar consulta" grava direto.
 // "on": o elemento não está escondido dentro do cartão (vale também com outra aba do prontuário aberta, como o chip antigo).
 const UI = `(() => { const q = (s) => document.querySelector(s);
   const on = (e) => { if (!e) return false; for (let x = e; x && !(x.classList && x.classList.contains('pr-panel')); x = x.parentElement) if (x.hidden) return false; return true; };
@@ -46,12 +47,12 @@ const UI = `(() => { const q = (s) => document.querySelector(s);
   const stop = q('#prRec .cs-stop'), lab = on(q('#prRec .cs-bar')) && on(stop) ? stop.getAttribute('aria-label') : '', msg = t('#prRec .cs-msg');
   const st = lab === 'Pausar a gravação' ? 'gravando' : lab === 'Continuar gravando' ? (/interrompida/.test(t('#rcAlert')) ? 'interrompida' : 'pausada')
     : msg ? (/Gerando/.test(msg) ? 'gerando' : 'enviando')
-    : on(q('#csPlay')) && /^Consulta gravada ·/.test(t('#csSum')) ? 'pronta'
+    : on(q('#csPlay')) ? 'pronta'
     : [...document.querySelectorAll('#prRec .cs-go')].some(on) ? 'iniciar' : '';
-  return { st, msg, tempo: t('#rcTime'), alerta: t('#rcAlert'), nota: t('#rcNote'), resumo: t('#csSum'),
+  return { st, msg, tempo: t('#rcTime'), alerta: t('#rcAlert'), nota: t('#rcNote'),
            pill: q('#rcPill') && !q('#rcPill').hidden ? q('#rcPill').textContent.trim() : '',   // fixo: não tem offsetParent
            pontos: q('#rcReview') && !q('#rcReview').hidden ? q('#rcReview').querySelectorAll('.rc-pt').length : 0,
-           botoes: [...document.querySelectorAll('#prRec button, #csFlutPe button, #csSum button')].filter((b) => on(b) && !b.hidden)
+           botoes: [...document.querySelectorAll('#prRec button, #csFlutPe button')].filter((b) => on(b) && !b.hidden)
              .map((b) => (b.textContent.trim() || b.getAttribute('aria-label') || b.title) + (b.disabled ? ' (off)' : '')) }; })()`;
 const IDB = `(async () => { const dbs = await indexedDB.databases(); const n = dbs.find((d) => d.name.startsWith('od_gravacao_')); if (!n) return [];
   return await new Promise((ok) => { const q = indexedDB.open(n.name); q.onsuccess = () => { const g = q.result.transaction('seg').objectStore('seg').getAll();
@@ -75,9 +76,8 @@ async function abre(url) {
 }
 async function grava(url, segundos) {
   if (url) await abre(url);
-  await ate(`!!document.getElementById('rcConsentIn') && !document.getElementById('rcConsent').hidden`, 10000, 'autorização');
-  if (!(await ev(`document.getElementById('rcConsentIn').checked`))) await ev(`document.getElementById('rcConsentIn').click()`);
-  await clica('#prRec .cs-go', 'Iniciar consulta');
+  await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && b.textContent.includes('Iniciar consulta'))`, 10000, 'Iniciar consulta');
+  await clica('#prRec .cs-go', 'Iniciar consulta');                               // grava direto, sem marcar autorização
   await ate(est('gravando'), 10000, 'começar a gravar');
   await sleep(segundos * 1000);
 }
@@ -178,13 +178,11 @@ const cenarios = [
     await escreve('s', ' .', true);
     await sleep(3500);
     const nota = () => estado().then((e) => Object.values(e.evolucoes).find((n) => n.event_id === 'evC'));
-    if (!(await nota()).scribe) throw new Error('o selo sumiu depois de recarregar e editar');
-    await clica('#csSum button', 'Gravar mais um trecho'); await ate(est('gravando'), 10000, 'gravar mais'); await sleep(8000);
-    await encerra(); await sleep(2500);
     const n = await nota(), vezes = (n.content.match(/Refere boa adesão/g) || []).length;
+    if (!n.scribe) throw new Error('o selo sumiu depois de recarregar e editar');
     if (vezes !== 1) throw new Error('texto gerado aparece ' + vezes + ' vezes');
-    if (!n.scribe) throw new Error('o selo sumiu depois de gravar mais');
-    return `${depois.pontos} pontos mantidos, selo mantido, texto uma vez só`;
+    if (await ev(`[...document.querySelectorAll('button')].some((b) => b.offsetParent !== null && /Gravar mais/.test(b.textContent))`)) throw new Error('voltou o Gravar mais um trecho');
+    return `${depois.pontos} pontos mantidos, selo mantido, texto uma vez só, sem o card da consulta gravada`;
   }],
   ['os números da revisão chegam ao finalizar mesmo depois de recarregar', async () => {
     await grava('/_preview/pr?pid=9003&ev=evH', 18); await encerra(); await sleep(2500);
@@ -197,28 +195,12 @@ const cenarios = [
     if (!(m.gen_s > 0 && m.fim_s >= m.review_s + m.gen_s - 1 && m.mantido_pct > 90 && m.rec_s > 0)) throw new Error('métricas perdidas ao recarregar: ' + JSON.stringify(m));
     return `geração ${m.gen_s} s, do Encerrar ao Finalizar ${m.fim_s} s, mantido ${m.mantido_pct}%`;
   }],
-  ['gravar mais, recarregar antes de encerrar e gerar de novo: o texto não entra duas vezes', async () => {
-    const nota = () => estado().then((e) => Object.values(e.evolucoes).find((n) => n.event_id === 'evK'));
-    await grava('/_preview/pr?pid=9003&ev=evK', 20); await encerra(); await sleep(3000);
-    const antes = (await nota()).content;
-    await clica('#csSum button', 'Gravar mais um trecho'); await ate(est('gravando'), 10000, 'gravar mais'); await sleep(17000);
-    await clica('#prRec button[aria-label^="Pausar"]');
-    await ate(`${IDB}.then((l) => l.filter((x) => !x.part).length === 0)`, 30000, 'trechos subirem'); await sleep(1500);
-    await send('Page.reload', { ignoreCache: true });
-    await ate(est('interrompida'), 20000, 'recuperar como interrompida');
-    await clica('#rcAlert button', 'Gerar evolução agora');
-    await ate(est('pronta'), 30000, 'evolução pronta'); await sleep(3500);
-    const n = await nota(), vezes = (n.content.match(/Refere boa adesão/g) || []).length;
-    if (vezes !== 1) throw new Error('texto gerado aparece ' + vezes + ' vezes');
-    if (n.content === antes) throw new Error('a geração nova não entrou no texto');
-    return 'a geração nova trocou a anterior, uma vez só';
-  }],
   ['fone desconectado entre consultas: a seguinte grava com o microfone do computador', async () => {
     await grava('/_preview/pr?pid=9003&ev=evA', 3);
     await clica('#prRec button[aria-label^="Pausar"]'); await sleep(1500);
     await ev(`window.__foneDesligado = true`);                                    // AirPods de volta no estojo
     await ev(`window.__openProntuario({ patient_id: 9004, patient: 'x', from: 'pacientes', event_id: 'evB', title: 'Retorno' })`);
-    await ate(`${PE} && !document.getElementById('rcConsent').hidden`, 20000, 'gravador da consulta 2');
+    await ate(`${PE} && [...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null)`, 20000, 'gravador da consulta 2');
     await grava('', 2);                                                            // mesma página: o fone escolhido continua lembrado
     const s = await ev(UI);
     if (s.st !== 'gravando') throw new Error('não gravou: ' + JSON.stringify(s));
@@ -310,8 +292,7 @@ const cenarios = [
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });
     await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && !b.disabled)`, 20000, 'gravador');
     await sleep(1500);                                                              // (a gravação real, se fosse ligar, já teria aparecido)
-    const real = await ev(`['rcConsent'].filter((i) => !document.getElementById(i).hidden)`);
-    if (real.length || await ev(`!!document.querySelector('#prRec .cs-nota')`)) throw new Error('não está na demonstração: ' + JSON.stringify(real));
+    if (await ev(`!!document.querySelector('#prRec .cs-nota')`)) throw new Error('não está na demonstração');
     await clica('#prRec .cs-go', 'Iniciar consulta');
     await ate(`/dona Maria/.test(document.getElementById('rcTx').textContent)`, 15000, 'o roteiro da demonstração');
     if (await ev(`window.__mic.tracks.length`)) throw new Error('a demonstração ligou o microfone');

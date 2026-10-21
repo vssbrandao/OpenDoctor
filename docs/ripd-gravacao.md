@@ -12,8 +12,9 @@ não sugere diagnóstico, exame nem conduta (ver item 8).
 
 - Liga só para contas liberadas (`SCRIBE_EMAILS` / `SCRIBE_ALL` no servidor); `SCRIBE_OFF=1` desliga para
   todos na hora.
-- Sem a marca "O paciente autorizou a gravação desta consulta", a gravação não começa: "Iniciar consulta" leva até a
-  marca e só grava depois que ela é marcada.
+- Desde 20/10/2026 (pedido do usuário) não há mais a marca "O paciente autorizou a gravação desta consulta" na tela:
+  "Iniciar consulta" grava direto. Avisar o paciente e pedir a autorização antes de tocar no botão fica com o médico;
+  a hora em que a gravação começou fica registrada. **[pendente]** revisão jurídica desta mudança.
 
 ## 2. Dados tratados
 
@@ -22,7 +23,7 @@ não sugere diagnóstico, exame nem conduta (ver item 8).
 | Áudio da consulta (voz do médico, do paciente e de acompanhantes) | microfone do computador do médico | trechos no navegador (IndexedDB) até o servidor confirmar; memória do servidor durante a transcrição | navegador: até a confirmação, no máximo 48 h, apagado ao sair da conta; servidor: não é gravado |
 | Texto de cada trecho (transcrição), com o minuto e as palavras ouvidas com dúvida | transcrição (OpenAI) | banco do OpenDoctor (`recording_segments`) | junto do prontuário: mínimo 20 anos (Lei 13.787/2018) |
 | Último rascunho gerado (texto da evolução) e os pontos para conferir, para a revisão continuar depois de recarregar ou noutro dia | servidor | `recordings.scribe` (`saida`) | junto da transcrição; sai com "Apagar transcrição" |
-| Data e hora da autorização do paciente, duração, situação | página | `recordings` | idem |
+| Data e hora em que a gravação começou (`consent_at`), duração, situação | página | `recordings` | idem |
 | Rastreio da evolução gerada (versão do prompt, modelo, contagem de pontos conferidos) — sem texto | servidor | `clinical_notes.data.scribe` | idem |
 | Métricas da revisão (segundos, %, contagens) — sem texto | página, ao finalizar | `clinical_notes.data.timing` | idem |
 
@@ -33,7 +34,7 @@ falem na consulta; voz (dado biométrico em potencial — o OpenDoctor não extr
 
 1. Navegador: `getUserMedia` → AudioWorklet (`web/rec-worklet.js`) → trechos de 15–30 s cortados no silêncio
    → WAV 16 kHz → IndexedDB (banco por médico) → fila de envio.
-2. `POST /prontuario/transcribe` (login, dono do paciente, autorização obrigatória, formato conferido) →
+2. `POST /prontuario/transcribe` (login, dono do paciente, hora do início obrigatória, formato conferido) →
    `stt.atranscribe` → OpenAI `/v1/audio/transcriptions` → só o **texto** é gravado; o navegador apaga o trecho.
    Junto do áudio vão, como contexto, o fim do texto do trecho anterior — sem CPF, CNS, telefone e e-mail
    (`scribe.mask_docs`), mas com o nome falado, que o próprio áudio já contém — e os nomes de remédios, problemas
@@ -61,8 +62,8 @@ falem na consulta; voz (dado biométrico em potencial — o OpenDoctor não extr
 ## 5. Base legal e transparência
 
 - Base legal: tutela da saúde, em procedimento realizado por profissionais de saúde (LGPD, art. 11, II, "f").
-- Transparência ao paciente: o médico pede a autorização e marca na tela antes de gravar; a data e a hora
-  ficam registradas. A evolução gerada leva o aviso "Transcrição automática (IA)" (CFM 2.454/2026 —
+- Transparência ao paciente: o médico avisa e pede a autorização antes de gravar (não há mais marca na tela desde
+  20/10/2026); a data e a hora do início ficam registradas. A evolução gerada leva o aviso "Transcrição automática (IA)" (CFM 2.454/2026 —
   **[pendente]** conferir com o advogado o artigo e o texto exigidos).
 - Política de Privacidade (`web/privacy.html`): seção "Gravação da consulta".
 
@@ -86,7 +87,7 @@ falem na consulta; voz (dado biométrico em potencial — o OpenDoctor não extr
 | Perda de parte da consulta | captura contínua sem buracos entre trechos; cada trecho fica no navegador até a confirmação; o trecho em andamento é salvo a cada 2 s; fila com novas tentativas; recuperação ao reabrir | baixo (no máximo ~2 s se o computador desligar) |
 | Erro clínico no rascunho (remédio, dose, valor, alergia, CID) | o médico revisa e assina; conferências sem IA (número fora da fala, remédio que não aparece, dose fora do usual, alergia, sinal vital impossível, CID inexistente, frase deduzida); palavras ouvidas com dúvida; pedido de confirmação ao finalizar com pontos não conferidos | médio: depende da revisão do médico. Avaliação com 31 casos fictícios, sem nenhum remédio ou dose inventados; **[pendente]** conferência dos gabaritos por um médico e consultas encenadas por pessoas |
 | Texto do médico sobrescrito | o rascunho só preenche campos vazios e entra abaixo do que já foi escrito; "Desfazer" | baixo |
-| Uso sem autorização do paciente | a gravação só começa com a marca; data e hora registradas | depende da conduta do médico |
+| Uso sem autorização do paciente | sem marca na tela desde 20/10/2026: só a hora do início fica registrada | médio: depende só da conduta do médico; **[pendente]** revisão jurídica |
 
 ## 8. Fronteira com dispositivo médico (Anvisa, RDC 657/2022)
 
