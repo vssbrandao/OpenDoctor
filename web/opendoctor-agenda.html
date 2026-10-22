@@ -2198,7 +2198,7 @@
             <section class="pr-panel" data-panel="analise" hidden>
               <!-- ===== bloco do gráfico, na estrutura da página de cotação do Google Finance
                    (google.com/finance/quote/RUT:INDEXRUSSELL?comparison=…&type=line): número + variação + data,
-                   cartão do gráfico (barra com Comparar, chips das séries, gráfico, períodos)
+                   cartão do gráfico (barra com o sinal do gráfico, que abre o menu de trocar e comparar; chips das séries, gráfico, períodos)
                    e, embaixo, a pergunta pronta para o assistente. Fica no começo da Análise. ===== -->
               <section class="gq" id="ovTop" hidden>
                 <div class="gq-quote" id="gqQuote">
@@ -6283,7 +6283,7 @@
         drawChart();
       }
 
-      // ----- menu Comparar da barra do gráfico -----
+      // ----- menu da barra do gráfico: o botão mostra o sinal do gráfico (ex.: Peso) e abre "Sinal principal" e "Comparar com" -----
       var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#0B57D0"/></svg>';
       function closeMenus() {
         [['gqCmp', 'gqCmpM'], ['csMetric', 'csMetricM'], ['prMore', 'prMoreM']].forEach(function (p) { $(p[1]).hidden = true; $(p[0]).setAttribute('aria-expanded', 'false'); });
@@ -6388,6 +6388,7 @@
       }
       function drawChart() {
         var m = MBY[ov.metric]; if (!m || !ov.S) return;
+        $('gqCmp').querySelector('span').textContent = m.label; $('gqCmp').setAttribute('aria-label', m.label + ': trocar o sinal ou comparar');
         var now = new Date(), from = ov.range ? new Date(now.getFullYear(), now.getMonth() - ov.range, now.getDate()) : null;
         var ser = ov.ser = chartSeries(), pct = ov.cmp.length > 0;
         ser.forEach(function (s) { s.pts = from ? s.all.filter(function (p) { return p.t >= from; }) : s.all.slice(); s.base = s.pts.length ? s.get(s.pts[0]) : null; });
