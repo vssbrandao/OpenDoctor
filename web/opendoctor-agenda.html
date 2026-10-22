@@ -6373,8 +6373,9 @@
           why._q = deepQ(m.k, a, last, pts.length > 1 ? pts.length : 2);
         }
       }
-      function renderChips(ser) {
+      function renderChips(ser) {                          // a legenda das linhas; com uma linha só, o botão do gráfico já diz o nome
         var box = $('gqChips'); box.innerHTML = '';
+        if (ser.length === 1) return;
         ser.forEach(function (s) {
           var c = el('span', 'gq-chip' + (s.rm ? ' rm' : '')); c.appendChild(marker(s.shape, s.color)); c.appendChild(document.createTextNode(s.name));
           if (s.rm) {
