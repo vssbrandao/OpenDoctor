@@ -293,6 +293,20 @@ const cenarios = [
     await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evG' && n.timing))`, 15000, 'finalizar mesmo assim');
     return a.slice(0, 70) + '… (só o Assinar; o 2º toque assina)';
   }],
+  ['microfone mudo: avisa que não ouviu fala e "Gravar de novo" continua a mesma gravação', async () => {
+    await abre('/_preview/pr?pid=9003&ev=evM'); await ev(`window.__mic.mode = 'mudo'`);
+    await grava('', 5); await fimGravacao();
+    await ate(`/Não ouvimos nenhuma fala/.test((document.getElementById('rcAlert') || {}).textContent || '')`, 20000, 'aviso de que não ouviu fala');
+    const s = await ev(UI);
+    if (!s.botoes.includes('Gravar de novo') || s.botoes.includes('Gerar de novo')) throw new Error('botões: ' + s.botoes.join(' | '));
+    if (/transcrição está guardada/.test(s.alerta)) throw new Error('ainda diz que a transcrição está guardada: ' + s.alerta);
+    await ev(`window.__mic.mode = 'voz'`);
+    await clica('#prRec .cs-go', 'Gravar de novo'); await ate(est('gravando'), 10000, 'gravar de novo'); await sleep(8000);
+    await encerra();
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evM' && n.content.trim()))`,
+      15000, 'a evolução gerada depois de gravar de novo ser salva');
+    return 'avisou "Não ouvimos nenhuma fala"; gravou de novo e gerou a evolução';
+  }],
   ['a paciente de exemplo continua com a demonstração', async () => {
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });
     await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && !b.disabled)`, 20000, 'gravador');
@@ -325,7 +339,8 @@ async function main() {
       if (window.__foneDesligado && ex === 'fone-bt') throw new DOMException('Requested device not found', 'OverconstrainedError');
       const ac = new AudioContext(), dst = ac.createMediaStreamDestination(), sr = ac.sampleRate, len = Math.round(sr * 4);
       const buf = ac.createBuffer(1, len, sr), d = buf.getChannelData(0); let s = 7;
-      for (let i = 0; i < len; i++) { s = (s * 16807) % 2147483647; d[i] = i < sr * 3.2 ? (s / 2147483647 - 0.5) * 0.5 * (0.6 + 0.4 * Math.sin(i / sr * 25)) : 0; }
+      const mudo = window.__mic.mode === 'mudo';                             // microfone que só entrega silêncio
+      for (let i = 0; i < len; i++) { s = (s * 16807) % 2147483647; d[i] = !mudo && i < sr * 3.2 ? (s / 2147483647 - 0.5) * 0.5 * (0.6 + 0.4 * Math.sin(i / sr * 25)) : 0; }
       const src = ac.createBufferSource(); src.buffer = buf; src.loop = true; src.connect(dst); src.start();
       const t = dst.stream.getAudioTracks()[0]; t.getSettings = () => ({ deviceId: window.__foneDesligado ? 'embutido' : 'fone-bt' });
       window.__mic.tracks.push(t); return dst.stream;

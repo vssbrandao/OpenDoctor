@@ -5993,6 +5993,10 @@
            [conf ? 'rc-now' : 'rc-wait', 'Conferindo doses, alergias e números', '']].forEach(function (x) {
             var row = el('div', 'rc-step ' + x[0]); row.appendChild(el('i')); row.appendChild(el('span', null, x[1]));
               if (x[2]) row.appendChild(el('small', null, x[2])); st8.appendChild(row); });
+        } else if (r.st === 'fail' && /nada transcrito/.test(r.err || '')) {   // todos os trechos sem voz: nada subiu para transcrever
+          csGo('Gravar de novo', function () { r.st = 'paused'; r.err = ''; csTab('tx'); rrStart(r); });   // continua a mesma gravação
+          rcAlert('warn', 'micoff', '<b>Não ouvimos nenhuma fala nesta gravação.</b> Confira se o microfone certo está ligado e perto de vocês e ' +
+            'grave de novo, ou escreva a evolução à mão.');
         } else if (r.st === 'fail') {
           csGo('Gerar de novo', function () { rrGenerate(r); });
           rcAlert('bad', 'err', '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');

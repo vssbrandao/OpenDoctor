@@ -65,7 +65,9 @@ confirmação ao finalizar.
   - as falas aparecem na aba Transcrição: na gravação real, a cada trecho; na demonstração, palavra por palavra;
   - pausada ou interrompida, o mesmo botão redondo continua a gravação;
   - "Finalizar" encerra e gera a evolução. A barra troca as ondas pelo andamento (enviando, gerando). Na gravação real,
-    as etapas aparecem abaixo do cartão e, se a geração falhar, o pé mostra "Gerar de novo";
+    as etapas aparecem abaixo do cartão e, se a geração falhar, o pé mostra "Gerar de novo". Se nenhum trecho teve voz
+    (microfone mudo ou errado), nada sobe para transcrever e o servidor responde "nada transcrito": o aviso diz "Não
+    ouvimos nenhuma fala nesta gravação" e o pé mostra "Gravar de novo", que continua a mesma gravação;
   - na gravação real, fora da aba Consulta, um aviso fixo ("Gravando", "Voltar à consulta") leva de volta a ela.
 - **Depois da consulta:**
   - o player aparece em cima do cartão: a trilha, o tempo e o botão que percorre a transcrição. O cursor anda e a fala
@@ -229,6 +231,7 @@ python -m app.scribe_eval --comparar
 | 20/10/2026 | Sai a marca "O paciente autorizou a gravação": "Iniciar consulta" grava direto | pedido do usuário; o RIPD registra a mudança e fica pendente de revisão jurídica |
 | 20/10/2026 | Sai o card "Consulta gravada" (com "Gravar mais um trecho") | pedido do usuário, sabendo que não dá mais para gravar outro trecho depois de gerar |
 | 20/10/2026 | Sai o "Finalizar mesmo assim" do aviso de pontos: o 2º toque no botão do cartão assina | pedido do usuário (um botão só na tela) |
+| 22/10/2026 | Gravação sem fala: aviso próprio e "Gravar de novo", em vez do erro genérico que dizia "a transcrição está guardada" | o usuário testou com o microfone sem som e recebeu o erro genérico |
 | 20/10/2026 | O botão que assina a evolução passa de "Finalizar" para "Assinar" (também a confirmação e os avisos) | pedido do usuário: "Finalizar" fica só o da gravação, que encerra e gera; assinar sozinho ao finalizar trancaria o texto da IA antes da revisão |
 
 ## Pendências
