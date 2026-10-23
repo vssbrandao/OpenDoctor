@@ -991,10 +991,10 @@
        (branco, 96 de altura, canto 32) depois da consulta e o cartão branco com as abas, o conteúdo e o pé */
     #prEvoBox{min-height:calc(100vh - 80px);padding-top:4px;gap:16px;   /* cartão a 24 das abas do topo e a 24 do pé da tela */
       margin-bottom:-80px}   /* sem nada abaixo do cartão, a página não rola: desconta 80 dos 96 de respiro do .pr-view */
-    .cs-card{flex:1 0 440px;margin-bottom:8px;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px;border-radius:40px;background:#F7F8F8;font-family:var(--disp);
+    .cs-card{flex:1 0 440px;margin-bottom:8px;min-height:0;display:flex;flex-direction:column;gap:4px;padding:4px;border-radius:40px;background:#F7F8F8;font-family:var(--disp);
       container-type:inline-size}             /* coluna estreita: as abas e os botões encolhem o respiro em vez de quebrar a linha */
     .cs-card[hidden]{display:none}
-    .cs-main{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;border-radius:32px;background:#fff}
+    .cs-main{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;border-radius:35px;background:#fff}   /* Figma 1114:34529: 4 de margem cinza, canto 35 */
     /* abas Transcrição | SOAP: trilho #F3F3F3 de 36, a escolhida branca com borda; 14 Medium (pedido do usuário; o Figma tem 12) */
     .cs-seg{flex:none;align-self:center;display:flex;max-width:calc(100% - 32px);height:36px;margin-top:24px;border-radius:24px;background:#F3F3F3}
     .cs-seg button{position:relative;min-width:0;height:36px;padding:0 clamp(12px, 7.2cqi, 42px);white-space:nowrap;border:1px solid transparent;border-radius:24px;background:none;cursor:pointer;
@@ -1039,7 +1039,7 @@
     .cs-stop svg{display:block}
     /* o player: trilha de 416 (#F7F8F8) com o progresso preto e a bolinha de 10; marcadores laranja de 36 (O, A e P); os
        botões redondos de 48 (#F7F8F8) com o som e o play/pausa */
-    .cs-play{flex:none;display:flex;align-items:center;gap:24px;height:96px;padding:0 24px;border-radius:32px;background:#fff}
+    .cs-play{flex:none;display:flex;align-items:center;gap:24px;height:96px;padding:0 24px;border-radius:35px;background:#fff}
     .cs-play[hidden]{display:none}
     .cs-trk{position:relative;flex:1;min-width:0;height:36px;cursor:pointer}
     .cs-trk i{position:absolute;top:17px;left:0;height:2px;border-radius:1px}
