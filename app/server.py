@@ -1018,8 +1018,13 @@ def integrations_connect(provider: str, request: Request):
     if not u:
         # precisa estar logado para conectar um calendário a uma conta
         return RedirectResponse("/opendoctor-login.html?next=" + urllib.parse.quote("/opendoctor-integracao.html", safe=""))
-    state = auth.sign({"k": "cal", "prov": provider, "uid": u["id"]})
-    return RedirectResponse(integrations.connect_url(provider, state))
+    # o retorno só vale neste navegador (nonce no cookie) e para quem está logado nele — senão um link de
+    # conexão gerado por outra pessoa gravaria a agenda da vítima na conta dela
+    nonce = secrets.token_urlsafe(16)
+    state = auth.sign({"k": "cal", "prov": provider, "uid": u["id"], "n": nonce})
+    resp = RedirectResponse(integrations.connect_url(provider, state))
+    auth.set_oauth_cookie(resp, nonce, auth.CAL_COOKIE)
+    return resp
 
 
 @app.get("/auth/{provider}/callback")
@@ -1060,12 +1065,21 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
     # --- conexão de calendário ---
     if payload.get("k") == "cal":
         dest = "/opendoctor-integracao.html"
+        u = auth.current_user(request)
+        if (payload.get("prov") != provider or not auth.login_nonce_ok(request, payload, auth.CAL_COOKIE)
+                or not u or u["id"] != payload.get("uid")):
+            # começou em outro navegador, em outra conta ou noutro provedor: não grava a agenda em ninguém
+            resp = RedirectResponse(dest + "?erro=sessao")
+            resp.delete_cookie(auth.CAL_COOKIE, path="/auth/")
+            return resp
         try:
-            integrations.exchange_and_store(provider, code, payload["uid"])
-            return RedirectResponse(dest + "?conectado=" + provider)
+            integrations.exchange_and_store(provider, code, u["id"])
+            resp = RedirectResponse(dest + "?conectado=" + provider)
         except Exception as e:
             print("[oauth] callback falhou:", str(e)[:200])
-            return RedirectResponse(dest + "?erro=" + provider)
+            resp = RedirectResponse(dest + "?erro=" + provider)
+        resp.delete_cookie(auth.CAL_COOKIE, path="/auth/")
+        return resp
 
     return RedirectResponse("/opendoctor-agenda.html?erro=state")
 
@@ -1087,8 +1101,10 @@ def integrations_events(provider: str, request: Request, limit: int = 50,
     u = auth.current_user(request)
     if not u:
         return JSONResponse({"error": "não autenticado"}, status_code=401)
-    return {"events": integrations.events(u["id"], provider, limit,
-                                          start or None, end or None)}
+    try:
+        return {"events": integrations.events(u["id"], provider, limit, start or None, end or None)}
+    except integrations.NeedsReconnect:
+        return {"events": [], "needs_reconnect": True}
 
 
 @app.get("/calendar/events")
@@ -1102,7 +1118,10 @@ def calendar_events(request: Request, start: str = "", end: str = "", limit: int
     if not connected:
         return {"logged_in": True, "connected": None, "events": []}
     prov = "google" if "google" in connected else next(iter(connected))
-    evs = integrations.events(u["id"], prov, max(1, min(limit, 250)), start or None, end or None)
+    try:
+        evs = integrations.events(u["id"], prov, max(1, min(limit, 250)), start or None, end or None)
+    except integrations.NeedsReconnect:              # a agenda mostra "Reconectar" em vez de um dia vazio
+        return {"logged_in": True, "connected": prov, "events": [], "needs_reconnect": True}
     return {"logged_in": True, "connected": prov, "events": evs}
 
 
@@ -1132,11 +1151,7 @@ async def create_calendar_event(request: Request):
                                        patient_id=_own_patient_id(u, payload))
         return {"ok": True, "event": ev}
     except Exception as e:
-        msg = str(e)
-        # token somente-leitura → precisa reconectar com permissão de escrita
-        needs_reconnect = msg.startswith("403") or "insufficient" in msg.lower()
-        return JSONResponse({"error": msg[:200], "needs_reconnect": needs_reconnect},
-                            status_code=403 if needs_reconnect else 400)
+        return _cal_error(e)                          # conexão morta ou só leitura → reconectar
 
 
 def _own_patient_id(u, payload):
@@ -1153,9 +1168,17 @@ def _own_patient_id(u, payload):
 
 
 def _cal_error(e):
+    """Erro do calendário para a tela. Conexão morta (o Google recusou a renovação) ou token só de leitura
+    pedem reconectar (`reason` diz qual); falha passageira ao renovar vira 503 (tentar de novo)."""
+    if isinstance(e, integrations.NeedsReconnect):
+        return JSONResponse({"error": "A conexão com o Google Agenda expirou.", "needs_reconnect": True,
+                             "reason": "expirada"}, status_code=403)
     msg = str(e)
+    if msg == "sem token":
+        return JSONResponse({"error": "Não foi possível falar com o Google agora. Tente de novo."}, status_code=503)
     needs_reconnect = msg.startswith("403") or "insufficient" in msg.lower()
-    return JSONResponse({"error": msg[:200], "needs_reconnect": needs_reconnect},
+    return JSONResponse({"error": msg[:200], "needs_reconnect": needs_reconnect,
+                         **({"reason": "permissao"} if needs_reconnect else {})},
                         status_code=403 if needs_reconnect else 400)
 
 
@@ -1524,7 +1547,10 @@ async def prontuario_visits(request: Request):
     prov = "google" if "google" in connected else next(iter(connected))
     # eventos antigos (só com o nome) só entram se ninguém mais tem esse nome
     legacy_name = p["name"] if len(db.find_patients(u["id"], p["name"])) == 1 else None
-    visits = integrations.patient_events(u["id"], prov, p["id"], legacy_name)
+    try:
+        visits = integrations.patient_events(u["id"], prov, p["id"], legacy_name)
+    except integrations.NeedsReconnect:
+        return {"connected": True, "visits": [], "needs_reconnect": True}
     notes = db.notes_by_event(u["id"], [v["id"] for v in visits])
     for v in visits:
         v["note"] = notes.get(v["id"])

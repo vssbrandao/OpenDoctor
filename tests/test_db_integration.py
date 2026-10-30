@@ -250,3 +250,21 @@ def test_exemplo_vem_com_as_receitas(novo_usuario):
     rs = db.list_receitas(uid, pid)
     assert len(rs) == len(exemplo.CONSULTAS) and all(r["status"] == "emitida" and r["note_id"] for r in rs)
     assert [i["nome"] for i in rs[0]["itens"]] == ["Losartana", "Metformina", "Atorvastatina"]   # a mais nova
+
+
+def test_conexao_morta_e_reconexao(novo_usuario):
+    """O Google recusou a renovação: a linha perde o refresh_token e aparece em dead_providers; conectar de novo
+    (set_token com token novo) a tira de lá. users on delete cascade apaga a linha no fim."""
+    uid = novo_usuario()["id"]
+    agora = datetime.datetime.now(datetime.timezone.utc)
+    db.set_token(uid, "google", access_token="a", refresh_token="r", expires_at=agora - datetime.timedelta(hours=1),
+                 scope="calendar.events", account_email="ana@gmail.com")
+    assert db.dead_providers(uid) == set()                      # vencido, mas ainda renova
+    db.mark_token_dead(uid, "google", "outro")                  # o que falhou já foi trocado por uma reconexão
+    assert db.dead_providers(uid) == set() and db.get_token(uid, "google")["refresh_token"] == "r"
+    db.mark_token_dead(uid, "google", "r")
+    assert db.dead_providers(uid) == {"google"} and db.connected_providers(uid) == {"google": "ana@gmail.com"}
+    assert db.get_token(uid, "google")["refresh_token"] is None and db.get_token(uid, "google")["access_token"] == ""
+    db.set_token(uid, "google", access_token="b", refresh_token="r2", expires_at=agora + datetime.timedelta(hours=1),
+                 scope="calendar.events", account_email=None)
+    assert db.dead_providers(uid) == set() and db.connected_providers(uid) == {"google": "ana@gmail.com"}

@@ -97,8 +97,15 @@ def exchange_and_store(provider, code, user_id):
     )
 
 
+class NeedsReconnect(RuntimeError):
+    """A conexão com o calendário morreu (o provedor recusou a renovação: acesso revogado, senha trocada,
+    token vencido): só o médico reconectando resolve. Vira `needs_reconnect` nas rotas e o aviso na tela."""
+
+
 def _access_token(user_id, provider):
-    """Token válido do usuário (renova com refresh_token se expirou)."""
+    """Token válido do usuário (renova com refresh_token se expirou). None = calendário não conectado.
+    Levanta NeedsReconnect se a conexão morreu; a linha fica marcada (sem refresh_token) para não pedir a
+    renovação ao provedor de novo a cada atualização da agenda."""
     t = db.get_token(user_id, provider)
     if not t:
         return None
@@ -106,16 +113,32 @@ def _access_token(user_id, provider):
     if exp and exp > _utcnow():
         return t["access_token"]
     if not t.get("refresh_token"):
-        return None
+        raise NeedsReconnect("sem token")
     p = PROVIDERS[provider]
-    r = httpx.post(p["token"], timeout=30, data={
-        "client_id": _cid(provider), "client_secret": _secret(provider),
-        "refresh_token": t["refresh_token"], "grant_type": "refresh_token"})
-    if r.status_code != 200:
+    try:
+        r = httpx.post(p["token"], timeout=30, data={
+            "client_id": _cid(provider), "client_secret": _secret(provider),
+            "refresh_token": t["refresh_token"], "grant_type": "refresh_token"})
+    except httpx.HTTPError as e:                          # rede caiu ou o Google demorou: tenta na próxima
+        print(f"[oauth] renovação sem resposta: {provider} {type(e).__name__}", flush=True)
         return None
-    tok = r.json()
-    access = tok.get("access_token")
-    expires_at = _utcnow() + datetime.timedelta(seconds=int(tok.get("expires_in", 3600)) - 60)
+    if r.status_code != 200:
+        try:
+            err = str(r.json().get("error") or "")
+        except Exception:  # noqa: BLE001
+            err = ""
+        print(f"[oauth] renovação recusada: {provider} {r.status_code} {err[:40]}", flush=True)   # nunca o token
+        if r.status_code in (400, 401) and err == "invalid_grant":
+            db.mark_token_dead(user_id, provider, t["refresh_token"])
+            raise NeedsReconnect("conexão expirada")
+        return None                                       # falha passageira do provedor: tenta na próxima
+    try:
+        tok = r.json()
+        access = tok["access_token"]
+        expires_at = _utcnow() + datetime.timedelta(seconds=int(tok.get("expires_in", 3600)) - 60)
+    except (ValueError, KeyError, TypeError):             # resposta 200 ilegível: tenta na próxima
+        print(f"[oauth] renovação com resposta inválida: {provider}", flush=True)
+        return None
     db.update_access_token(user_id, provider, access, expires_at, tok.get("refresh_token"))
     return access
 
@@ -260,9 +283,11 @@ def patient_events(user_id, provider, patient_id, name=None, time_min=None, time
 def status(user_id):
     """Estado das integrações do usuário (ou tudo desconectado se None)."""
     connected = db.connected_providers(user_id) if user_id else {}
+    dead = db.dead_providers(user_id) if connected else set()
     out = {}
     for prov in PROVIDERS:
         out[prov] = {"connected": prov in connected,
+                     "needs_reconnect": prov in dead,          # conectado, mas a conexão morreu
                      "email": connected.get(prov),
                      "configured": configured(prov)}
     return out

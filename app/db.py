@@ -423,6 +423,26 @@ def delete_token(user_id, provider):
         conn.commit()
 
 
+def mark_token_dead(user_id, provider, refresh_token):
+    """O provedor recusou a renovação: tira o refresh_token e o token de acesso vencido (a linha fica, com o
+    e-mail, até o médico reconectar ou desconectar). Assim a agenda não pede a renovação de novo a cada
+    atualização e a tela mostra "Reconectar". Só mexe se o refresh_token ainda é o que falhou: uma reconexão
+    gravada nesse meio-tempo fica intacta."""
+    with connection() as conn:
+        conn.execute("""update oauth_tokens set refresh_token = null, access_token = '',
+                          expires_at = least(coalesce(expires_at, now()), now()), updated_at = now()
+                        where user_id = %s and provider = %s and refresh_token = %s""", (user_id, provider, refresh_token))
+        conn.commit()
+
+
+def dead_providers(user_id):
+    """Calendários conectados que não renovam mais (acesso vencido e sem refresh_token): precisam reconectar."""
+    with connection() as conn:
+        rows = conn.execute("""select provider from oauth_tokens where user_id = %s and refresh_token is null
+                               and (expires_at is null or expires_at <= now())""", (user_id,)).fetchall()
+    return {r[0] for r in rows}
+
+
 def connected_providers(user_id):
     with connection() as conn:
         with conn.cursor() as cur:
@@ -771,6 +791,56 @@ def add_example_notes(user_id, patient_id, pkey, patient_name, rows):
                 ids.append(cur.fetchone()[0])
         conn.commit()
     return ids
+
+
+def create_example_patient(user_id, name, birth_date, sex, cadastro, notes, receitas, arquivo):
+    """Cria a paciente de exemplo inteira numa transação só: ou ela sai completa, ou nada fica no banco (antes,
+    cada passo gravava sozinho e uma falha no meio deixava uma paciente pela metade, sem nada que a refizesse).
+    O essencial é o cadastro e as evoluções; as receitas e o laudo em PDF são extras — se um deles falhar (tabela
+    que ainda não existe, limite do banco), ele fica de fora e a paciente sai mesmo assim.
+    notes = (título, início, texto, dados, finalizada_em, atualizada_em); receitas = (índice da evolução em notes,
+    emitida_em, itens); arquivo = (nome, mime, bytes) ou None. Devolve o id, ou None se a conta já tem a de exemplo
+    (duas confirmações ao mesmo tempo não criam duas: a linha do médico fica travada até o fim)."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("select 1 from users where id = %s for update", (user_id,))
+            cur.execute("select 1 from patients where user_id = %s and patient_key = %s limit 1", (user_id, EXAMPLE_KEY))
+            if cur.fetchone():
+                conn.rollback()
+                return None
+            cur.execute("""insert into patients (user_id, patient_key, name, birth_date, sex, allergies, problems, medications)
+                           values (%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
+                        (user_id, EXAMPLE_KEY, name, birth_date, sex, cadastro.get("allergies"), cadastro.get("problems"),
+                         cadastro.get("medications")))
+            pid = cur.fetchone()[0]
+            ids = []
+            for title, start, content, data, signed_at, updated_at in notes:
+                cur.execute("""insert into clinical_notes (user_id, patient_id, patient_key, patient_name, event_title,
+                                 event_start, content, data, signed_at, created_at, updated_at)
+                               values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) returning id""",
+                            (user_id, pid, EXAMPLE_KEY, name, title, start, content, Jsonb(data), signed_at,
+                             updated_at, updated_at))
+                ids.append(cur.fetchone()[0])
+            try:
+                with conn.transaction():                      # ponto de retorno: falhou, só as receitas ficam de fora
+                    for i, emitida_em, itens in receitas:
+                        cur.execute("""insert into receitas (user_id, patient_id, note_id, tipo, status, itens, emitida_em,
+                                         created_at, updated_at)
+                                       values (%s,%s,%s,'simples','emitida',%s,%s,%s,%s)""",
+                                    (user_id, pid, ids[i], Jsonb(itens), emitida_em, emitida_em, emitida_em))
+            except Exception as e:  # noqa: BLE001
+                print("[exemplo] receitas de exemplo ficaram de fora:", str(e)[:200], flush=True)
+            if arquivo:
+                try:
+                    with conn.transaction():                  # idem para o laudo em PDF
+                        cur.execute("""insert into patient_files (user_id, patient_id, name, mime, size, data)
+                                       values (%s,%s,%s,%s,%s,%s)""",
+                                    (user_id, pid, arquivo[0], arquivo[1], len(arquivo[2]), arquivo[2]))
+                except Exception as e:  # noqa: BLE001
+                    print("[exemplo] laudo de exemplo ficou de fora:", str(e)[:200], flush=True)
+        conn.commit()
+    return pid
 
 
 # --- exames anexados (PDF/imagem), sempre filtrados pelo médico ---

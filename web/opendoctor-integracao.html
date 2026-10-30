@@ -80,6 +80,8 @@
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .conn-status[hidden]{display:none}
     .conn-status .dot{width:8px;height:8px;border-radius:50%;background:#3FDD09;flex:none}
+    .conn-status.expired .dot{background:#E37400}          /* conectado, mas o Google recusou a renovação */
+    .card-sub button.lnk{border:0;background:none;padding:0;font:inherit;color:#0B57D0;cursor:pointer;text-decoration:underline}
 
     /* botão (973:6642): h 64, padding 16 48, gap 8, raio 999 */
     .int-btn{align-self:flex-start;height:64px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
@@ -205,6 +207,7 @@
     (function () {
       var CFG = {};
       var LOGGED_IN = false;
+      var MSG = {};                          // mensagem de falha da última conexão, por provedor (fica até recarregar)
 
       function render(st) {
         var provs = st.providers || {};
@@ -216,7 +219,25 @@
           var row = card.querySelector('.conn-row');
           var status = card.querySelector('.conn-status');
           var btn = card.querySelector('.int-btn');
-          if (info.connected) {
+          var sub = card.querySelector('.card-sub');
+          if (!sub.dataset.base) sub.dataset.base = sub.textContent;
+          if (!MSG[prov]) sub.textContent = sub.dataset.base;
+          status.classList.toggle('expired', !!(info.connected && info.needs_reconnect));
+          if (info.connected && info.needs_reconnect) {
+            // a conexão morreu (acesso revogado ou vencido): conectar de novo grava um token novo; quem não quer
+            // mais a agenda ligada ainda pode desconectar
+            row.classList.add('connected');
+            status.hidden = false;
+            status.querySelector('.st-text').textContent = 'Expirada';
+            btn.textContent = 'Reconectar';
+            btn.dataset.action = 'connect';
+            if (!MSG[prov]) {
+              sub.textContent = 'A conexão expirou. Reconecte ou ';
+              var off = document.createElement('button'); off.type = 'button'; off.className = 'lnk'; off.textContent = 'desconecte';
+              off.addEventListener('click', function () { fetch('/integrations/' + prov + '/disconnect', { method: 'POST' }).then(load); });
+              sub.appendChild(off); sub.appendChild(document.createTextNode('.'));
+            }
+          } else if (info.connected) {
             row.classList.add('connected');
             status.hidden = false;
             status.querySelector('.st-text').textContent = 'Conectado';
@@ -257,11 +278,16 @@
         });
       });
 
-      // feedback dos redirects de callback
+      // feedback dos redirects de callback: a conexão que falhou diz o porquê no próprio cartão
       var qs = new URLSearchParams(location.search);
       if (qs.get('conectado')) {
         history.replaceState({}, '', location.pathname);
       } else if (qs.get('erro')) {
+        var erro = qs.get('erro'), alvo = erro === 'microsoft' ? 'microsoft' : 'google';
+        MSG[alvo] = erro === 'sessao' ? 'A conexão não foi concluída neste navegador. Tente de novo.'
+          : erro === 'access_denied' ? 'Conexão cancelada.' : 'Não foi possível conectar. Tente de novo.';
+        var c = document.querySelector('.int-card[data-provider="' + alvo + '"] .card-sub');
+        if (c) { c.dataset.base = c.dataset.base || c.textContent; c.textContent = MSG[alvo]; }
         history.replaceState({}, '', location.pathname);
       }
 

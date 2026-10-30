@@ -242,13 +242,17 @@ def google_login_start(hint: str = "", nxt: str = ""):
     return login_url(hint, nxt, nonce), nonce
 
 
-def set_oauth_cookie(response, nonce):
-    response.set_cookie(OAUTH_COOKIE, nonce, max_age=STATE_MAX_AGE, httponly=True, samesite="lax",
+# conexão do calendário: cookie próprio, para não brigar com um login Google aberto em outra aba
+CAL_COOKIE = "od_oauth_cal"
+
+
+def set_oauth_cookie(response, nonce, name=OAUTH_COOKIE):
+    response.set_cookie(name, nonce, max_age=STATE_MAX_AGE, httponly=True, samesite="lax",
                         secure=integrations.REDIRECT_BASE.startswith("https://"), path="/auth/")
 
 
-def login_nonce_ok(request, payload) -> bool:
-    got = request.cookies.get(OAUTH_COOKIE) or ""
+def login_nonce_ok(request, payload, name=OAUTH_COOKIE) -> bool:
+    got = request.cookies.get(name) or ""
     return bool(got) and hmac.compare_digest(got, str((payload or {}).get("n") or ""))
 
 

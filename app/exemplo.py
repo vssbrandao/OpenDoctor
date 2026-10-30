@@ -149,22 +149,19 @@ def laudo_pdf(coleta, v):
 
 
 def seed(user_id, now=None):
-    """Cria a paciente de exemplo (se a conta ainda não tem). Devolve o id ou None."""
-    if any(p["example"] for p in db.list_patients(user_id)):
-        return None
+    """Cria a paciente de exemplo (se a conta ainda não tem), inteira ou nada (db.create_example_patient).
+    Devolve o id ou None."""
     now = now or dt.datetime.now(dt.timezone.utc)
-    p = db.create_patient(user_id, NAME, birth_date="1968-03-14", sex="F", key=db.EXAMPLE_KEY)
-    db.update_patient(user_id, p["id"], {"allergies": ALLERGIES, "problems": PROBLEMS, "medications": MEDICATIONS})
-    rows = [(c["title"], c["start"], c["content"], c["data"], c["signed_at"], c["signed_at"]) for c in consultas(now)]
-    rows += [(None, None, e["content"], e["data"], None,
-              dt.datetime.combine(e["date"], dt.time(18, 0), tzinfo=dt.timezone.utc)) for e in exames(now)]
-    ids = db.add_example_notes(user_id, p["id"], p["key"], NAME, rows)
     cs = consultas(now)
-    db.add_example_receitas(user_id, p["id"], [(ids[i], c["signed_at"], receita_itens(i)) for i, c in enumerate(cs)])
+    notes = [(c["title"], c["start"], c["content"], c["data"], c["signed_at"], c["signed_at"]) for c in cs]
+    notes += [(None, None, e["content"], e["data"], None,
+               dt.datetime.combine(e["date"], dt.time(18, 0), tzinfo=dt.timezone.utc)) for e in exames(now)]
+    receitas = [(i, c["signed_at"], receita_itens(i)) for i, c in enumerate(cs)]   # i = índice da evolução em notes
     recente = min(EXAMES)                             # laudo da coleta mais recente
     coleta = (_when(now, recente) - dt.timedelta(days=5)).date()
-    db.add_file(user_id, p["id"], "laudo-exemplo.pdf", "application/pdf", laudo_pdf(coleta, EXAMES[recente]))
-    return p["id"]
+    return db.create_example_patient(user_id, NAME, "1968-03-14", "F",
+                                     {"allergies": ALLERGIES, "problems": PROBLEMS, "medications": MEDICATIONS},
+                                     notes, receitas, ("laudo-exemplo.pdf", "application/pdf", laudo_pdf(coleta, EXAMES[recente])))
 
 
 def seed_safe(user_id):

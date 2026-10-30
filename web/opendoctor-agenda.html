@@ -943,6 +943,10 @@
     .rc-alert.warn{background:#FEF7E0;color:#3D2E00}.rc-alert.warn > svg{color:#B06000}
     .rc-alert.info{background:#E8F0FE;color:#0A2A5E}.rc-alert.info > svg{color:#0B57D0}
     .rc-alert.bad{background:#FCE8E8;color:#5C0B0F}.rc-alert.bad > svg{color:#C0151D}
+    /* aviso de reconectar o Google: o mesmo alerta amarelo do gravador, flutuando no rodapé da agenda (não mexe no layout) */
+    .cal-reconnect{position:absolute;left:24px;right:24px;bottom:16px;z-index:6;margin:0;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+    .cal-reconnect a.pr-ghost{display:inline-flex;align-items:center;text-decoration:none;color:inherit;font-weight:500}
+    .stage.prontuario .cal-reconnect,.stage.pacientes .cal-reconnect{display:none}   /* só na agenda (o prontuário tem o próprio aviso) */
     .rc-steps{display:flex;flex-direction:column;gap:6px;margin-top:12px;padding:12px 16px;border-radius:12px;background:#fff;font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A}
     .rc-steps[hidden]{display:none}
     .rc-step{display:flex;align-items:center;gap:10px}
@@ -2066,6 +2070,11 @@
           <button class="hd-btn" id="agExpand" type="button" title="Expandir agenda" aria-label="Expandir agenda"><img src="assets/icons/chat-expand.svg?v=3" width="36" height="36" alt=""></button>
         </div>
       </div>
+      <!-- conexão com o Google morta (o Google recusou a renovação): o dia não aparece vazio sem explicação -->
+      <div class="rc-alert warn cal-reconnect" id="calReconnect" role="status" hidden>
+        <span class="t"><b>A conexão com o Google Agenda expirou.</b> As consultas não aparecem até você reconectar.</span>
+        <span class="a"><a class="pr-ghost" href="/integrations/google/connect">Reconectar</a></span>
+      </div>
       <div class="srch-pop" id="srchPop" hidden>
         <input class="srch-in" id="srchIn" type="search" placeholder="Buscar consultas" autocomplete="off" spellcheck="false">
         <div class="srch-list" id="srchList"></div>
@@ -2886,9 +2895,17 @@
             dayStart = start;
             window.__calConnected = !!(d && d.connected);
             if (d && d.connected) render(d.events || []);
+            if (window.__calReconnect) window.__calReconnect(d);
           })
           .catch(function () {});
       }
+      // conexão com o Google morta: aviso no rodapé da agenda (senão o dia aparece vazio, como se estivesse livre)
+      window.__calReconnect = function (d) {
+        var box = document.getElementById('calReconnect'); if (!box) return;
+        var dead = !!(d && d.connected && d.needs_reconnect);
+        box.hidden = !dead;
+        if (dead) box.querySelector('a').href = '/integrations/' + encodeURIComponent(d.connected) + '/connect';
+      };
       window.__refreshAgenda = refresh;
       window.__onDayDateChange = function () {
         var inner = document.querySelector('.cal-inner');
@@ -3157,7 +3174,8 @@
             if (window.__refreshAgenda) window.__refreshAgenda();
             if (window.__refreshWeek) window.__refreshWeek();
             if (!(res.ok && res.j.ok)) alert(res.j && res.j.needs_reconnect
-              ? 'Sem permissão para editar. Reconecte o Google em Integrações.' : 'Não foi possível salvar as alterações do evento.');
+              ? (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou.' : 'Sem permissão para editar.') + ' Reconecte o Google em Integrações.'
+              : 'Não foi possível salvar as alterações do evento.');
             if (cb) cb(res.ok && res.j.ok);
           }).catch(function () { alert('Falha de conexão ao salvar o evento.'); if (cb) cb(false); });
       }
@@ -3225,7 +3243,7 @@
               if (window.__refreshWeek) window.__refreshWeek();
             } else {
               elMsg.className = 'evpop-msg';
-              elMsg.textContent = res.j && res.j.needs_reconnect ? 'Sem permissão. Reconecte o Google em Integrações.' : 'Não foi possível excluir.';
+              elMsg.textContent = res.j && res.j.needs_reconnect ? (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou.' : 'Sem permissão.') + ' Reconecte o Google em Integrações.' : 'Não foi possível excluir.';
               elMsg.hidden = false;
             }
           }).catch(function () { elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false; });
@@ -3345,7 +3363,8 @@
               setTimeout(function () { if (seq === my) close(); }, 700);
             } else if (res.j && res.j.needs_reconnect) {
               elMsg.className = 'evpop-msg';
-              elMsg.innerHTML = 'Permissão só de leitura. <a href="/opendoctor-integracao.html">Reconecte o Google</a> para criar eventos.';
+              elMsg.innerHTML = (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou. ' : 'Permissão só de leitura. ') +
+                '<a href="/integrations/google/connect">Reconecte o Google</a> para criar eventos.';
               elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
             } else {
               elMsg.className = 'evpop-msg';
@@ -3888,7 +3907,7 @@
         return fetch('/calendar/events?start=' + encodeURIComponent(weekStart.toISOString()) +
                      '&end=' + encodeURIComponent(end.toISOString()))
           .then(function (r) { return r.json(); })
-          .then(function (d) { events = (d && d.connected && d.events) || []; })
+          .then(function (d) { events = (d && d.connected && d.events) || []; if (window.__calReconnect) window.__calReconnect(d); })
           .catch(function () { events = []; });
       }
       function showWeek(date, recenter) {
@@ -7054,10 +7073,11 @@
         api('POST', '/prontuario/visits', { patient_id: ctx.patient_id }).then(function (res) {
           if (ctx !== my) return;
           visits = res.ok && res.j.connected ? (res.j.visits || []) : []; calOn = !!(res.ok && res.j.connected); visitsErr = !res.ok;
+          visitsDead = !!(res.ok && res.j.needs_reconnect);
           renderKpis(); renderCons();
-        }).catch(function () { if (ctx === my) { visits = []; calOn = false; visitsErr = true; renderKpis(); renderCons(); } });
+        }).catch(function () { if (ctx === my) { visits = []; calOn = false; visitsErr = true; visitsDead = false; renderKpis(); renderCons(); } });
       }
-      var visitsErr = false;
+      var visitsErr = false, visitsDead = false;           // visitsDead: a conexão com o Google morreu (reconectar)
       // ===== Consultas: agenda + evoluções + resultados de exames (o antigo Histórico); a linha abre o cartão =====
       function renderCons() {
         var box = $('prVisits'); box.innerHTML = '';
@@ -7081,8 +7101,9 @@
         var ne = past.filter(function (x) { return x.n && !isLabRec(x.n) && hasText(x.n); }).length, nl = past.filter(function (x) { return isLabRec(x.n); }).length;
         $('prHistCount').textContent = [ne ? ne + (ne === 1 ? ' evolução' : ' evoluções') : '', nl ? nl + (nl === 1 ? ' resultado de exames' : ' resultados de exames') : ''].filter(Boolean).join(' · ') || 'Da agenda e do prontuário';
         if (visitsErr) box.appendChild(el('div', 'pr-empty', 'Não foi possível carregar a agenda; abaixo, as evoluções do prontuário.'));
+        else if (visitsDead) { var hx = el('div', 'pr-empty'); hx.innerHTML = 'A conexão com o Google Agenda expirou. <a href="/integrations/google/connect">Reconecte</a> para ver as consultas agendadas.'; box.appendChild(hx); }
         else if (!calOn) { var h = el('div', 'pr-empty'); h.innerHTML = '<a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para ver também as consultas agendadas.'; box.appendChild(h); }
-        if (!next.length && !past.length) { box.appendChild(el('div', 'pr-empty', calOn ? 'Nenhuma consulta deste paciente ainda.' : 'Nenhuma evolução registrada ainda.')); return; }
+        if (!next.length && !past.length) { box.appendChild(el('div', 'pr-empty', calOn && !visitsDead ? 'Nenhuma consulta deste paciente ainda.' : 'Nenhuma evolução registrada ainda.')); return; }
         var th = el('div', 'pr-trow th');
         ['Data', 'Consulta', 'Local', 'Evolução'].forEach(function (t, i) { th.appendChild(el('span', i === 2 ? 'pr-tloc' : null, t)); });
         box.appendChild(th);
@@ -8656,7 +8677,8 @@
                 (s.getFullYear() !== new Date().getFullYear() ? ' ' + s.getFullYear() : '');
         return d + ' · ' + (ev.allDay ? 'dia todo' : pad(s.getHours()) + ':' + pad(s.getMinutes()));
       }
-      // undefined = erro; null = sem calendário conectado; [] = eventos
+      // undefined = erro; null = sem calendário conectado; 'morta' = conexão expirou (reconectar); [] = eventos
+      var deadProv = 'google';
       function load() {
         if (cache !== undefined && Date.now() - cacheAt < 60e3) return Promise.resolve(cache);
         if (loading) return loading;
@@ -8665,7 +8687,10 @@
         loading = fetch('/calendar/events?limit=250&start=' + encodeURIComponent(a.toISOString()) +
                         '&end=' + encodeURIComponent(b.toISOString()))
           .then(function (r) { return r.json(); })
-          .then(function (d) { cache = d && d.connected ? (d.events || []) : null; cacheAt = Date.now(); return cache; })
+          .then(function (d) {
+            if (d && d.connected && d.needs_reconnect) { deadProv = d.connected; return 'morta'; }   // sem cache: tenta de novo ao reconectar
+            cache = d && d.connected ? (d.events || []) : null; cacheAt = Date.now(); return cache;
+          })
           .catch(function () { return undefined; })
           .then(function (v) { loading = null; return v; });
         return loading;
@@ -8689,6 +8714,7 @@
           if (pop.hidden || raw !== input.value.trim()) return;           // fechou ou digitou de novo
           if (evs === undefined) return msg('Não foi possível carregar as consultas.');
           if (evs === null) return msg('Conecte um calendário em <a href="/opendoctor-integracao.html">Integrações</a>.');
+          if (evs === 'morta') return msg('A conexão com o Google Agenda expirou. <a href="/integrations/' + encodeURIComponent(deadProv) + '/connect">Reconecte</a> para buscar consultas.');
           var q = norm(raw), t0 = new Date(); t0.setHours(0, 0, 0, 0);
           var hits = evs.filter(function (ev) {
             return ev.start && (!q || norm([ev.title, ev.description, ev.location].join(' ')).indexOf(q) >= 0);
