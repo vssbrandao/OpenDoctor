@@ -3016,8 +3016,8 @@
           .catch(function () { return patients || []; });
       }
       function sameName(name) {                            // homônimos: todos com esse nome
-        var k = pnorm(name);
-        return k && patients ? patients.filter(function (p) { return pnorm(p.name) === k; }) : [];
+        var k = pnorm(name);                               // a de exemplo nunca entra pelo nome (como no servidor): só escolhida na lista
+        return k && patients ? patients.filter(function (p) { return !p.example && pnorm(p.name) === k; }) : [];
       }
       function byKey(name) { var l = sameName(name); return l.length === 1 ? l[0] : null; }   // só se não houver dúvida
       function setPatient(p) {
@@ -3046,7 +3046,7 @@
             var h = document.createElement('div'); h.className = 'evpop-pmsg'; h.textContent = 'Pacientes recentes'; elPList.appendChild(h);
           }
           hits.forEach(function (p) {
-            option('', initialsOf(p.name), p.name + (p.birth_date ? ' · ' + ptAge(p.birth_date) : ''), function () { setPatient(p); });
+            option('', initialsOf(p.name), p.name + (p.example ? ' (exemplo)' : '') + (p.birth_date ? ' · ' + ptAge(p.birth_date) : ''), function () { setPatient(p); });
           });
           if (q) {
             var dup = sameName(raw).length;                   // mesmo nome já cadastrado → é outra pessoa?
@@ -3964,6 +3964,7 @@
       var ctx = null;          // {patient_id, patient, from, event_id, title, start, end, all_day, location, note_id}
       var patient = null, notes = [], cur = null;          // cadastro, evoluções e a evolução aberta (do servidor)
       var mode = 'soap', cids = [], ready = false, recovered = false;      // a evolução é só em SOAP (aba Consulta do Figma)
+      var apos409 = false, temExemplo = false;             // recarga depois de um 409 (não reenvia o rascunho); a conta tem a de exemplo
       var saved = '', timer = null, saving = false, queued = [], retry = 0, retryTimer = null;
       var DOWS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
       var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -4572,8 +4573,10 @@
               recovered = false;
               draftWrite(snap()); $('prCopyLast').hidden = !lastOther(); renderKpis();
             } else { try { localStorage.removeItem(dkey(c)); } catch (_) {} }
+          } else if (res.status === 409 && res.j && res.j.other_patient) {   // o paciente da consulta foi trocado: não recarrega
+            if (c === ctx) { ready = false; setEditable(false); setStatus('Esta consulta já tem evolução de outro paciente: confira o paciente na agenda.', true); }
           } else if (res.status === 409) {
-            if (c === ctx) { setStatus('Esta evolução já foi finalizada (talvez em outra aba). Recarregando…', true); load(); }
+            if (c === ctx) { apos409 = true; setStatus('Esta evolução já foi finalizada (talvez em outra aba). Recarregando…', true); load(); }
           } else if (res.status === 413) {
             if (c === ctx) setStatus('Texto grande demais para salvar: reduza a evolução.', true);
           } else if (res.status === 401) {
@@ -5147,7 +5150,7 @@
                   btn: function () { if (r.st === 'live') recPause(r); else recResume(r); recRender(); } });
         } else if (r.st === 'idle') {
           if (!lk) csGo('Iniciar consulta', recStart, recDemo() ? null :
-            { off: true, nota: 'A gravação chega em breve para os seus pacientes: experimente na paciente de exemplo.' });
+            { off: true, nota: 'A gravação chega em breve para os seus pacientes' + (temExemplo ? ': experimente na paciente de exemplo.' : '.') });
         } else if (r.st === 'proc') csBar({ t: mm2(recDur(r)), msg: r.step || 'Gerando a evolução…' });
         else {                                             // pronta: o player, com os marcadores no começo de O, A e P
           csSoFim();
@@ -8294,7 +8297,7 @@
 
       // ===== carregar / abrir / trocar de consulta / fechar =====
       function load() {
-        var my = ctx; ready = false; setEditable(false); setStatus('Carregando…');
+        var my = ctx, reenvia = !apos409; apos409 = false; ready = false; setEditable(false); setStatus('Carregando…');
         api('POST', '/prontuario/list', { patient_id: ctx.patient_id || null, patient: ctx.patient })
           .then(function (res) {
             if (ctx !== my) return;
@@ -8309,7 +8312,7 @@
               return;
             }
             if (!res.ok) { setStatus('Não foi possível carregar o prontuário.', true); return; }
-            patient = res.j.patient; ctx.patient_id = patient.id; ctx.patient = patient.name;
+            patient = res.j.patient; ctx.patient_id = patient.id; ctx.patient = patient.name; temExemplo = !!res.j.has_example;
             notes = res.j.notes || [];
             cur = notes.filter(function (n) { return (ctx.event_id && n.event_id === ctx.event_id) || (!ctx.event_id && ctx.note_id && n.id === ctx.note_id); })[0] || null;
             if (cur) ctx.note_id = cur.id;
@@ -8319,12 +8322,13 @@
             $('prExport').hidden = false;
             renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); renderKpis(); updCount(compose().content.length); rxLoad();
             if (!document.querySelector('.pr-panel[data-panel=consultas]').hidden) loadAccess();
-            // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva
+            // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva — nunca na recarga
+            // que veio de um 409 (salvar de novo daria o mesmo 409 e a tela recarregaria sem parar)
             var d = draftRead(), lb = null; try { lb = JSON.parse(d && d.base || 'null'); } catch (_) {}
             // rascunho da versão anterior, em texto livre: a base era a evolução salva em texto livre (o fillEditor leva o texto ao S)
             var legado = !!(lb && lb.data && lb.data.mode === 'free') && (cur ? !(cur.data && cur.data.mode === 'soap') &&
               (lb.content || '') === (cur.content || '') : !(lb.content || ''));
-            if (d && !locked() && d.s !== saved && (d.base === saved || legado || (!cur && !d.base))) {
+            if (d && reenvia && !locked() && d.s !== saved && (d.base === saved || legado || (!cur && !d.base))) {
               try { fillEditor(JSON.parse(d.s)); } catch (_) {}
               recovered = true; setStatus('Texto não salvo recuperado deste navegador. Salvando…'); save();
             } else if (d) {
@@ -8463,7 +8467,7 @@
         info.appendChild(nm); info.appendChild(el('div', 'pt-sub', sub(p)));
         var acts = el('div', 'pt-acts');
         acts.appendChild(iconBtn('Renomear', PEN, function () { rename(p, info, nm); }));
-        if (!p.notes) acts.appendChild(iconBtn('Excluir', BIN, function () { del(p); }));
+        if (!p.notes || p.example) acts.appendChild(iconBtn('Excluir', BIN, function () { del(p); }));   // a de exemplo sai com os dados fictícios
         var open = el('button', 'pt-btn', 'Abrir prontuário'); open.type = 'button';
         open.addEventListener('click', function (e) { e.stopPropagation(); openPr(p); });
         acts.appendChild(open);
@@ -8509,10 +8513,11 @@
         inp.addEventListener('blur', function () { finish(true); });
       }
       function del(p) {
-        if (!confirm('Excluir o cadastro de ' + p.name + '?')) return;
+        if (!confirm(p.example ? 'Excluir a paciente de exemplo e todos os dados fictícios?' : 'Excluir o cadastro de ' + p.name + '?')) return;
         api('DELETE', '/patients/' + p.id).then(function (res) {
           if (res.ok && res.j.ok) { all = all.filter(function (x) { return x.id !== p.id; }); showErr(''); render(); }
-          else showErr(res.status === 409 ? 'Este paciente tem prontuário e não pode ser excluído.' : 'Não foi possível excluir.');
+          else showErr(res.status !== 409 ? 'Não foi possível excluir.' : p.example ? 'A paciente de exemplo tem evolução de consulta da agenda e não pode ser excluída.'
+                       : 'Este paciente tem prontuário e não pode ser excluído.');
         });
       }
       // novo paciente

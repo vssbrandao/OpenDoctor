@@ -278,3 +278,62 @@ def test_conexao_morta_e_reconexao(novo_usuario):
     db.set_token(uid, "google", access_token="b", refresh_token="r2", expires_at=agora + datetime.timedelta(hours=1),
                  scope="calendar.events", account_email=None)
     assert db.dead_providers(uid) == set() and db.connected_providers(uid) == {"google": "ana@gmail.com"}
+
+
+def test_renomear_a_de_exemplo_nao_tira_a_marca(novo_usuario):
+    from app import exemplo
+    uid = novo_usuario()["id"]
+    assert not db.has_example(uid)
+    pid = exemplo.seed(uid)
+    assert db.has_example(uid)
+    p = db.update_patient(uid, pid, {"name": "Maria Teste"})
+    assert p["name"] == "Maria Teste" and p["example"] and p["key"] == db.EXAMPLE_KEY
+    assert len(db.list_notes(uid, pid, db.EXAMPLE_KEY)) == 17
+    with db.connection() as c:
+        marcas = c.execute("select distinct patient_key, patient_name from clinical_notes where user_id = %s", (uid,)).fetchall()
+    assert marcas == [(db.EXAMPLE_KEY, "Maria Teste")]                   # as evoluções levam o nome novo e a mesma marca
+    assert exemplo.seed(uid) is None                                     # continua sendo a de exemplo: não ganha outra
+    real = db.create_patient(uid, "Ana Real")
+    assert db.update_patient(uid, real["id"], {"name": "Ana Souza"})["key"] == "ana souza"   # paciente real: a chave segue o nome
+    assert db.delete_patient(uid, pid) == "ok"                           # e a renomeada ainda sai com tudo
+
+
+def test_exemplo_com_consulta_de_verdade_nao_e_excluido(novo_usuario):
+    from app import exemplo
+    uid, outro = novo_usuario()["id"], novo_usuario()["id"]
+    pid = exemplo.seed(uid)
+    db.upsert_note(uid, pid, db.EXAMPLE_KEY, db.EXAMPLE_NAME, "ev-real", "Consulta", None, "S: consulta de verdade")
+    assert db.delete_patient(uid, pid) == "has_notes"                    # evolução de consulta da agenda: fica
+    assert len(db.list_notes(uid, pid, db.EXAMPLE_KEY)) == 18 and len(db.list_files(uid, pid)) == 1   # nada saiu
+    pid2 = exemplo.seed(outro)
+    db.upsert_note(outro, pid2, db.EXAMPLE_KEY, db.EXAMPLE_NAME, "ev-vazia", "Consulta", None, "")    # abriu, não escreveu
+    db.upsert_note(outro, pid2, db.EXAMPLE_KEY, db.EXAMPLE_NAME, None, None, None, "S: testando")      # avulsa, na fictícia
+    assert db.delete_patient(outro, pid2) == "ok"
+    assert db.list_notes(outro, pid2, db.EXAMPLE_KEY) == [] and not db.has_example(outro)
+
+
+def test_evolucao_da_consulta_nao_passa_para_outro_paciente(novo_usuario):
+    uid = novo_usuario()["id"]
+    ana, bruno = db.create_patient(uid, "Ana Troca"), db.create_patient(uid, "Bruno Troca")
+
+    def salva(p, ev, texto):
+        return db.upsert_note(uid, p["id"], p["key"], p["name"], ev, "Consulta", None, texto)
+    nid = salva(ana, "ev-troca", "S: dor de cabeça")
+    with pytest.raises(db.NoteOtherPatient):                             # rascunho da Ana: não vira o texto do Bruno
+        salva(bruno, "ev-troca", "S: outro texto")
+    n = db.get_note(uid, nid)
+    assert n["content"] == "S: dor de cabeça" and n["patient_id"] == ana["id"]
+    assert salva(ana, "ev-troca", "S: dor de cabeça forte") == nid       # a dona continua escrevendo
+    assert db.finalize_note(uid, nid)
+    with pytest.raises(db.NoteOtherPatient):                             # finalizada da Ana: o 409 próprio, não "finalizada"
+        salva(bruno, "ev-troca", "S: outro texto")
+    with pytest.raises(db.NoteLocked):
+        salva(ana, "ev-troca", "S: mudança")
+    vazia = salva(ana, "ev-vazia", "")                                   # escreveu e apagou: nada a proteger
+    assert salva(bruno, "ev-vazia", "S: do Bruno") == vazia and db.get_note(uid, vazia)["patient_id"] == bruno["id"]
+    with db.connection() as c:                                           # evolução antiga, só com o nome (sem o id)
+        c.execute("update clinical_notes set patient_id = null where id = %s", (vazia,)); c.commit()
+    with pytest.raises(db.NoteOtherPatient):
+        salva(ana, "ev-vazia", "S: da Ana")
+    assert salva(bruno, "ev-vazia", "S: do Bruno de novo") == vazia      # pelo nome é a do Bruno
+    assert db.get_note(uid, vazia)["patient_id"] == bruno["id"]
