@@ -1179,7 +1179,8 @@ def _cal_error(e):
                              "reason": "expirada"}, status_code=403)
     msg = str(e)
     if msg == "sem token":
-        return JSONResponse({"error": "Não foi possível falar com o Google agora. Tente de novo."}, status_code=503)
+        return JSONResponse({"error": "Não foi possível falar com o Google agora. Tente de novo.", "needs_reconnect": False,
+                             "reason": "indisponivel"}, status_code=503)    # reason: a tela mostra este texto
     kind = "permissao" if isinstance(e, integrations.NeedsReconnect) else ""   # gravada sem a permissão da agenda
     if isinstance(e, integrations.CalendarError):
         kind = e.kind
@@ -1390,6 +1391,10 @@ def _note_patient(u, payload):
     name = " ".join((payload.get("patient") or "").split())[:200]
     if not db.patient_key(name):
         return None
+    if str(pid or "").isdigit() and db.patient_key(name) == db.patient_key(db.EXAMPLE_NAME):
+        # consulta da Maria de exemplo já excluída: o nome é de gente de verdade — não cai numa "Maria Silva"
+        # real nem cria uma; o médico escolhe o paciente na consulta
+        raise db.AmbiguousPatient()
     p, created = db.ensure_patient(u["id"], name)       # homônimos → db.AmbiguousPatient (quem chama trata)
     if created:
         db.log_access(u["id"], "patient_create", p["id"])

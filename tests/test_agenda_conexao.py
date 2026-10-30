@@ -368,3 +368,21 @@ def test_conexao_da_agenda_so_vale_para_quem_comecou_neste_navegador(monkeypatch
     # quem começou, no mesmo navegador: grava na conta dele
     r = medico.get(volta, follow_redirects=False)
     assert r.headers["location"].endswith("?conectado=google") and gravou == [("google", "u1")]
+
+
+def test_google_fora_do_ar_mostra_tente_de_novo():
+    r = server._cal_error(RuntimeError("sem token"))                   # renovação sem resposta (passageira)
+    j = json.loads(r.body)
+    assert r.status_code == 503 and j["reason"] == "indisponivel" and j["needs_reconnect"] is False and "Tente de novo" in j["error"]
+
+
+def test_consulta_da_maria_de_exemplo_excluida_nao_cai_numa_maria_real(monkeypatch):
+    usou = []
+    monkeypatch.setattr(db, "get_patient", lambda uid, pid: None)       # o id do evento não existe mais
+    monkeypatch.setattr(db, "ensure_patient", lambda uid, name: usou.append(name) or ({"id": 1, "name": name}, False))
+    u = {"id": "u1"}
+    with pytest.raises(db.AmbiguousPatient):
+        server._note_patient(u, {"patient_id": 99, "patient": "Maria  Silva"})
+    assert usou == []                                                   # nem achou nem criou uma Maria Silva real
+    assert server._note_patient(u, {"patient_id": 99, "patient": "Ana Souza"})["name"] == "Ana Souza"   # outro excluído: pelo nome
+    assert server._note_patient(u, {"patient": "Maria Silva"})["name"] == "Maria Silva"                  # evento antigo, sem id

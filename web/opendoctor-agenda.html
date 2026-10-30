@@ -3451,7 +3451,7 @@
               setTimeout(function () { if (seq === my) close(); }, 700);
             } else if (res.j && res.j.needs_reconnect) {
               elMsg.className = 'evpop-msg';
-              elMsg.innerHTML = (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou. ' : 'Permissão só de leitura. ') +
+              elMsg.innerHTML = (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou. ' : 'O Google Agenda está sem permissão para criar eventos. ') +
                 '<a href="/integrations/google/connect">Reconecte o Google</a> para criar eventos.';
               elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
             } else {
