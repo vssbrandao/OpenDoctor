@@ -403,3 +403,18 @@ def test_evolucao_da_consulta_nao_passa_para_outro_paciente(novo_usuario):
         salva(ana, "ev-vazia", "S: da Ana")
     assert salva(bruno, "ev-vazia", "S: do Bruno de novo") == vazia      # pelo nome é a do Bruno
     assert db.get_note(uid, vazia)["patient_id"] == bruno["id"]
+
+
+def test_gravacao_nao_entra_na_consulta_com_evolucao_de_outro_paciente(novo_usuario):
+    """A mesma regra do NoteOtherPatient para a gravação: escrita ou finalizada para outro paciente, recusa."""
+    uid = novo_usuario()["id"]
+    ana, bruno = db.create_patient(uid, "Ana Grava"), db.create_patient(uid, "Bruno Grava")
+    outro = lambda p, ev: db.event_note_other_patient(uid, ev, p["id"], p["key"])  # noqa: E731
+    assert not outro(bruno, "ev-g") and not outro(bruno, None)            # consulta sem evolução ou avulsa: grava
+    nid = db.upsert_note(uid, ana["id"], ana["key"], ana["name"], "ev-g", "Consulta", None, "S: dor de cabeça")
+    assert outro(bruno, "ev-g") and not outro(ana, "ev-g")
+    assert not db.event_note_other_patient(novo_usuario("Outro")["id"], "ev-g", bruno["id"], bruno["key"])   # de outro médico
+    db.finalize_note(uid, nid)
+    assert outro(bruno, "ev-g")
+    vazia = db.upsert_note(uid, ana["id"], ana["key"], ana["name"], "ev-v", "Consulta", None, "")
+    assert vazia and not outro(bruno, "ev-v")                             # vazia: passa para quem gravar/salvar

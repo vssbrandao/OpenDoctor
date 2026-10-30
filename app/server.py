@@ -1406,6 +1406,12 @@ def _ambiguous():
                          "ambiguous": True}, status_code=409)
 
 
+def _outro_paciente():
+    """A consulta já tem evolução de outro paciente (o paciente do evento foi trocado): nem evolução nem gravação entram."""
+    return JSONResponse({"error": "esta consulta já tem evolução de outro paciente", "other_patient": True},
+                        status_code=409)
+
+
 def _auth_or_401(request):
     u = auth.current_user(request)
     return u, (None if u else JSONResponse({"error": "não autenticado"}, status_code=401))
@@ -1465,8 +1471,7 @@ def _prontuario_save(u, payload):
                              _iso_or_none(payload.get("event_start")), content,
                              note_id=int(note_id) if str(note_id or "").isdigit() else None, data=data)
     except db.NoteOtherPatient:
-        return JSONResponse({"error": "esta consulta já tem evolução de outro paciente", "other_patient": True},
-                            status_code=409)
+        return _outro_paciente()
     except db.NoteLocked:
         return JSONResponse({"error": "evolução finalizada: use um adendo"}, status_code=409)
     db.touch_patient(u["id"], p["id"])
@@ -1841,12 +1846,25 @@ async def prontuario_receita_cancela(rid: str, request: Request):
     return {"receita": out}
 
 
-def _receita_da_gravacao(u, p, eid, nid, meds):
+def _meds_gerados(recs):
+    """Os nomes dos remédios que uma geração anterior destas gravações já levou à receita (a saída fica guardada em
+    recordings.scribe; o suspenso não vai, como em prescricao.da_gravacao)."""
+    out = []
+    for r in recs:
+        res = (((r.get("scribe") or {}).get("saida") or {}).get("result")) or {}
+        out += [str(m["nome"]) for m in res.get("meds") or [] if isinstance(m, dict) and m.get("nome") and m.get("acao") != "suspenso"]
+    return out
+
+
+def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
     """Os remédios que a gravação extraiu entram no rascunho da receita desta consulta (o mesmo que a aba Prescrições
-    abre), marcados "Da gravação" para o médico revisar; o que já está lá não repete. Devolve quantos entraram. Nunca
-    derruba a geração da evolução: falhou, devolve 0 (o log só leva o tipo do erro)."""
+    abre), marcados "Da gravação" para o médico revisar; o que já está lá não repete. Gerar de novo não desfaz o que o
+    médico fez: o remédio que uma geração anterior destas gravações (recs) já levou não volta, e consulta com receita já
+    emitida não ganha rascunho novo. Devolve quantos entraram. Nunca derruba a geração da evolução: falhou, devolve 0
+    (o log só leva o tipo do erro)."""
     try:
-        novos = prescricao.da_gravacao(meds)
+        foram = _meds_gerados(recs)
+        novos = [x for x in prescricao.da_gravacao(meds) if not any(prescricao.mesmo_remedio(x["nome"], y) for y in foram)]
         if not novos:
             return 0
         def desta(r):
@@ -1855,7 +1873,11 @@ def _receita_da_gravacao(u, p, eid, nid, meds):
             if eid:
                 return r["event_id"] == eid
             return (nid and r["note_id"] == nid) or (not r["note_id"] and not r["event_id"])
-        d = next((r for r in db.list_receitas(u["id"], p["id"]) if desta(r)), None)
+        rs = db.list_receitas(u["id"], p["id"])
+        d = next((r for r in rs if desta(r)), None)
+        if not d and any(r["status"] != "rascunho" and (r["event_id"] == eid if eid else bool(nid) and r["note_id"] == nid)
+                         for r in rs):
+            return 0
         ja = d["itens"] if d else []
         add = [x for x in novos if not any(prescricao.mesmo_remedio(x["nome"], y["nome"]) for y in ja)]
         if add:
@@ -2104,14 +2126,17 @@ async def prontuario_transcribe(request: Request):
     if not consent:
         return JSONResponse({"error": "autorização do paciente obrigatória"}, status_code=400)
     # o servidor tem um processo só: o banco (no Canadá) roda fora do laço de eventos, para um trecho não segurar os outros
-    seq = int(seq)
+    seq, eid = int(seq), str(h.get("x-event-id") or "")[:300] or None
 
-    def paciente_e_trecho():                 # o paciente do médico e, se este trecho já subiu, o texto dele
+    def paciente_e_trecho():                 # o paciente do médico, se a consulta é dele e, se este trecho já subiu, o texto
         pt = db.get_patient(u["id"], int(pid))
-        return pt, pt and db.rec_segment(u["id"], rid, seq)
-    p, done = await run_in_threadpool(paciente_e_trecho)
+        outro = bool(pt) and db.event_note_other_patient(u["id"], eid, pt["id"], pt["key"])
+        return pt, outro, pt and not outro and db.rec_segment(u["id"], rid, seq)
+    p, outro, done = await run_in_threadpool(paciente_e_trecho)
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    if outro:                                # o paciente do evento foi trocado: a gravação não vai para a consulta do outro
+        return _outro_paciente()
     if done:
         return {"ok": True, "text": done["text"], "duvidas": done["duvidas"], "repetido": True}
     if _rate_limited(request, "transcribe"):
@@ -2134,8 +2159,7 @@ async def prontuario_transcribe(request: Request):
     def prepare():
         if db.rec_seconds_today(u["id"]) + dur > SCRIBE_DAY_S:
             return "teto", None
-        if not db.rec_open(u["id"], p["id"], rid, str(h.get("x-event-id") or "")[:300] or None,
-                           int(nid) if nid.isdigit() else None, consent):
+        if not db.rec_open(u["id"], p["id"], rid, eid, int(nid) if nid.isdigit() else None, consent):
             return "outra", None
         return None, db.rec_prev_text(u["id"], rid, seq)
     why, prev = await run_in_threadpool(prepare)
@@ -2222,9 +2246,11 @@ async def prontuario_scribe(request: Request):
     p = await run_in_threadpool(_rec_patient, u, b)
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    eid, nid, rids, _ = _rec_where(b)
+    if eid and await run_in_threadpool(db.event_note_other_patient, u["id"], eid, p["id"], p["key"]):
+        return _outro_paciente()             # o paciente do evento foi trocado: nada do outro vai ao modelo nem à receita
     if _rate_limited(request, "scribe"):
         return JSONResponse({"error": "muitos pedidos em pouco tempo"}, status_code=429)
-    eid, nid, rids, _ = _rec_where(b)
     recs = await run_in_threadpool(db.rec_list, u["id"], p["id"], eid, nid, rids)
     segs, table = [], []                     # numeração única para o modelo, mesmo com mais de uma gravação
     for r in recs:
@@ -2257,7 +2283,7 @@ async def prontuario_scribe(request: Request):
             return
         yield _line({"step": "conferindo"})
         res, flags, _ = scribe.finish(raw, segs, mode, cad, p["name"])
-        n_rx = await run_in_threadpool(_receita_da_gravacao, u, p, eid, nid, res.get("meds"))   # remédios → rascunho da receita
+        n_rx = await run_in_threadpool(_receita_da_gravacao, u, p, eid, nid, res.get("meds"), recs)   # remédios → rascunho da receita
         fields = scribe.render_text(res)
         if not any(v.strip() for v in fields.values()):
             yield _line({"error": "a IA não devolveu uma evolução válida"})

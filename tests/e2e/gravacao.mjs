@@ -307,6 +307,73 @@ const cenarios = [
       15000, 'a evolução gerada depois de gravar de novo ser salva');
     return 'avisou "Não ouvimos nenhuma fala"; gravou de novo e gerou a evolução';
   }],
+  ['trocar o paciente da consulta: a gravação vai para o paciente novo e avisa da do anterior', async () => {
+    await grava('/_preview/pr?pid=9003&ev=evP', 6);
+    await clica('#prRec button[aria-label^="Pausar"]'); await sleep(2500);
+    // o paciente do evento foi corrigido (9003 → 9004) e o prontuário reaberto sem recarregar a página
+    await ev(`window.__openProntuario({ patient_id: 9004, patient: 'x', from: 'pacientes', event_id: 'evP', title: 'Retorno' })`);
+    await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && b.textContent.includes('Iniciar consulta'))`,
+      15000, 'gravação nova do paciente novo (e não a pausada do anterior)');
+    const a = (await ev(UI)).alerta;
+    if (!/gravação de outro paciente/.test(a)) throw new Error('sem aviso da gravação do paciente anterior: ' + a);
+    await grava('', 20); await encerra();
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evP' && n.scribe))`,
+      15000, 'salvar a evolução gerada');
+    const e = await estado(), g = Object.entries(e.gravacoes).filter(([, x]) => x.event_id === 'evP');
+    const nova = g.find(([, x]) => x.pid === 9004), velha = g.find(([, x]) => x.pid === 9003);
+    if (!nova || nova[1].status !== 'gerada' || !velha || velha[1].status === 'gerada') throw new Error('gravações: ' + JSON.stringify(g));
+    const n = Object.values(e.evolucoes).find((x) => x.pid === 9004 && x.event_id === 'evP');
+    if (!n || !n.scribe || JSON.stringify(n.scribe.rec_ids) !== JSON.stringify([nova[0]])) throw new Error('evolução do 9004: ' + JSON.stringify(n));
+    if (Object.values(e.evolucoes).some((x) => x.pid === 9003 && x.event_id === 'evP')) throw new Error('a evolução foi para o 9003');
+    return 'a do 9004 gerou a evolução dele; a do 9003 ficou com ele, pausada';
+  }],
+  ['consulta com evolução de outro paciente: o servidor recusa a gravação e a tela pausa e avisa', async () => {
+    await abre('/_preview/pr?pid=9003&ev=evQ');
+    await ate(`!document.querySelector('#prSoap textarea[data-f=s]').readOnly`, 10000, 'prontuário carregado');
+    await escreve('s', 'Evolução escrita para a 9003.');
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.pid === 9003 && n.event_id === 'evQ'))`,
+      15000, 'salvar a evolução da 9003');
+    await ev(`window.__openProntuario({ patient_id: 9004, patient: 'x', from: 'pacientes', event_id: 'evQ', title: 'Retorno' })`);
+    await grava('', 3);
+    await ate(`${UI}.alerta.includes('outro paciente') && ${UI}.st === 'pausada'`, 45000, 'pausar e avisar depois da recusa do primeiro trecho');
+    const g = Object.values((await estado()).gravacoes);
+    if (g.length) throw new Error('a gravação entrou na consulta da 9003: ' + JSON.stringify(g));
+    const mortos = (await ev(IDB)).filter((x) => x.dead === 409);
+    if (!mortos.length) throw new Error('o trecho recusado não ficou marcado');
+    return (await ev(UI)).alerta.slice(0, 80);
+  }],
+  ['consulta da agenda sem paciente ligado: grava, sobe e "Gerar de novo" funciona', async () => {
+    await abre('/_preview/pr?pid=9003&ev=evA');
+    // da agenda, um evento só com o nome (sem o cadastro ligado): o prontuário acha o paciente ao carregar
+    await ev(`window.__openProntuario({ patient: 'Carlos Eduardo Nunes', from: 'agenda', event_id: 'evN', title: 'Retorno' })`);
+    await grava('', 20);
+    await srv('/_preview/sim?ia=off'); await fimGravacao();
+    await ate(`${UI}.botoes.includes('Gerar de novo')`, 40000, 'a geração falhar (IA fora)');
+    await srv('/_preview/sim?ia=on');
+    await clica('#prRec .cs-go', 'Gerar de novo');
+    await ate(est('pronta'), 60000, 'evolução pronta depois do Gerar de novo');
+    const g = Object.values((await estado()).gravacoes);
+    if (g.length !== 1 || g[0].pid !== 9004 || g[0].status !== 'gerada' || !g[0].trechos.length) throw new Error('gravação: ' + JSON.stringify(g));
+    const ruins = (await ev(IDB)).filter((x) => x.dead || !x.pid);
+    if (ruins.length) throw new Error('trecho recusado ou sem paciente: ' + JSON.stringify(ruins));
+    return `${g[0].trechos.length} trechos no paciente 9004; gerou de novo`;
+  }],
+  ['gravação desligada na conta: o áudio guardado há mais de 48 h sai do computador', async () => {
+    await ev(`(async () => { const q = indexedDB.open('od_gravacao_00000000-0000-0000-0000-000000000000', 1);
+      q.onupgradeneeded = () => q.result.createObjectStore('seg', { keyPath: 'k' });
+      const db = await new Promise((ok) => { q.onsuccess = () => ok(q.result); });
+      await new Promise((ok) => { const t = db.transaction('seg', 'readwrite'), st = t.objectStore('seg');
+        st.put({ k: 'velho:1', rk: 'eevR|9003', recId: 'velho', seq: 1, pid: 9003, created: Date.now() - 49 * 3600e3 });
+        st.put({ k: 'novo:1', rk: 'eevR|9003', recId: 'novo', seq: 1, pid: 9003, created: Date.now() - 3600e3 });
+        t.oncomplete = ok; });
+      db.close(); return 1; })()`);
+    await srv('/_preview/sim?gravacao=off');
+    await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9003&ev=evR' });
+    await ate(`${IDB}.then((l) => l.length && !l.some((x) => x.k === 'velho:1'))`, 15000, 'apagar o áudio de mais de 48 h');
+    const l = await ev(IDB);
+    if (!l.some((x) => x.k === 'novo:1')) throw new Error('apagou o áudio de menos de 48 h');
+    return 'o de 49 h saiu; o de 1 h ficou';
+  }],
   ['a paciente de exemplo continua com a demonstração', async () => {
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });
     await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && !b.disabled)`, 20000, 'gravador');

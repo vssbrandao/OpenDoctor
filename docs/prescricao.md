@@ -187,6 +187,8 @@ Os remédios que a gravação extrai (`scribe.finish` → `meds`) entram no rasc
 gravação" (`prescricao.da_gravacao`), para revisar:
 - entra o mantido, o ajustado (os dois de uso contínuo) e o iniciado; o suspenso não entra;
 - o que já está no rascunho não repete (`prescricao.mesmo_remedio`), nem ao gerar de novo;
+- gerar de novo não desfaz o que o médico fez: o remédio que uma geração anterior já levou não volta (ele pode tê-lo
+  tirado) e a consulta com receita já emitida não ganha rascunho novo;
 - a tela recarrega a receita e avisa quantos entraram;
 - se der erro, a evolução sai do mesmo jeito, sem a receita (`_receita_da_gravacao`).
 

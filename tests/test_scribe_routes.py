@@ -28,12 +28,16 @@ class FakeDB(FakeGravacao):
     """O banco da gravação em memória (tests/fake_gravacao.py, o mesmo do preview) + o resto que as rotas leem."""
     def __init__(self):
         super().__init__()
-        self.log, self.today = [], 0.0
+        self.log, self.today, self.outro = [], 0.0, {}     # outro: consulta → paciente dono da evolução dela
 
     def install(self, mp):
         super().install(mp.setattr)
-        for name in ("get_patient", "rec_seconds_today", "recent_notes", "list_notes", "log_access", "last_note_content"):
+        for name in ("get_patient", "rec_seconds_today", "recent_notes", "list_notes", "log_access", "last_note_content",
+                     "event_note_other_patient"):
             mp.setattr(db, name, getattr(self, name))
+
+    def event_note_other_patient(self, uid, eid, pid, key):
+        return uid == UID and eid in self.outro and self.outro[eid] != pid
 
     def get_patient(self, uid, pid):
         return dict(PAC) if uid == UID and pid == PAC["id"] else None
@@ -321,3 +325,46 @@ def test_salvar_a_evolucao_liga_a_gravacao_da_consulta(fake, monkeypatch):
     assert r.json() == {"ok": True, "id": 55} and ligou == [(7, (REC,), 55)]
     c.post("/prontuario/notes", json={"patient_id": 7, "content": "S: x", "data": {"mode": "free"}})
     assert len(ligou) == 1                                                               # sem gravação: nada a ligar
+
+
+def test_gravacao_nao_entra_na_consulta_com_evolucao_de_outro_paciente(fake, monkeypatch):
+    """O paciente do evento foi trocado (Ana → Maria) com a evolução da Ana escrita: nem o trecho nem a geração entram
+    nessa consulta — nada vai ao transcritor, ao modelo ou à receita."""
+    c = TestClient(server.app)
+    fake.outro = {"ev9": 99}                                        # a evolução da consulta ev9 é de outro paciente (99)
+    r = c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1))
+    assert r.status_code == 409 and r.json()["other_patient"] is True
+    assert fake.calls == [] and fake.recs == {} and fake.segs == {}
+    monkeypatch.setattr(scribe, "ask_model", lambda msgs, model=None: pytest.fail("foi ao modelo"))
+    r = c.post("/prontuario/scribe", json={"patient_id": 7, "event_id": "ev9", "rec_id": REC, "mode": "soap"})
+    assert r.status_code == 409 and r.json()["other_patient"] is True and db.list_receitas(UID, 7) == []
+    fake.outro = {"ev9": 7}                                         # a evolução é desta paciente: grava normal
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1)).status_code == 200
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hdr(2, **{"X-Event-Id": None})).status_code == 200
+
+
+SAIDA_2 = dict(SAIDA, meds=SAIDA["meds"] + [{"nome": "metformina", "dose": "850 mg", "posologia": "2x/dia", "acao": "mantido", "src": [2]}])
+
+
+def test_gerar_de_novo_nao_desfaz_o_que_o_medico_fez_na_receita(fake, monkeypatch):
+    """Gerar de novo não traz de volta o remédio que o médico tirou do rascunho nem abre rascunho depois de emitida;
+    remédio novo (de um trecho que chegou depois) ainda entra no rascunho."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    saida = [SAIDA]
+    monkeypatch.setattr(scribe, "ask_model", lambda msgs, model=None: json.dumps(saida[0]))
+
+    def gera():
+        return _lines(c.post("/prontuario/scribe", json={"patient_id": 7, "event_id": "ev9", "rec_id": REC, "mode": "soap"}))[-1]
+    assert gera()["receita"] == 1
+    (rx,) = db.list_receitas(UID, 7)
+    db.update_receita(UID, rx["id"], [])                            # o médico tirou a losartana
+    assert gera()["receita"] == 0 and db.get_receita(UID, rx["id"])["itens"] == []
+    saida[0] = SAIDA_2
+    assert gera()["receita"] == 1                                   # a metformina é nova: entra; a losartana não volta
+    assert [i["nome"] for i in db.get_receita(UID, rx["id"])["itens"]] == ["Metformina"]
+    db.emit_receita(UID, rx["id"], [("simples", db.get_receita(UID, rx["id"])["itens"])])
+    saida[0] = dict(SAIDA_2, meds=SAIDA_2["meds"] + [{"nome": "atorvastatina", "dose": "20 mg", "posologia": "à noite",
+                                                      "acao": "iniciado", "src": [2]}])
+    assert gera()["receita"] == 0                                   # emitida: não abre outro rascunho sozinho
+    assert [r["status"] for r in db.list_receitas(UID, 7)] == ["emitida"]

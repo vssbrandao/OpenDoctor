@@ -109,7 +109,8 @@ A seção da gravação tem três partes:
 `recRender` decide qual delas aparece.
 
 - **Estado.** O bloco de comentário no começo da gravação real descreve cada gravação (`RR.by[k]`, uma por consulta,
-  `k = ctx._rk`): as situações (`idle`, `live`, `paused`, `interrupted`, `ending`, `gen`, `fail`, `done`, `saved`,
+  `k = rrKey()`: a consulta da agenda com o paciente, `'e' + event_id + '|' + patient_id`, ou a avulsa, `ctx._rk`; trocar
+  o paciente do evento abre outra gravação, e sem o paciente ainda não há gravação): as situações (`idle`, `live`, `paused`, `interrupted`, `ending`, `gen`, `fail`, `done`, `saved`,
   `nomic`), os estados de cada trecho e os campos.
 - **Cortes** (`SEG`, os mesmos números de `scribe_eval.CORTE`; um teste confere):
   - o trecho tem de 15 a 30 s;
@@ -123,7 +124,10 @@ A seção da gravação tem três partes:
   - erro do servidor (5xx, 429, 403): tenta de novo e, depois de 3 falhas, deixa o trecho para depois (até 10 min) e
     segue com os outros;
   - 401: espera entrar de novo;
-  - 400, 404, 413 e 415: o trecho fica marcado como recusado e aparece como "fora da evolução".
+  - 400, 404, 409, 413 e 415: o trecho fica marcado como recusado e aparece como "fora da evolução"; o 409 (consulta com
+    evolução de outro paciente) também pausa a gravação e avisa;
+  - o paciente vai na hora do envio (o do trecho ou o da gravação dele): trecho sem paciente espera;
+  - áudio que não subiu em 48 h sai do aparelho ao abrir a página e a cada hora, mesmo com a gravação desligada na conta.
 - **Recuperação** (`rrLoad`): ao abrir a consulta, junta o que o servidor já transcreveu e o que ficou no aparelho.
   - Consulta da agenda: acha a gravação pelo `event_id`.
   - Consulta com evolução: pelo `note_id`.
@@ -143,6 +147,9 @@ A seção da gravação tem três partes:
 `X-Patient-Id`, `X-Rec-Id` (UUID criado na página), `X-Seq`, `X-At` (início do trecho, em s), `X-Event-Id`, `X-Note-Id`
 e `X-Consent` (ISO: quando a gravação começou; desde 20/10/2026 não há marca de autorização na tela). O nome do paciente
 nunca vai.
+- Consulta da agenda cuja evolução é de outro paciente (o paciente do evento foi trocado; a regra do
+  `db.NoteOtherPatient`, em `db.event_note_other_patient`): 409 com `other_patient`, sem transcrever. O
+  `/prontuario/scribe` recusa igual.
 - Mesmo `rec_id` + `seq` já transcrito: devolve o texto guardado sem cobrar.
 - Mesmo trecho chegando ao mesmo tempo: o segundo espera o primeiro (`_EM_ANDAMENTO`).
 - Teto: 6 h de gravação por médico em 24 h.
@@ -178,7 +185,7 @@ nunca vai.
   ```bash
   node tests/e2e/gravacao.mjs
   ```
-  Use `PREVIEW=` se a porta for outra e `SO=3,5` para rodar só alguns cenários. São 16 cenários e cerca de 13 minutos,
+  Use `PREVIEW=` se a porta for outra e `SO=3,5` para rodar só alguns cenários. São 21 cenários e cerca de 16 minutos,
   porque grava em tempo real. É obrigatório quando a gravação muda.
 - **Preview local** (`/_preview/pr?pid=9003&ev=evA`):
   - pacientes fictícios (9001 Maria Silva, de exemplo; 9003; 9004);

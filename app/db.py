@@ -729,7 +729,7 @@ def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, 
                 cur.execute("""select signed_at, patient_id, patient_key, content from clinical_notes
                                where user_id = %s and event_id = %s""", (user_id, event_id))
                 r = cur.fetchone()
-                if r and (r[0] or r[3]) and not (r[1] == patient_id if r[1] is not None else r[2] == pkey):
+                if _de_outro_paciente(r, patient_id, pkey):
                     raise NoteOtherPatient()
                 if r and r[0]:
                     raise NoteLocked()
@@ -759,6 +759,23 @@ def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, 
             nid = r[0]
         conn.commit()
     return nid
+
+
+def _de_outro_paciente(r, patient_id, pkey):
+    """r = (signed_at, patient_id, patient_key, content) da evolução da consulta: escrita ou finalizada para outro
+    paciente. A vazia, ainda não finalizada, não conta (passa para quem salvar)."""
+    return bool(r) and bool(r[0] or r[3]) and not (r[1] == patient_id if r[1] is not None else r[2] == pkey)
+
+
+def event_note_other_patient(user_id, event_id, patient_id, pkey):
+    """A consulta da agenda já tem evolução de outro paciente (o paciente do evento foi trocado)? A mesma regra do
+    NoteOtherPatient: a gravação também não entra nela."""
+    if not event_id:
+        return False
+    with connection() as conn:
+        r = conn.execute("""select signed_at, patient_id, patient_key, content from clinical_notes
+                            where user_id = %s and event_id = %s""", (user_id, event_id)).fetchone()
+    return _de_outro_paciente(r, patient_id, pkey)
 
 
 def get_note(user_id, note_id):

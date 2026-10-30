@@ -60,8 +60,9 @@ mock = APIRouter()
 
 @mock.post("/prontuario/list")
 async def _list(request: Request):
-    pid = (await request.json()).get("patient_id")
-    p = PATS.get(pid) or PATS[9001]
+    b = await request.json()
+    pid = b.get("patient_id")          # evento só com o nome (sem o paciente ligado): acha pelo nome, como o servidor
+    p = PATS.get(pid) or next((x for x in PATS.values() if x["name"] == b.get("patient")), PATS[9001])
     ns = sorted([_note_out(n) for n in NOTES.values() if n["pid"] == p["id"]], key=lambda n: n["updated_at"], reverse=True)
     return {"patient": {k: v for k, v in p.items() if k != "key"}, "notes": ns}
 
@@ -128,6 +129,8 @@ def _exemplo():
 async def _save(request: Request):
     b = await request.json()
     pid, ev, nid = b.get("patient_id"), b.get("event_id") or None, b.get("note_id")
+    if ev and db.event_note_other_patient(UID, ev, pid, None):      # como o db.upsert_note: NoteOtherPatient
+        return server._outro_paciente()
     n = next((x for x in NOTES.values() if x["pid"] == pid and ((ev and x["event_id"] == ev) or (nid and x["id"] == nid))), None)
     if n and n["signed_at"]:
         return JSONResponse({"error": "evolução finalizada: use um adendo"}, status_code=409)
@@ -221,6 +224,9 @@ db.last_note_content = lambda uid, pid, nid=None, eid=None: next(
     (n["content"] for n in sorted(NOTES.values(), key=lambda n: n["updated_at"], reverse=True)
      if n["pid"] == pid and n["content"].strip() and n["id"] != nid and (eid is None or n["event_id"] != eid)), "")
 db.log_access = lambda *a, **k: None
+# a consulta já tem evolução de outro paciente (como db.event_note_other_patient: escrita ou finalizada)
+db.event_note_other_patient = lambda uid, eid, pid, key: bool(eid) and any(
+    n["event_id"] == eid and n["pid"] != pid and (n["signed_at"] or n["content"]) for n in NOTES.values())
 # resumo clínico (Suspender e "Atualizar as medicações em uso" na aba Prescrições): grava no paciente em memória
 db.find_by_cpf = lambda uid, cpf, exclude_id=None: None
 db.update_patient = lambda uid, pid, fields: (PATS[pid].update({k: v for k, v in fields.items() if k in db._PATIENT_FIELDS}) or dict(PATS[pid])) if pid in PATS else None
@@ -343,11 +349,13 @@ server.app.add_middleware(_Rede)
 
 
 @mock.get("/_preview/sim")
-def _sim(rede: str = "", ia: str = "", lento: str = "", erro_seq: str = None, recusar_seq: str = None):
+def _sim(rede: str = "", ia: str = "", lento: str = "", erro_seq: str = None, recusar_seq: str = None, gravacao: str = ""):
     if rede:
         SIM["rede"] = rede == "off"
     if ia:
         SIM["ia"] = ia == "off"
+    if gravacao:                                     # gravação desligada na conta (SCRIBE_OFF): /me devolve scribe falso
+        config.SCRIBE_OFF = gravacao == "off"
     if lento:
         SIM["lento"] = float(lento)
     if erro_seq is not None:
@@ -371,6 +379,7 @@ def _estado():
 @mock.get("/_preview/reset")
 def _reset():
     GRAV.reset(); NOTES.clear(); FILES.clear(); RX.reset(); PATS.clear(); PATS.update({k: dict(v) for k, v in _PATS0.items()}); prescricao._CACHE.clear(); server._RL.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
+    config.SCRIBE_OFF = False
     return {"ok": True}
 
 

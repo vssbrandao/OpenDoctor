@@ -4688,7 +4688,7 @@
         });
       }
       // gravação desta consulta (consulta avulsa ainda sem evolução): o servidor a liga à evolução assim que ela é salva
-      function rrIdsOf(c) { var r = c && c._rk && RR.by[c._rk]; return r && r.recId ? [r.recId] : []; }
+      function rrIdsOf(c) { var k = c && (c.event_id ? rrKey(c) : c._rk), r = k && RR.by[k]; return r && r.recId ? [r.recId] : []; }
       function retryLater(c) {
         if (c !== ctx) return;
         clearTimeout(retryTimer);
@@ -5408,7 +5408,7 @@
       // vai para o IndexedDB ANTES de subir e só é apagado quando o servidor devolve o texto. O trecho em andamento
       // também é guardado a cada 2 s: se a aba fechar ou o computador travar, perde-se no máximo isso.
       //
-      // Estado. RR.by[k] é a gravação de uma consulta (k = ctx._rk: a consulta da agenda ou a avulsa), criada em rrCur.
+      // Estado. RR.by[k] é a gravação de uma consulta (k = rrKey(): a consulta da agenda com o paciente, ou a avulsa), criada em rrCur.
       //   st (situação): idle (antes de gravar) · nomic (o navegador negou o microfone) · live (gravando) · paused ·
       //     interrupted (a aba fechou no meio; volta pelo rrLoad) · ending (encerrou; esperando os trechos subirem) ·
       //     gen (gerando a evolução) · fail (a geração falhou) · done (evolução gerada, revisão) · saved (gerada noutra
@@ -5429,14 +5429,29 @@
       var SR16 = 16000;
       api('GET', '/me').then(function (res) {
         RR.on = !!(res.ok && res.j && res.j.scribe); RR.uid = (res.j && res.j.user && res.j.user.id) || '';
-        if (RR.on) { idbPurge(); qKick(); if (isOpen() && ready) recRender(); }
+        rrPurga();                                         // também com a gravação desligada na conta
+        if (RR.on) { qKick(); if (isOpen() && ready) recRender(); }
       }).catch(function () {});
+      // áudio que não subiu em 48 h sai do aparelho mesmo com a gravação desligada na conta (a fila não roda) e com a aba
+      // aberta por dias. Conta que nunca gravou não ganha o banco do aparelho só para isso
+      function rrPurga() {
+        if (!RR.uid) return;
+        var nome = 'od_gravacao_' + RR.uid;
+        new Promise(function (ok) {                        // erro do navegador aqui não derruba quem chamou
+          ok(RR.on || !indexedDB.databases || indexedDB.databases().then(function (l) { return l.some(function (d) { return d.name === nome; }); }));
+        }).then(function (tem) { if (tem) idbPurge(); }, idbPurge);
+      }
+      setInterval(rrPurga, 3600e3);
       // a paciente de exemplo (Maria Silva, fictícia) fica sempre com a demonstração, mesmo em conta liberada
       function rrActive() { return !!(RR && RR.on) && !recDemo(); }
-      function rrKey() {
-        if (!ctx) return '';
-        if (!ctx._rk) { ctx._rk = ctx.event_id ? 'e' + ctx.event_id : 'a' + Date.now().toString(36); persistCtx(); }
-        return ctx._rk;
+      // consulta da agenda: a chave leva o paciente (trocar o paciente do evento nunca reaproveita a gravação do anterior) e,
+      // sem o paciente ainda (evento sem cadastro ligado, lista de pacientes carregando), não há gravação até o prontuário
+      // carregar — nada sai sem paciente
+      function rrKey(c) {
+        c = c || ctx; if (!c) return '';
+        if (c.event_id) return c.patient_id ? 'e' + c.event_id + '|' + c.patient_id : '';
+        if (!c._rk) { c._rk = 'a' + Date.now().toString(36); if (c === ctx) persistCtx(); }
+        return c._rk;
       }
       function rrCur() {
         var k = rrKey(); if (!k) return null;
@@ -5637,6 +5652,12 @@
       var Q = { busy: false, fails: 0, timer: null, down: false, erro: 0 };
       RR.mem = [];
       function qRows() { return idbAll().catch(function () { return []; }).then(function (rows) { return rows.concat(RR.mem); }); }
+      // a gravação na tela de um trecho: pela chave; trecho guardado com outra chave (de antes de a chave levar o paciente), pelo id
+      function rrDe(x) {
+        var r = RR.by[x.rk]; if (r && r.recId === x.recId) return r;
+        var k = Object.keys(RR.by).filter(function (q) { return RR.by[q].recId && RR.by[q].recId === x.recId; })[0];
+        return k ? RR.by[k] : r;
+      }
       function qSave(row) { return RR.mem.indexOf(row) >= 0 ? Promise.resolve() : idbPut(row).catch(function () {}); }
       function qDrop(row) {
         var i = RR.mem.indexOf(row); if (i >= 0) { RR.mem.splice(i, 1); return Promise.resolve(); }
@@ -5646,7 +5667,8 @@
         if (Q.busy || !RR.on) return;
         clearTimeout(Q.timer); Q.busy = true;
         qRows().then(function (rows) {
-          var now = Date.now(), live = rows.filter(function (x) { return !x.dead && !x.part; });
+          // o paciente vai na hora do envio: o do trecho ou o da gravação dele; trecho ainda sem paciente espera (não vira 400)
+          var now = Date.now(), live = rows.filter(function (x) { return !x.dead && !x.part && (x.pid || (rrDe(x) || {}).pid); });
           Q.erro = live.filter(function (x) { return x.falhas; }).length;      // trechos que o servidor já recusou com erro
           var next = live.filter(function (x) { return !x.depois || x.depois <= now; }).sort(function (a, b) { return a.created - b.created; })[0];
           if (!next) {
@@ -5655,10 +5677,10 @@
             if (wait < Infinity) Q.timer = setTimeout(qKick, Math.max(1000, wait - now));
             qState(false); return;
           }
-          var r = RR.by[next.rk], seg = r && r.segs.filter(function (s) { return s.seq === next.seq && r.recId === next.recId; })[0];
+          var r = rrDe(next), seg = r && r.segs.filter(function (s) { return s.seq === next.seq && r.recId === next.recId; })[0];
           if (seg) { seg.st = 'sending'; }
           return fetch('/prontuario/transcribe', { method: 'POST', credentials: 'same-origin', body: next.wav,
-            headers: { 'Content-Type': 'audio/wav', 'X-Patient-Id': String(next.pid || ''), 'X-Rec-Id': next.recId, 'X-Seq': String(next.seq),
+            headers: { 'Content-Type': 'audio/wav', 'X-Patient-Id': String(next.pid || r.pid), 'X-Rec-Id': next.recId, 'X-Seq': String(next.seq),
                        'X-At': String(Math.round(next.at * 10) / 10), 'X-Event-Id': next.eid, 'X-Note-Id': String(next.nid || ''),
                          'X-Consent': next.consentAt } })
             .then(function (resp) {
@@ -5672,8 +5694,10 @@
                 }
                 if (seg) seg.st = 'local';
                 if (resp.status === 401) { Q.busy = false; Q.auth = true; qState(false); return; }   // sessão venceu: sobe ao entrar de novo
-                if ([400, 404, 413, 415].indexOf(resp.status) >= 0) {                             // não adianta tentar de novo
+                if ([400, 404, 409, 413, 415].indexOf(resp.status) >= 0) {                        // não adianta tentar de novo
                   next.dead = resp.status; if (seg) { seg.st = 'err'; seg.err = j.error || ('erro ' + resp.status); }
+                  // a consulta já tem evolução de outro paciente (o paciente do evento foi trocado): pausa e avisa
+                  if (j.other_patient && r) { rrPause(r); r.warn = 'outro'; rrRender(r); }
                   return qSave(next).then(function () { Q.busy = false; qKick(); });
                 }
                 if (!next.falhas) Q.erro++;                // 5xx, 429 e 403 (gravação desligada na conta): guarda e tenta depois
@@ -5947,8 +5971,10 @@
         // consulta avulsa: a gravação feita antes de a evolução ser salva não tem consulta nem evolução; acha pelo paciente
         // (consulta que já tem evolução acha as suas por ela: nunca pega a gravação de outra consulta avulsa)
         var orfa = function (x) { return !cx.event_id && !cx.note_id && x.pid === my.pid && !x.eid && !x.nid; };
+        // trecho guardado antes de a chave levar o paciente ('e' + consulta): só se for deste paciente
+        var antiga = function (x) { return !!cx.event_id && x.rk === 'e' + cx.event_id && !!x.pid && String(x.pid) === String(my.pid); };
         idbAll().catch(function () { return []; }).then(function (rows) {
-          var ids = rows.filter(function (x) { return x.rk === my.k || orfa(x); }).map(function (x) { return x.recId; })
+          var ids = rows.filter(function (x) { return x.rk === my.k || orfa(x) || antiga(x); }).map(function (x) { return x.recId; })
                         .filter(function (x, i, a) { return a.indexOf(x) === i; });
           return api('POST', '/prontuario/recordings/state', { patient_id: my.pid, event_id: cx.event_id || null,
                                                                note_id: cx.note_id || null, rec_ids: ids, orfas: !cx.event_id &&
@@ -5957,7 +5983,7 @@
             my.loaded = true;
             var recs = res.j.recordings || [], last = recs[recs.length - 1];
             {
-              var mine = rows.filter(function (x) { return x.rk === my.k || orfa(x) || (last && x.recId === last.rec_id); });
+              var mine = rows.filter(function (x) { return x.rk === my.k || orfa(x) || antiga(x) || (last && x.recId === last.rec_id); });
               if (!last && !mine.length) return;
               if (my.st !== 'idle') return;
               var rid = last ? last.rec_id : mine[0].recId;
@@ -6116,7 +6142,8 @@
             'grave de novo, ou escreva a evolução à mão.');
         } else if (r.st === 'fail') {
           csGo('Gerar de novo', function () { rrGenerate(r); });
-          rcAlert('bad', 'err', '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');
+          rcAlert('bad', 'err', /outro paciente/.test(r.err || '') ? RRTXT.outro
+            : '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');
         } else if (gravada) {                          // o player percorre as falas no tempo, sem som (o áudio foi descartado)
           csSoFim();
           csPlayer(r, rrMarcas(r), false);
@@ -6135,15 +6162,25 @@
       // "Iniciar consulta" grava direto: a marca "O paciente autorizou a gravação" saiu da tela (20/10/2026, pedido do usuário);
       // consentAt guarda a hora em que a gravação começou e segue em cada trecho (X-Consent), como antes
       function rrIniciar(r) { r.consent = true; csTab('tx'); rrStart(r); }
-      // o aviso do cartão (um de cada vez, do mais grave): microfone, silêncio, gravação longa, armazenamento, trechos fora
-      // da evolução, servidor, sessão, internet
+      var RRTXT = { outro: '<b>Esta consulta já tem evolução de outro paciente.</b> A gravação não entra nela: confira o paciente na agenda.' };
+      // outra gravação desta consulta da agenda, de outro paciente, ainda em curso (o paciente do evento foi trocado)
+      function rrOutro(r) {
+        return !!r.cx.event_id && Object.keys(RR.by).some(function (k) { var x = RR.by[k];
+          return x !== r && x.cx.event_id === r.cx.event_id && String(x.pid) !== String(r.pid) &&
+            ['live', 'paused', 'interrupted', 'ending', 'gen'].indexOf(x.st) >= 0; });
+      }
+      // o aviso do cartão (um de cada vez, do mais grave): microfone, consulta de outro paciente, silêncio, gravação longa,
+      // armazenamento, trechos fora da evolução, servidor, sessão, internet
       function rrAlert(r, pend, lk) {
         if (r.warn === 'micoff') {
           rcAlert('bad', 'micoff', '<b>' + (r.err === 'NotFoundError' || r.err === 'NotAllowedError' ? 'O microfone não está disponível' :
             'O microfone foi desconectado') +
             ' e a gravação foi pausada.</b> O que já foi gravado está salvo.', [['Escolher microfone', 1]]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); });
-        } else if (r.warn === 'silencio' && r.st === 'live') { rcAlert('warn', 'warn',
+        } else if (r.warn === 'outro') rcAlert('bad', 'err', RRTXT.outro);
+        else if (rrOutro(r)) rcAlert('warn', 'warn', '<b>Esta consulta tem uma gravação de outro paciente.</b> Ela fica no prontuário ' +
+          'dele; o que gravar aqui fica neste paciente. Confira o paciente na agenda.');
+        else if (r.warn === 'silencio' && r.st === 'live') { rcAlert('warn', 'warn',
           '<b>Não estamos ouvindo nada há 20 segundos.</b> Confira se o microfone certo está ligado e perto de vocês.', [['Trocar microfone']]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); }); }
         else if (r.warn === 'longa' && r.st === 'live') rcAlert('warn', 'warn',
