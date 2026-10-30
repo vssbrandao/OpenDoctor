@@ -5,7 +5,8 @@
 //
 // Confere: eventos de dia inteiro aparecem no Dia e na Semana (e abrem a janela); plantão que passa da meia-noite abre,
 // salva e vai ao prontuário com o fim no dia seguinte; criar às 23h30 funciona; editar as férias mantém os dias;
-// alteração que não dá para salvar avisa em vez de sumir; a semana e a busca pedem o teto e a busca lê o futuro à parte.
+// alteração que não dá para salvar avisa em vez de sumir; a semana e a busca pedem o teto e a busca lê o futuro à parte;
+// a faixa "Reconectar" diz se o Google Agenda está sem permissão ou se a conexão expirou.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -54,12 +55,15 @@ const EVS = [
   { id: 'plantao', title: 'Plantão', start: `${dia(0)}T19:00:00-03:00`, end: `${dia(1)}T07:00:00-03:00`, allDay: false },
   { id: 'joana', title: 'Consulta — Joana Prado', patient_id: 5, start: `${dia(0)}T23:30:00-03:00`, end: `${dia(1)}T00:00:00-03:00`, allDay: false },
 ];
+let RECONECTAR = null;                                     // 'permissao' ou 'expirada': o servidor pede reconectar
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
 function rota(method, path, q, body) {
   if (path === '/me') return { logged_in: true, scribe: false, user: { id: 'u-teste' } };
   if (path === '/patients' && method === 'GET') return { patients: [{ id: 5, name: 'Joana Prado' }] };
-  if (path === '/calendar/events' && method === 'GET') return { logged_in: true, connected: 'google', events: EVS };
+  if (path === '/calendar/events' && method === 'GET') return RECONECTAR
+    ? { logged_in: true, connected: 'google', events: [], needs_reconnect: true, reason: RECONECTAR }
+    : { logged_in: true, connected: 'google', events: EVS };
   if (path === '/calendar/events' && method === 'POST') {
     const e = { id: 'novo' + EVS.length, title: body.title, start: body.start, end: body.end, allDay: !!body.all_day };
     EVS.push(e); return { ok: true, event: e };
@@ -219,6 +223,22 @@ const cenarios = [
     const itens = await ev(`[...document.querySelectorAll('#srchList .srch-item .srch-t')].map((t) => t.textContent)`);
     certo(new Set(itens).size === itens.length, 'sem repetidos: ' + itens.join(' | '));
     return itens.length + ' próximas, sem repetir';
+  }],
+  ['reconectar: a faixa diz "sem permissão" ou "expirou", e some quando a agenda volta', async () => {
+    await tecla('Escape');                                     // fecha a busca
+    const faixa = `(document.querySelector('#calReconnect b') || {}).textContent`;
+    RECONECTAR = 'permissao';
+    await ev(`window.__refreshAgenda(); 1`);
+    await ate(`!document.getElementById('calReconnect').hidden`, 3000, 'faixa');
+    certo(await ev(faixa) === 'O Google Agenda está sem permissão para o OpenDoctor.', 'sem permissão: ' + await ev(faixa));
+    RECONECTAR = 'expirada';
+    await ev(`window.__refreshAgenda(); 1`);
+    await ate(`${faixa} === 'A conexão com o Google Agenda expirou.'`, 3000, 'expirou: ' + await ev(faixa));
+    certo(await ev(`document.querySelector('#calReconnect a').getAttribute('href')`) === '/integrations/google/connect', 'link Reconectar');
+    RECONECTAR = null;
+    await ev(`window.__refreshAgenda(); 1`);
+    await ate(`document.getElementById('calReconnect').hidden`, 3000, 'faixa some');
+    return 'sem permissão → expirou → some';
   }],
 ];
 

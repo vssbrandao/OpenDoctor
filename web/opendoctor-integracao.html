@@ -80,7 +80,7 @@
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .conn-status[hidden]{display:none}
     .conn-status .dot{width:8px;height:8px;border-radius:50%;background:#3FDD09;flex:none}
-    .conn-status.expired .dot{background:#E37400}          /* conectado, mas o Google recusou a renovação */
+    .conn-status.expired .dot{background:#E37400}          /* conectado, mas reconectar: expirada ou sem permissão */
     .card-sub button.lnk{border:0;background:none;padding:0;font:inherit;color:#0B57D0;cursor:pointer;text-decoration:underline}
 
     /* botão (973:6642): h 64, padding 16 48, gap 8, raio 999 */
@@ -224,15 +224,17 @@
           if (!MSG[prov]) sub.textContent = sub.dataset.base;
           status.classList.toggle('expired', !!(info.connected && info.needs_reconnect));
           if (info.connected && info.needs_reconnect) {
-            // a conexão morreu (acesso revogado ou vencido): conectar de novo grava um token novo; quem não quer
-            // mais a agenda ligada ainda pode desconectar
+            // a conexão morreu (acesso revogado ou vencido) ou foi gravada sem a permissão da agenda: conectar de
+            // novo grava um token novo; quem não quer mais a agenda ligada ainda pode desconectar
+            var perm = info.reason === 'permissao';
             row.classList.add('connected');
             status.hidden = false;
-            status.querySelector('.st-text').textContent = 'Expirada';
+            status.querySelector('.st-text').textContent = perm ? 'Sem permissão' : 'Expirada';
             btn.textContent = 'Reconectar';
             btn.dataset.action = 'connect';
             if (!MSG[prov]) {
-              sub.textContent = 'A conexão expirou. Reconecte ou ';
+              sub.textContent = perm ? 'Falta a permissão da agenda. Reconecte e marque a permissão do Google Agenda, ou '
+                : 'A conexão expirou. Reconecte ou ';
               var off = document.createElement('button'); off.type = 'button'; off.className = 'lnk'; off.textContent = 'desconecte';
               off.addEventListener('click', function () { fetch('/integrations/' + prov + '/disconnect', { method: 'POST' }).then(load); });
               sub.appendChild(off); sub.appendChild(document.createTextNode('.'));

@@ -77,6 +77,18 @@ def _userinfo_email(provider, access_token):
 
 # sem uma destas a agenda não lê nem cria eventos (no consentimento o Google deixa desmarcar a caixa da agenda)
 CAL_SCOPES = {"google": {"https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar"}}
+# só leitura (conexões de antes de pedirmos calendar.events): a agenda aparece, mas não cria eventos
+CAL_READ_SCOPES = {"google": {"https://www.googleapis.com/auth/calendar.readonly",
+                              "https://www.googleapis.com/auth/calendar.events.readonly"}}
+
+
+def _sem_permissao(provider, scope, leitura=False):
+    """O escopo concedido não tem a permissão da agenda para criar/editar (com leitura=True: nem para ler).
+    scope None = não informado, conta como concedido o que foi pedido (RFC 6749 5.1)."""
+    if provider not in CAL_SCOPES or scope is None:
+        return False
+    ok = CAL_SCOPES[provider] | (CAL_READ_SCOPES[provider] if leitura else set())
+    return not ok & set(str(scope).split())
 
 
 class MissingScope(RuntimeError):
@@ -95,9 +107,7 @@ def exchange_and_store(provider, code, user_id):
     if r.status_code != 200:
         raise RuntimeError(f"token {r.status_code}: {r.text[:300]}")
     tok = r.json()
-    # sem "scope" na resposta = concedido o que foi pedido (RFC 6749 5.1)
-    if provider in CAL_SCOPES and tok.get("scope") is not None \
-            and not CAL_SCOPES[provider] & set(str(tok["scope"]).split()):
+    if _sem_permissao(provider, tok.get("scope")):
         raise MissingScope("sem a permissão da agenda")
     access = tok.get("access_token")
     expires_at = _utcnow() + datetime.timedelta(seconds=int(tok.get("expires_in", 3600)) - 60)
@@ -112,17 +122,24 @@ def exchange_and_store(provider, code, user_id):
 
 
 class NeedsReconnect(RuntimeError):
-    """A conexão com o calendário morreu (o provedor recusou a renovação: acesso revogado, senha trocada,
-    token vencido): só o médico reconectando resolve. Vira `needs_reconnect` nas rotas e o aviso na tela."""
+    """Só o médico reconectando resolve. Vira `needs_reconnect` nas rotas e o aviso na tela. `reason`:
+    "expirada" (a conexão morreu: o provedor recusou a renovação, acesso revogado, senha trocada, token vencido)
+    ou "permissao" (a conexão foi gravada sem a permissão da agenda, ou o Google recusou ler por falta dela)."""
+    def __init__(self, msg="", reason="expirada"):
+        super().__init__(msg)
+        self.reason = reason
 
 
 def _access_token(user_id, provider):
     """Token válido do usuário (renova com refresh_token se expirou). None = calendário não conectado.
     Levanta NeedsReconnect se a conexão morreu; a linha fica marcada (sem refresh_token) para não pedir a
-    renovação ao provedor de novo a cada atualização da agenda."""
+    renovação ao provedor de novo a cada atualização da agenda. Conexão gravada sem permissão nem para ler a
+    agenda (antes de exchange_and_store conferir) também levanta NeedsReconnect, com reason "permissao"."""
     t = db.get_token(user_id, provider)
     if not t:
         return None
+    if _sem_permissao(provider, t.get("scope"), leitura=True):
+        raise NeedsReconnect("sem a permissão da agenda", "permissao")
     exp = t.get("expires_at")
     if exp and exp > _utcnow():
         return t["access_token"]
@@ -220,6 +237,12 @@ def _reason(r):
         return ""
 
 
+def _leitura_sem_permissao(r):
+    """O Google recusou LER a agenda por falta da permissão: reconectar resolve (não uma agenda vazia)."""
+    if r.status_code == 403 and _reason(r) in CalendarError.SEM_PERMISSAO:
+        raise NeedsReconnect("sem a permissão da agenda", "permissao")
+
+
 def _headers(user_id, provider):
     at = _access_token(user_id, provider)
     if not at:
@@ -302,7 +325,10 @@ def patient_events(user_id, provider, patient_id, name=None, time_min=None, time
     for params in queries:
         try:
             r = httpx.get(_event_url("google"), headers=hdr, timeout=25, params=params)
+            _leitura_sem_permissao(r)
             items = r.json().get("items", []) if r.status_code == 200 else []
+        except NeedsReconnect:
+            raise
         except Exception:
             items = []
         for e in items:
@@ -321,13 +347,19 @@ def patient_events(user_id, provider, patient_id, name=None, time_min=None, time
 
 
 def status(user_id):
-    """Estado das integrações do usuário (ou tudo desconectado se None)."""
+    """Estado das integrações do usuário (ou tudo desconectado se None). `needs_reconnect`: conectado, mas a
+    conexão morreu (`reason` "expirada") ou foi gravada sem a permissão da agenda ("permissao")."""
     connected = db.connected_providers(user_id) if user_id else {}
     dead = db.dead_providers(user_id) if connected else set()
     out = {}
     for prov in PROVIDERS:
+        scope = (db.get_token(user_id, prov) or {}).get("scope") if prov in connected and prov in CAL_SCOPES else None
+        # mesma ordem de _access_token: sem permissão nem para ler, conexão morta; por último, só leitura
+        reason = ("permissao" if _sem_permissao(prov, scope, leitura=True) else "expirada" if prov in dead
+                  else "permissao" if _sem_permissao(prov, scope) else None)
         out[prov] = {"connected": prov in connected,
-                     "needs_reconnect": prov in dead,          # conectado, mas a conexão morreu
+                     "needs_reconnect": bool(reason),
+                     "reason": reason,
                      "email": connected.get(prov),
                      "configured": configured(prov)}
     return out
@@ -362,6 +394,7 @@ def events(user_id, provider, limit=250, time_min=None, time_max=None):
             for _ in range(_PAGES):
                 r = httpx.get("https://www.googleapis.com/calendar/v3/calendars/primary/events",
                               headers=hdr, timeout=25, params=params)
+                _leitura_sem_permissao(r)
                 j = r.json()
                 for e in j.get("items", []):
                     st = e.get("start", {}); en = e.get("end", {})
@@ -395,6 +428,8 @@ def events(user_id, provider, limit=250, time_min=None, time_max=None):
                 if len(out) >= limit or not nxt.startswith("https://graph.microsoft.com/"):   # o token só vai à Microsoft
                     break
                 url, params = nxt, None                       # o link da próxima página já leva os parâmetros
+    except NeedsReconnect:
+        raise
     except Exception:
         pass
     return out[:limit]
