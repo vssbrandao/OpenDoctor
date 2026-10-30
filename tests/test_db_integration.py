@@ -53,6 +53,15 @@ def test_trocar_senha_derruba_sessoes(novo_usuario):
     assert db.set_password(u["id"], "novo-hash")["sv"] == (u.get("sv") or 0) + 1
 
 
+def test_tiquete_da_nova_senha_vale_uma_vez_no_banco(novo_usuario):
+    """O banco confere a versão do tíquete: o segundo uso (outro processo no ar) não troca a senha."""
+    u = novo_usuario()
+    sv = db.get_user(u["id"])["sv"]
+    assert db.set_password(u["id"], "hash-1", sv)["sv"] == sv + 1
+    assert db.set_password(u["id"], "hash-2", sv) is None
+    assert db.get_user(u["id"])["sv"] == sv + 1
+
+
 def test_codigo_de_email(novo_usuario):
     email = f"teste-{uuid.uuid4().hex[:12]}@example.invalid"
     try:

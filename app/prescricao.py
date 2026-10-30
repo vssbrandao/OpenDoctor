@@ -300,8 +300,22 @@ def conferir(itens, alergias, tfg_=None):
     return out
 
 
+def _nucleo(nome):
+    """O nome sem sal, forma, dose e unidade (scribe._FORMA): "Cloridrato de sertralina 50 mg" → "sertralina", "D3
+    7.000 UI" → "d3"; "Vitamina D3" → "d3"."""
+    toks = [t for t in re.findall(r"[a-z0-9]+", scribe.norm(nome)) if not t.isdigit() and t not in scribe._FORMA]
+    if len(toks) > 1 and toks[0] == "vitamina":
+        toks = toks[1:]
+    return " ".join(toks)
+
+
 def mesmo_remedio(a, b):
-    """Os dois nomes são o mesmo remédio ("losartana" e "Losartana potássica")?"""
+    """Os dois nomes são o mesmo remédio ("losartana" e "Losartana potássica")? Compara sem o sal na frente
+    ("cloridrato de sertralina" não é "cloridrato de fluoxetina") e sem dose ("D3 7.000 UI" é "D3")."""
+    na, nb = _nucleo(a), _nucleo(b)
+    if na and na == nb:
+        return True
+    a, b = na or a, nb or b
     return scribe.same_drug(a, b) or scribe.same_drug(b, a)
 
 

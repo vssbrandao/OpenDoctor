@@ -491,3 +491,57 @@ def test_geracao_que_nao_foi_guardada_nao_mexe_na_receita(fake, monkeypatch):
     with pytest.raises(RuntimeError):
         gera()
     assert db.list_receitas(UID, 7) == []
+
+
+
+def test_mesma_geracao_nao_repete_e_variantes_nao_voltam(fake, monkeypatch):
+    """O mesmo remédio duas vezes na mesma geração entra uma vez; a D3 tirada não volta como "D3 7.000 UI" nem como
+    "Vitamina D3"; e o sal na frente não esconde um remédio diferente (tirada a sertralina, a fluoxetina entra)."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
+    m = lambda nome: {"nome": nome, "dose": "", "posologia": "", "acao": "iniciado", "src": [2]}  # noqa: E731
+    out = gera(dict(SAIDA, meds=[m("D3"), m("D3"), m("Aradois H (losartana potássica + hidroclorotiazida)"),
+                                 m("losartana + hidroclorotiazida"), m("cloridrato de sertralina")]))
+    (rx,) = db.list_receitas(UID, 7)
+    assert out["receita"] == 3 and [i["nome"] for i in rx["itens"]] == [
+        "D3", "Aradois H (losartana potássica + hidroclorotiazida)", "Cloridrato de sertralina"]
+    db.update_receita(UID, rx["id"], [])                            # tirou tudo
+    assert gera(dict(SAIDA, meds=[m("D3 7.000 UI"), m("Vitamina D3"), m("cloridrato de fluoxetina")]))["receita"] == 1
+    assert [i["nome"] for i in db.get_receita(UID, rx["id"])["itens"]] == ["Cloridrato de fluoxetina"]
+
+
+def test_duas_geracoes_juntas_criam_um_rascunho_so(fake, monkeypatch):
+    """Clique duplo ou duas abas: as duas gerações terminam juntas e a receita ganha um rascunho só, com a memória das
+    duas."""
+    import threading
+    import time
+    c = TestClient(server.app)
+    _record(fake, c)
+    juntas = threading.Barrier(2)
+
+    def modelo(msgs, model=None):
+        juntas.wait(5)                                              # as duas leem o mesmo estado antes de gravar
+        return json.dumps(SAIDA_2)
+    monkeypatch.setattr(scribe, "ask_model", modelo)
+    criar = db.create_receita
+
+    def criar_devagar(*a, **k):
+        time.sleep(0.2)                                             # abre a janela da corrida
+        return criar(*a, **k)
+    monkeypatch.setattr(db, "create_receita", criar_devagar)
+    server._RL.clear()
+    outs = []
+
+    def gera():
+        outs.append(_lines(c.post("/prontuario/scribe", json={"patient_id": 7, "event_id": "ev9", "rec_id": REC, "mode": "soap"}))[-1])
+    ts = [threading.Thread(target=gera) for _ in range(2)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join(10)
+    assert sorted(o["receita"] for o in outs) == [0, 2]
+    (rx,) = db.list_receitas(UID, 7)
+    assert [i["nome"] for i in rx["itens"]] == ["Losartana", "Metformina"]
+    sc = fake.recs[REC]["scribe"]
+    assert sc["receita_meds"] == ["Losartana", "Metformina"] and sc["receita_id"] == rx["id"]

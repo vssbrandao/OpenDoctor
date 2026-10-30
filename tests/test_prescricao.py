@@ -200,3 +200,18 @@ def test_o_item_guarda_a_forma():
     assert pr.item_limpo({"nome": "Amoxicilina", "dose": "500 mg", "forma": "cápsula"})["forma"] == "cápsula"
     assert pr.item_limpo({"nome": "Amoxicilina"})["forma"] == ""
 
+
+
+
+@pytest.mark.parametrize("a,b,igual", [
+    ("Cloridrato de sertralina", "Cloridrato de fluoxetina", False), ("Maleato de enalapril", "Maleato de timolol", False),
+    ("Propionato de clobetasol", "Propionato de fluticasona", False), ("Bicarbonato de sódio", "Cloreto de sódio", False),
+    ("Vitamina D", "Vitamina B12", False), ("D3", "K2", False), ("Prednisona", "Prednisolona", False),
+    ("Metformina", "Cloridrato de metformina", True), ("D3", "D3 7.000 UI", True), ("D3", "Vitamina D3", True),
+    ("Losartana", "losartana potássica", True), ("Salbutamol 100 mcg/dose", "salbutamol", True),
+    ("Aradois H (losartana potássica + hidroclorotiazida)", "losartana + hidroclorotiazida", True),
+])
+def test_mesmo_remedio_sem_sal_nem_dose(a, b, igual):
+    """O sal na frente não faz dois remédios diferentes virarem o mesmo; dose, unidade e forma não fazem o mesmo virar
+    dois."""
+    assert pr.mesmo_remedio(a, b) is igual and pr.mesmo_remedio(b, a) is igual

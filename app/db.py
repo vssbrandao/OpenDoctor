@@ -289,18 +289,21 @@ def cleanup_old_records():
     return out
 
 
-def set_password(user_id, password_hash):
+def set_password(user_id, password_hash, sv=None):
     """Nova senha (redefinição): zera bloqueio e muda a versão da sessão — as sessões abertas em
-    outros aparelhos deixam de valer. Devolve o usuário atualizado."""
+    outros aparelhos deixam de valer. sv: a versão do tíquete; com ela, só troca se a conta ainda está nessa versão
+    (o tíquete vale uma vez, mesmo com dois processos no ar durante uma publicação). Devolve o usuário atualizado,
+    ou None se a versão já mudou."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 f"""update users set password_hash = %s, session_version = session_version + 1,
                                      failed_logins = 0, locked_until = null, last_login = now()
-                    where id = %s returning {_USER_COLS}""", (password_hash, user_id))
+                    where id = %s and (%s::int is null or session_version = %s) returning {_USER_COLS}""",
+                (password_hash, user_id, sv, sv))
             row = cur.fetchone()
         conn.commit()
-    return _row_to_user(row)
+    return _row_to_user(row) if row else None
 
 
 def new_login_code(email, code_hash):

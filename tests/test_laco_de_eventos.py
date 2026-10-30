@@ -34,7 +34,7 @@ def fake(monkeypatch):
         "password_login_info": lambda e: {"id": "u1", "hash": "h", "sv": 0, "locked_s": 0}, "account": lambda e: None,
         "new_login_code": lambda e, h: ("ok", 0), "discard_login_code": lambda e: None, "check_login_code": lambda e, h: ("ok", 0),
         "user_by_email": lambda e: dict(USER), "create_email_user": lambda *a: dict(USER), "get_user": lambda uid: dict(USER),
-        "set_password": lambda uid, ph: dict(USER),
+        "set_password": lambda uid, ph, sv=None: dict(USER),
     }.items():
         monkeypatch.setattr(db, nome, v)
     monkeypatch.setattr(mailer, "configured", lambda: True)
@@ -233,7 +233,7 @@ def test_tiquete_da_nova_senha_vale_uma_vez_com_pedidos_juntos(fake):
         with lk:
             return dict(USER, sv=st["sv"])
 
-    def troca(uid, ph):
+    def troca(uid, ph, sv=None):
         time.sleep(0.1)
         with lk:
             st["sv"] += 1
@@ -254,3 +254,12 @@ def test_tiquete_da_nova_senha_vale_uma_vez_com_pedidos_juntos(fake):
     from fastapi.testclient import TestClient
     r = TestClient(server.app).post("/auth/password/reset", json={"ticket": tk, "password": PW})
     assert r.status_code == 400 and r.json()["error"] == "sessao_expirada" and len(hashes) == 1
+
+
+
+def test_tiquete_ja_usado_por_outro_processo_volta_sessao_expirada(fake):
+    """O banco recusou a troca (a versão já mudou noutro processo): a resposta é "sessão expirada", sem entrar."""
+    fake.setattr(db, "set_password", lambda uid, ph, sv=None: None)
+    from fastapi.testclient import TestClient
+    r = TestClient(server.app).post("/auth/password/reset", json={"ticket": _tk(k="reset", uid="u1", sv=0), "password": PW})
+    assert r.status_code == 400 and r.json()["error"] == "sessao_expirada" and "set-cookie" not in r.headers

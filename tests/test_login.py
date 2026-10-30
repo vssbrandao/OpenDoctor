@@ -191,7 +191,7 @@ def _client(monkeypatch, fake, configured=True):
         return fake.users[e]
     monkeypatch.setattr(db, "create_email_user", create)
 
-    def set_pw(uid, ph):
+    def set_pw(uid, ph, sv=None):
         u = next(u for u in fake.users.values() if u["id"] == uid)
         u.update(hash=ph, sv=u.get("sv", 0) + 1)
         return u

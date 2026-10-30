@@ -1039,7 +1039,9 @@ def _password_reset(request, b):
                 return _err("limite_ip", 429)
             if usado(db.get_user(t["uid"])):
                 return _err("sessao_expirada")
-            user = db.set_password(t["uid"], auth.hash_password(pw))
+            user = db.set_password(t["uid"], auth.hash_password(pw), int(t.get("sv") or 0))
+            if not user:
+                return _err("sessao_expirada")               # outro processo usou o tíquete antes (o banco conferiu)
     except Exception as e:
         print("[login] redefinição falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
@@ -1981,6 +1983,16 @@ def _lembrados(nomes):
     return out[-LEMBRADOS_MAX:]
 
 
+_RX_LOCKS = [threading.Lock() for _ in range(256)]
+
+
+def _rx_lock(user_id, patient_id):
+    """Uma geração de cada vez mexe na receita e na memória deste paciente: duas juntas (clique duplo, duas abas) não
+    criam dois rascunhos nem apagam o que a outra lembrou."""
+    h = hashlib.blake2b(f"{user_id}:{patient_id}".encode(), key=_CONTA_SAL, digest_size=8).digest()
+    return _RX_LOCKS[int.from_bytes(h, "big") % len(_RX_LOCKS)]
+
+
 def _receitas_ligadas(recs):
     """As receitas que estas gravações já alimentaram (recordings.scribe.receita_id)."""
     return {str((r.get("scribe") or {}).get("receita_id")) for r in recs if (r.get("scribe") or {}).get("receita_id")}
@@ -1997,7 +2009,10 @@ def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
     foram, ligadas = _lembrados(_meds_gerados(recs)), _receitas_ligadas(recs)
     rid = next(iter(ligadas), None)
     try:
-        novos = [x for x in prescricao.da_gravacao(meds) if not any(_mesmo(x["nome"], y) for y in foram)]
+        novos = []
+        for x in prescricao.da_gravacao(meds):          # nem o que já foi, nem o mesmo duas vezes nesta geração
+            if not any(_mesmo(x["nome"], y) for y in foram) and not any(_mesmo(x["nome"], y["nome"]) for y in novos):
+                novos.append(x)
         if not novos:
             return 0, foram, rid
         levou = _lembrados(foram + [x["nome"] for x in novos])
@@ -2454,15 +2469,17 @@ async def prontuario_scribe(request: Request):
             def guarda(nomes, rx):
                 db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table},
                                                                            receita_meds=nomes, receita_id=rx), nid)
-            foram, rx0 = _lembrados(_meds_gerados(recs)), next(iter(_receitas_ligadas(recs)), None)
-            guarda(foram, rx0)
-            db.log_access(u["id"], "scribe", p["id"], nid)
-            n, levou, rx = _receita_da_gravacao(u, p, eid, nid, res.get("meds"), recs)     # remédios → rascunho da receita
-            if levou != foram or rx != rx0:
-                try:
-                    guarda(levou, rx)
-                except Exception as e:
-                    print("[gravacao] memória da receita falhou:", type(e).__name__, flush=True)
+            with _rx_lock(u["id"], p["id"]):
+                agora = db.rec_list(u["id"], p["id"], eid, nid, rids)   # relida: outra geração pode ter terminado enquanto o modelo escrevia
+                foram, rx0 = _lembrados(_meds_gerados(agora)), next(iter(_receitas_ligadas(agora)), None)
+                guarda(foram, rx0)
+                db.log_access(u["id"], "scribe", p["id"], nid)
+                n, levou, rx = _receita_da_gravacao(u, p, eid, nid, res.get("meds"), agora)    # remédios → rascunho da receita
+                if levou != foram or rx != rx0:
+                    try:
+                        guarda(levou, rx)
+                    except Exception as e:
+                        print("[gravacao] memória da receita falhou:", type(e).__name__, flush=True)
             return n
         n_rx = await run_in_threadpool(save)
         yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta, "receita": n_rx})
