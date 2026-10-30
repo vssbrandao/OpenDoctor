@@ -9,7 +9,7 @@ import subprocess
 import pytest
 from fastapi.testclient import TestClient
 
-from app import auth, db, integrations, server
+from app import auth, db, exemplo, integrations, server
 
 MARIA = {"id": 5, "name": "Maria Silva", "key": db.EXAMPLE_KEY, "example": True}     # a de exemplo
 REAL = {"id": 9, "name": "Maria Silva", "key": "maria silva", "example": False}       # homônima de verdade
@@ -69,6 +69,47 @@ def test_lista_diz_se_a_conta_tem_a_de_exemplo(monkeypatch):
     tem["v"] = False                                            # conta antiga, ou a de exemplo foi excluída
     assert c.post("/prontuario/list", json={"patient_id": 9}).json()["has_example"] is False
     assert c.post("/prontuario/list", json={"patient_id": 5}).json()["has_example"] is True
+
+
+def test_conta_sem_a_de_exemplo_ganha_a_sua_e_a_sugestao_ja_vale(monkeypatch):
+    """Conta que nunca recebeu a paciente de exemplo: abrir um prontuário (ou a lista de pacientes) confere e cria a
+    sua, e o cartão da gravação já a sugere. A conferência é de exemplo.garante (no banco: test_db_integration)."""
+    c = _logado(monkeypatch)
+    _pacientes(monkeypatch)
+    tem, conferidas = {"v": False}, []
+    monkeypatch.setattr(db, "list_notes", lambda uid, pid, key: [])
+    monkeypatch.setattr(db, "has_example", lambda uid: tem["v"])
+    monkeypatch.setattr(exemplo, "garante", lambda uid: conferidas.append(uid) or tem.update(v=True))
+    assert c.post("/prontuario/list", json={"patient_id": 9}).json()["has_example"] is True
+    assert conferidas == ["u1"]
+    assert c.post("/prontuario/list", json={"patient_id": 5}).json()["has_example"] is True   # a própria: não confere
+    assert conferidas == ["u1"]
+    monkeypatch.setattr(db, "list_patients", lambda uid, limit=1000, q=None: [])
+    assert c.get("/patients").json() == {"patients": [], "more": False}
+    assert conferidas == ["u1", "u1"]
+
+
+def test_lista_de_pacientes_cortada_e_busca_entre_todos(monkeypatch):
+    """GET /patients traz os 1000 usados mais recentemente e diz se há mais; a busca (nome no corpo, nunca na URL)
+    procura entre todos, sempre do médico logado."""
+    c = _logado(monkeypatch)
+    monkeypatch.setattr(exemplo, "garante", lambda uid: None)
+    n, pedidos = {"v": 1500}, []
+
+    def lista(uid, limit=1000, q=None):
+        pedidos.append((uid, limit, q))
+        return [{"id": i, "name": f"P{i}"} for i in range(min(limit, n["v"]))]
+    monkeypatch.setattr(db, "list_patients", lista)
+    j = c.get("/patients").json()
+    assert len(j["patients"]) == server.PATIENTS_LIST == 1000 and j["more"] is True
+    n["v"] = 1000
+    j = c.get("/patients").json()
+    assert len(j["patients"]) == 1000 and j["more"] is False
+    pedidos.clear()
+    assert len(c.post("/patients/search", json={"q": "Otávio"}).json()["patients"]) == 200
+    assert pedidos == [("u1", 200, "Otávio")]
+    assert c.post("/patients/search", json={"q": "   "}).json() == {"patients": []}   # sem nome: nem vai ao banco
+    assert c.post("/patients/search", json={}).json() == {"patients": []} and len(pedidos) == 1
 
 
 def test_evolucao_de_outro_paciente_na_consulta_da_409_proprio(monkeypatch):
@@ -151,3 +192,6 @@ def test_pagina_exemplo_e_troca_de_paciente():
     assert html.count("experimente na paciente de exemplo") == 1
     assert "(temExemplo ? ': experimente na paciente de exemplo.' : '.')" in html
     assert "temExemplo = !!res.j.has_example;" in html
+    # lista cortada (more): a busca do campo Paciente e a da tela Pacientes perguntam ao servidor, com o nome no corpo
+    assert "fetch('/patients/search', { method: 'POST'" in html and "body: JSON.stringify({ q: raw })" in html
+    assert "api('POST', '/patients/search', { q: v })" in html and "/patients/search?" not in html

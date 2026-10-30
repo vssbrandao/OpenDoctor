@@ -1436,7 +1436,10 @@ def _prontuario_list(u, payload):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     db.log_access(u["id"], "view", p["id"], dedupe_minutes=10)
     pub = {k: v for k, v in p.items() if k != "key"}
-    # has_example: o cartão da gravação só sugere a paciente de exemplo se a conta tem uma
+    # has_example: o cartão da gravação só sugere a paciente de exemplo se a conta tem uma (a que nunca a recebeu
+    # ganha a sua aqui, como em GET /patients, e a sugestão já vale)
+    if not p.get("example"):
+        exemplo.garante(u["id"])
     return {"patient": pub, "notes": db.list_notes(u["id"], p["id"], p["key"]),
             "has_example": bool(p.get("example")) or db.has_example(u["id"])}
 
@@ -2340,13 +2343,31 @@ def cid10_search(request: Request, q: str = "", limit: int = 20):
 
 
 # --- pacientes: o campo "Paciente" da agenda escolhe um existente ou cria um novo ---
+PATIENTS_LIST = 1000          # GET /patients: os usados mais recentemente; com mais que isso, a busca vai ao servidor
+
+
 @app.get("/patients")
 def patients_list(request: Request):
-    """Lista completa do médico (a busca filtra no navegador; nome nunca vai em URL)."""
+    """Lista do médico (a busca filtra no navegador; nome nunca vai em URL). more: há mais pacientes que a lista,
+    e a busca da tela pergunta também a POST /patients/search."""
     u, err = _auth_or_401(request)
     if err:
         return err
-    return {"patients": db.list_patients(u["id"])}
+    exemplo.garante(u["id"])                            # conta que nunca recebeu a paciente de exemplo ganha a sua
+    ps = db.list_patients(u["id"], PATIENTS_LIST + 1)
+    return {"patients": ps[:PATIENTS_LIST], "more": len(ps) > PATIENTS_LIST}
+
+
+@app.post("/patients/search")
+async def patients_search(request: Request):
+    """Busca pelo nome entre TODOS os pacientes do médico (o nome vai no corpo, nunca na URL)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    q = str((await _json(request)).get("q") or "")[:200]
+    if not db.patient_key(q):
+        return {"patients": []}
+    return {"patients": await run_in_threadpool(db.list_patients, u["id"], 200, q)}
 
 
 @app.post("/patients")

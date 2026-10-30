@@ -481,21 +481,27 @@ def _patient(r):
             "allergies": r[7] or "", "problems": r[8] or "", "medications": r[9] or ""}
 
 
-def list_patients(user_id, limit=1000):
+def list_patients(user_id, limit=1000, q=None):
     """Pacientes do médico (os usados mais recentemente primeiro), com nascimento/sexo (para
-    diferenciar homônimos) e o resumo do prontuário: nº de anotações e data da última."""
+    diferenciar homônimos) e o resumo do prontuário: nº de anotações e data da última.
+    q: só os que têm q no nome (sem acento nem maiúscula, como a busca da tela), procurados entre todos."""
+    filtro, args = "", ()
+    if q is not None:                                 # a de exemplo é achada pelo nome, não pela chave
+        k = patient_key(q)
+        filtro = "and (position(%s in p.patient_key) > 0 or (p.patient_key = %s and position(%s in lower(p.name)) > 0))"
+        args = (k, EXAMPLE_KEY, k)
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """select p.id, p.name, p.birth_date, p.sex, p.patient_key = %s,
+                f"""select p.id, p.name, p.birth_date, p.sex, p.patient_key = %s,
                           count(n.id) filter (where n.content <> ''),
                           max(coalesce(n.event_start, n.created_at)) filter (where n.content <> '')
                    from patients p
                    left join clinical_notes n on n.user_id = p.user_id and n.patient_id = p.id
-                   where p.user_id = %s
+                   where p.user_id = %s {filtro}
                    group by p.id
                    order by p.updated_at desc limit %s""",
-                (EXAMPLE_KEY, user_id, limit))
+                (EXAMPLE_KEY, user_id, *args, limit))
             return [{"id": r[0], "name": r[1], "birth_date": r[2].isoformat() if r[2] else None, "sex": r[3],
                      "example": r[4], "notes": r[5], "last": r[6].isoformat() if r[6] else None} for r in cur.fetchall()]
 
@@ -526,6 +532,10 @@ EXAMPLE_NAME = "Maria Silva"
 EXAMPLE_KEY = " exemplo"
 EXAMPLE_FILE = "laudo-exemplo.pdf"                            # o laudo em PDF que vem com ela (exemplo.laudo_pdf):
 EXAMPLE_FILE_MARK = b"/Title (Laudo de exemplo - OpenDoctor)"   # reconhecido pelo nome e por esta marca no PDF
+# o médico excluiu a de exemplo: linha no access_log (nunca entra na limpeza; sem patient_id, não some com ela) que
+# impede criá-la de novo (create_example_patient, exemplo.garante)
+EXAMPLE_DELETED = "example_delete"
+_EXAMPLE_DELETED_SQL = "select 1 from access_log where user_id = %(u)s and patient_id is null and action = %(a)s"
 
 
 def has_example(user_id):
@@ -533,6 +543,18 @@ def has_example(user_id):
     with connection() as conn:
         return conn.execute("select 1 from patients where user_id = %s and patient_key = %s limit 1",
                             (user_id, EXAMPLE_KEY)).fetchone() is not None
+
+
+def example_state(user_id):
+    """A paciente de exemplo da conta: (id ou None, o médico a excluiu?, tem receitas?, tem o laudo?)."""
+    with connection() as conn:
+        return conn.execute(f"""
+            with p as (select id from patients where user_id = %(u)s and patient_key = %(k)s limit 1)
+            select (select id from p), exists ({_EXAMPLE_DELETED_SQL}),
+                   exists (select 1 from receitas where user_id = %(u)s and patient_id = (select id from p)),
+                   exists (select 1 from patient_files where user_id = %(u)s and patient_id = (select id from p)
+                             and name = %(f)s)""",
+                            {"u": user_id, "k": EXAMPLE_KEY, "a": EXAMPLE_DELETED, "f": EXAMPLE_FILE}).fetchone()
 
 
 def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None, key=None):
@@ -655,6 +677,8 @@ def delete_patient(user_id, patient_id):
                 cur.execute("delete from patient_files where user_id = %s and patient_id = %s", (user_id, patient_id))
                 cur.execute("delete from clinical_notes where user_id = %s and patient_id = %s", (user_id, patient_id))
                 cur.execute("delete from patients where user_id = %s and id = %s", (user_id, patient_id))
+                # excluída de propósito: a marca fica (na mesma transação), e ela não volta
+                cur.execute("insert into access_log (user_id, action) values (%s, %s)", (user_id, EXAMPLE_DELETED))
                 conn.commit()
                 return "ok"
             cur.execute("""select 1 from clinical_notes where user_id = %s and (content <> '' or signed_at is not null)
@@ -870,13 +894,14 @@ def create_example_patient(user_id, name, birth_date, sex, cadastro, notes, rece
     que ainda não existe, limite do banco), ele fica de fora e a paciente sai mesmo assim.
     notes = (título, início, texto, dados, finalizada_em, atualizada_em); receitas = (índice da evolução em notes,
     emitida_em, itens); arquivo = (nome, mime, bytes) ou None. Devolve o id, ou None se a conta já tem a de exemplo
-    (duas confirmações ao mesmo tempo não criam duas: a linha do médico fica travada até o fim)."""
+    ou o médico a excluiu (duas confirmações ao mesmo tempo não criam duas: a linha do médico fica travada até o fim)."""
     from psycopg.types.json import Jsonb
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute("select 1 from users where id = %s for update", (user_id,))
-            cur.execute("select 1 from patients where user_id = %s and patient_key = %s limit 1", (user_id, EXAMPLE_KEY))
-            if cur.fetchone():
+            cur.execute(f"""select exists (select 1 from patients where user_id = %(u)s and patient_key = %(k)s)
+                                or exists ({_EXAMPLE_DELETED_SQL})""", {"u": user_id, "k": EXAMPLE_KEY, "a": EXAMPLE_DELETED})
+            if cur.fetchone()[0]:
                 conn.rollback()
                 return None
             cur.execute("""insert into patients (user_id, patient_key, name, birth_date, sex, allergies, problems, medications)
@@ -911,6 +936,52 @@ def create_example_patient(user_id, name, birth_date, sex, cadastro, notes, rece
                     print("[exemplo] laudo de exemplo ficou de fora:", str(e)[:200], flush=True)
         conn.commit()
     return pid
+
+
+def complete_example_patient(user_id, patient_id, itens, laudo):
+    """Completa a de exemplo que ficou sem as receitas ou sem o laudo em PDF (criada antes deles, ou o extra falhou na
+    criação): grava só o que falta, e só se tudo nela ainda é do exemplo (_DO_MEDICO_NO_EXEMPLO). As receitas levam a
+    data da consulta fictícia (anterior à paciente), então ela continua podendo ser excluída.
+    itens[i] = itens da receita da i-ésima consulta, da mais antiga para a mais nova (só com as consultas fictícias
+    inteiras); laudo(início da consulta mais recente) = (nome, mime, bytes). Devolve (receitas gravadas, gravou o laudo)."""
+    from psycopg.types.json import Jsonb
+    with connection() as conn:
+        with conn.cursor() as cur:
+            # trava a linha como delete_patient: excluir e completar não correm juntos
+            cur.execute("select 1 from patients where user_id = %s and id = %s and patient_key = %s for update",
+                        (user_id, patient_id, EXAMPLE_KEY))
+            if not cur.fetchone():
+                return 0, False
+            cur.execute(_DO_MEDICO_NO_EXEMPLO, {"u": user_id, "p": patient_id, "laudo": EXAMPLE_FILE, "marca": EXAMPLE_FILE_MARK})
+            if cur.fetchone()[0]:
+                return 0, False                           # o médico já gravou nela: fica como está
+            cur.execute("""select id, event_start, signed_at from clinical_notes where user_id = %s and patient_id = %s
+                           and signed_at is not null and event_start is not null order by event_start, id""",
+                        (user_id, patient_id))
+            cs = cur.fetchall()
+            # anexo excluído pelo médico (pode ter sido o laudo): o laudo não volta
+            cur.execute("""select exists (select 1 from receitas where user_id = %(u)s and patient_id = %(p)s),
+                                  exists (select 1 from patient_files where user_id = %(u)s and patient_id = %(p)s
+                                            and name = %(f)s)
+                               or exists (select 1 from access_log where user_id = %(u)s and patient_id = %(p)s
+                                            and action = 'file_delete')""",
+                        {"u": user_id, "p": patient_id, "f": EXAMPLE_FILE})
+            tem_rx, tem_laudo = cur.fetchone()
+            n = 0
+            if not tem_rx and len(cs) == len(itens):
+                for (nid, _, emitida_em), it in zip(cs, itens):
+                    cur.execute("""insert into receitas (user_id, patient_id, note_id, tipo, status, itens, emitida_em,
+                                     created_at, updated_at)
+                                   values (%s,%s,%s,'simples','emitida',%s,%s,%s,%s)""",
+                                (user_id, patient_id, nid, Jsonb(it), emitida_em, emitida_em, emitida_em))
+                n = len(cs)
+            pdf = not tem_laudo and bool(cs)
+            if pdf:
+                nome, mime, data = laudo(cs[-1][1])
+                cur.execute("""insert into patient_files (user_id, patient_id, name, mime, size, data)
+                               values (%s,%s,%s,%s,%s,%s)""", (user_id, patient_id, nome, mime, len(data), data))
+        conn.commit()
+    return n, pdf
 
 
 # --- exames anexados (PDF/imagem), sempre filtrados pelo médico ---
