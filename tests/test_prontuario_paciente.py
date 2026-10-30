@@ -113,6 +113,29 @@ def test_agenda_nao_liga_a_de_exemplo_pelo_nome():
     assert r.stdout.strip() == "[null,0,2,9,1]"
 
 
+def test_agenda_lista_a_de_exemplo_por_ultimo_sem_destaque():
+    """Lista do campo Paciente (exampleLast rodado no node): a fictícia vai para o fim e nunca é a do Enter, então
+    "Maria Silva" + Enter cria/escolhe a de verdade; com o mouse ou as setas ela continua escolhível."""
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("sem node")
+    html = _html()
+    m = re.search(r"^ *function exampleLast\(hits\) \{.*?^ *\}\n", html, re.M | re.S)
+    assert m, "a lista do campo Paciente não põe a de exemplo por último"
+    js = m.group(0) + """
+      var M = { id: 5, name: 'Maria Silva', example: true }, A = { id: 2, name: 'Ana Souza' }, R = { id: 9, name: 'Maria Silva' };
+      var ids = function (o) { return [o.list.map(function (p) { return p.id; }), o.first]; };
+      console.log(JSON.stringify([ids(exampleLast([M, A])), ids(exampleLast([M])), ids(exampleLast([M, R, A])), ids(exampleLast([]))]));"""
+    r = subprocess.run([node, "-e", js], capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    # só a de exemplo: a padrão é a opção seguinte ("Criar paciente"); com uma de verdade, é ela
+    assert r.stdout.strip() == "[[[2,5],0],[[5],1],[[9,2,5],0],[[],0]]"
+    # a lista usa a ordem, o destaque e o Enter sem destaque vão para essa opção (não para a primeira da lista)
+    assert "exampleLast(list.filter(" in html and "plFirst = ord.first;" in html
+    assert "markP(plFirst)" in html and "markP(0)" not in html
+    assert "plItems[plActive >= 0 ? plActive : plFirst]" in html
+
+
 def test_pagina_exemplo_e_troca_de_paciente():
     html = _html()
     # a lista do campo Paciente marca a fictícia
