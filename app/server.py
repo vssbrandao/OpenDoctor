@@ -1964,12 +1964,19 @@ def _meds_gerados(recs):
 LEMBRADOS_MAX = 200            # remédios lembrados por consulta (recordings.scribe.receita_meds); cheio, saem os mais antigos
 
 
+def _mesmo(a, b):
+    """O mesmo remédio, para a gravação não repor nem repetir: o mesmo texto ("D3") ou prescricao.mesmo_remedio. Na
+    dúvida conta como o mesmo — no pior caso a gravação deixa de sugerir (o médico vê no SOAP e põe à mão), nunca
+    repete nem traz de volta o que ele tirou."""
+    return scribe.norm(a) == scribe.norm(b) or prescricao.mesmo_remedio(a, b)
+
+
 def _lembrados(nomes):
-    """Cada remédio uma vez só (prescricao.mesma_formula), os LEMBRADOS_MAX mais recentes: a mesma lista vai para todas
-    as gravações da consulta e, com repetidos, dobraria a cada geração."""
+    """Cada remédio uma vez só (_mesmo), os LEMBRADOS_MAX mais recentes: a mesma lista vai para todas as gravações da
+    consulta e, com repetidos, dobraria a cada geração."""
     out = []
     for n in nomes:
-        if not any(prescricao.mesma_formula(n, y) for y in out):
+        if not any(_mesmo(n, y) for y in out):
             out.append(n)
     return out[-LEMBRADOS_MAX:]
 
@@ -1990,7 +1997,7 @@ def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
     foram, ligadas = _lembrados(_meds_gerados(recs)), _receitas_ligadas(recs)
     rid = next(iter(ligadas), None)
     try:
-        novos = [x for x in prescricao.da_gravacao(meds) if not any(prescricao.mesma_formula(x["nome"], y) for y in foram)]
+        novos = [x for x in prescricao.da_gravacao(meds) if not any(_mesmo(x["nome"], y) for y in foram)]
         if not novos:
             return 0, foram, rid
         levou = _lembrados(foram + [x["nome"] for x in novos])
@@ -2011,7 +2018,7 @@ def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
         if not d and any(ja_emitida(r) for r in rs):
             return 0, levou, rid
         ja = d["itens"] if d else []
-        add = [x for x in novos if not any(prescricao.mesma_formula(x["nome"], y["nome"]) for y in ja)]
+        add = [x for x in novos if not any(_mesmo(x["nome"], y["nome"]) for y in ja)]
         if add:
             if d:
                 db.update_receita(u["id"], d["id"], ja + add)

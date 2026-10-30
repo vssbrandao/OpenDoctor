@@ -200,18 +200,3 @@ def test_o_item_guarda_a_forma():
     assert pr.item_limpo({"nome": "Amoxicilina", "dose": "500 mg", "forma": "cápsula"})["forma"] == "cápsula"
     assert pr.item_limpo({"nome": "Amoxicilina"})["forma"] == ""
 
-
-@pytest.mark.parametrize("a,b,igual", [
-    ("Losartana", "losartana potássica", True), ("losartan", "Losartana", True), ("Losartana 50 mg", "Losartana", True),
-    ("Budesonida + Formoterol", "budesonida/formoterol", True), ("D3", "d3", True), ("D3", "D3 7.000 UI", True),
-    ("Metformina", "Cloridrato de metformina", True), ("Enalapril", "Maleato de enalapril", True),
-    ("Anlodipino", "Besilato de anlodipino", True), ("Insulina NPH", "Insulina humana NPH", True),
-    ("Losartana + hidroclorotiazida", "Losartana + hidroclorotiazida 50/12,5 mg", True),
-    ("Losartana", "Losartana + Hidroclorotiazida", False), ("Amoxicilina", "Amoxicilina + Clavulanato", False),
-    ("Losartana + Hidroclorotiazida", "Losartana + Anlodipino", False),
-    ("Vitamina D", "Vitamina B12", False), ("D3", "K2", False), ("Prednisona", "Prednisolona", False),
-])
-def test_mesma_formula_para_lembrar_o_que_a_gravacao_levou(a, b, igual):
-    """Mais estrito que mesmo_remedio (que acha a losartana na associação): monodroga e associação são remédios
-    diferentes, e nome curto vale pelo texto; o sal, a forma e a dose não mudam o remédio."""
-    assert pr.mesma_formula(a, b) is igual and pr.mesma_formula(b, a) is igual

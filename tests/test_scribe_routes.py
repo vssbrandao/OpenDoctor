@@ -428,9 +428,9 @@ def test_receita_que_falha_nao_fica_lembrada(fake, monkeypatch):
     assert gera()["receita"] == 1 and [i["nome"] for i in db.list_receitas(UID, 7)[0]["itens"]] == ["Losartana"]
 
 
-def test_memoria_nao_confunde_monodroga_e_associacao_e_lembra_nome_curto(fake, monkeypatch):
-    """O médico tirou a losartana: a associação com hidroclorotiazida, que veio depois, ainda entra. A D3 tirada não
-    volta (nome curto: vale o texto) e não se repete no rascunho."""
+def test_memoria_na_duvida_nao_repoe_e_lembra_nome_curto(fake, monkeypatch):
+    """O médico tirou a losartana e a D3: nenhuma volta, nem a associação com a losartana (na dúvida a gravação não
+    sugere: o médico vê no SOAP). A D3 (nome curto: vale o texto) não volta nem se repete, e a lista não cresce."""
     c = TestClient(server.app)
     _record(fake, c)
     gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
@@ -439,11 +439,11 @@ def test_memoria_nao_confunde_monodroga_e_associacao_e_lembra_nome_curto(fake, m
     (rx,) = db.list_receitas(UID, 7)
     db.update_receita(UID, rx["id"], [])                            # tirou as duas
     assoc = {"nome": "losartana + hidroclorotiazida", "dose": "50/12,5 mg", "posologia": "1x/dia", "acao": "iniciado", "src": [2]}
-    assert gera(dict(SAIDA, meds=SAIDA["meds"] + [d3, assoc]))["receita"] == 1
-    assert [i["nome"] for i in db.get_receita(UID, rx["id"])["itens"]] == ["Losartana + hidroclorotiazida"]
+    assert gera(dict(SAIDA, meds=SAIDA["meds"] + [d3, assoc]))["receita"] == 0
+    assert db.get_receita(UID, rx["id"])["itens"] == []
     for _ in range(3):
-        gera()
-    assert len(db.get_receita(UID, rx["id"])["itens"]) == 1 and len(fake.recs[REC]["scribe"]["receita_meds"]) == 3
+        gera(dict(SAIDA, meds=SAIDA["meds"] + [d3, assoc]))
+    assert db.get_receita(UID, rx["id"])["itens"] == [] and fake.recs[REC]["scribe"]["receita_meds"] == ["Losartana", "D3"]
 
 
 def test_avulsa_com_receita_emitida_nao_ganha_rascunho_sozinho(fake, monkeypatch):
@@ -461,9 +461,9 @@ def test_avulsa_com_receita_emitida_nao_ganha_rascunho_sozinho(fake, monkeypatch
     assert [r["status"] for r in db.list_receitas(UID, 7)] == ["emitida"]
 
 
-def test_memoria_vale_com_o_sal_e_a_troca_por_associacao_entra(fake, monkeypatch):
-    """O modelo reescreve "metformina" como "cloridrato de metformina": a que o médico tirou não volta. E a troca da
-    losartana pela associação, com a losartana ainda no rascunho, põe a associação (o médico tira a outra)."""
+def test_memoria_vale_com_o_sal_e_o_rascunho_nao_repete(fake, monkeypatch):
+    """O modelo reescreve "metformina" como "cloridrato de metformina": a que o médico tirou não volta. Com a losartana
+    no rascunho, a associação não entra repetida (na dúvida, não repete); um remédio novo de verdade entra."""
     c = TestClient(server.app)
     _record(fake, c)
     gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
@@ -474,8 +474,9 @@ def test_memoria_vale_com_o_sal_e_a_troca_por_associacao_entra(fake, monkeypatch
     sal = dict(met, nome="cloridrato de metformina")
     troca = [dict(SAIDA["meds"][0], acao="suspenso"),
              {"nome": "losartana + hidroclorotiazida", "dose": "50/12,5 mg", "posologia": "1x/dia", "acao": "iniciado", "src": [2]}]
-    assert gera(dict(SAIDA, meds=troca + [sal]))["receita"] == 1
-    assert [i["nome"] for i in db.get_receita(UID, rx["id"])["itens"]] == ["Losartana", "Losartana + hidroclorotiazida"]
+    atorva = {"nome": "atorvastatina", "dose": "20 mg", "posologia": "à noite", "acao": "iniciado", "src": [2]}
+    assert gera(dict(SAIDA, meds=troca + [sal, atorva]))["receita"] == 1
+    assert [i["nome"] for i in db.get_receita(UID, rx["id"])["itens"]] == ["Losartana", "Atorvastatina"]
 
 
 def test_geracao_que_nao_foi_guardada_nao_mexe_na_receita(fake, monkeypatch):

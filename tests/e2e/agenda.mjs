@@ -63,6 +63,7 @@ const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
 let MAIS = false;                                          // a lista veio cortada: há pacientes só na busca do servidor
 let LENTA = 0;                                             // ms de espera da busca no servidor
+let LENTO_PAC = 0;                                         // ms de espera do cadastro de paciente (POST /patients)
 const ANTIGOS = [{ id: 900, name: 'Otávio Antigo', notes: 3, last: '2025-01-10T12:00:00+00:00' }];
 const sem = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 function rota(method, path, q, body) {
@@ -89,6 +90,7 @@ async function responde(p) {
   if (arq.startsWith(WEB) && extname(arq) && existsSync(arq)) { dado = readFileSync(arq); tipo = TIPOS[extname(arq)] || 'application/octet-stream'; }
   else {
     if (LENTA && u.pathname === '/patients/search') await sleep(LENTA);
+    if (LENTO_PAC && u.pathname === '/patients' && method === 'POST') await sleep(LENTO_PAC);
     const j = rota(method, u.pathname, u.searchParams, body);
     pedidos.push({ method, path: u.pathname, q: Object.fromEntries(u.searchParams), body });
     if (j === null) status = 404;
@@ -457,6 +459,59 @@ const cenarios = [
     certo(n === 1, 'cadastros do Bruno Novo: ' + n);
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     return 'Ana Souza (exata) escolhida antes da Ana Souza Lima; a Joana do evento ficou; Enter duplo criou um cadastro';
+  }],
+  ['campo Paciente: cadastro em andamento não deixa criar a consulta no homônimo; a de exemplo nunca leva o Enter a outra pessoa', async () => {
+    const poe = (v) => ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = ${JSON.stringify(v)}; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    const tecla = (k) => ev(`document.getElementById('evPatient').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true })); 1`);
+    const destaque = () => ev(`(() => { const b = document.querySelector('#evPList .evpop-po.on'); return b ? b.lastChild.textContent : null; })()`);
+    const eventos = () => pedidos.filter((r) => r.method === 'POST' && r.path === '/calendar/events').length;
+    // só a de exemplo se chama "Maria Silva"; a real "Maria Silva Santos" só contém o nome: o Enter é "Criar paciente"
+    for (let i = PACS.length - 1; i >= 0; i--) if (!PACS[i].example && PACS[i].name === 'Maria Silva') PACS.splice(i, 1);
+    PACS.unshift({ id: 70, name: 'Maria Silva Santos' });
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela'); await sleep(400);
+    await poe('Maria Silva');
+    await ate(`!!document.querySelector('#evPList .evpop-po.on')`, 3000, 'lista');
+    certo(await destaque() === 'Criar paciente "Maria Silva"', 'destaque: ' + await destaque());
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
+
+    // "Criar outro paciente" em andamento: Criar avisa, o blur não escolhe o homônimo, e a consulta fica no cadastro novo
+    LENTO_PAC = 700;
+    await ev(`window.__openEventAt(200, 200, new Date(), 15, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela'); await sleep(400);
+    await poe('Joana Prado');
+    await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.startsWith('+Criar outro') || b.lastChild.textContent.startsWith('Criar outro'))`, 3000, 'opção criar outro');
+    await tecla('ArrowUp');                                      // sobe até "Criar outro paciente" (a última)
+    certo((await destaque() || '').startsWith('Criar outro paciente'), 'destaque: ' + await destaque());
+    const e0 = eventos();
+    await tecla('Enter');
+    await ev(`document.getElementById('evPatient').blur(); 1`);
+    certo(await ev(`document.getElementById('evPClear').hidden`), 'o blur escolheu o homônimo durante o cadastro');
+    await clica('#evCreate');
+    certo(await txt('#evMsg') === 'Aguarde o cadastro do paciente.' && eventos() === e0, 'Criar durante o cadastro: ' + await txt('#evMsg'));
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'cadastro novo escolhido');
+    const novoPac = pedidos.filter((r) => r.method === 'POST' && r.path === '/patients').pop();
+    certo(novoPac.body.name === 'Joana Prado' && novoPac.body.force === true, 'cadastro: ' + JSON.stringify(novoPac.body));
+    await clica('#evCreate');
+    await ate(`document.getElementById('evMsg').textContent === 'Evento criado!'`, 3000, 'criado: ' + await txt('#evMsg'));
+    const novo = pedidos.filter((r) => r.method === 'POST' && r.path === '/calendar/events').pop().body;
+    const criado = PACS[PACS.length - 1];                      // o mock põe o cadastro novo no fim
+    certo(criado.name === 'Joana Prado' && novo.patient_id === criado.id, 'consulta no cadastro novo: ' + novo.patient_id + ' / ' + JSON.stringify(criado));
+    await ate(`document.getElementById('evPop').hidden`, 3000, 'fechou sozinha');
+    LENTO_PAC = 0;
+
+    // consulta ligada à de exemplo, com uma "Maria Silva" real mais recente: focar e dar Enter não troca a paciente
+    PACS.unshift({ id: 71, name: 'Maria Silva' });
+    const mx = { id: 'mx', title: 'Consulta — Maria Silva', patient_id: 7, start: `${dia(0)}T16:00:00-03:00`, end: `${dia(0)}T16:30:00-03:00`, allDay: false };
+    await ev(`window.__openEventEdit(400, 300, ${JSON.stringify(mx)}); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento'); await sleep(400);
+    await ev(`document.getElementById('evPatient').blur(); document.getElementById('evPatient').focus(); 1`);
+    await ate(`!!document.querySelector('#evPList .evpop-po.on')`, 3000, 'lista do evento');
+    certo(await destaque() === 'Maria Silva (exemplo)', 'destaque: ' + await destaque());
+    await tecla('Enter'); await sleep(200);
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou'); await sleep(300);
+    certo(patches('mx').length === 0, 'trocou a paciente do evento: ' + JSON.stringify(patches('mx').map((x) => x.body.patient_id)));
+    return 'Enter foi para "Criar paciente"; Criar esperou o cadastro e a consulta ficou nele; a de exemplo do evento ficou';
   }],
 ];
 

@@ -3148,6 +3148,10 @@
         }
         elPList.hidden = !elPList.children.length;
         elPatient.setAttribute('aria-expanded', elPList.hidden ? 'false' : 'true');
+        // o paciente já escolhido (o do evento, mesmo a de exemplo) continua o do Enter; se só a de exemplo tem o nome
+        // digitado, o Enter é "Criar paciente" (nunca outra pessoa que só contém o nome)
+        if (q && selPatient && pnorm(selPatient.name) === q && plKeys.indexOf(selPatient.id) >= 0) plFirst = plKeys.indexOf(selPatient.id);
+        else if (q && !sameName(raw).length && list.some(function (p) { return p.example && pnorm(p.name) === q; })) plFirst = plKeys.indexOf('new');
         var ki = keep != null ? plKeys.indexOf(keep) : -1;
         if (q && plItems.length) { if (ki >= 0) markP(ki); else markP(plFirst); }
         fitPop();
@@ -3167,18 +3171,20 @@
         plItems.forEach(function (b, j) { b.classList.toggle('on', j === plActive); b.setAttribute('aria-selected', j === plActive ? 'true' : 'false'); });
         plItems[plActive].scrollIntoView({ block: 'nearest' });
       }
-      var criando = false;                                   // um cadastro de cada vez: Enter duplo não cria dois
+      var criando = -1;                                      // a abertura da janela com um cadastro em andamento (um de cada vez)
       function createPatient(name, force) {
-        if (criando) return;
-        criando = true; hideList();
+        if (criando === seq) return;                           // Enter duplo não cria dois
+        var my = criando = seq;
         name = name.split(/\s+/).filter(Boolean).join(' ');
         fetch('/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, force: !!force }) })
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
           .then(function (res) {
-            criando = false;
+            if (criando === my) criando = -1;
+            if (res.ok && res.j.ok) patients = [res.j.patient].concat((patients || []).filter(function (p) { return p.id !== res.j.patient.id; }));
+            if (my !== seq || pop.hidden) return;              // a janela é outra: o cadastro fica na lista, sem mexer nela
             if (res.ok && res.j.ok) {
-              patients = [res.j.patient].concat((patients || []).filter(function (p) { return p.id !== res.j.patient.id; }));
-              setPatient(res.j.patient);
+              if (pnorm(elPatient.value) === pnorm(name)) { setPatient(res.j.patient); elMsg.hidden = true; }
+              else if (document.activeElement === elPatient) showList();   // o médico mudou o nome enquanto isso
             } else if (res.status === 409 && !force) {      // já existe (lista desatualizada): confirma que é outra pessoa
               if (confirm('Já existe um paciente chamado "' + name + '". É outra pessoa? Criar um novo cadastro mesmo assim?')) createPatient(name, true);
             } else {
@@ -3186,7 +3192,11 @@
               if (res.status === 401) elMsg.innerHTML = '<a href="/opendoctor-login.html">Entre na sua conta</a> para cadastrar pacientes.';
               else elMsg.textContent = 'Não foi possível criar o paciente.';
             }
-          }).catch(function () { criando = false; elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false; });
+          }).catch(function () {
+            if (criando === my) criando = -1;
+            if (my !== seq || pop.hidden) return;
+            elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false;
+          });
       }
       elPatient.addEventListener('focus', showList);
       elPatient.addEventListener('input', function () {
@@ -3195,7 +3205,7 @@
       });
       elPatient.addEventListener('blur', function () {
         var raw = elPatient.value.trim();
-        if (raw && !selPatient) { var m = byKey(raw); if (m) setPatient(m); }   // digitou o nome exato de um cadastrado
+        if (raw && !selPatient && criando !== seq) { var m = byKey(raw); if (m) setPatient(m); }   // digitou o nome exato de um cadastrado (não o que está sendo criado)
         hideList();
       });
       elPatient.addEventListener('keydown', function (e) {
@@ -3473,6 +3483,7 @@
       }
 
       elCreate.addEventListener('click', function () {
+        if (criando === seq) { elMsg.className = 'evpop-msg'; elMsg.textContent = 'Aguarde o cadastro do paciente.'; elMsg.hidden = false; return; }
         if (mode === 'edit') { openProntuario(); return; }
         var p = buildPayload();
         if (p.error) { elMsg.className = 'evpop-msg'; elMsg.textContent = p.error; elMsg.hidden = false; return; }
