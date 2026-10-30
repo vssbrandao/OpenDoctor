@@ -297,10 +297,16 @@ def disconnect(user_id, provider):
     db.delete_token(user_id, provider)
 
 
-def events(user_id, provider, limit=50, time_min=None, time_max=None):
+EVENTS_MAX = 2500          # teto de eventos por leitura (= o maxResults máximo do Google)
+_PAGES = 25                # e de páginas: o provedor pode devolver menos que o pedido por página
+
+
+def events(user_id, provider, limit=250, time_min=None, time_max=None):
     """Eventos do calendário do usuário. Se time_min/time_max (ISO 8601) forem
     passados, filtra por essa janela (ex.: o dia exibido na agenda); senão, lista
-    os próximos. Cada item: {title, start, end, allDay}."""
+    os próximos. Segue as páginas do provedor até `limit` (no máximo EVENTS_MAX):
+    sem isso a semana e a busca perdiam o fim da lista. Cada item: {title, start, end, allDay}."""
+    limit = max(1, min(int(limit), EVENTS_MAX))
     at = _access_token(user_id, provider)
     if not at:
         return []
@@ -313,31 +319,42 @@ def events(user_id, provider, limit=50, time_min=None, time_max=None):
                       "maxResults": limit, "timeMin": time_min or now_iso}
             if time_max:
                 params["timeMax"] = time_max
-            r = httpx.get("https://www.googleapis.com/calendar/v3/calendars/primary/events",
-                          headers=hdr, timeout=25, params=params)
-            for e in r.json().get("items", []):
-                st = e.get("start", {}); en = e.get("end", {})
-                all_day = "date" in st and "dateTime" not in st
-                out.append({"id": e.get("id"), "title": e.get("summary", "(sem título)"),
-                            "patient_id": _patient_id(e),
-                            "description": e.get("description") or "", "location": e.get("location") or "",
-                            "start": st.get("dateTime") or st.get("date"),
-                            "end": en.get("dateTime") or en.get("date"),
-                            "allDay": all_day})
+            for _ in range(_PAGES):
+                r = httpx.get("https://www.googleapis.com/calendar/v3/calendars/primary/events",
+                              headers=hdr, timeout=25, params=params)
+                j = r.json()
+                for e in j.get("items", []):
+                    st = e.get("start", {}); en = e.get("end", {})
+                    all_day = "date" in st and "dateTime" not in st
+                    out.append({"id": e.get("id"), "title": e.get("summary", "(sem título)"),
+                                "patient_id": _patient_id(e),
+                                "description": e.get("description") or "", "location": e.get("location") or "",
+                                "start": st.get("dateTime") or st.get("date"),
+                                "end": en.get("dateTime") or en.get("date"),
+                                "allDay": all_day})
+                if len(out) >= limit or not j.get("nextPageToken"):
+                    break
+                params = dict(params, pageToken=j["nextPageToken"])
         else:  # microsoft
             start = time_min or now_iso
             end = time_max or (_utcnow() + datetime.timedelta(days=30)).isoformat()
-            r = httpx.get("https://graph.microsoft.com/v1.0/me/calendarview",
-                          headers=hdr, timeout=25, params={
-                              "startDateTime": start, "endDateTime": end,
-                              "$orderby": "start/dateTime", "$top": limit})
-            for e in r.json().get("value", []):
-                out.append({"id": e.get("id"), "title": e.get("subject", "(sem título)"),
-                            "description": e.get("bodyPreview") or "",
-                            "location": (e.get("location") or {}).get("displayName") or "",
-                            "start": (e.get("start") or {}).get("dateTime"),
-                            "end": (e.get("end") or {}).get("dateTime"),
-                            "allDay": bool(e.get("isAllDay"))})
+            url, params = "https://graph.microsoft.com/v1.0/me/calendarview", {
+                "startDateTime": start, "endDateTime": end,
+                "$orderby": "start/dateTime", "$top": min(limit, 250)}
+            for _ in range(_PAGES):
+                r = httpx.get(url, headers=hdr, timeout=25, params=params)
+                j = r.json()
+                for e in j.get("value", []):
+                    out.append({"id": e.get("id"), "title": e.get("subject", "(sem título)"),
+                                "description": e.get("bodyPreview") or "",
+                                "location": (e.get("location") or {}).get("displayName") or "",
+                                "start": (e.get("start") or {}).get("dateTime"),
+                                "end": (e.get("end") or {}).get("dateTime"),
+                                "allDay": bool(e.get("isAllDay"))})
+                nxt = j.get("@odata.nextLink") or ""
+                if len(out) >= limit or not nxt.startswith("https://graph.microsoft.com/"):   # o token só vai à Microsoft
+                    break
+                url, params = nxt, None                       # o link da próxima página já leva os parâmetros
     except Exception:
         pass
-    return out
+    return out[:limit]

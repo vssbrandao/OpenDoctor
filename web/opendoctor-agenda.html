@@ -1768,6 +1768,15 @@
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .er-sub{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:var(--muted)}
     .er-foot{display:flex;justify-content:flex-end}
+    /* dia inteiro: pílulas do evento curto da Semana numa faixa — no Dia entre a data e a linha fixa (alinhada aos cards),
+       na Semana uma linha abaixo dos dias que fica no topo ao rolar */
+    .cal-allday{position:absolute;top:72px;left:110px;right:24px;z-index:4;display:flex;gap:4px}
+    .cal-allday[hidden],.stage.week .cal-allday,.stage.prontuario .cal-allday,.stage.pacientes .cal-allday{display:none}
+    .cal-allday .wk-ev,.wk-ad .wk-ev{position:relative;left:auto;right:auto;flex:none;min-width:0}
+    .cal-allday .wk-ev{flex:1 1 0}
+    .wk-ad{position:sticky;top:51px;z-index:4;background:#fff;padding:2px 1px 2px 2px;display:flex;flex-direction:column;gap:2px;
+      min-width:0;box-shadow:inset 0 -1px 0 rgba(26,26,26,.08)}
+    .wk-ad.gmt{left:0;z-index:5}
 
     /* janela de evento: blocos cinza suaves (sem divisórias), título em destaque, horários em pílulas,
        "Dia todo" como interruptor e avatar do paciente igual ao dos cards da agenda */
@@ -2070,6 +2079,8 @@
           <button class="hd-btn" id="agExpand" type="button" title="Expandir agenda" aria-label="Expandir agenda"><img src="assets/icons/chat-expand.svg?v=3" width="36" height="36" alt=""></button>
         </div>
       </div>
+      <!-- eventos de dia inteiro do dia mostrado (férias, congresso): entre a data e a linha, sem mexer nas horas -->
+      <div class="cal-allday" id="calAllDay" hidden></div>
       <!-- conexão com o Google morta (o Google recusou a renovação): o dia não aparece vazio sem explicação -->
       <div class="rc-alert warn cal-reconnect" id="calReconnect" role="status" hidden>
         <span class="t"><b>A conexão com o Google Agenda expirou.</b> As consultas não aparecem até você reconectar.</span>
@@ -2790,6 +2801,26 @@
     window.__selEv = null;
     window.__evData = {};                                  // chave → evento (p/ preencher a janela)
     function evKey(ev) { return ev.id || ((ev.title || '') + '|' + ev.start); }
+    // evento de dia inteiro (férias, congresso, "Dia todo") neste dia: AAAA-MM-DD, fim exclusivo (Microsoft manda T00:00)
+    function allDayOn(ev, d) {
+      if (!ev.allDay || !ev.start) return false;
+      var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+      var s = String(ev.start).slice(0, 10), e = ev.end ? String(ev.end).slice(0, 10) : '';
+      return k === s || (s < k && k < e);
+    }
+    // fica numa faixa acima das horas (no Dia, entre a data e a linha; na Semana, abaixo dos dias): pílula do evento curto da Semana
+    function allDayPill(ev) {
+      var k = evKey(ev), b = document.createElement('div'), t = document.createElement('div');
+      b.className = 'wk-ev short' + (k === window.__selEv ? ' sel' : '');
+      b.setAttribute('data-evkey', k); window.__evData[k] = ev;
+      b.title = (ev.title || '(sem título)') + ' · dia todo';
+      t.className = 'wk-ev-t'; t.textContent = ev.title || '(sem título)'; b.appendChild(t);
+      b.addEventListener('click', function (e) {            // seleciona e abre a janela preenchida (como os outros eventos)
+        window.__selEv = null; window.__evSelect(k);
+        if (window.__openEventEdit) window.__openEventEdit(e.clientX, e.clientY, ev);
+      });
+      return b;
+    }
     // idade a partir de AAAA-MM-DD ("54 anos", "8 meses") — diferencia homônimos nas listas
     function ptAge(bd) {
       if (!bd) return '';
@@ -2852,6 +2883,8 @@
         if (!inner) return;
         inner.querySelectorAll('.ev-real').forEach(function (n) { n.remove(); });
         inner.classList.add('real');          // esconde os exemplos fixos
+        var strip = document.getElementById('calAllDay'), ad = events.filter(function (ev) { return allDayOn(ev, dayStart); });
+        if (strip) { strip.innerHTML = ''; ad.forEach(function (ev) { strip.appendChild(allDayPill(ev)); }); strip.hidden = !ad.length; }
         events.forEach(function (ev) {
           if (ev.allDay || !ev.start) return;
           var s = new Date(ev.start), e = ev.end ? new Date(ev.end) : new Date(s.getTime() + 18e5);
@@ -2910,6 +2943,7 @@
       window.__onDayDateChange = function () {
         var inner = document.querySelector('.cal-inner');
         if (inner) inner.querySelectorAll('.ev-real').forEach(function (n) { n.remove(); });   // limpa o dia anterior já
+        var strip = document.getElementById('calAllDay'); if (strip) { strip.innerHTML = ''; strip.hidden = true; }
         firstRender = true;
         placeNow();
         refresh();
@@ -2936,6 +2970,9 @@
           elLoc = document.getElementById('evLocation'), elDur = document.getElementById('evDur'),
           elDateTxt = document.getElementById('evDateTxt'), elAllDay = document.getElementById('evAllDay');
       var allDay = false, POP_W = 360;                   // largura da janela (= .evpop)
+      // a janela tem uma data só: fim antes do início = termina no dia seguinte (plantão 19h–7h, 23h30–0h);
+      // extraDays = dias inteiros a mais do evento aberto (24 h ou mais; dia inteiro de vários dias, como férias)
+      var extraDays = 0;
       // horários a cada 15 min (formato 24h)
       [elStart, elEnd].forEach(function (sel) {
         for (var q = 0; q < 96; q++) {
@@ -2951,11 +2988,14 @@
         var p = elDate.value.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]);
         elDateTxt.textContent = DOWS_S[d.getDay()] + ', ' + d.getDate() + ' de ' + MON_S[d.getMonth()];
       }
+      function hmMin(v) { var a = v.split(':'); return +a[0] * 60 + +a[1]; }
+      function spanMin() {                                // duração em minutos (pode passar da meia-noite)
+        return (hmMin(elEnd.value) - hmMin(elStart.value) + 1440) % 1440 + extraDays * 1440;
+      }
       function durLabel() {
         if (!elStart.value || !elEnd.value) { elDur.textContent = ''; return; }
-        var a = elStart.value.split(':'), b = elEnd.value.split(':');
-        var min = (+b[0] * 60 + +b[1]) - (+a[0] * 60 + +a[1]);
-        if (min <= 0) { elDur.textContent = ''; return; }
+        var min = spanMin();
+        if (!(min > 0)) { elDur.textContent = ''; return; }
         var h = Math.floor(min / 60), m = min % 60;
         elDur.textContent = h ? (h + ' h' + (m ? ' ' + m + ' min' : '')) : (m + ' minutos');
       }
@@ -2973,8 +3013,7 @@
       });
       elEnd.addEventListener('change', function () { durLabel(); remember(); });
       function remember() {
-        var a = elStart.value.split(':'), b = elEnd.value.split(':');
-        var min = (+b[0] * 60 + +b[1]) - (+a[0] * 60 + +a[1]);
+        var min = spanMin();
         if (min > 0) elDur.dataset.min = min;
       }
       document.getElementById('evDateLbl').addEventListener('click', function (e) {
@@ -2982,7 +3021,7 @@
         try { elDate.showPicker(); } catch (_) { elDate.focus(); }
       });
       elDate.addEventListener('change', dateLabel);
-      elAllDay.addEventListener('click', function () { setAllDay(!allDay); });
+      elAllDay.addEventListener('click', function () { setAllDay(!allDay); extraDays = 0; durLabel(); remember(); });
       // ===== paciente: escolher um do cadastro ou criar um novo (ligado ao prontuário dele) =====
       // A lista vem inteira de GET /patients e é filtrada aqui (o nome nunca vai em URL).
       var elAv = document.getElementById('evAv'), elAvTxt = document.getElementById('evAvTxt');
@@ -3106,12 +3145,12 @@
       function fmtDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
 
       function openAt(clientX, clientY, h, m, day) {
-        if (!pop.hidden) close();
+        if (!pop.hidden && !close()) return;
         mode = 'create'; editEv = null;
         if (elDel) elDel.hidden = true;
         var now = day || new Date();
         elTitle.value = ''; elDesc.value = ''; elPatient.value = ''; elLoc.value = '';
-        setAllDay(false); delete elDur.dataset.min;
+        setAllDay(false); extraDays = 0; delete elDur.dataset.min;
         elMsg.hidden = true; elMsg.className = 'evpop-msg';
         elCreate.disabled = false; elCreate.textContent = 'Criar';
         elDate.value = fmtDate(now);
@@ -3146,12 +3185,13 @@
         if (elPatient.value.trim() && !selPatient) return { error: 'Escolha um paciente da lista ou crie um novo.' };
         var patient = selPatient ? selPatient.name : '';
         if (!elDate.value || (!allDay && (!elStart.value || !elEnd.value))) return { error: 'Preencha data, início e fim.' };
-        var startISO, endISO;
+        var startISO, endISO, p = elDate.value.split('-');
+        var dayPlus = function (n) { return fmtDate(new Date(+p[0], +p[1] - 1, +p[2] + n)); };
         if (allDay) {
-          var p = elDate.value.split('-'), nx = new Date(+p[0], +p[1] - 1, +p[2] + 1);
-          startISO = elDate.value; endISO = fmtDate(nx);
+          startISO = elDate.value; endISO = dayPlus(1 + extraDays);          // fim exclusivo: o dia seguinte ao último
         } else {
-          startISO = isoFrom(elDate.value, elStart.value); endISO = isoFrom(elDate.value, elEnd.value);
+          startISO = isoFrom(elDate.value, elStart.value);
+          endISO = isoFrom(dayPlus(extraDays + (hmMin(elEnd.value) < hmMin(elStart.value) ? 1 : 0)), elEnd.value);
           if (new Date(endISO) <= new Date(startISO)) return { error: 'O fim deve ser depois do início.' };
         }
         var summary = patient ? (title ? title + ' — ' + patient : patient) : title;
@@ -3179,10 +3219,17 @@
             if (cb) cb(res.ok && res.j.ok);
           }).catch(function () { alert('Falha de conexão ao salvar o evento.'); if (cb) cb(false); });
       }
-      function close() {
-        if (pop.hidden) return;
-        if (mode === 'edit') saveEdit();                     // salva alterações ao fechar
+      function close() {                                     // false = ficou aberta (alteração que não dá para salvar)
+        if (pop.hidden) return true;
+        if (mode === 'edit') {                               // salva alterações ao fechar
+          var p = buildPayload();
+          if (canSave() && p.error && JSON.stringify(p) !== original && elMsg.hidden) {   // avisa em vez de perder; fechar de novo descarta
+            elMsg.className = 'evpop-msg'; elMsg.textContent = p.error; elMsg.hidden = false; return false;
+          }
+          saveEdit();
+        }
         pop.hidden = true; mode = 'create'; editEv = null;
+        return true;
       }
       function place(clientX, clientY) {
         var w = POP_W, ph = pop.offsetHeight || 460;
@@ -3193,7 +3240,7 @@
       }
       // clicar num evento: mesma janela, preenchida (lixeira + "Prontuário")
       window.__openEventEdit = function (clientX, clientY, ev) {
-        if (!pop.hidden) close();
+        if (!pop.hidden && !close()) return;
         mode = 'edit'; editEv = ev;
         var parts = (ev.title || '').split(' — ');
         var title = parts[0] || '', patient = parts.slice(1).join(' — ');
@@ -3205,11 +3252,15 @@
         elMsg.hidden = true; elMsg.className = 'evpop-msg';
         var s0 = new Date(ev.start), e0 = ev.end ? new Date(ev.end) : new Date(s0.getTime() + 18e5);
         var isAll = !!ev.allDay || (typeof ev.start === 'string' && ev.start.length === 10);
-        if (isAll) { var q = ev.start.split('-'); s0 = new Date(+q[0], +q[1] - 1, +q[2]); }
+        var ymd = function (v) { var q = String(v).slice(0, 10).split('-'); return new Date(+q[0], +q[1] - 1, +q[2]); };
+        var dayN = function (d) { return Math.round(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5); };
+        if (isAll) { s0 = ymd(ev.start); e0 = ev.end ? ymd(ev.end) : new Date(s0.getFullYear(), s0.getMonth(), s0.getDate() + 1); }
         setAllDay(isAll);
         elDate.value = fmtDate(s0);
         if (!isAll) { ensureOption(elStart, pad(s0.getHours()) + ':' + pad(s0.getMinutes()));
                       ensureOption(elEnd, pad(e0.getHours()) + ':' + pad(e0.getMinutes())); }
+        // guarda o dia em que o evento termina (senão editar um plantão 19h–7h ou as férias encurtava o evento)
+        extraDays = Math.max(0, dayN(e0) - dayN(s0) - (isAll || hmMin(elEnd.value) < hmMin(elStart.value) ? 1 : 0)) || 0;
         // paciente do evento: pelo id do cadastro; eventos antigos só têm o nome
         hideList();
         selPatient = patient ? { id: ev.patient_id || null, name: patient } : null;
@@ -3336,7 +3387,7 @@
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
       // clique fora fecha
       document.addEventListener('mousedown', function (e) {
-        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.cal-inner, .wk-col')) close();
+        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.cal-inner, .wk-col, .cal-allday .wk-ev, .wk-ad .wk-ev')) close();
       });
 
       function isoFrom(dateStr, timeStr) {
@@ -3816,7 +3867,7 @@
       var WK_PX = 142, WK_FIRST = 0, WK_LAST = 24;         // semana: 142px por hora; rótulo centralizado na linha da hora (Figma 1018:11546)
       var WK_HEAD = 51;                                    // altura do cabeçalho dos dias (= .wk-h)
       var DOWS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-      var events = [], weekStart = null, timer = null;
+      var events = [], weekStart = null, timer = null, head = WK_HEAD;
 
       function startOfWeek(d) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - x.getDay()); return x; }
       function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
@@ -3837,6 +3888,12 @@
           if (sameDay(d, now)) { h.appendChild(el('span', null, DOWS[i])); h.appendChild(el('span', 'wk-today', d.getDate())); }
           else h.textContent = DOWS[i] + ' ' + d.getDate();
           grid.appendChild(h);
+        }
+        // dia inteiro: uma linha abaixo dos dias, só quando a semana tem algum
+        var ad = days.map(function (d) { return events.filter(function (ev) { return allDayOn(ev, d); }); });
+        if (ad.some(function (l) { return l.length; })) {
+          grid.appendChild(el('div', 'wk-ad gmt'));
+          ad.forEach(function (l) { var c = el('div', 'wk-ad'); l.forEach(function (ev) { c.appendChild(allDayPill(ev)); }); grid.appendChild(c); });
         }
         // calha com as horas
         var gut = el('div', 'wk-gut'); gut.style.height = H + 'px';
@@ -3892,19 +3949,20 @@
         });
         // traço da hora atual (só na semana de hoje)
         var ti = days.map(function (d) { return sameDay(d, now); }).indexOf(true);
+        head = cols[0].offsetTop || WK_HEAD;                // cabeçalho dos dias + a linha de dia inteiro, se houver
         if (ti >= 0) {
           var y = (now.getHours() + now.getMinutes() / 60 - WK_FIRST) * WK_PX;
-          var line = el('div', 'wk-now'); line.style.top = (WK_HEAD + y) + 'px'; grid.appendChild(line);
+          var line = el('div', 'wk-now'); line.style.top = (head + y) + 'px'; grid.appendChild(line);
           var seg = el('div', 'wk-now-gut'); seg.style.top = y + 'px'; gut.appendChild(seg);
           var cap = el('div', 'wk-now-cap', hhmm(now)); cap.style.top = y + 'px'; gut.appendChild(cap);
         }
         return ti >= 0 ? (now.getHours() + now.getMinutes() / 60 - WK_FIRST) * WK_PX : 8 * WK_PX;
       }
-      function center(y) { wk.scrollTop = Math.max(WK_HEAD + y - wk.clientHeight / 2, 0); }
+      function center(y) { wk.scrollTop = Math.max(head + y - wk.clientHeight / 2, 0); }
 
       function fetchWeek() {
         var end = new Date(weekStart); end.setDate(weekStart.getDate() + 7);
-        return fetch('/calendar/events?start=' + encodeURIComponent(weekStart.toISOString()) +
+        return fetch('/calendar/events?limit=2500&start=' + encodeURIComponent(weekStart.toISOString()) +   // a semana inteira, sem corte
                      '&end=' + encodeURIComponent(end.toISOString()))
           .then(function (r) { return r.json(); })
           .then(function (d) { events = (d && d.connected && d.events) || []; if (window.__calReconnect) window.__calReconnect(d); })
@@ -3917,7 +3975,7 @@
         fetchWeek().then(function () {
           if (!isWeek()) return;
           render();
-          var picked = recenter && grid.querySelector('.wk-ev.sel');          // evento escolhido na busca
+          var picked = recenter && grid.querySelector('.wk-col .wk-ev.sel');  // evento escolhido na busca (dia inteiro já fica no topo)
           if (picked) wk.scrollTop = Math.max(parseFloat(picked.style.top) - 24, 0);
         });
       }
@@ -8679,17 +8737,26 @@
       }
       // undefined = erro; null = sem calendário conectado; 'morta' = conexão expirou (reconectar); [] = eventos
       var deadProv = 'google';
+      function get(a, b) {
+        return fetch('/calendar/events?limit=2500&start=' + encodeURIComponent(a.toISOString()) +
+                     '&end=' + encodeURIComponent(b.toISOString())).then(function (r) { return r.json(); });
+      }
       function load() {
         if (cache !== undefined && Date.now() - cacheAt < 60e3) return Promise.resolve(cache);
         if (loading) return loading;
-        var a = new Date(), b = new Date();
+        // próximas e anteriores em leituras separadas: o calendário vem do mais antigo para o mais novo, e um passado
+        // cheio (ou um evento diário) não pode tomar o lugar das próximas consultas; o último mês também vem à parte
+        var t0 = new Date(), m = new Date(), a = new Date(), b = new Date();
+        t0.setHours(0, 0, 0, 0); m.setTime(t0.getTime()); m.setDate(m.getDate() - 30);
         a.setDate(a.getDate() - 180); b.setDate(b.getDate() + 365);
-        loading = fetch('/calendar/events?limit=250&start=' + encodeURIComponent(a.toISOString()) +
-                        '&end=' + encodeURIComponent(b.toISOString()))
-          .then(function (r) { return r.json(); })
-          .then(function (d) {
-            if (d && d.connected && d.needs_reconnect) { deadProv = d.connected; return 'morta'; }   // sem cache: tenta de novo ao reconectar
-            cache = d && d.connected ? (d.events || []) : null; cacheAt = Date.now(); return cache;
+        loading = Promise.all([get(t0, b), get(m, t0), get(a, m)])
+          .then(function (ds) {
+            var d = ds[0], dead = ds.filter(function (x) { return x && x.connected && x.needs_reconnect; })[0], seen = {};
+            if (dead) { deadProv = dead.connected; return 'morta'; }   // sem cache: tenta de novo ao reconectar
+            cache = d && d.connected ? [].concat.apply([], ds.map(function (x) { return (x && x.events) || []; })).filter(function (ev) {
+              var k = evKey(ev); if (seen[k]) return false; seen[k] = 1; return true;   // o que atravessa um corte vem nas duas
+            }) : null;
+            cacheAt = Date.now(); return cache;
           })
           .catch(function () { return undefined; })
           .then(function (v) { loading = null; return v; });
