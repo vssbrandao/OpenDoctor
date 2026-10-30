@@ -519,11 +519,13 @@ def find_by_cpf(user_id, cpf, exclude_id=None):
     return _patient(r) if r else None
 
 
-# paciente fictícia criada em toda conta nova (app/exemplo.py); pode ser excluída mesmo com prontuário.
-# É reconhecida pela CHAVE, nunca pelo nome ("Maria Silva" é comum): patient_key() jamais devolve texto
-# começando com espaço, então nenhum paciente real — nem consulta antiga só com o nome — cai nela.
+# paciente fictícia criada em toda conta nova (app/exemplo.py); pode ser excluída com o prontuário fictício
+# (só com ele: ver delete_patient). É reconhecida pela CHAVE, nunca pelo nome ("Maria Silva" é comum): patient_key()
+# jamais devolve texto começando com espaço, então nenhum paciente real — nem consulta antiga só com o nome — cai nela.
 EXAMPLE_NAME = "Maria Silva"
 EXAMPLE_KEY = " exemplo"
+EXAMPLE_FILE = "laudo-exemplo.pdf"                            # o laudo em PDF que vem com ela (exemplo.laudo_pdf):
+EXAMPLE_FILE_MARK = b"/Title (Laudo de exemplo - OpenDoctor)"   # reconhecido pelo nome e por esta marca no PDF
 
 
 def has_example(user_id):
@@ -606,25 +608,51 @@ def touch_patient(user_id, patient_id):
         conn.commit()
 
 
+# O que, na paciente de exemplo, NÃO é do exemplo (foi o médico que gravou: pode ser de um paciente real que caiu
+# nela por engano). A regra: o exemplo grava as evoluções e as receitas com as datas fictícias dele, todas anteriores
+# à criação da paciente; tudo o que o app grava depois leva a hora do momento, posterior a ela. Então é do médico:
+#  - evolução de consulta da agenda (o histórico fictício não tem event_id) ou criada, editada ou finalizada depois da
+#    paciente, se tiver texto ou estiver finalizada (a vazia, aberta e não escrita, não guarda nada: sai junto, como
+#    nos pacientes reais);
+#  - adendo (o exemplo não tem nenhum);
+#  - receita de consulta, rascunho ou criada depois da paciente (as fictícias saem emitidas, com a data da consulta
+#    fictícia; cancelar uma delas não a torna de verdade);
+#  - anexo que não seja o laudo do exemplo (o nome dele e a marca que exemplo.laudo_pdf grava no PDF: vale para a
+#    Maria de qualquer época, criada numa transação só ou, antes, em passos);
+#  - qualquer gravação.
+# Um reparo que complete uma Maria depois precisa gravar com as mesmas datas, senão ela deixa de poder ser excluída.
+_DO_MEDICO_NO_EXEMPLO = """
+    select exists (select 1 from clinical_notes n where n.user_id = p.user_id and n.patient_id = p.id
+                     and (n.content <> '' or n.signed_at is not null)
+                     and (n.event_id is not null or greatest(n.created_at, n.updated_at, n.signed_at) >= p.created_at))
+        or exists (select 1 from note_addenda a join clinical_notes n on n.id = a.note_id
+                     where n.user_id = p.user_id and n.patient_id = p.id)
+        or exists (select 1 from receitas x where x.user_id = p.user_id and x.patient_id = p.id
+                     and (x.event_id is not null or x.status = 'rascunho' or x.created_at >= p.created_at))
+        or exists (select 1 from patient_files f where f.user_id = p.user_id and f.patient_id = p.id
+                     and (f.name <> %(laudo)s or position(%(marca)s in f.data) = 0))
+        or exists (select 1 from recordings g where g.user_id = p.user_id and g.patient_id = p.id)
+    from patients p where p.user_id = %(u)s and p.id = %(p)s"""
+
+
 def delete_patient(user_id, patient_id):
     """Exclui o cadastro só se não houver prontuário (anotações são registro de saúde e ficam).
-    A paciente de exemplo (fictícia) sai com tudo, a menos que tenha evolução de uma consulta da agenda: o
-    histórico fictício nunca tem consulta (event_id), então essa é de verdade e fica. Retorna 'ok', 'has_notes'
+    A paciente de exemplo (fictícia) sai com tudo numa transação só, mas só se tudo nela for do exemplo: com qualquer
+    coisa que o médico gravou nela (_DO_MEDICO_NO_EXEMPLO) ela fica, como um paciente real. Retorna 'ok', 'has_notes'
     ou 'not_found'."""
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("select patient_key from patients where user_id = %s and id = %s", (user_id, patient_id))
+            # trava a linha até o fim: receita, anexo, gravação ou evolução nova dela espera, e não some sem ser vista
+            cur.execute("select patient_key from patients where user_id = %s and id = %s for update", (user_id, patient_id))
             r = cur.fetchone()
             if not r:
                 return "not_found"
             if r[0] == EXAMPLE_KEY:
-                cur.execute("""select 1 from clinical_notes where user_id = %s and patient_id = %s and event_id is not null
-                               and (content <> '' or signed_at is not null) limit 1""", (user_id, patient_id))
-                if cur.fetchone():
+                cur.execute(_DO_MEDICO_NO_EXEMPLO, {"u": user_id, "p": patient_id, "laudo": EXAMPLE_FILE,
+                                                    "marca": EXAMPLE_FILE_MARK})
+                if cur.fetchone()[0]:
                     return "has_notes"
                 cur.execute("delete from patient_files where user_id = %s and patient_id = %s", (user_id, patient_id))
-                cur.execute("""delete from note_addenda where note_id in
-                               (select id from clinical_notes where user_id = %s and patient_id = %s)""", (user_id, patient_id))
                 cur.execute("delete from clinical_notes where user_id = %s and patient_id = %s", (user_id, patient_id))
                 cur.execute("delete from patients where user_id = %s and id = %s", (user_id, patient_id))
                 conn.commit()

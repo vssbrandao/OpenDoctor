@@ -8616,7 +8616,7 @@
         if (!confirm(p.example ? 'Excluir a paciente de exemplo e todos os dados fictícios?' : 'Excluir o cadastro de ' + p.name + '?')) return;
         api('DELETE', '/patients/' + p.id).then(function (res) {
           if (res.ok && res.j.ok) { all = all.filter(function (x) { return x.id !== p.id; }); showErr(''); render(); }
-          else showErr(res.status !== 409 ? 'Não foi possível excluir.' : p.example ? 'A paciente de exemplo tem evolução de consulta da agenda e não pode ser excluída.'
+          else showErr(res.status !== 409 ? 'Não foi possível excluir.' : p.example ? 'A paciente de exemplo tem registros feitos por você (evolução, receita, exame ou gravação) e não pode ser excluída.'
                        : 'Este paciente tem prontuário e não pode ser excluído.');
         });
       }

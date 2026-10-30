@@ -20,6 +20,7 @@ def novo_usuario(test_db):
     yield criar
     with db.connection() as c:
         for uid in criados:
+            c.execute("delete from note_addenda where user_id = %s", (uid,))     # o adendo segura a evolução
             c.execute("delete from patient_files where user_id = %s", (uid,))
             c.execute("delete from clinical_notes where user_id = %s", (uid,))
             c.execute("delete from patients where user_id = %s", (uid,))
@@ -307,9 +308,74 @@ def test_exemplo_com_consulta_de_verdade_nao_e_excluido(novo_usuario):
     assert len(db.list_notes(uid, pid, db.EXAMPLE_KEY)) == 18 and len(db.list_files(uid, pid)) == 1   # nada saiu
     pid2 = exemplo.seed(outro)
     db.upsert_note(outro, pid2, db.EXAMPLE_KEY, db.EXAMPLE_NAME, "ev-vazia", "Consulta", None, "")    # abriu, não escreveu
-    db.upsert_note(outro, pid2, db.EXAMPLE_KEY, db.EXAMPLE_NAME, None, None, None, "S: testando")      # avulsa, na fictícia
     assert db.delete_patient(outro, pid2) == "ok"
     assert db.list_notes(outro, pid2, db.EXAMPLE_KEY) == [] and not db.has_example(outro)
+
+
+def _exemplo_fica(uid, pid):
+    """A de exemplo com algo que o médico gravou nela: não sai, e nada dela some."""
+    assert db.delete_patient(uid, pid) == "has_notes"
+    assert len(db.list_notes(uid, pid, db.EXAMPLE_KEY)) >= 17 and len(db.list_receitas(uid, pid)) >= 11
+    assert db.EXAMPLE_FILE in [f["name"] for f in db.list_files(uid, pid)]
+
+
+def test_exemplo_so_sai_com_o_que_e_do_exemplo(novo_usuario):
+    from app import exemplo
+    uid = novo_usuario()["id"]
+    pid = exemplo.seed(uid)
+    f = db.add_file(uid, pid, "exame.pdf", "application/pdf", b"%PDF-1.7 de verdade")
+    _exemplo_fica(uid, pid)                                               # exame anexado pelo médico
+    assert db.delete_file(uid, f["id"]) == pid
+    f = db.add_file(uid, pid, db.EXAMPLE_FILE, "application/pdf", b"%PDF-1.7 de verdade")
+    _exemplo_fica(uid, pid)                                               # mesmo nome do laudo, mas anexado depois
+    assert db.delete_file(uid, f["id"]) == pid
+    r = db.create_receita(uid, pid, [{"nome": "Losartana", "dose": "50 mg"}])
+    _exemplo_fica(uid, pid)                                               # rascunho de receita
+    assert db.delete_receita(uid, r["id"]) == pid
+    rid = str(uuid.uuid4())
+    assert db.rec_open(uid, pid, rid, None, None, "2026-10-15T10:00:00Z")
+    _exemplo_fica(uid, pid)                                               # gravação (mesmo sem trecho)
+    assert db.rec_delete(uid, rid) == pid
+    assert db.cancel_receita(uid, db.list_receitas(uid, pid)[0]["id"], "Teste")   # cancelar a fictícia: continua fictícia
+    db.upsert_note(uid, pid, db.EXAMPLE_KEY, db.EXAMPLE_NAME, None, None, None, "")   # avulsa aberta e não escrita
+    assert db.delete_patient(uid, pid) == "ok"                            # só o exemplo: sai inteiro
+    with db.connection() as c:
+        sobra = [c.execute(f"select count(*) from {t} where user_id = %s", (uid,)).fetchone()[0]
+                 for t in ("patients", "clinical_notes", "receitas", "patient_files", "recordings")]
+    assert sobra == [0, 0, 0, 0, 0]
+
+
+def test_exemplo_com_registro_do_medico_nao_e_excluido(novo_usuario):
+    from app import exemplo
+    uid = novo_usuario()["id"]
+    pid = exemplo.seed(uid)
+    notas = db.list_notes(uid, pid, db.EXAMPLE_KEY)
+    exame = next(n for n in notas if not n["signed_at"])                  # "Resultado de exames" fictício (não finalizado)
+    consulta = next(n for n in notas if n["signed_at"])
+
+    def desfaz(sql, *args):                                               # só no banco de testes: volta ao exemplo puro
+        with db.connection() as c:
+            c.execute(sql, args)
+            c.commit()
+    r = db.create_receita(uid, pid, [{"nome": "Amoxicilina"}])
+    assert db.emit_receita(uid, r["id"], [("simples", [{"nome": "Amoxicilina"}])])
+    _exemplo_fica(uid, pid)                                               # receita emitida sem consulta (renovação)
+    desfaz("delete from receitas where id = %s", r["id"])
+    nid = db.upsert_note(uid, pid, db.EXAMPLE_KEY, db.EXAMPLE_NAME, None, None, None, "S: paciente de verdade")
+    _exemplo_fica(uid, pid)                                               # evolução avulsa escrita nela
+    assert db.finalize_note(uid, nid)
+    _exemplo_fica(uid, pid)                                               # e finalizada
+    desfaz("delete from clinical_notes where id = %s", nid)
+    assert db.update_note(uid, exame["id"], "Resultado de exames: HbA1c 7,0%", exame["data"])
+    _exemplo_fica(uid, pid)                                               # registro fictício editado pelo médico
+    desfaz("update clinical_notes set updated_at = created_at where id = %s", exame["id"])
+    assert db.finalize_note(uid, exame["id"])
+    _exemplo_fica(uid, pid)                                               # registro fictício finalizado pelo médico
+    desfaz("update clinical_notes set signed_at = null where id = %s", exame["id"])
+    assert db.add_addendum(uid, consulta["id"], "Adendo de verdade")
+    _exemplo_fica(uid, pid)                                               # adendo numa consulta fictícia
+    desfaz("delete from note_addenda where note_id = %s", consulta["id"])
+    assert db.delete_patient(uid, pid) == "ok"                            # cada um, sozinho, já a segurava
 
 
 def test_evolucao_da_consulta_nao_passa_para_outro_paciente(novo_usuario):

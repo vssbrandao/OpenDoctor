@@ -3,7 +3,8 @@
 Mostra o prontuário preenchido: 11 consultas finalizadas com sinais vitais e CID-10, resultados de exames
 e um laudo em PDF anexado. As datas acompanham o dia da criação da conta. Sem CPF e telefone (não usar
 números que possam ser de alguém). Marcada pela chave db.EXAMPLE_KEY (não pelo nome) e com o selo
-"Exemplo" na tela; o médico pode excluí-la a qualquer momento (db.delete_patient).
+"Exemplo" na tela; o médico pode excluí-la enquanto ela só tiver o que veio daqui (db.delete_patient: o que
+ele gravou nela fica). As datas fictícias, anteriores à criação da paciente, são o que separa uma coisa da outra.
 """
 import datetime as dt
 
@@ -138,7 +139,7 @@ def laudo_pdf(coleta, v):
             b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
             b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
             b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream",
-            b"<< /Title (Laudo de exemplo - OpenDoctor) /Producer (OpenDoctor) >>"]
+            b"<< " + db.EXAMPLE_FILE_MARK + b" /Producer (OpenDoctor) >>"]   # a marca: delete_patient o reconhece
     out, offs = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"), []
     for i, o in enumerate(objs, 1):
         offs.append(len(out)); out += b"%d 0 obj\n" % i + o + b"\nendobj\n"
@@ -161,7 +162,7 @@ def seed(user_id, now=None):
     coleta = (_when(now, recente) - dt.timedelta(days=5)).date()
     return db.create_example_patient(user_id, NAME, "1968-03-14", "F",
                                      {"allergies": ALLERGIES, "problems": PROBLEMS, "medications": MEDICATIONS},
-                                     notes, receitas, ("laudo-exemplo.pdf", "application/pdf", laudo_pdf(coleta, EXAMES[recente])))
+                                     notes, receitas, (db.EXAMPLE_FILE, "application/pdf", laudo_pdf(coleta, EXAMES[recente])))
 
 
 def seed_safe(user_id):
