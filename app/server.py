@@ -19,6 +19,7 @@ import threading
 import collections
 import secrets
 import concurrent.futures
+import contextlib
 import mimetypes
 import asyncio
 import struct
@@ -693,13 +694,27 @@ async def google_start(request: Request):
 # Cada rota só lê o corpo no laço de eventos; o resto (banco, hash da senha de 600 mil voltas, envio do e-mail,
 # paciente de exemplo) roda no threadpool: o servidor tem um processo só e um login não trava os outros médicos.
 # No threadpool os pedidos correm juntos, e a trava de 5 senhas erradas, os 30 s entre códigos, as tentativas do
-# código e o tíquete de uso único só valem com um pedido por conta de cada vez: _conta_lock (por e-mail ou conta).
+# código e o tíquete de uso único só valem com um pedido por conta de cada vez: _na_vez (por e-mail ou conta).
 _CONTA_LOCKS = [threading.RLock() for _ in range(64)]
+_CONTA_ESPERA_S = 1.0          # quem espera mais que isso desiste: uma rajada numa conta não faz fila no threadpool
 
 
 def _conta_lock(key):
     """A trava desta conta: pedidos da mesma conta esperam um o outro; os de outras contas, quase nunca."""
     return _CONTA_LOCKS[int(hashlib.sha256(str(key).encode()).hexdigest()[:8], 16) % len(_CONTA_LOCKS)]
+
+
+@contextlib.contextmanager
+def _na_vez(key):
+    """Um pedido desta conta de cada vez. False: outro pedido dela segura a vez há mais de _CONTA_ESPERA_S — a rota
+    responde limite_ip (a tela diz para aguardar), sem conferir nada (o botão da tela já evita o clique duplo)."""
+    lk = _conta_lock(key)
+    ok = lk.acquire(timeout=_CONTA_ESPERA_S)
+    try:
+        yield ok
+    finally:
+        if ok:
+            lk.release()
 
 
 async def _body(request):
@@ -763,8 +778,8 @@ def _logged(request, user, nxt, method, welcome=False):
 def _send_code(email, purpose, name=""):
     """Cria e envia um código. Devolve (resposta de erro ou None, segundos até poder reenviar —
     negativo quando não enviou agora porque o código de menos de 30s atrás continua valendo)."""
-    with _conta_lock(email):                       # dois pedidos juntos não passam ambos pelos 30 s nem pelo limite
-        return _send_code_now(email, purpose, name)
+    with _na_vez(email) as vez:                    # dois pedidos juntos não passam ambos pelos 30 s nem pelo limite
+        return _send_code_now(email, purpose, name) if vez else (_err("limite_ip", 429), 0)
 
 
 def _send_code_now(email, purpose, name):
@@ -795,7 +810,9 @@ def _check_code(email, code, purpose):
     code = re.sub(r"\D", "", str(code or ""))
     if len(code) != 6:
         return _err("codigo_invalido")
-    with _conta_lock(email):                       # as tentativas contam uma de cada vez
+    with _na_vez(email) as vez:                    # as tentativas contam uma de cada vez
+        if not vez:
+            return _err("limite_ip", 429)
         status, left = db.check_login_code(email, auth.code_hash(email, code, purpose))
     if status == "ok":
         return None
@@ -836,7 +853,9 @@ def _password_login(request, b):
     if _rate_limited(request, "login_pw"):
         return _err("limite_ip", 429)
     try:
-        with _conta_lock(email):                            # a senha seguinte só é conferida depois do erro desta contar
+        with _na_vez(email) as vez:                         # a senha seguinte só é conferida depois do erro desta contar
+            if not vez:
+                return _err("limite_ip", 429)
             info = db.password_login_info(email)
             if not info:
                 return _err("sem_conta", 404)
@@ -927,7 +946,9 @@ def _signup_verify(request, b):
     if _rate_limited(request, "login_verify"):
         return _err("limite_ip", 429)
     try:
-        with _conta_lock(t["email"]):               # "novo" vale para um só dos pedidos juntos
+        with _na_vez(t["email"]) as vez:            # "novo" vale para um só dos pedidos juntos
+            if not vez:
+                return _err("limite_ip", 429)
             bad = _check_code(t["email"], b.get("code"), "signup")
             if bad:
                 return bad
@@ -1008,11 +1029,15 @@ def _password_reset(request, b):
     if auth.password_problems(pw):
         return _err("senha_fraca", rules=auth.password_problems(pw))
     try:
+        usado = lambda c: not c or int(c.get("sv") or 0) != int(t.get("sv") or 0)   # noqa: E731
+        if usado(db.get_user(t["uid"])):
+            return _err("sessao_expirada")                   # tíquete já usado (a senha já mudou): nem calcula o hash
         ph = auth.hash_password(pw)
-        with _conta_lock(f"uid:{t['uid']}"):                # dois pedidos com o mesmo tíquete: só um troca a senha
-            cur = db.get_user(t["uid"])
-            if not cur or int(cur.get("sv") or 0) != int(t.get("sv") or 0):
-                return _err("sessao_expirada")               # tíquete já usado (a senha já mudou)
+        with _na_vez(f"uid:{t['uid']}") as vez:             # dois pedidos com o mesmo tíquete: só um troca a senha
+            if not vez:
+                return _err("limite_ip", 429)
+            if usado(db.get_user(t["uid"])):
+                return _err("sessao_expirada")
             user = db.set_password(t["uid"], ph)
     except Exception as e:
         print("[login] redefinição falhou:", str(e)[:200], flush=True)
@@ -1934,16 +1959,17 @@ def _meds_gerados(recs):
 
 
 def _meds_levados(recs, meds):
-    """O que fica lembrado depois desta geração: os das anteriores mais os que ela leva agora (sem repetir)."""
-    foram = _meds_gerados(recs)
+    """O que fica lembrado depois desta geração: os das anteriores mais os que ela leva agora, cada remédio uma vez só
+    (a mesma lista vai para todas as gravações da consulta: sem tirar os repetidos, ela dobraria a cada geração)."""
     try:
         novos = [x["nome"] for x in prescricao.da_gravacao(meds)]
     except Exception:
         novos = []
-    for n in novos:
-        if not any(prescricao.mesmo_remedio(n, y) for y in foram):
-            foram.append(n)
-    return foram
+    out = []
+    for n in _meds_gerados(recs) + novos:
+        if not any(prescricao.mesmo_remedio(n, y) for y in out):
+            out.append(n)
+    return out
 
 
 def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):

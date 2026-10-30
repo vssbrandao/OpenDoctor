@@ -387,6 +387,11 @@ def test_gerar_de_novo_lembra_os_remedios_de_todas_as_geracoes(fake, monkeypatch
     assert gera()["receita"] == 0                                   # esta não cita a losartana
     saida[0] = SAIDA
     assert gera()["receita"] == 0 and db.get_receita(UID, rx["id"])["itens"] == []   # citada de novo: não volta
+    for _ in range(3):
+        gera()
+    assert fake.recs[REC]["scribe"]["receita_meds"] == ["Losartana"]  # lembrada uma vez só: a lista não cresce
+    duas = [{"scribe": {"receita_meds": ["Losartana", "Metformina"]}}] * 2   # duas gravações da consulta, a mesma lista
+    assert server._meds_levados(duas, SAIDA_2["meds"]) == ["Losartana", "Metformina"]
 
     db.update_receita(UID, rx["id"], [])
     vazia = {"soap": {"s": [], "o": [], "a": [], "p": []}, "livre": [], "vitals": {}, "cid": [], "exames": [], "pendencias": [],

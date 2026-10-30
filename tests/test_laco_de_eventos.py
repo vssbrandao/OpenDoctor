@@ -185,6 +185,7 @@ def test_trava_de_senhas_erradas_vale_com_pedidos_juntos(fake):
     fake.setattr(db, "password_login_info", info)
     fake.setattr(db, "login_failed", falhou)
     fake.setattr(auth, "check_password", confere)
+    fake.setattr(server, "_CONTA_ESPERA_S", 10)      # aqui todos esperam a vez (a desistência tem o seu teste)
 
     async def ataque():
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://t") as c:
@@ -200,8 +201,34 @@ def test_trava_de_senhas_erradas_vale_com_pedidos_juntos(fake):
     assert certa.status_code == 429 and certa.json()["error"] == "bloqueado"
 
 
+def test_rajada_numa_conta_desiste_em_vez_de_fazer_fila(fake):
+    """Quem espera a vez da conta mais que _CONTA_ESPERA_S volta 429 sem conferir a senha: uma rajada numa conta não
+    ocupa o threadpool, e o outro médico é atendido."""
+    conferidas = []
+
+    def confere(pw, h):
+        conferidas.append(pw)
+        time.sleep(0.6)
+        return False
+    fake.setattr(auth, "check_password", confere)
+    fake.setattr(db, "login_failed", lambda uid: (4, 0))
+    fake.setattr(server, "_CONTA_ESPERA_S", 0.1)
+
+    async def juntos():
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://t") as c:
+            rs = [asyncio.ensure_future(c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": f"Errada{i}!"}))
+                  for i in range(4)]
+            await asyncio.sleep(0.05)
+            outro = await c.get("/health")
+            return await asyncio.gather(*rs), outro
+    rs, outro = asyncio.run(juntos())
+    assert len(conferidas) == 1 and outro.status_code == 200
+    assert sorted((r.status_code, r.json()["error"]) for r in rs) == [(401, "senha_incorreta")] + [(429, "limite_ip")] * 3
+
+
 def test_tiquete_da_nova_senha_vale_uma_vez_com_pedidos_juntos(fake):
-    """Dois pedidos com o mesmo tíquete ao mesmo tempo: só um troca a senha."""
+    """Dois pedidos com o mesmo tíquete ao mesmo tempo: só um troca a senha. Com o tíquete já usado, nem o hash da
+    senha nova é calculado."""
     st, lk = {"sv": 0, "trocas": 0}, threading.Lock()
 
     def usuario(uid):
@@ -223,3 +250,8 @@ def test_tiquete_da_nova_senha_vale_uma_vez_com_pedidos_juntos(fake):
             return await asyncio.gather(*[c.post("/auth/password/reset", json={"ticket": tk, "password": PW}) for _ in range(3)])
     rs = asyncio.run(juntos())
     assert st["trocas"] == 1 and sorted(r.status_code for r in rs) == [200, 400, 400]
+    hashes = []
+    fake.setattr(auth, "hash_password", lambda pw: hashes.append(pw) or "h")
+    from fastapi.testclient import TestClient
+    r = TestClient(server.app).post("/auth/password/reset", json={"ticket": tk, "password": PW})
+    assert r.status_code == 400 and r.json()["error"] == "sessao_expirada" and hashes == []
