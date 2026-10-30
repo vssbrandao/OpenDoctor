@@ -132,7 +132,8 @@ def _row_to_user(row):
 
 def upsert_user(email, name=None, picture=None, google_sub=None):
     """Cria ou atualiza o usuário pela conta Google; devolve o dict do usuário.
-    E-mail sempre em minúsculas — o mesmo do login por código, para não duplicar a conta."""
+    E-mail sempre em minúsculas — o mesmo do login por código, para não duplicar a conta.
+    O nome do Google só preenche um nome vazio: o que o médico corrigiu em Configurações (vai na receita) fica."""
     email = (email or "").strip().lower()
     with connection() as conn:
         with conn.cursor() as cur:
@@ -141,7 +142,7 @@ def upsert_user(email, name=None, picture=None, google_sub=None):
                 insert into users (email, name, picture, google_sub, terms_accepted_at, last_login)
                 values (%s,%s,%s,%s, now(), now())
                 on conflict (email) do update set
-                  name = coalesce(excluded.name, users.name),
+                  name = coalesce(nullif(users.name, ''), excluded.name),
                   picture = coalesce(excluded.picture, users.picture),
                   google_sub = coalesce(excluded.google_sub, users.google_sub),
                   last_login = now()

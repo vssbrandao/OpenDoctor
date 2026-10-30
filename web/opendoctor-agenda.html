@@ -3175,7 +3175,7 @@
             if (window.__refreshWeek) window.__refreshWeek();
             if (!(res.ok && res.j.ok)) alert(res.j && res.j.needs_reconnect
               ? (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou.' : 'Sem permissão para editar.') + ' Reconecte o Google em Integrações.'
-              : 'Não foi possível salvar as alterações do evento.');
+              : (res.j && res.j.reason && res.j.error) || 'Não foi possível salvar as alterações do evento.');   // limite/proibido: o porquê
             if (cb) cb(res.ok && res.j.ok);
           }).catch(function () { alert('Falha de conexão ao salvar o evento.'); if (cb) cb(false); });
       }
@@ -3243,7 +3243,7 @@
               if (window.__refreshWeek) window.__refreshWeek();
             } else {
               elMsg.className = 'evpop-msg';
-              elMsg.textContent = res.j && res.j.needs_reconnect ? (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou.' : 'Sem permissão.') + ' Reconecte o Google em Integrações.' : 'Não foi possível excluir.';
+              elMsg.textContent = res.j && res.j.needs_reconnect ? (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou.' : 'Sem permissão.') + ' Reconecte o Google em Integrações.' : (res.j && res.j.reason && res.j.error) || 'Não foi possível excluir.';
               elMsg.hidden = false;
             }
           }).catch(function () { elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false; });
@@ -3368,7 +3368,7 @@
               elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
             } else {
               elMsg.className = 'evpop-msg';
-              elMsg.textContent = 'Não foi possível criar o evento.';
+              elMsg.textContent = (res.j && res.j.reason && res.j.error) || 'Não foi possível criar o evento.';
               elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
             }
           }).catch(function () {

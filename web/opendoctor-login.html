@@ -249,8 +249,13 @@
       function $(id) { return document.getElementById(id); }
       var RE = /^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s.]{2,63}$/;
       var params = new URLSearchParams(location.search);
-      var nextUrl = params.get('next') || '';
-      if (!/^\/(?!\/)/.test(nextUrl) || nextUrl.indexOf('\\') >= 0) nextUrl = '';   // só páginas deste site
+      // só páginas deste site (a mesma regra de auth.safe_next): o navegador apaga tab e quebra de linha, então
+      // "/\t/site.com" viraria "//site.com" — recusa espaço, controle e barra invertida e confere a origem
+      function safeNext(v) {
+        if (!v || v.length > 300 || !/^\/(?!\/)/.test(v) || /[\x00-\x20\x7f\\]/.test(v) || v.indexOf('/auth/') === 0) return '';
+        try { return new URL(v, location.origin).origin === location.origin ? v : ''; } catch (e) { return ''; }
+      }
+      var nextUrl = safeNext(params.get('next') || '');
       // codeMode: 'signup' (confirmar cadastro) | 'reset' (redefinir/criar senha); firstPw: conta Google criando a 1ª senha
       var st = { email: '', ticket: '', resetTicket: '', codeMode: '', firstPw: false, emailOk: true }, timer = null;
       var HOME = '/opendoctor-agenda.html';

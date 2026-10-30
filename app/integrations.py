@@ -75,8 +75,18 @@ def _userinfo_email(provider, access_token):
         return None
 
 
+# sem uma destas a agenda não lê nem cria eventos (no consentimento o Google deixa desmarcar a caixa da agenda)
+CAL_SCOPES = {"google": {"https://www.googleapis.com/auth/calendar.events", "https://www.googleapis.com/auth/calendar"}}
+
+
+class MissingScope(RuntimeError):
+    """O médico conectou sem marcar a permissão da agenda: a conexão não é gravada (senão apareceria
+    "Conectado" com a agenda vazia). Vira ?erro=permissao em Integrações."""
+
+
 def exchange_and_store(provider, code, user_id):
-    """Troca o code por tokens de calendário e grava no DB para o usuário."""
+    """Troca o code por tokens de calendário e grava no DB para o usuário. Levanta MissingScope se o
+    provedor não concedeu a permissão da agenda."""
     p = PROVIDERS[provider]
     r = httpx.post(p["token"], timeout=30, data={
         "client_id": _cid(provider), "client_secret": _secret(provider),
@@ -85,6 +95,10 @@ def exchange_and_store(provider, code, user_id):
     if r.status_code != 200:
         raise RuntimeError(f"token {r.status_code}: {r.text[:300]}")
     tok = r.json()
+    # sem "scope" na resposta = concedido o que foi pedido (RFC 6749 5.1)
+    if provider in CAL_SCOPES and tok.get("scope") is not None \
+            and not CAL_SCOPES[provider] & set(str(tok["scope"]).split()):
+        raise MissingScope("sem a permissão da agenda")
     access = tok.get("access_token")
     expires_at = _utcnow() + datetime.timedelta(seconds=int(tok.get("expires_in", 3600)) - 60)
     db.set_token(
@@ -180,6 +194,32 @@ def _patient_id(e):
     return int(v) if v and str(v).isdigit() else None
 
 
+class CalendarError(RuntimeError):
+    """O provedor recusou criar/editar/excluir. `kind` diz o porquê, pelo motivo que o Google manda
+    (error.errors[0].reason): "permissao" (token sem a permissão da agenda: reconectar resolve), "limite"
+    (pedidos demais: tentar de novo), "proibido" (outro 403, ex.: evento de outra pessoa) ou "" (outro erro)."""
+    SEM_PERMISSAO = {"insufficientPermissions", "ACCESS_TOKEN_SCOPE_INSUFFICIENT"}
+    LIMITE = {"rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded", "dailyLimitExceeded",
+              "calendarUsageLimitsExceeded", "RATE_LIMIT_EXCEEDED"}
+
+    def __init__(self, r):
+        super().__init__(f"{r.status_code}: {r.text[:200]}")
+        self.status, self.reason = r.status_code, _reason(r)
+        self.kind = ("permissao" if self.reason in self.SEM_PERMISSAO
+                     else "limite" if self.status == 429 or self.reason in self.LIMITE
+                     else "proibido" if self.status == 403 else "")
+
+
+def _reason(r):
+    """Motivo do erro: Google error.errors[].reason (ou o ErrorInfo de error.details); Microsoft error.code."""
+    try:
+        err = r.json().get("error") or {}
+        cands = [x.get("reason") for x in (err.get("errors") or []) + (err.get("details") or []) if isinstance(x, dict)]
+        return next((c for c in cands + [err.get("code")] if isinstance(c, str) and c), "")[:60]
+    except Exception:  # noqa: BLE001
+        return ""
+
+
 def _headers(user_id, provider):
     at = _access_token(user_id, provider)
     if not at:
@@ -197,8 +237,8 @@ def create_event(user_id, provider, title, start, end, description=None, locatio
                  patient_id=None):
     """Cria um evento no calendário primário do usuário. start/end em ISO 8601
     (com offset, ex.: 2026-10-09T13:30:00-03:00) ou, se all_day, datas AAAA-MM-DD
-    (fim exclusivo). Pode lançar exceção (ex.: 403 se o token for somente-leitura
-    → precisa reconectar com escopo de escrita)."""
+    (fim exclusivo). Provedor recusou → CalendarError (ex.: kind "permissao" se o token for
+    somente-leitura → precisa reconectar com escopo de escrita)."""
     body = _event_body(provider, title, start, end, description, location, all_day, patient_id)
     if provider == "google":                              # na criação não manda campos vazios
         body["start"] = {k: v for k, v in body["start"].items() if v}
@@ -210,7 +250,7 @@ def create_event(user_id, provider, title, start, end, description=None, locatio
             body.pop("extendedProperties")
     r = httpx.post(_event_url(provider), headers=_headers(user_id, provider), json=body, timeout=25)
     if r.status_code not in (200, 201):
-        raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+        raise CalendarError(r)
     return _event_out(provider, r.json())
 
 
@@ -221,7 +261,7 @@ def update_event(user_id, provider, event_id, title, start, end, description=Non
     body = _event_body(provider, title, start, end, description, location, all_day, patient_id)
     r = httpx.patch(_event_url(provider, event_id), headers=_headers(user_id, provider), json=body, timeout=25)
     if r.status_code not in (200, 201):
-        raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+        raise CalendarError(r)
     return _event_out(provider, r.json())
 
 
@@ -229,7 +269,7 @@ def delete_event(user_id, provider, event_id):
     """Exclui um evento do calendário. 404/410 = já não existe (tratado como sucesso)."""
     r = httpx.delete(_event_url(provider, event_id), headers=_headers(user_id, provider), timeout=25)
     if r.status_code not in (200, 204, 404, 410):
-        raise RuntimeError(f"{r.status_code}: {r.text[:200]}")
+        raise CalendarError(r)
     return True
 
 

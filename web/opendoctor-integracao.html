@@ -285,6 +285,7 @@
       } else if (qs.get('erro')) {
         var erro = qs.get('erro'), alvo = erro === 'microsoft' ? 'microsoft' : 'google';
         MSG[alvo] = erro === 'sessao' ? 'A conexão não foi concluída neste navegador. Tente de novo.'
+          : erro === 'permissao' ? 'Marque a permissão do Google Agenda e tente de novo.'
           : erro === 'access_denied' ? 'Conexão cancelada.' : 'Não foi possível conectar. Tente de novo.';
         var c = document.querySelector('.int-card[data-provider="' + alvo + '"] .card-sub');
         if (c) { c.dataset.base = c.dataset.base || c.textContent; c.textContent = MSG[alvo]; }

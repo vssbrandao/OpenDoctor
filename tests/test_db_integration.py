@@ -243,6 +243,16 @@ def test_dados_do_medico(novo_usuario):
     assert db.update_medico(uid, {"receita_papel": "A5"})["receita_papel"] == "A5"
 
 
+def test_login_google_nao_troca_o_nome_da_receita(novo_usuario):
+    """O nome corrigido em Configurações (cabeçalho da receita) fica; o do Google só preenche nome vazio."""
+    u = novo_usuario("Dra. Ana")
+    db.update_medico(u["id"], {"name": "Dra. Ana Souza Lima"})
+    assert db.upsert_user(u["email"], "Ana Souza", None, "sub-" + uuid.uuid4().hex)["name"] == "Dra. Ana Souza Lima"
+    assert db.get_medico(u["id"])["name"] == "Dra. Ana Souza Lima"
+    vazio = novo_usuario("")
+    assert db.upsert_user(vazio["email"].upper(), "Beto Google", None, "sub-" + uuid.uuid4().hex)["name"] == "Beto Google"
+
+
 def test_exemplo_vem_com_as_receitas(novo_usuario):
     from app import exemplo
     uid = novo_usuario()["id"]
