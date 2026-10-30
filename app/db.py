@@ -488,8 +488,9 @@ def list_patients(user_id, limit=1000, q=None):
     filtro, args = "", ()
     if q is not None:                                 # a de exemplo é achada pelo nome, não pela chave
         k = patient_key(q)
-        filtro = "and (position(%s in p.patient_key) > 0 or (p.patient_key = %s and position(%s in lower(p.name)) > 0))"
-        args = (k, EXAMPLE_KEY, k)
+        filtro = """and ((p.patient_key <> %s and position(%s in p.patient_key) > 0)
+                         or (p.patient_key = %s and position(%s in lower(p.name)) > 0))"""
+        args = (EXAMPLE_KEY, k, EXAMPLE_KEY, k)
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(

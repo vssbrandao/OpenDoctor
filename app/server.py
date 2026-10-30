@@ -692,6 +692,15 @@ async def google_start(request: Request):
 # conta (nem troca a senha) de um e-mail que não é seu.
 # Cada rota só lê o corpo no laço de eventos; o resto (banco, hash da senha de 600 mil voltas, envio do e-mail,
 # paciente de exemplo) roda no threadpool: o servidor tem um processo só e um login não trava os outros médicos.
+# No threadpool os pedidos correm juntos, e a trava de 5 senhas erradas, os 30 s entre códigos, as tentativas do
+# código e o tíquete de uso único só valem com um pedido por conta de cada vez: _conta_lock (por e-mail ou conta).
+_CONTA_LOCKS = [threading.RLock() for _ in range(64)]
+
+
+def _conta_lock(key):
+    """A trava desta conta: pedidos da mesma conta esperam um o outro; os de outras contas, quase nunca."""
+    return _CONTA_LOCKS[int(hashlib.sha256(str(key).encode()).hexdigest()[:8], 16) % len(_CONTA_LOCKS)]
+
 
 async def _body(request):
     """Corpo JSON. Exige Content-Type application/json: um formulário de outro site só consegue mandar
@@ -754,6 +763,11 @@ def _logged(request, user, nxt, method, welcome=False):
 def _send_code(email, purpose, name=""):
     """Cria e envia um código. Devolve (resposta de erro ou None, segundos até poder reenviar —
     negativo quando não enviou agora porque o código de menos de 30s atrás continua valendo)."""
+    with _conta_lock(email):                       # dois pedidos juntos não passam ambos pelos 30 s nem pelo limite
+        return _send_code_now(email, purpose, name)
+
+
+def _send_code_now(email, purpose, name):
     code = auth.new_code()
     try:
         status, wait = db.new_login_code(email, auth.code_hash(email, code, purpose))
@@ -781,7 +795,8 @@ def _check_code(email, code, purpose):
     code = re.sub(r"\D", "", str(code or ""))
     if len(code) != 6:
         return _err("codigo_invalido")
-    status, left = db.check_login_code(email, auth.code_hash(email, code, purpose))
+    with _conta_lock(email):                       # as tentativas contam uma de cada vez
+        status, left = db.check_login_code(email, auth.code_hash(email, code, purpose))
     if status == "ok":
         return None
     return _err({"errado": "codigo_incorreto", "expirado": "codigo_expirado", "bloqueado": "muitas_tentativas"}[status],
@@ -821,21 +836,22 @@ def _password_login(request, b):
     if _rate_limited(request, "login_pw"):
         return _err("limite_ip", 429)
     try:
-        info = db.password_login_info(email)
-        if not info:
-            return _err("sem_conta", 404)
-        if not info["hash"]:
-            return _err("sem_senha")                        # conta criada pelo Google
-        if info["locked_s"] > 0:
-            _audit(request, info["id"], "bloqueado", "senha")
-            return _err("bloqueado", 429, minutes=-(-info["locked_s"] // 60))
-        if not auth.check_password(pw, info["hash"]):
-            left, locked = db.login_failed(info["id"])
-            _audit(request, info["id"], "bloqueado" if locked else "senha_incorreta", "senha")
-            if locked:
-                return _err("bloqueado", 429, minutes=locked // 60)
-            return _err("senha_incorreta", 401, left=left)
-        db.login_succeeded(info["id"])
+        with _conta_lock(email):                            # a senha seguinte só é conferida depois do erro desta contar
+            info = db.password_login_info(email)
+            if not info:
+                return _err("sem_conta", 404)
+            if not info["hash"]:
+                return _err("sem_senha")                    # conta criada pelo Google
+            if info["locked_s"] > 0:
+                _audit(request, info["id"], "bloqueado", "senha")
+                return _err("bloqueado", 429, minutes=-(-info["locked_s"] // 60))
+            if not auth.check_password(pw, info["hash"]):
+                left, locked = db.login_failed(info["id"])
+                _audit(request, info["id"], "bloqueado" if locked else "senha_incorreta", "senha")
+                if locked:
+                    return _err("bloqueado", 429, minutes=locked // 60)
+                return _err("senha_incorreta", 401, left=left)
+            db.login_succeeded(info["id"])
     except Exception as e:
         print("[login] senha falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
@@ -911,11 +927,12 @@ def _signup_verify(request, b):
     if _rate_limited(request, "login_verify"):
         return _err("limite_ip", 429)
     try:
-        bad = _check_code(t["email"], b.get("code"), "signup")
-        if bad:
-            return bad
-        novo = db.user_by_email(t["email"]) is None
-        user = db.create_email_user(t["email"], t.get("name"), t["ph"])
+        with _conta_lock(t["email"]):               # "novo" vale para um só dos pedidos juntos
+            bad = _check_code(t["email"], b.get("code"), "signup")
+            if bad:
+                return bad
+            novo = db.user_by_email(t["email"]) is None
+            user = db.create_email_user(t["email"], t.get("name"), t["ph"])
     except Exception as e:
         print("[login] confirmação falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
@@ -991,10 +1008,12 @@ def _password_reset(request, b):
     if auth.password_problems(pw):
         return _err("senha_fraca", rules=auth.password_problems(pw))
     try:
-        cur = db.get_user(t["uid"])
-        if not cur or int(cur.get("sv") or 0) != int(t.get("sv") or 0):
-            return _err("sessao_expirada")                   # tíquete já usado (a senha já mudou)
-        user = db.set_password(t["uid"], auth.hash_password(pw))
+        ph = auth.hash_password(pw)
+        with _conta_lock(f"uid:{t['uid']}"):                # dois pedidos com o mesmo tíquete: só um troca a senha
+            cur = db.get_user(t["uid"])
+            if not cur or int(cur.get("sv") or 0) != int(t.get("sv") or 0):
+                return _err("sessao_expirada")               # tíquete já usado (a senha já mudou)
+            user = db.set_password(t["uid"], ph)
     except Exception as e:
         print("[login] redefinição falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
@@ -1902,13 +1921,29 @@ async def prontuario_receita_cancela(rid: str, request: Request):
 
 
 def _meds_gerados(recs):
-    """Os nomes dos remédios que uma geração anterior destas gravações já levou à receita (a saída fica guardada em
-    recordings.scribe; o suspenso não vai, como em prescricao.da_gravacao)."""
+    """Os nomes dos remédios que as gerações anteriores destas gravações já levaram à receita: a soma de todas
+    (recordings.scribe.receita_meds), não só a última, e a saída guardada de antes desse campo (o suspenso não vai,
+    como em prescricao.da_gravacao)."""
     out = []
     for r in recs:
-        res = (((r.get("scribe") or {}).get("saida") or {}).get("result")) or {}
+        sc = r.get("scribe") or {}
+        out += [str(x) for x in sc.get("receita_meds") or [] if isinstance(x, str) and x]
+        res = ((sc.get("saida") or {}).get("result")) or {}
         out += [str(m["nome"]) for m in res.get("meds") or [] if isinstance(m, dict) and m.get("nome") and m.get("acao") != "suspenso"]
     return out
+
+
+def _meds_levados(recs, meds):
+    """O que fica lembrado depois desta geração: os das anteriores mais os que ela leva agora (sem repetir)."""
+    foram = _meds_gerados(recs)
+    try:
+        novos = [x["nome"] for x in prescricao.da_gravacao(meds)]
+    except Exception:
+        novos = []
+    for n in novos:
+        if not any(prescricao.mesmo_remedio(n, y) for y in foram):
+            foram.append(n)
+    return foram
 
 
 def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
@@ -2349,7 +2384,6 @@ async def prontuario_scribe(request: Request):
             return
         yield _line({"step": "conferindo"})
         res, flags, _ = scribe.finish(raw, segs, mode, cad, p["name"])
-        n_rx = await run_in_threadpool(_receita_da_gravacao, u, p, eid, nid, res.get("meds"), recs)   # remédios → rascunho da receita
         fields = scribe.render_text(res)
         if not any(v.strip() for v in fields.values()):
             yield _line({"error": "a IA não devolveu uma evolução válida"})
@@ -2365,9 +2399,13 @@ async def prontuario_scribe(request: Request):
         result = dict(res, fields=fields, fields_src=fsrc)
 
         def save():
-            db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table}), nid)
+            # a receita só muda com a geração válida e já guardada, com o que ela levou somado ao das anteriores: um
+            # remédio que o médico tirou não volta, nem numa geração que o cita de novo depois de outra que não citou
+            db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table},
+                                                                       receita_meds=_meds_levados(recs, res.get("meds"))), nid)
             db.log_access(u["id"], "scribe", p["id"], nid)
-        await run_in_threadpool(save)
+            return _receita_da_gravacao(u, p, eid, nid, res.get("meds"), recs)     # remédios → rascunho da receita
+        n_rx = await run_in_threadpool(save)
         yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta, "receita": n_rx})
     return StreamingResponse(run(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
 

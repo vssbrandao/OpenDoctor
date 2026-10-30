@@ -3053,6 +3053,7 @@
       var elPList = document.getElementById('evPList');
       var selPatient = null;                                 // {id, name}; id null = evento antigo só com o nome
       var patients = null, patientsAt = 0, patientsMore = false, plItems = [], plActive = -1, plFirst = 0;   // plFirst: a opção do Enter sem destaque
+      var plFor = null, plKeys = [], plMoved = false;        // plFor: o texto para o qual a lista foi desenhada; plKeys: o que cada opção escolhe; plMoved: o médico mexeu nas setas
       function pnorm(v) { return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' '); }
       function initialsOf(name) {                          // Array.from: não quebra emoji/letras fora do BMP
         var w = (name || '').trim().split(/\s+/).filter(Boolean);
@@ -3104,8 +3105,8 @@
       function setPatient(p) {
         selPatient = p; elPatient.value = p ? p.name : ''; avatar(); hideList();
       }
-      function hideList() { elPList.hidden = true; elPList.innerHTML = ''; plItems = []; plActive = -1; elPatient.setAttribute('aria-expanded', 'false'); }
-      function option(cls, avHtml, label, onPick) {
+      function hideList() { elPList.hidden = true; elPList.innerHTML = ''; plItems = []; plKeys = []; plActive = -1; plFor = null; elPatient.setAttribute('aria-expanded', 'false'); }
+      function option(cls, avHtml, label, onPick, key) {
         var b = document.createElement('button'); b.type = 'button'; b.className = 'evpop-po' + (cls ? ' ' + cls : '');
         b.setAttribute('role', 'option');
         var av = document.createElement('span'); av.className = 'evpop-av has';
@@ -3115,32 +3116,41 @@
         b.appendChild(av); b.appendChild(t);
         b.addEventListener('mousedown', function (e) { e.preventDefault(); });   // não tira o foco do campo
         b.addEventListener('click', onPick);
-        elPList.appendChild(b); plItems.push(b);
+        elPList.appendChild(b); plItems.push(b); plKeys.push(key);
+      }
+      // desenha a lista para `raw` com os pacientes já carregados (síncrono: o Enter pode redesenhar antes de escolher)
+      function drawList(raw) {
+        var q = pnorm(raw), list = patients || [];
+        var keep = plFor === raw && plMoved && plActive >= 0 ? plKeys[plActive] : null;   // mesma busca redesenhada: o destaque das setas fica
+        if (plFor !== raw) plMoved = false;
+        elPList.innerHTML = ''; plItems = []; plKeys = []; plActive = -1; plFor = raw;
+        var ord = exampleLast(list.filter(function (p) { return !q || pnorm(p.name).indexOf(q) >= 0; }).slice(0, q ? 6 : 5));
+        var hits = ord.list; plFirst = ord.first;
+        if (!q && hits.length) {
+          var h = document.createElement('div'); h.className = 'evpop-pmsg'; h.textContent = 'Pacientes recentes'; elPList.appendChild(h);
+        }
+        hits.forEach(function (p) {
+          option('', initialsOf(p.name), p.name + (p.example ? ' (exemplo)' : '') + (p.birth_date ? ' · ' + ptAge(p.birth_date) : ''), function () { setPatient(p); }, p.id);
+        });
+        if (q) {
+          var dup = sameName(raw).length;                     // mesmo nome já cadastrado → é outra pessoa?
+          option('new', '+', (dup ? 'Criar outro paciente "' : 'Criar paciente "') + raw + '"', function () { createPatient(raw, !!dup); }, 'new');
+        }
+        if (!q && !hits.length) {
+          var m = document.createElement('div'); m.className = 'evpop-pmsg'; m.textContent = 'Digite o nome para buscar ou criar um paciente.'; elPList.appendChild(m);
+        }
+        elPList.hidden = !elPList.children.length;
+        elPatient.setAttribute('aria-expanded', elPList.hidden ? 'false' : 'true');
+        if (q && plItems.length) markP(keep != null && plKeys.indexOf(keep) >= 0 ? plKeys.indexOf(keep) : plFirst);
+        fitPop();
       }
       function showList() {
-        var raw = elPatient.value.trim(), q = pnorm(raw);
-        loadPatients().then(function () { return searchPatients(raw); }).then(function (list) {
-          if (pop.hidden || document.activeElement !== elPatient || raw !== elPatient.value.trim()) return;
-          elPList.innerHTML = ''; plItems = []; plActive = -1;
-          var ord = exampleLast(list.filter(function (p) { return !q || pnorm(p.name).indexOf(q) >= 0; }).slice(0, q ? 6 : 5));
-          var hits = ord.list; plFirst = ord.first;
-          if (!q && hits.length) {
-            var h = document.createElement('div'); h.className = 'evpop-pmsg'; h.textContent = 'Pacientes recentes'; elPList.appendChild(h);
-          }
-          hits.forEach(function (p) {
-            option('', initialsOf(p.name), p.name + (p.example ? ' (exemplo)' : '') + (p.birth_date ? ' · ' + ptAge(p.birth_date) : ''), function () { setPatient(p); });
-          });
-          if (q) {
-            var dup = sameName(raw).length;                   // mesmo nome já cadastrado → é outra pessoa?
-            option('new', '+', (dup ? 'Criar outro paciente "' : 'Criar paciente "') + raw + '"', function () { createPatient(raw, !!dup); });
-          }
-          if (!q && !hits.length) {
-            var m = document.createElement('div'); m.className = 'evpop-pmsg'; m.textContent = 'Digite o nome para buscar ou criar um paciente.'; elPList.appendChild(m);
-          }
-          elPList.hidden = !elPList.children.length;
-          elPatient.setAttribute('aria-expanded', elPList.hidden ? 'false' : 'true');
-          if (q && plItems.length) markP(plFirst);
-          fitPop();
+        var raw = elPatient.value.trim();
+        var vale = function () { return !pop.hidden && document.activeElement === elPatient && raw === elPatient.value.trim(); };
+        loadPatients().then(function () {
+          if (!vale()) return;
+          drawList(raw);                                      // o que já está carregado aparece na hora
+          if (patientsMore && pnorm(raw)) searchPatients(raw).then(function () { if (vale()) drawList(raw); });   // o do servidor entra depois
         });
       }
       function markP(i) {
@@ -3178,9 +3188,13 @@
       });
       elPatient.addEventListener('keydown', function (e) {
         if (elPList.hidden) return;
-        if (e.key === 'ArrowDown') { e.preventDefault(); markP(plActive + 1); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); markP(plActive - 1); }
-        else if (e.key === 'Enter') { e.preventDefault(); var b = plItems[plActive >= 0 ? plActive : plFirst]; if (b) b.click(); }
+        if (e.key === 'ArrowDown') { e.preventDefault(); plMoved = true; markP(plActive + 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); plMoved = true; markP(plActive - 1); }
+        else if (e.key === 'Enter') {
+          e.preventDefault();
+          if (plFor !== elPatient.value.trim()) drawList(elPatient.value.trim());   // lista de um texto anterior: refaz com o que está escrito
+          var b = plItems[plActive >= 0 ? plActive : plFirst]; if (b) b.click();
+        }
         else if (e.key === 'Escape') { e.stopPropagation(); hideList(); }
       });
 
@@ -6183,7 +6197,7 @@
             ['live', 'paused', 'interrupted', 'ending', 'gen'].indexOf(x.st) >= 0; });
       }
       // o aviso do cartão (um de cada vez, do mais grave): microfone, consulta de outro paciente, silêncio, gravação longa,
-      // armazenamento, trechos fora da evolução, servidor, sessão, internet
+      // armazenamento, trechos fora da evolução, servidor, sessão, internet e, por último, a gravação de outro paciente
       function rrAlert(r, pend, lk) {
         if (r.warn === 'micoff') {
           rcAlert('bad', 'micoff', '<b>' + (r.err === 'NotFoundError' || r.err === 'NotAllowedError' ? 'O microfone não está disponível' :
@@ -6191,8 +6205,6 @@
             ' e a gravação foi pausada.</b> O que já foi gravado está salvo.', [['Escolher microfone', 1]]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); });
         } else if (r.warn === 'outro') rcAlert('bad', 'err', RRTXT.outro);
-        else if (rrOutro(r)) rcAlert('warn', 'warn', '<b>Esta consulta tem uma gravação de outro paciente.</b> Ela fica no prontuário ' +
-          'dele; o que gravar aqui fica neste paciente. Confira o paciente na agenda.');
         else if (r.warn === 'silencio' && r.st === 'live') { rcAlert('warn', 'warn',
           '<b>Não estamos ouvindo nada há 20 segundos.</b> Confira se o microfone certo está ligado e perto de vocês.', [['Trocar microfone']]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); }); }
@@ -6224,6 +6236,9 @@
             ' trecho está guardado' : ' trechos estão guardados') +
             ' neste computador e ' + (pend === 1 ? 'é enviado' : 'são enviados') + ' assim que a conexão voltar' + (r.st === 'ending' ?
               '; a evolução é gerada em seguida.' : '.'));
+        // só um lembrete: nunca cobre outro aviso (nem os do rrRender: falha ao gerar, interrompida, microfone negado)
+        else if (rrOutro(r) && $('rcAlert').hidden) rcAlert('warn', 'warn', '<b>Esta consulta tem uma gravação de outro paciente.</b> ' +
+          'Ela fica no prontuário dele; o que gravar aqui fica neste paciente. Confira o paciente na agenda.');
       }
       // chamado pelo recRender: uma gravação por consulta; trocar de consulta gravando pausa a anterior
       function rrShow() {

@@ -552,6 +552,7 @@ def test_busca_de_pacientes_ve_todos(novo_usuario):
     assert [p["id"] for p in db.list_patients(uid, 200, q="otavio")] == [antigo["id"]]
     assert [p["name"] for p in db.list_patients(uid, 200, q="  OTÁVIO   antigo ")] == ["Otávio Antigo"]
     assert [p["example"] for p in db.list_patients(uid, 200, q="maria sil")] == [True]
+    assert db.list_patients(uid, 200, q="exemplo") == []                           # nem pela chave dela (" exemplo")
     assert db.list_patients(uid, 200, q="100%") == [] and db.list_patients(uid, 200, q="_") == []   # sem curinga
     r = db.list_patients(uid, 2, q="recente")
     assert [p["name"] for p in r] == ["Recente 2", "Recente 1"] and r[0]["notes"] == 0 and r[0]["last"] is None

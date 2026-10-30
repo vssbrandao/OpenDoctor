@@ -62,6 +62,7 @@ const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
 const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
 let MAIS = false;                                          // a lista veio cortada: há pacientes só na busca do servidor
+let LENTA = 0;                                             // ms de espera da busca no servidor
 const ANTIGOS = [{ id: 900, name: 'Otávio Antigo', notes: 3, last: '2025-01-10T12:00:00+00:00' }];
 const sem = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 function rota(method, path, q, body) {
@@ -87,6 +88,7 @@ async function responde(p) {
   let status = 200, tipo = 'application/json', dado;
   if (arq.startsWith(WEB) && extname(arq) && existsSync(arq)) { dado = readFileSync(arq); tipo = TIPOS[extname(arq)] || 'application/octet-stream'; }
   else {
+    if (LENTA && u.pathname === '/patients/search') await sleep(LENTA);
     const j = rota(method, u.pathname, u.searchParams, body);
     pedidos.push({ method, path: u.pathname, q: Object.fromEntries(u.searchParams), body });
     if (j === null) status = 404;
@@ -376,6 +378,29 @@ const cenarios = [
     await clica('#navConsultas');
     MAIS = false;
     return 'campo Paciente e tela Pacientes acharam o Otávio no servidor; a consulta ficou com o cadastro dele';
+  }],
+  ['lista cortada e busca lenta: o Enter logo depois de digitar vale para o que está escrito, nunca para a lista anterior', async () => {
+    MAIS = true; LENTA = 400;
+    const poe = (v) => ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = ${JSON.stringify(v)}; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    const enter = () => ev(`(() => { document.getElementById('evPatient').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); return 1; })()`);
+    const criados = () => pedidos.filter((r) => r.method === 'POST' && r.path === '/patients').map((r) => r.body.name);
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await poe('Ot');
+    await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.includes('Otávio Antigo'))`, 3000, 'lista de "Ot"');
+    await poe('Otto'); await sleep(50); await enter();          // antes da resposta da busca de "Otto"
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
+    certo(await val('#evPatient') === 'Otto' && criados().pop() === 'Otto', 'escolheu: ' + await val('#evPatient') + ' / ' + JSON.stringify(criados()));
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await poe('Zé'); await sleep(50);
+    await poe('Zé Carlos'); await sleep(50); await enter();
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
+    certo(await val('#evPatient') === 'Zé Carlos' && criados().pop() === 'Zé Carlos', 'nome inteiro: ' + JSON.stringify(criados()));
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
+    MAIS = false; LENTA = 0;
+    return 'Otto e Zé Carlos criados com o nome digitado; o Otávio da lista anterior não foi escolhido';
   }],
 ];
 

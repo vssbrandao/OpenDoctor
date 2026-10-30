@@ -368,3 +368,29 @@ def test_gerar_de_novo_nao_desfaz_o_que_o_medico_fez_na_receita(fake, monkeypatc
                                                       "acao": "iniciado", "src": [2]}])
     assert gera()["receita"] == 0                                   # emitida: não abre outro rascunho sozinho
     assert [r["status"] for r in db.list_receitas(UID, 7)] == ["emitida"]
+
+
+def test_gerar_de_novo_lembra_os_remedios_de_todas_as_geracoes(fake, monkeypatch):
+    """O modelo varia: a 1ª geração cita a losartana, a 2ª não, a 3ª cita de novo — o remédio que o médico tirou
+    continua fora. E uma geração sem evolução válida não mexe na receita."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    saida = [SAIDA]
+    monkeypatch.setattr(scribe, "ask_model", lambda msgs, model=None: json.dumps(saida[0]))
+
+    def gera():
+        return _lines(c.post("/prontuario/scribe", json={"patient_id": 7, "event_id": "ev9", "rec_id": REC, "mode": "soap"}))[-1]
+    assert gera()["receita"] == 1
+    (rx,) = db.list_receitas(UID, 7)
+    db.update_receita(UID, rx["id"], [])                            # o médico tirou a losartana
+    saida[0] = dict(SAIDA, meds=[])
+    assert gera()["receita"] == 0                                   # esta não cita a losartana
+    saida[0] = SAIDA
+    assert gera()["receita"] == 0 and db.get_receita(UID, rx["id"])["itens"] == []   # citada de novo: não volta
+
+    db.update_receita(UID, rx["id"], [])
+    vazia = {"soap": {"s": [], "o": [], "a": [], "p": []}, "livre": [], "vitals": {}, "cid": [], "exames": [], "pendencias": [],
+             "meds": [{"nome": "atorvastatina", "dose": "20 mg", "posologia": "à noite", "acao": "iniciado", "src": [2]}]}
+    saida[0] = vazia
+    assert "error" in gera()                                        # sem evolução: a receita fica como estava
+    assert db.get_receita(UID, rx["id"])["itens"] == []
