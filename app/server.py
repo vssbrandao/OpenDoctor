@@ -1106,8 +1106,8 @@ def integrations_events(provider: str, request: Request, limit: int = 50,
         return JSONResponse({"error": "não autenticado"}, status_code=401)
     try:
         return {"events": integrations.events(u["id"], provider, limit, start or None, end or None)}
-    except integrations.NeedsReconnect:
-        return {"events": [], "needs_reconnect": True}
+    except integrations.NeedsReconnect as e:
+        return {"events": [], "needs_reconnect": True, "reason": e.reason}
 
 
 @app.get("/calendar/events")
@@ -1123,8 +1123,8 @@ def calendar_events(request: Request, start: str = "", end: str = "", limit: int
     prov = "google" if "google" in connected else next(iter(connected))
     try:
         evs = integrations.events(u["id"], prov, max(1, min(limit, integrations.EVENTS_MAX)), start or None, end or None)
-    except integrations.NeedsReconnect:              # a agenda mostra "Reconectar" em vez de um dia vazio
-        return {"logged_in": True, "connected": prov, "events": [], "needs_reconnect": True}
+    except integrations.NeedsReconnect as e:         # a agenda mostra "Reconectar" em vez de um dia vazio
+        return {"logged_in": True, "connected": prov, "events": [], "needs_reconnect": True, "reason": e.reason}
     return {"logged_in": True, "connected": prov, "events": evs}
 
 
@@ -1174,13 +1174,13 @@ def _cal_error(e):
     """Erro do calendário para a tela. Conexão morta (o Google recusou a renovação) ou token sem a permissão da
     agenda pedem reconectar (`reason` diz qual). Outra recusa do Google (pedidos demais, evento de outra pessoa)
     não pede reconectar: `error` diz o porquê (reason limite/proibido). Falha passageira ao renovar vira 503."""
-    if isinstance(e, integrations.NeedsReconnect):
+    if isinstance(e, integrations.NeedsReconnect) and e.reason != "permissao":
         return JSONResponse({"error": "A conexão com o Google Agenda expirou.", "needs_reconnect": True,
                              "reason": "expirada"}, status_code=403)
     msg = str(e)
     if msg == "sem token":
         return JSONResponse({"error": "Não foi possível falar com o Google agora. Tente de novo."}, status_code=503)
-    kind = ""
+    kind = "permissao" if isinstance(e, integrations.NeedsReconnect) else ""   # gravada sem a permissão da agenda
     if isinstance(e, integrations.CalendarError):
         kind = e.kind
         print(f"[agenda] o provedor recusou: {e.status} {e.reason}", flush=True)   # só o status e o motivo
@@ -1572,8 +1572,8 @@ async def prontuario_visits(request: Request):
     legacy_name = None if p.get("example") else p["name"] if len(db.find_patients(u["id"], p["name"])) == 1 else None
     try:
         visits = integrations.patient_events(u["id"], prov, p["id"], legacy_name)
-    except integrations.NeedsReconnect:
-        return {"connected": True, "visits": [], "needs_reconnect": True}
+    except integrations.NeedsReconnect as e:
+        return {"connected": True, "visits": [], "needs_reconnect": True, "reason": e.reason}
     notes = db.notes_by_event(u["id"], [v["id"] for v in visits])
     for v in visits:
         v["note"] = notes.get(v["id"])

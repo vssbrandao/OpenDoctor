@@ -2081,7 +2081,8 @@
       </div>
       <!-- eventos de dia inteiro do dia mostrado (férias, congresso): entre a data e a linha, sem mexer nas horas -->
       <div class="cal-allday" id="calAllDay" hidden></div>
-      <!-- conexão com o Google morta (o Google recusou a renovação): o dia não aparece vazio sem explicação -->
+      <!-- conexão com o Google morta (o Google recusou a renovação) ou sem a permissão da agenda: o dia não aparece
+           vazio sem explicação; o texto em negrito muda com o motivo (__calReconnect) -->
       <div class="rc-alert warn cal-reconnect" id="calReconnect" role="status" hidden>
         <span class="t"><b>A conexão com o Google Agenda expirou.</b> As consultas não aparecem até você reconectar.</span>
         <span class="a"><a class="pr-ghost" href="/integrations/google/connect">Reconectar</a></span>
@@ -2932,12 +2933,16 @@
           })
           .catch(function () {});
       }
-      // conexão com o Google morta: aviso no rodapé da agenda (senão o dia aparece vazio, como se estivesse livre)
+      // conexão com o Google morta ou sem a permissão da agenda: aviso no rodapé da agenda (senão o dia aparece
+      // vazio, como se estivesse livre)
       window.__calReconnect = function (d) {
         var box = document.getElementById('calReconnect'); if (!box) return;
         var dead = !!(d && d.connected && d.needs_reconnect);
         box.hidden = !dead;
-        if (dead) box.querySelector('a').href = '/integrations/' + encodeURIComponent(d.connected) + '/connect';
+        if (!dead) return;
+        box.querySelector('a').href = '/integrations/' + encodeURIComponent(d.connected) + '/connect';
+        box.querySelector('b').textContent = d.reason === 'permissao' ? 'O Google Agenda está sem permissão para o OpenDoctor.'
+          : 'A conexão com o Google Agenda expirou.';
       };
       window.__refreshAgenda = refresh;
       window.__onDayDateChange = function () {
@@ -7159,11 +7164,11 @@
         api('POST', '/prontuario/visits', { patient_id: ctx.patient_id }).then(function (res) {
           if (ctx !== my) return;
           visits = res.ok && res.j.connected ? (res.j.visits || []) : []; calOn = !!(res.ok && res.j.connected); visitsErr = !res.ok;
-          visitsDead = !!(res.ok && res.j.needs_reconnect);
+          visitsDead = res.ok && res.j.needs_reconnect ? res.j.reason || 'expirada' : false;
           renderKpis(); renderCons();
         }).catch(function () { if (ctx === my) { visits = []; calOn = false; visitsErr = true; visitsDead = false; renderKpis(); renderCons(); } });
       }
-      var visitsErr = false, visitsDead = false;           // visitsDead: a conexão com o Google morreu (reconectar)
+      var visitsErr = false, visitsDead = false;           // visitsDead: reconectar ao Google ('expirada' ou 'permissao')
       // ===== Consultas: agenda + evoluções + resultados de exames (o antigo Histórico); a linha abre o cartão =====
       function renderCons() {
         var box = $('prVisits'); box.innerHTML = '';
@@ -7187,7 +7192,7 @@
         var ne = past.filter(function (x) { return x.n && !isLabRec(x.n) && hasText(x.n); }).length, nl = past.filter(function (x) { return isLabRec(x.n); }).length;
         $('prHistCount').textContent = [ne ? ne + (ne === 1 ? ' evolução' : ' evoluções') : '', nl ? nl + (nl === 1 ? ' resultado de exames' : ' resultados de exames') : ''].filter(Boolean).join(' · ') || 'Da agenda e do prontuário';
         if (visitsErr) box.appendChild(el('div', 'pr-empty', 'Não foi possível carregar a agenda; abaixo, as evoluções do prontuário.'));
-        else if (visitsDead) { var hx = el('div', 'pr-empty'); hx.innerHTML = 'A conexão com o Google Agenda expirou. <a href="/integrations/google/connect">Reconecte</a> para ver as consultas agendadas.'; box.appendChild(hx); }
+        else if (visitsDead) { var hx = el('div', 'pr-empty'); hx.innerHTML = (visitsDead === 'permissao' ? 'O Google Agenda está sem permissão para o OpenDoctor.' : 'A conexão com o Google Agenda expirou.') + ' <a href="/integrations/google/connect">Reconecte</a> para ver as consultas agendadas.'; box.appendChild(hx); }
         else if (!calOn) { var h = el('div', 'pr-empty'); h.innerHTML = '<a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para ver também as consultas agendadas.'; box.appendChild(h); }
         if (!next.length && !past.length) { box.appendChild(el('div', 'pr-empty', calOn && !visitsDead ? 'Nenhuma consulta deste paciente ainda.' : 'Nenhuma evolução registrada ainda.')); return; }
         var th = el('div', 'pr-trow th');
@@ -8808,7 +8813,7 @@
         return d + ' · ' + (ev.allDay ? 'dia todo' : pad(s.getHours()) + ':' + pad(s.getMinutes()));
       }
       // undefined = erro; null = sem calendário conectado; 'morta' = conexão expirou (reconectar); [] = eventos
-      var deadProv = 'google';
+      var deadProv = 'google', deadWhy = '';
       function get(a, b) {
         return fetch('/calendar/events?limit=2500&start=' + encodeURIComponent(a.toISOString()) +
                      '&end=' + encodeURIComponent(b.toISOString())).then(function (r) { return r.json(); });
@@ -8824,7 +8829,7 @@
         loading = Promise.all([get(t0, b), get(m, t0), get(a, m)])
           .then(function (ds) {
             var d = ds[0], dead = ds.filter(function (x) { return x && x.connected && x.needs_reconnect; })[0], seen = {};
-            if (dead) { deadProv = dead.connected; return 'morta'; }   // sem cache: tenta de novo ao reconectar
+            if (dead) { deadProv = dead.connected; deadWhy = dead.reason; return 'morta'; }   // sem cache: tenta de novo ao reconectar
             cache = d && d.connected ? [].concat.apply([], ds.map(function (x) { return (x && x.events) || []; })).filter(function (ev) {
               var k = evKey(ev); if (seen[k]) return false; seen[k] = 1; return true;   // o que atravessa um corte vem nas duas
             }) : null;
@@ -8853,7 +8858,8 @@
           if (pop.hidden || raw !== input.value.trim()) return;           // fechou ou digitou de novo
           if (evs === undefined) return msg('Não foi possível carregar as consultas.');
           if (evs === null) return msg('Conecte um calendário em <a href="/opendoctor-integracao.html">Integrações</a>.');
-          if (evs === 'morta') return msg('A conexão com o Google Agenda expirou. <a href="/integrations/' + encodeURIComponent(deadProv) + '/connect">Reconecte</a> para buscar consultas.');
+          if (evs === 'morta') return msg((deadWhy === 'permissao' ? 'O Google Agenda está sem permissão para o OpenDoctor.' : 'A conexão com o Google Agenda expirou.') +
+            ' <a href="/integrations/' + encodeURIComponent(deadProv) + '/connect">Reconecte</a> para buscar consultas.');
           var q = norm(raw), t0 = new Date(); t0.setHours(0, 0, 0, 0);
           var hits = evs.filter(function (ev) {
             return ev.start && (!q || norm([ev.title, ev.description, ev.location].join(' ')).indexOf(q) >= 0);
