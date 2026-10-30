@@ -300,11 +300,30 @@ def conferir(itens, alergias, tfg_=None):
     return out
 
 
+_SAIS = scribe._FORMA | {"oxalato", "hemifumarato", "hemitartarato", "butilbrometo", "nitrato", "bissulfato"}
+_VARIANTE = {"nph", "regular", "lispro", "asparte", "glulisina", "glargina", "detemir", "degludeca"}
+_DOSE = re.compile(r"\d+(?:[.,]\d+)*(?:\s*/\s*\d+(?:[.,]\d+)*)?\s*(?:mg|mcg|ug|g|ml|ui|u)\b")
+
+
+def _marcas(nome):
+    """O que separa remédios da mesma família: letra ou número da vitamina ("A", "E", "D3", "B 12"), do ômega ("3",
+    "6"), da marca ("Humulin N"/"R") e o tipo da insulina ("NPH", "regular"). A dose com unidade não conta."""
+    n = re.sub(r"\b([a-z])\s+(\d{1,2})\b", r"\1\2", _DOSE.sub(" ", scribe.norm(nome)))     # "b 12" → "b12"
+    toks = re.findall(r"[a-z0-9]+", n)
+    out = set()
+    for i, t in enumerate(toks):
+        if t in _VARIANTE or re.fullmatch(r"[a-z]{1,2}\d{1,2}|\d", t):
+            out.add(t)
+        elif len(t) == 1 and t.isalpha() and (t not in _SAIS or (i and toks[i - 1] == "vitamina")):
+            out.add(t)
+    return out
+
+
 def _nucleo(nome, sem_vitamina=True):
     """O nome sem sal, forma, dose e unidade (scribe._FORMA): "Cloridrato de sertralina 50 mg" → "sertralina", "D3
     7.000 UI" → "d3"; sem_vitamina: "Vitamina D3" → "d3" (só para comparar o texto: o "vitamina" é o que deixa
     scribe.same_drug achar a "Vitamina D3 (colecalciferol)" da busca)."""
-    toks = [t for t in re.findall(r"[a-z0-9]+", scribe.norm(nome)) if not t.isdigit() and t not in scribe._FORMA]
+    toks = [t for t in re.findall(r"[a-z0-9]+", scribe.norm(nome)) if not t.isdigit() and t not in _SAIS]
     if sem_vitamina and len(toks) > 1 and toks[0] == "vitamina":
         toks = toks[1:]
     return " ".join(toks)
@@ -312,9 +331,16 @@ def _nucleo(nome, sem_vitamina=True):
 
 def mesmo_remedio(a, b):
     """Os dois nomes são o mesmo remédio ("losartana" e "Losartana potássica")? Compara sem o sal na frente
-    ("cloridrato de sertralina" não é "cloridrato de fluoxetina") e sem dose ("D3 7.000 UI" é "D3")."""
+    ("cloridrato de sertralina" não é "cloridrato de fluoxetina") e sem dose ("D3 7.000 UI" é "D3"); a variante separa
+    os da mesma família ("Insulina NPH" não é "Insulina regular", vitamina A não é E, ômega 3 não é 6) e junta a marca
+    ao nome ("Addera D3 (colecalciferol)" é "Vitamina D3")."""
+    ma, mb = _marcas(a), _marcas(b)
+    if ma and mb and ma != mb:
+        return False
     na, nb = _nucleo(a), _nucleo(b)
     if na and na == nb:
+        return True
+    if ma and ma == mb and any(ch.isdigit() for t in ma for ch in t):
         return True
     a, b = _nucleo(a, False) or a, _nucleo(b, False) or b
     return scribe.same_drug(a, b) or scribe.same_drug(b, a)

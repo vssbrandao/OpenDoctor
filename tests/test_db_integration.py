@@ -565,3 +565,29 @@ def test_busca_de_pacientes_ve_todos(novo_usuario):
     assert db.list_patients(uid, 200, q="100%") == [] and db.list_patients(uid, 200, q="_") == []   # sem curinga
     r = db.list_patients(uid, 2, q="recente")
     assert [p["name"] for p in r] == ["Recente 2", "Recente 1"] and r[0]["notes"] == 0 and r[0]["last"] is None
+
+
+def test_trava_do_banco_vale_entre_conexoes(test_db):
+    """A trava por chave (pg_advisory_xact_lock): enquanto uma conexão a segura, outra espera ou desiste no prazo;
+    solta ao sair. É o que faz duas gerações, cada uma num servidor, mexerem na receita uma de cada vez."""
+    import threading
+    import time
+    pegou, solta = threading.Event(), threading.Event()
+
+    def segura():
+        with db.trava("teste:trava") as ok:
+            assert ok
+            pegou.set()
+            solta.wait(5)
+    t = threading.Thread(target=segura)
+    t.start()
+    assert pegou.wait(10)
+    with db.trava("teste:trava", espera=0.3) as ok:
+        assert not ok                                                    # ocupada: desiste no prazo
+    with db.trava("teste:outra", espera=0.3) as ok:
+        assert ok                                                        # outra chave não espera
+    t0 = time.monotonic()
+    threading.Timer(0.5, solta.set).start()
+    with db.trava("teste:trava", espera=5) as ok:
+        assert ok and time.monotonic() - t0 >= 0.4                       # esperou a primeira soltar
+    t.join(5)

@@ -1993,6 +1993,23 @@ def _rx_lock(user_id, patient_id):
     return _RX_LOCKS[int.from_bytes(h, "big") % len(_RX_LOCKS)]
 
 
+_RX_VAGAS = threading.BoundedSemaphore(2)      # gerações segurando uma conexão do pool (de 5) pela trava do banco
+
+
+@contextlib.contextmanager
+def _trava_rx(user_id, patient_id):
+    """A mesma vez entre processos (os dois servidores no ar numa publicação): a trava do banco por paciente. Sem vaga
+    ou sem banco, segue só com a vez deste processo (_rx_lock)."""
+    if not _RX_VAGAS.acquire(timeout=30):
+        yield False
+        return
+    try:
+        with db.trava(f"rx:{user_id}:{patient_id}") as ok:
+            yield ok
+    finally:
+        _RX_VAGAS.release()
+
+
 def _receitas_ligadas(recs):
     """As receitas que estas gravações já alimentaram (recordings.scribe.receita_id)."""
     return {str((r.get("scribe") or {}).get("receita_id")) for r in recs if (r.get("scribe") or {}).get("receita_id")}
@@ -2479,16 +2496,17 @@ async def prontuario_scribe(request: Request):
             lk = _rx_lock(u["id"], p["id"])
             vez = lk.acquire(timeout=30)                 # banco travado na outra geração: segue sem a vez (como antes)
             try:
-                agora = db.rec_list(u["id"], p["id"], eid, nid, rids)   # relida: outra geração pode ter terminado enquanto o modelo escrevia
-                foram, rx0 = _lembrados(_meds_gerados(agora)), next(iter(_receitas_ligadas(agora)), None)
-                guarda(foram, rx0)
-                db.log_access(u["id"], "scribe", p["id"], nid)
-                n, levou, rx = _receita_da_gravacao(u, p, eid, nid, res.get("meds"), agora)    # remédios → rascunho da receita
-                if levou != foram or rx != rx0:
-                    try:
-                        guarda(levou, rx)
-                    except Exception as e:
-                        print("[gravacao] memória da receita falhou:", type(e).__name__, flush=True)
+                with _trava_rx(u["id"], p["id"]):
+                    agora = db.rec_list(u["id"], p["id"], eid, nid, rids)   # relida: outra geração pode ter terminado enquanto o modelo escrevia
+                    foram, rx0 = _lembrados(_meds_gerados(agora)), next(iter(_receitas_ligadas(agora)), None)
+                    guarda(foram, rx0)
+                    db.log_access(u["id"], "scribe", p["id"], nid)
+                    n, levou, rx = _receita_da_gravacao(u, p, eid, nid, res.get("meds"), agora)    # remédios → rascunho da receita
+                    if levou != foram or rx != rx0:
+                        try:
+                            guarda(levou, rx)
+                        except Exception as e:
+                            print("[gravacao] memória da receita falhou:", type(e).__name__, flush=True)
             finally:
                 if vez:
                     lk.release()

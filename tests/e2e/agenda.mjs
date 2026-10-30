@@ -489,7 +489,10 @@ const cenarios = [
     certo(await ev(`document.getElementById('evPClear').hidden`), 'o blur escolheu o homônimo durante o cadastro');
     await clica('#evCreate');
     certo(await txt('#evMsg') === 'Aguarde o cadastro do paciente.' && eventos() === e0, 'Criar durante o cadastro: ' + await txt('#evMsg'));
+    await ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); return 1; })()`);
+    certo(await txt('#evMsg') === 'Aguarde o cadastro do paciente.', 'Enter de novo durante o cadastro: ' + await txt('#evMsg'));
     await ate(`!document.getElementById('evPClear').hidden`, 3000, 'cadastro novo escolhido');
+    certo(await ev(`document.getElementById('evMsg').hidden`), 'o "Aguarde" ficou na tela depois do cadastro');
     const novoPac = pedidos.filter((r) => r.method === 'POST' && r.path === '/patients').pop();
     certo(novoPac.body.name === 'Joana Prado' && novoPac.body.force === true, 'cadastro: ' + JSON.stringify(novoPac.body));
     await clica('#evCreate');

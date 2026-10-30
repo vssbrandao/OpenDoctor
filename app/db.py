@@ -1,4 +1,7 @@
 """Camada de banco (Supabase/Postgres + pgvector)."""
+import contextlib
+import time
+
 import psycopg
 from pgvector.psycopg import register_vector
 
@@ -34,6 +37,39 @@ def get_pool():
 def connection():
     """Context manager que empresta uma conexão do pool."""
     return get_pool().connection()
+
+
+@contextlib.contextmanager
+def trava(chave, espera=30):
+    """Trava do banco por chave (pg_advisory_xact_lock na transação de uma conexão do pool, solta ao sair): vale entre
+    processos — os dois servidores no ar durante uma publicação. Rende True com a trava; False se não conseguiu em
+    `espera` segundos ou se o banco falhou (quem chama segue sem ela). O log só leva o tipo do erro."""
+    try:
+        cm = connection()
+        conn = cm.__enter__()
+    except Exception as e:
+        print("[banco] trava indisponível:", type(e).__name__, flush=True)
+        yield False
+        return
+    ok = False
+    try:
+        fim = time.monotonic() + espera
+        while not ok:
+            ok = conn.execute("select pg_try_advisory_xact_lock(hashtextextended(%s, 0))", (str(chave),)).fetchone()[0]
+            if not ok:
+                if time.monotonic() > fim:
+                    break
+                time.sleep(0.1)
+    except Exception as e:
+        print("[banco] trava falhou:", type(e).__name__, flush=True)
+    try:
+        yield ok
+    finally:
+        try:
+            conn.rollback()                          # termina a transação: a trava sai junto
+        except Exception:
+            pass
+        cm.__exit__(None, None, None)
 
 
 def upsert_document(conn, *, source, source_type, title, url, language,
