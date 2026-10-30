@@ -467,6 +467,10 @@ class NoteLocked(Exception):
     """Evolução finalizada: não pode mais ser alterada (só adendos)."""
 
 
+class NoteOtherPatient(Exception):
+    """A consulta já tem evolução de outro paciente (o paciente do evento foi trocado): não sobrescreve nem muda de dono."""
+
+
 _PCOLS = "id, name, patient_key, birth_date, sex, cpf, phone, allergies, problems, medications"
 
 
@@ -521,6 +525,13 @@ EXAMPLE_NAME = "Maria Silva"
 EXAMPLE_KEY = " exemplo"
 
 
+def has_example(user_id):
+    """A conta tem a paciente de exemplo? (contas antigas não têm; o médico pode tê-la excluído)"""
+    with connection() as conn:
+        return conn.execute("select 1 from patients where user_id = %s and patient_key = %s limit 1",
+                            (user_id, EXAMPLE_KEY)).fetchone() is not None
+
+
 def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None, key=None):
     with connection() as conn:
         r = conn.execute(
@@ -559,6 +570,7 @@ _PATIENT_FIELDS = ("name", "birth_date", "sex", "cpf", "phone", "allergies", "pr
 
 def update_patient(user_id, patient_id, fields):
     """Atualiza campos do cadastro/resumo clínico. Mudou o nome → atualiza também as anotações.
+    A de exemplo renomeada continua de exemplo (a marca é a chave, não o nome).
     Retorna o paciente atualizado ou None se não existir."""
     if "name" in fields:                                  # mesmo nome de novo (formulário inteiro): não mexe na chave
         cur_p = get_patient(user_id, patient_id)
@@ -569,17 +581,18 @@ def update_patient(user_id, patient_id, fields):
         if k in fields:
             sets.append(f"{k} = %s"); vals.append(fields[k])
     if "name" in fields:
-        sets.append("patient_key = %s"); vals.append(patient_key(fields["name"]))
+        sets.append("patient_key = case when patient_key = %s then patient_key else %s end")
+        vals += [EXAMPLE_KEY, patient_key(fields["name"])]
     if not sets:
         return get_patient(user_id, patient_id)
     with connection() as conn:
         r = conn.execute(f"update patients set {', '.join(sets)}, updated_at = now() "
                          f"where user_id = %s and id = %s returning {_PCOLS}",
                          (*vals, user_id, patient_id)).fetchone()
-        if r and "name" in fields:
+        if r and "name" in fields:                        # r[2]: a chave que ficou (a de exemplo não muda)
             conn.execute("""update clinical_notes set patient_name = %s, patient_key = %s
                             where user_id = %s and patient_id = %s""",
-                         (fields["name"], patient_key(fields["name"]), user_id, patient_id))
+                         (fields["name"], r[2], user_id, patient_id))
         conn.commit()
     return _patient(r) if r else None
 
@@ -594,7 +607,9 @@ def touch_patient(user_id, patient_id):
 
 def delete_patient(user_id, patient_id):
     """Exclui o cadastro só se não houver prontuário (anotações são registro de saúde e ficam).
-    A paciente de exemplo (fictícia) sai com tudo. Retorna 'ok', 'has_notes' ou 'not_found'."""
+    A paciente de exemplo (fictícia) sai com tudo, a menos que tenha evolução de uma consulta da agenda: o
+    histórico fictício nunca tem consulta (event_id), então essa é de verdade e fica. Retorna 'ok', 'has_notes'
+    ou 'not_found'."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute("select patient_key from patients where user_id = %s and id = %s", (user_id, patient_id))
@@ -602,6 +617,10 @@ def delete_patient(user_id, patient_id):
             if not r:
                 return "not_found"
             if r[0] == EXAMPLE_KEY:
+                cur.execute("""select 1 from clinical_notes where user_id = %s and patient_id = %s and event_id is not null
+                               and (content <> '' or signed_at is not null) limit 1""", (user_id, patient_id))
+                if cur.fetchone():
+                    return "has_notes"
                 cur.execute("delete from patient_files where user_id = %s and patient_id = %s", (user_id, patient_id))
                 cur.execute("""delete from note_addenda where note_id in
                                (select id from clinical_notes where user_id = %s and patient_id = %s)""", (user_id, patient_id))
@@ -659,7 +678,8 @@ def list_notes(user_id, patient_id, pkey):
 def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content,
                 note_id=None, data=None):
     """Uma evolução por consulta (event_id); sem consulta, cria uma nova (ou atualiza a avulsa
-    note_id que está sendo escrita). Evolução finalizada não muda: levanta NoteLocked."""
+    note_id que está sendo escrita). Evolução finalizada não muda: levanta NoteLocked. A da consulta escrita
+    para outro paciente também não (NoteOtherPatient); só uma vazia, ainda não finalizada, passa para este."""
     from psycopg.types.json import Jsonb
     jd = Jsonb(data) if data is not None else None
     with connection() as conn:
@@ -677,12 +697,14 @@ def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, 
                     conn.commit()
                     return nid
             if event_id:
-                cur.execute("select signed_at from clinical_notes where user_id = %s and event_id = %s",
-                            (user_id, event_id))
+                cur.execute("""select signed_at, patient_id, patient_key, content from clinical_notes
+                               where user_id = %s and event_id = %s""", (user_id, event_id))
                 r = cur.fetchone()
+                if r and (r[0] or r[3]) and not (r[1] == patient_id if r[1] is not None else r[2] == pkey):
+                    raise NoteOtherPatient()
                 if r and r[0]:
                     raise NoteLocked()
-                cur.execute(
+                cur.execute(   # o "where" repete as duas regras: vale mesmo se a evolução mudou entre a checagem e aqui
                     """insert into clinical_notes
                          (user_id, patient_id, patient_key, patient_name, event_id, event_title, event_start, content, data)
                        values (%s,%s,%s,%s,%s,%s,%s,%s,%s)
@@ -692,6 +714,8 @@ def upsert_note(user_id, patient_id, pkey, patient_name, event_id, event_title, 
                          event_title = excluded.event_title, event_start = excluded.event_start,
                          updated_at = now()
                        where clinical_notes.signed_at is null
+                         and (clinical_notes.content = '' or clinical_notes.patient_id = excluded.patient_id
+                              or (clinical_notes.patient_id is null and clinical_notes.patient_key = excluded.patient_key))
                        returning id""",
                     (user_id, patient_id, pkey, patient_name, event_id, event_title, event_start, content, jd))
             else:

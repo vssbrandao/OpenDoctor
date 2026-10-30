@@ -1366,10 +1366,13 @@ async def _json(request):
 
 def _note_patient(u, payload):
     """Paciente do prontuário: pelo id do cadastro; eventos antigos (só com o nome) são
-    ligados ao cadastrado com esse nome (ou cadastrados na hora). Devolve o paciente ou None."""
+    ligados ao cadastrado com esse nome (ou cadastrados na hora). Consulta ainda ligada a um paciente
+    excluído: o id não existe mais e vale o nome, como num evento antigo. Devolve o paciente ou None."""
     pid = payload.get("patient_id")
     if str(pid or "").isdigit():
-        return db.get_patient(u["id"], int(pid))
+        p = db.get_patient(u["id"], int(pid))
+        if p:
+            return p
     name = " ".join((payload.get("patient") or "").split())[:200]
     if not db.patient_key(name):
         return None
@@ -1408,7 +1411,9 @@ def _prontuario_list(u, payload):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     db.log_access(u["id"], "view", p["id"], dedupe_minutes=10)
     pub = {k: v for k, v in p.items() if k != "key"}
-    return {"patient": pub, "notes": db.list_notes(u["id"], p["id"], p["key"])}
+    # has_example: o cartão da gravação só sugere a paciente de exemplo se a conta tem uma
+    return {"patient": pub, "notes": db.list_notes(u["id"], p["id"], p["key"]),
+            "has_example": bool(p.get("example")) or db.has_example(u["id"])}
 
 
 @app.post("/prontuario/notes")
@@ -1440,6 +1445,9 @@ def _prontuario_save(u, payload):
                              (payload.get("event_id") or None), (payload.get("event_title") or "")[:300] or None,
                              _iso_or_none(payload.get("event_start")), content,
                              note_id=int(note_id) if str(note_id or "").isdigit() else None, data=data)
+    except db.NoteOtherPatient:
+        return JSONResponse({"error": "esta consulta já tem evolução de outro paciente", "other_patient": True},
+                            status_code=409)
     except db.NoteLocked:
         return JSONResponse({"error": "evolução finalizada: use um adendo"}, status_code=409)
     db.touch_patient(u["id"], p["id"])
@@ -1545,8 +1553,9 @@ async def prontuario_visits(request: Request):
     if not connected:
         return {"connected": False, "visits": []}
     prov = "google" if "google" in connected else next(iter(connected))
-    # eventos antigos (só com o nome) só entram se ninguém mais tem esse nome
-    legacy_name = p["name"] if len(db.find_patients(u["id"], p["name"])) == 1 else None
+    # eventos antigos (só com o nome) só entram se ninguém mais tem esse nome; na de exemplo, nunca (o nome
+    # dela é de gente de verdade)
+    legacy_name = None if p.get("example") else p["name"] if len(db.find_patients(u["id"], p["name"])) == 1 else None
     try:
         visits = integrations.patient_events(u["id"], prov, p["id"], legacy_name)
     except integrations.NeedsReconnect:
