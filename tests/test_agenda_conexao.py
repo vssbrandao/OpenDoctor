@@ -1,6 +1,8 @@
 """Conexão com o calendário (sem banco, sem rede): conexão morta vira "reconectar" em vez de agenda vazia, e o
 retorno do Google só grava a agenda na conta logada no mesmo navegador que começou a conexão."""
 import datetime
+import json
+import os
 import urllib.parse as up
 
 import pytest
@@ -14,6 +16,7 @@ PASSADO = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hour
 class _Resp:
     def __init__(self, status, body):
         self.status_code, self._body = status, body
+        self.text = json.dumps(body)
 
     def json(self):
         return self._body
@@ -93,14 +96,85 @@ def test_rotas_dizem_reconectar_quando_a_conexao_morreu(monkeypatch):
     assert c.get("/integrations/status").json()["providers"]["google"]["needs_reconnect"] is True
 
 
-def test_token_so_de_leitura_continua_pedindo_permissao(monkeypatch):
-    def so_leitura(*a, **k):
-        raise RuntimeError('403: {"error": {"message": "Request had insufficient authentication scopes."}}')
+def _google_erro(status, reason):
+    """Corpo de erro da API do Google Agenda (error.errors[0].reason)."""
+    return _Resp(status, {"error": {"code": status, "message": "x", "status": "PERMISSION_DENIED",
+                                    "errors": [{"domain": "global", "reason": reason, "message": "x"}]}})
+
+
+def test_so_falta_de_permissao_pede_reconectar(monkeypatch, capsys):
+    """Só o token sem a permissão da agenda pede reconectar; pedidos demais e evento de outra pessoa dizem o porquê."""
     monkeypatch.setattr(auth, "current_user", lambda request: {"id": "u1", "email": "ana@clinica.com.br", "sv": 0})
     monkeypatch.setattr(db, "connected_providers", lambda uid: {"google": "ana@gmail.com"})
-    monkeypatch.setattr(integrations, "create_event", so_leitura)
-    r = TestClient(server.app).post("/calendar/events", json={"start": "2026-10-30T10:00:00-03:00", "end": "2026-10-30T10:30:00-03:00"})
-    assert r.status_code == 403 and r.json()["reason"] == "permissao"
+    monkeypatch.setattr(integrations, "_headers", lambda uid, p: {})
+    c = TestClient(server.app)
+    hora = {"start": "2026-10-30T10:00:00-03:00", "end": "2026-10-30T10:30:00-03:00"}
+    casos = [(403, "insufficientPermissions", 403, "permissao", True),
+             (403, "rateLimitExceeded", 429, "limite", False),
+             (429, "rateLimitExceeded", 429, "limite", False),
+             (403, "userRateLimitExceeded", 429, "limite", False),
+             (403, "forbiddenForNonOrganizer", 403, "proibido", False),
+             (403, "requiredAccessLevel", 403, "proibido", False)]
+    for g_status, g_reason, status, reason, reconectar in casos:
+        resp = _google_erro(g_status, g_reason)
+        for metodo in ("post", "patch", "delete"):
+            monkeypatch.setattr(integrations.httpx, metodo, lambda *a, **k: resp)
+        for r in (c.post("/calendar/events", json=hora), c.patch("/calendar/events/abc", json=hora),
+                  c.delete("/calendar/events/abc")):
+            assert (r.status_code, r.json()["reason"], r.json()["needs_reconnect"]) == (status, reason, reconectar), g_reason
+            assert r.json()["error"][0].isupper()                       # frase para a tela, não o texto do Google
+    # o ErrorInfo novo do Google (sem errors[]) também conta como falta de permissão
+    resp = _Resp(403, {"error": {"code": 403, "details": [{"reason": "ACCESS_TOKEN_SCOPE_INSUFFICIENT"}]}})
+    monkeypatch.setattr(integrations.httpx, "post", lambda *a, **k: resp)
+    assert c.post("/calendar/events", json=hora).json()["reason"] == "permissao"
+    # outro erro (ex.: 400 do Google): não pede reconectar nem tem motivo
+    resp = _google_erro(400, "invalid")
+    monkeypatch.setattr(integrations.httpx, "post", lambda *a, **k: resp)
+    r = c.post("/calendar/events", json=hora)
+    assert r.status_code == 400 and r.json()["needs_reconnect"] is False and "reason" not in r.json()
+    assert "[agenda] o provedor recusou: 403 forbiddenForNonOrganizer" in capsys.readouterr().out
+
+
+def _token_google(monkeypatch, scope):
+    gravou = []
+    monkeypatch.setattr(integrations, "_cid", lambda p: "cid")
+    monkeypatch.setattr(integrations, "_secret", lambda p: "segredo")
+    corpo = {"access_token": "at", "refresh_token": "rt", "expires_in": 3600}
+    if scope is not None:
+        corpo["scope"] = scope
+    monkeypatch.setattr(integrations.httpx, "post", lambda *a, **k: _Resp(200, corpo))
+    monkeypatch.setattr(integrations, "_userinfo_email", lambda p, at: "ana@gmail.com")
+    monkeypatch.setattr(db, "set_token", lambda uid, p, **kw: gravou.append((uid, p, kw["scope"])))
+    return gravou
+
+
+def test_conectar_sem_marcar_a_permissao_da_agenda_nao_grava(monkeypatch):
+    """No consentimento do Google dá para desmarcar a caixa da agenda: sem ela, nada de "Conectado" com a agenda vazia."""
+    gravou = _token_google(monkeypatch, "openid https://www.googleapis.com/auth/userinfo.email")
+    with pytest.raises(integrations.MissingScope):
+        integrations.exchange_and_store("google", "code", "u1")
+    assert gravou == []
+    for scope in ("openid email https://www.googleapis.com/auth/calendar.events",
+                  "https://www.googleapis.com/auth/calendar openid", None):     # sem "scope" = o que foi pedido
+        gravou = _token_google(monkeypatch, scope)
+        integrations.exchange_and_store("google", "code", "u1")
+        assert gravou == [("u1", "google", scope)]
+
+
+def test_retorno_sem_a_permissao_da_agenda_explica_em_integracoes(monkeypatch):
+    def sem_permissao(prov, code, uid):
+        raise integrations.MissingScope("sem a permissão da agenda")
+    monkeypatch.setattr(integrations, "configured", lambda p: True)
+    monkeypatch.setattr(integrations, "_cid", lambda p: "cid")
+    monkeypatch.setattr(integrations, "exchange_and_store", sem_permissao)
+    monkeypatch.setattr(auth, "current_user", lambda request: {"id": "u1", "sv": 0})
+    c = TestClient(server.app)
+    r = c.get("/integrations/google/connect", follow_redirects=False)
+    state = up.parse_qs(up.urlparse(r.headers["location"]).query)["state"][0]
+    r = c.get("/auth/google/callback?code=x&state=" + up.quote(state), follow_redirects=False)
+    assert r.headers["location"] == "/opendoctor-integracao.html?erro=permissao"
+    html = open(os.path.join(os.path.dirname(__file__), "..", "web", "opendoctor-integracao.html"), encoding="utf-8").read()
+    assert "erro === 'permissao' ? 'Marque a permissão do Google Agenda" in html
 
 
 def test_conexao_da_agenda_so_vale_para_quem_comecou_neste_navegador(monkeypatch):

@@ -1075,6 +1075,9 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
         try:
             integrations.exchange_and_store(provider, code, u["id"])
             resp = RedirectResponse(dest + "?conectado=" + provider)
+        except integrations.MissingScope:              # desmarcou a caixa da agenda no Google: nada foi gravado
+            print(f"[oauth] conexão sem a permissão da agenda: {provider}", flush=True)
+            resp = RedirectResponse(dest + "?erro=permissao")
         except Exception as e:
             print("[oauth] callback falhou:", str(e)[:200])
             resp = RedirectResponse(dest + "?erro=" + provider)
@@ -1168,18 +1171,29 @@ def _own_patient_id(u, payload):
 
 
 def _cal_error(e):
-    """Erro do calendário para a tela. Conexão morta (o Google recusou a renovação) ou token só de leitura
-    pedem reconectar (`reason` diz qual); falha passageira ao renovar vira 503 (tentar de novo)."""
+    """Erro do calendário para a tela. Conexão morta (o Google recusou a renovação) ou token sem a permissão da
+    agenda pedem reconectar (`reason` diz qual). Outra recusa do Google (pedidos demais, evento de outra pessoa)
+    não pede reconectar: `error` diz o porquê (reason limite/proibido). Falha passageira ao renovar vira 503."""
     if isinstance(e, integrations.NeedsReconnect):
         return JSONResponse({"error": "A conexão com o Google Agenda expirou.", "needs_reconnect": True,
                              "reason": "expirada"}, status_code=403)
     msg = str(e)
     if msg == "sem token":
         return JSONResponse({"error": "Não foi possível falar com o Google agora. Tente de novo."}, status_code=503)
-    needs_reconnect = msg.startswith("403") or "insufficient" in msg.lower()
-    return JSONResponse({"error": msg[:200], "needs_reconnect": needs_reconnect,
-                         **({"reason": "permissao"} if needs_reconnect else {})},
-                        status_code=403 if needs_reconnect else 400)
+    kind = ""
+    if isinstance(e, integrations.CalendarError):
+        kind = e.kind
+        print(f"[agenda] o provedor recusou: {e.status} {e.reason}", flush=True)   # só o status e o motivo
+    if kind == "permissao":
+        return JSONResponse({"error": "Sem permissão para alterar a agenda.", "needs_reconnect": True,
+                             "reason": "permissao"}, status_code=403)
+    if kind == "limite":
+        return JSONResponse({"error": "O Google Agenda recebeu pedidos demais. Tente de novo em instantes.",
+                             "needs_reconnect": False, "reason": "limite"}, status_code=429)
+    if kind == "proibido":
+        return JSONResponse({"error": "O Google Agenda não permitiu esta alteração.", "needs_reconnect": False,
+                             "reason": "proibido"}, status_code=403)
+    return JSONResponse({"error": msg[:200], "needs_reconnect": False}, status_code=400)
 
 
 def _cal_user(request):

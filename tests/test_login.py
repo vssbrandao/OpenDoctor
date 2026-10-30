@@ -3,6 +3,8 @@ import asyncio
 import json
 import urllib.parse
 
+import pytest
+
 from app import auth, integrations, server
 
 
@@ -60,6 +62,31 @@ def test_safe_next():
     assert auth.with_welcome(auth.HOME) == auth.HOME + "?bemvindo=1"
     assert auth.with_welcome(auth.HOME + "#pacientes") == auth.HOME + "?bemvindo=1#pacientes"
     assert auth.with_welcome("/opendoctor-integracao.html") == "/opendoctor-integracao.html"
+
+
+def test_next_da_pagina_de_login_so_fica_no_site():
+    """Quem já entrou vai direto para o next da página (sem passar pelo servidor): a mesma regra de safe_next.
+    O navegador apaga tab e quebra de linha, então "/\\t/evil.example" viraria "//evil.example"."""
+    import os
+    import re
+    import shutil
+    import subprocess
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("sem node")
+    html = open(os.path.join(os.path.dirname(__file__), "..", "web", "opendoctor-login.html"), encoding="utf-8").read()
+    fn = re.search(r"function safeNext\(v\) \{.*?\n      \}", html, re.S).group(0)
+    # "/..//x" fica como veio: no navegador é https://opendoctor.app//x (normalizado viraria "//x", outro site)
+    bons = ["/opendoctor-agenda.html#pacientes", "/opendoctor-prontuario.html?x=1", "/..//evil.example"]
+    ruins = ["/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "/ /evil.example", "/\x00/evil.example",
+             "//evil.example", "/\\evil.example", "https://evil.example", "javascript:alert(1)", "", "/auth/logout",
+             "/" + "x" * 400]
+    js = (fn + "; var location = { origin: 'https://opendoctor.app' };"
+          + "process.stdout.write(JSON.stringify(JSON.parse(process.argv[1]).map(safeNext)));")
+    out = subprocess.run([node, "-e", js, json.dumps(bons + ruins)], capture_output=True, text=True, check=True).stdout
+    assert json.loads(out) == bons + [""] * len(ruins)
+    for v in bons:                                       # o servidor aceita o mesmo
+        assert auth.safe_next(v) == v
 
 
 def test_codigo_por_finalidade():
