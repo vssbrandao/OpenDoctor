@@ -49,7 +49,8 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   limpo, até 1000 caracteres; sem o campo, ficam como estão).
 - PATCH e emitir exigem o `patient_id` da receita (409 se for outro): a página manda o paciente da hora em que mexeu.
 - Nada do que sai no papel é cortado (`prescricao.erro_itens`): mais de 20 remédios, posologia acima de 500 caracteres
-  ou nome, dose, forma e quantidade acima do limite dão 400 com o motivo, que a tela mostra.
+  ou quantidade acima de 60 dão 400 com o motivo, que a tela mostra. Nome, dose e forma vêm da base CMED e não se
+  editam: o teto deles (2000, 200 e 300) fica bem acima do maior da base e só barra abuso, nunca um remédio de verdade.
 - `POST /prontuario/receitas/conferir`: avisos de cada item; nada é gravado.
 - `POST /prontuario/receitas/{id}/emitir`:
   - confere de novo;

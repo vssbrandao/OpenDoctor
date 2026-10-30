@@ -342,6 +342,31 @@ const cenarios = [
     certo(await ev(`document.getElementById('rxPapel').textContent === '' && !document.body.classList.contains('rxp')`), 'o A5 sai depois de imprimir (o PDF do prontuário continua A4)');
     return 'A5 na receita; volta ao normal depois';
   }],
+  ['nome e forma longos da base (Pneumovax 23, Foraseq): salva, emite e sai inteiro no papel', async () => {
+    await medico({ receita_papel: 'A5' }); await abre(false);
+    const pos = 'Conforme orientação médica; observar reações e retornar se houver febre, dor ou vermelhidão no local. '.repeat(4).trim();
+    const [pn] = (await srv('/prontuario/remedios/busca?q=pneumovax')).itens, [fs] = (await srv('/prontuario/remedios/busca?q=foraseq')).itens;
+    await item('pneumovax', pos); await item('foraseq', pos, '1 caixa'); await salvo();    // antes: "não salvou" (forma do Foraseq > 80)
+    const d = (await daApi()).find((r) => r[1] === 'rascunho');
+    certo(d && d[2] === pn.nome + '+' + fs.nome && pn.nome.length > 1000, 'rascunho com os dois: ' + (d ? d[2].slice(0, 80) : ''));
+    await emite(); await ate(`window.__folhas !== null`, 8000, 'folha');
+    const t = await ev(`document.getElementById('rxPrint').innerText`);
+    const bs = [pn, fs].map((p) => [p.nome, p.apresentacoes[0].dose].filter(Boolean).join(' ') + ', ' + p.apresentacoes[0].forma);
+    certo(bs.every((b) => t.includes(b)) && t.split(pos).length === 3, 'na folha, inteiros: ' + t.slice(0, 200));
+    // no papel: palavra longa quebra dentro da largura da folha A5 (128 mm = 484 px)...
+    await send('Emulation.setEmulatedMedia', { media: 'print' });
+    const fora = await ev(`(() => { const box = document.getElementById('rxPrint'), b = box.querySelector('ol li b'), s = document.createElement('span');
+      box.style.width = '484px'; s.textContent = ' ' + 'X'.repeat(300); b.appendChild(s);
+      const lis = [...box.querySelectorAll('ol li')], r = lis.filter((li) => li.scrollWidth > li.clientWidth).length;
+      s.remove(); box.style.width = ''; return lis.length && lis[0].clientWidth ? r : -1; })()`);
+    await send('Emulation.setEmulatedMedia', { media: '' });
+    certo(fora === 0, fora < 0 ? 'a folha não estava montada para imprimir' : fora + ' item(ns) saem da largura da folha');
+    // ...e o PDF da folha (A5: 420 pt de largura) passa de uma página, sem cortar o fim
+    const pdf = Buffer.from((await send('Page.printToPDF', { preferCSSPageSize: true })).data, 'base64').toString('latin1');
+    const pags = Math.max(...[...pdf.matchAll(/\/Count (\d+)/g)].map((m) => +m[1])), larg = (pdf.match(/\/MediaBox \[0 0 ([\d.]+)/) || [])[1];
+    certo(pags >= 2 && Math.round(+larg) === 420, `o PDF tem ${pags} página(s) de ${larg} pt`);
+    return `${pn.nome.length} e ${fs.apresentacoes[0].forma.length} caracteres inteiros; PDF A5 com ${pags} páginas`;
+  }],
 ];
 
 async function main() {
