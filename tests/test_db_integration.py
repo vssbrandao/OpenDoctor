@@ -403,3 +403,114 @@ def test_evolucao_da_consulta_nao_passa_para_outro_paciente(novo_usuario):
         salva(ana, "ev-vazia", "S: da Ana")
     assert salva(bruno, "ev-vazia", "S: do Bruno de novo") == vazia      # pelo nome é a do Bruno
     assert db.get_note(uid, vazia)["patient_id"] == bruno["id"]
+
+
+def _marcas(uid):
+    with db.connection() as c:
+        return c.execute("select patient_id, note_id from access_log where user_id = %s and action = %s",
+                         (uid, db.EXAMPLE_DELETED)).fetchall()
+
+
+def test_excluir_a_de_exemplo_deixa_a_marca_e_ela_nao_volta(novo_usuario):
+    from app import exemplo
+    uid = novo_usuario()["id"]
+    pid = exemplo.seed(uid)
+    db.log_access(uid, "view", pid)
+    assert _marcas(uid) == []
+    assert db.delete_patient(uid, pid) == "ok"
+    assert _marcas(uid) == [(None, None)]                                # sem paciente nem evolução: sobrevive a ela
+    assert exemplo.seed(uid) is None                                     # nem o cadastro a cria de novo
+    exemplo._conferidas.discard(uid)
+    assert exemplo.garante(uid) is None and not db.has_example(uid)      # nem a conferência
+    db.cleanup_old_records()                                             # a limpeza diária não leva a marca
+    real = db.create_patient(uid, "Paciente Real")
+    assert db.delete_patient(uid, real["id"]) == "ok"                    # só a de exemplo deixa marca
+    assert _marcas(uid) == [(None, None)]
+    exemplo._conferidas.discard(uid)
+    assert exemplo.garante(uid) is None and not db.has_example(uid)
+
+
+def test_conta_sem_a_de_exemplo_ganha_a_sua_uma_vez_so(novo_usuario):
+    """Conta de antes da paciente de exemplo (ou cuja criação falhou no cadastro): a conferência cria a sua, inteira,
+    e várias ao mesmo tempo criam uma só."""
+    from concurrent.futures import ThreadPoolExecutor
+    from app import exemplo
+    uid = novo_usuario()["id"]
+    assert not db.has_example(uid)
+    exemplo._conferidas.discard(uid)
+    with ThreadPoolExecutor(4) as ex:
+        ids = [i for i in ex.map(lambda _: exemplo.garante(uid), range(4)) if i]
+    assert len(ids) == 1
+    with db.connection() as c:
+        n = c.execute("select count(*) from patients where user_id = %s and patient_key = %s", (uid, db.EXAMPLE_KEY)).fetchone()[0]
+    assert n == 1
+    ps = db.list_patients(uid)
+    assert [(p["id"], p["example"], p["notes"]) for p in ps] == [(ids[0], True, 17)]
+    assert len(db.list_receitas(uid, ids[0])) == 11 and len(db.list_files(uid, ids[0])) == 1
+    exemplo._conferidas.discard(uid)
+    assert exemplo.garante(uid) is None and len(db.list_patients(uid)) == 1   # já tem: nada muda
+
+
+def test_a_de_exemplo_sem_receitas_e_sem_laudo_e_completada(novo_usuario):
+    """A de exemplo de antes das receitas (ou cujo extra falhou na criação): a conferência grava as receitas, ligadas
+    às consultas fictícias e com as datas delas, e o mesmo laudo; ela continua podendo ser excluída. Com o laudo excluído
+    pelo médico, ou com algo dele gravado nela, nada volta."""
+    from app import exemplo
+
+    def tira(sql, *args):                                                 # só no banco de testes: uma Maria de antes
+        with db.connection() as c:
+            c.execute(sql, args)
+            c.commit()
+    uid = novo_usuario()["id"]
+    pid = exemplo.seed(uid)
+    rx0 = sorted((r["note_id"], r["emitida_em"], [i["nome"] for i in r["itens"]]) for r in db.list_receitas(uid, pid))
+    laudo0 = db.get_file(uid, db.list_files(uid, pid)[0]["id"])["data"]
+    tira("delete from receitas where user_id = %s", uid)
+    tira("delete from patient_files where user_id = %s", uid)
+    assert db.example_state(uid) == (pid, False, False, False)
+    exemplo._conferidas.discard(uid)
+    assert exemplo.garante(uid) is None
+    rx = sorted((r["note_id"], r["emitida_em"], [i["nome"] for i in r["itens"]]) for r in db.list_receitas(uid, pid))
+    assert len(rx) == 11 and rx == rx0                                    # as mesmas receitas, nas mesmas consultas
+    fs = db.list_files(uid, pid)
+    assert [f["name"] for f in fs] == [db.EXAMPLE_FILE] and db.get_file(uid, fs[0]["id"])["data"] == laudo0
+    assert db.example_state(uid) == (pid, False, True, True)
+    assert db.delete_patient(uid, pid) == "ok"                            # continua só do exemplo
+
+    outro = novo_usuario()["id"]                                          # o médico excluiu o laudo: não volta
+    pid2 = exemplo.seed(outro)
+    assert db.delete_file(outro, db.list_files(outro, pid2)[0]["id"]) == pid2
+    db.log_access(outro, "file_delete", pid2)                             # como a rota registra
+    exemplo._conferidas.discard(outro)
+    exemplo.garante(outro)
+    assert db.list_files(outro, pid2) == [] and len(db.list_receitas(outro, pid2)) == 11
+
+    terceiro = novo_usuario()["id"]                                       # algo do médico nela: fica como está
+    pid3 = exemplo.seed(terceiro)
+    tira("delete from receitas where user_id = %s", terceiro)
+    db.upsert_note(terceiro, pid3, db.EXAMPLE_KEY, db.EXAMPLE_NAME, None, None, None, "S: paciente de verdade")
+    exemplo._conferidas.discard(terceiro)
+    exemplo.garante(terceiro)
+    assert db.list_receitas(terceiro, pid3) == []
+
+
+def test_busca_de_pacientes_ve_todos(novo_usuario):
+    """GET /patients corta nos mais recentes; a busca (POST /patients/search) procura o nome entre todos, sem acento nem
+    maiúscula, acha a de exemplo pelo nome e nunca traz paciente de outro médico."""
+    from app import exemplo
+    uid, outro = novo_usuario()["id"], novo_usuario()["id"]
+    antigo = db.create_patient(uid, "Otávio Antigo")
+    with db.connection() as c:
+        c.execute("update patients set updated_at = now() - interval '1 year' where id = %s", (antigo["id"],))
+        c.commit()
+    for i in range(3):
+        db.create_patient(uid, f"Recente {i}")
+    exemplo.seed(uid)
+    db.create_patient(outro, "Otávio do Outro")
+    assert antigo["id"] not in [p["id"] for p in db.list_patients(uid, 3)]          # fora da lista cortada
+    assert [p["id"] for p in db.list_patients(uid, 200, q="otavio")] == [antigo["id"]]
+    assert [p["name"] for p in db.list_patients(uid, 200, q="  OTÁVIO   antigo ")] == ["Otávio Antigo"]
+    assert [p["example"] for p in db.list_patients(uid, 200, q="maria sil")] == [True]
+    assert db.list_patients(uid, 200, q="100%") == [] and db.list_patients(uid, 200, q="_") == []   # sem curinga
+    r = db.list_patients(uid, 2, q="recente")
+    assert [p["name"] for p in r] == ["Recente 2", "Recente 1"] and r[0]["notes"] == 0 and r[0]["last"] is None

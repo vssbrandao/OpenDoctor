@@ -1,4 +1,5 @@
-"""Paciente de exemplo criada em toda conta nova — dados FICTÍCIOS (nenhuma pessoa real).
+"""Paciente de exemplo criada em toda conta nova (e na conta que nunca a recebeu: garante) — dados FICTÍCIOS (nenhuma
+pessoa real).
 
 Mostra o prontuário preenchido: 11 consultas finalizadas com sinais vitais e CID-10, resultados de exames
 e um laudo em PDF anexado. As datas acompanham o dia da criação da conta. Sem CPF e telefone (não usar
@@ -172,6 +173,36 @@ def seed_safe(user_id):
     except Exception as e:  # noqa: BLE001
         print("[exemplo] não criou a paciente de exemplo:", str(e)[:200], flush=True)
         return None
+
+
+def _laudo(inicio):
+    """O laudo da coleta mais recente, 5 dias antes da consulta fictícia mais nova (como em seed)."""
+    coleta = (inicio.astimezone(dt.timezone.utc) - dt.timedelta(days=5)).date()
+    return db.EXAMPLE_FILE, "application/pdf", laudo_pdf(coleta, EXAMES[min(EXAMES)])
+
+
+_conferidas = set()        # contas já conferidas neste processo: a conferência é uma consulta ao banco, uma vez basta
+
+
+def garante(user_id):
+    """Conta sem a paciente de exemplo (criada antes dela existir, ou a criação falhou no cadastro) ganha a sua; a de
+    exemplo só com o que veio daqui, mas sem as receitas ou o laudo (criada antes deles, ou o extra falhou), é
+    completada. Quem a excluiu não a recebe de novo (a marca db.EXAMPLE_DELETED). Nunca derruba a rota: falhou, tenta
+    na próxima. Devolve o id da que criou agora, ou None."""
+    if user_id in _conferidas:
+        return None
+    try:
+        pid, excluida, tem_rx, tem_laudo = db.example_state(user_id)
+        novo = None
+        if pid is None and not excluida:
+            novo = seed(user_id)                          # uma transação travada: duas ao mesmo tempo criam uma só
+        elif pid is not None and not (tem_rx and tem_laudo):
+            db.complete_example_patient(user_id, pid, [receita_itens(i) for i in range(len(CONSULTAS))], _laudo)
+    except Exception as e:  # noqa: BLE001
+        print("[exemplo] não conferiu a paciente de exemplo:", str(e)[:200], flush=True)
+        return None
+    _conferidas.add(user_id)
+    return novo
 
 
 if __name__ == "__main__":       # python -m app.exemplo > /tmp/laudo.pdf (só para conferir o PDF)

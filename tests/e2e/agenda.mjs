@@ -7,7 +7,8 @@
 // salva e vai ao prontuário com o fim no dia seguinte; criar às 23h30 funciona; editar as férias mantém os dias;
 // alteração que não dá para salvar avisa em vez de sumir; a semana e a busca pedem o teto e a busca lê o futuro à parte;
 // a faixa "Reconectar" diz se o Google Agenda está sem permissão ou se a conexão expirou;
-// no campo Paciente, a de exemplo fica por último e o Enter nunca a escolhe (só a seta ou o mouse).
+// no campo Paciente, a de exemplo fica por último e o Enter nunca a escolhe (só a seta ou o mouse); com a lista de
+// pacientes cortada (more), o campo Paciente e a tela Pacientes acham no servidor quem ficou de fora.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -60,9 +61,13 @@ let RECONECTAR = null;                                     // 'permissao' ou 'ex
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
 const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
+let MAIS = false;                                          // a lista veio cortada: há pacientes só na busca do servidor
+const ANTIGOS = [{ id: 900, name: 'Otávio Antigo', notes: 3, last: '2025-01-10T12:00:00+00:00' }];
+const sem = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 function rota(method, path, q, body) {
   if (path === '/me') return { logged_in: true, scribe: false, user: { id: 'u-teste' } };
-  if (path === '/patients' && method === 'GET') return { patients: PACS };
+  if (path === '/patients' && method === 'GET') return { patients: PACS, more: MAIS };
+  if (path === '/patients/search' && method === 'POST') return { patients: ANTIGOS.filter((p) => sem(p.name).includes(sem(body.q).trim())) };
   if (path === '/patients' && method === 'POST') { const p = { id: 40 + PACS.length, name: body.name }; PACS.push(p); return { ok: true, patient: p }; }
   if (path === '/calendar/events' && method === 'GET') return RECONECTAR
     ? { logged_in: true, connected: 'google', events: [], needs_reconnect: true, reason: RECONECTAR }
@@ -328,6 +333,49 @@ const cenarios = [
     const b = await cria();
     certo(b.patient_id === 7, 'escolhida com a seta: ' + b.patient_id);
     return 'Enter criou a Maria de verdade (id ' + real + '); a seta ainda escolhe a de exemplo';
+  }],
+  ['lista cortada: o campo Paciente e a tela Pacientes acham no servidor o paciente que ficou de fora', async () => {
+    const lista = () => ev(`[...document.querySelectorAll('#evPList .evpop-po')].map((b) => (b.classList.contains('on') ? '*' : '') + b.lastChild.textContent)`);
+    const digita = async (v) => {
+      await ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = ${JSON.stringify(v)}; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+      await ate(`(() => { const b = [...document.querySelectorAll('#evPList .evpop-po')], u = b[b.length - 1];
+        return !!u && u.textContent.endsWith(${JSON.stringify('"' + v + '"')}) && b.length > 1; })()`, 3000, 'lista de ' + v);
+    };
+    const buscas = () => pedidos.filter((r) => r.method === 'POST' && r.path === '/patients/search');
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await digita('Joana');                                     // sem corte: nada vai ao servidor
+    certo(buscas().length === 0, 'buscou sem a lista estar cortada');
+    await fecha();
+    MAIS = true;
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await digita('otavio');
+    let l = await lista();
+    certo(l.join(' | ') === '*Otávio Antigo | Criar paciente "otavio"', 'lista "otavio": ' + l.join(' | '));
+    const b = buscas();
+    certo(b.length >= 1 && b[b.length - 1].body.q === 'otavio' && !Object.keys(b[b.length - 1].q).length, 'nome no corpo, nunca na URL: ' + JSON.stringify(b));
+    await digita('Otávio Antigo');                             // o nome exato já existe: é outra pessoa?
+    l = await lista();
+    certo(l.join(' | ') === '*Otávio Antigo | Criar outro paciente "Otávio Antigo"', 'nome exato: ' + l.join(' | '));
+    await ev(`(() => { document.getElementById('evPatient').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); return 1; })()`);
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
+    const antes = pedidos.length;
+    await clica('#evCreate');
+    await ate(`document.getElementById('evMsg').textContent === 'Evento criado!'`, 3000, 'criado: ' + await txt('#evMsg'));
+    const novo = pedidos.slice(antes).find((r) => r.method === 'POST' && r.path === '/calendar/events').body;
+    certo(novo.patient_id === 900, 'consulta do paciente antigo: ' + novo.patient_id);
+    certo(!pedidos.some((r) => r.method === 'POST' && r.path === '/patients' && r.body.name === 'Otávio Antigo'), 'não cadastrou de novo');
+    await ate(`document.getElementById('evPop').hidden`, 3000, 'fechou sozinha');
+    await clica('#navPacientes');                              // a tela Pacientes
+    await ate(`[...document.querySelectorAll('#ptList .pt-empty')].some((e) => e.textContent.startsWith('Aqui estão os pacientes usados mais recentemente'))`, 3000, 'aviso da lista cortada');
+    await ev(`(() => { const s = document.getElementById('ptSearch'); s.value = 'Otá'; s.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await ate(`[...document.querySelectorAll('#ptList .pt-name')].map((e) => e.textContent).join() === 'Otávio Antigo'`, 3000,
+      'achou na tela Pacientes: ' + await ev(`document.getElementById('ptList').textContent`));
+    await ev(`(() => { const s = document.getElementById('ptSearch'); s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await clica('#navConsultas');
+    MAIS = false;
+    return 'campo Paciente e tela Pacientes acharam o Otávio no servidor; a consulta ficou com o cadastro dele';
   }],
 ];
 

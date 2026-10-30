@@ -3047,11 +3047,12 @@
       elDate.addEventListener('change', dateLabel);
       elAllDay.addEventListener('click', function () { setAllDay(!allDay); extraDays = 0; longOk = false; endFromTimes(); durLabel(); remember(); });
       // ===== paciente: escolher um do cadastro ou criar um novo (ligado ao prontuário dele) =====
-      // A lista vem inteira de GET /patients e é filtrada aqui (o nome nunca vai em URL).
+      // A lista vem de GET /patients e é filtrada aqui (o nome nunca vai em URL); cortada nos mais recentes (more), a
+      // busca pergunta também a POST /patients/search.
       var elAv = document.getElementById('evAv'), elAvTxt = document.getElementById('evAvTxt');
       var elPList = document.getElementById('evPList');
       var selPatient = null;                                 // {id, name}; id null = evento antigo só com o nome
-      var patients = null, patientsAt = 0, plItems = [], plActive = -1, plFirst = 0;   // plFirst: a opção do Enter sem destaque
+      var patients = null, patientsAt = 0, patientsMore = false, plItems = [], plActive = -1, plFirst = 0;   // plFirst: a opção do Enter sem destaque
       function pnorm(v) { return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' '); }
       function initialsOf(name) {                          // Array.from: não quebra emoji/letras fora do BMP
         var w = (name || '').trim().split(/\s+/).filter(Boolean);
@@ -3075,8 +3076,19 @@
       function loadPatients(force) {
         if (!force && patients && Date.now() - patientsAt < 60e3) return Promise.resolve(patients);
         return fetch('/patients').then(function (r) { return r.ok ? r.json() : { patients: [] }; })
-          .then(function (j) { patients = j.patients || []; patientsAt = Date.now(); return patients; })
+          .then(function (j) { patients = j.patients || []; patientsMore = !!j.more; patientsAt = Date.now(); return patients; })
           .catch(function () { return patients || []; });
+      }
+      // lista cortada: o servidor procura o nome entre todos e o que vier entra na lista (homônimos e nome exato também)
+      function searchPatients(raw) {
+        if (!patientsMore || !pnorm(raw)) return Promise.resolve(patients || []);
+        return fetch('/patients/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: raw }) })
+          .then(function (r) { return r.ok ? r.json() : { patients: [] }; })
+          .then(function (j) {
+            var tem = {}; (patients || []).forEach(function (p) { tem[p.id] = 1; });
+            patients = (patients || []).concat((j.patients || []).filter(function (p) { return !tem[p.id]; }));
+            return patients;
+          }).catch(function () { return patients || []; });
       }
       function sameName(name) {                            // homônimos: todos com esse nome
         var k = pnorm(name);                               // a de exemplo nunca entra pelo nome (como no servidor): só escolhida na lista
@@ -3107,7 +3119,7 @@
       }
       function showList() {
         var raw = elPatient.value.trim(), q = pnorm(raw);
-        loadPatients().then(function (list) {
+        loadPatients().then(function () { return searchPatients(raw); }).then(function (list) {
           if (pop.hidden || document.activeElement !== elPatient || raw !== elPatient.value.trim()) return;
           elPList.innerHTML = ''; plItems = []; plActive = -1;
           var ord = exampleLast(list.filter(function (p) { return !q || pnorm(p.name).indexOf(q) >= 0; }).slice(0, q ? 6 : 5));
@@ -8545,7 +8557,7 @@
       var navC = $('navConsultas'), navP = $('navPacientes');
       if (!stage || !list) return;
       var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
-      var all = [], loaded = false, denied = false;
+      var all = [], more = false, loaded = false, denied = false;   // more: a lista veio cortada nos mais recentes
       function norm(v) { return (v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
       function initials(n) {
         var p = (n || '').split(/\s+/).filter(Boolean);
@@ -8597,6 +8609,18 @@
           g.items.forEach(function (p) { card.appendChild(row(p)); });
           list.appendChild(sec);
         });
+        if (more && !q) list.appendChild(el('div', 'pt-empty', 'Aqui estão os pacientes usados mais recentemente. Busque pelo nome para achar os outros.'));
+      }
+      // lista cortada: o servidor procura o nome entre todos e o que vier entra na lista
+      function remote() {
+        var v = search.value.trim();
+        if (!more || !norm(v).trim()) return;
+        api('POST', '/patients/search', { q: v }).then(function (res) {
+          if (!res.ok || search.value.trim() !== v) return;
+          var tem = {}; all.forEach(function (p) { tem[p.id] = 1; });
+          all = all.concat(((res.j && res.j.patients) || []).filter(function (p) { return !tem[p.id]; }));
+          render();
+        }).catch(function () {});
       }
       function row(p) {
         var r = el('div', 'pt-row link'); r.tabIndex = 0;
@@ -8622,7 +8646,7 @@
             list.innerHTML = '<div class="pt-empty"><a href="/opendoctor-login.html">Entre na sua conta</a> para ver seus pacientes.</div>';
             return;
           }
-          all = (res.j && res.j.patients) || []; render();
+          all = (res.j && res.j.patients) || []; more = !!(res.j && res.j.more); render(); remote();
         }).catch(function () { loaded = true; list.innerHTML = '<div class="pt-empty">Não foi possível carregar os pacientes.</div>'; });
       }
       function openPr(p) {
@@ -8684,7 +8708,7 @@
         if (e.key === 'Enter') { e.preventDefault(); createNew(false); }
         else if (e.key === 'Escape') { e.stopPropagation(); toggleNew(false); }
       });
-      search.addEventListener('input', render);
+      search.addEventListener('input', function () { render(); remote(); });
 
       // navegação: Pacientes ↔ Consultas (agenda), com o botão voltar do navegador
       function setNav(which) {
