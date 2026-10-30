@@ -1651,6 +1651,12 @@ def _receita_do_medico(u, rid):
     return db.get_receita(u["id"], rid.lower()) if _UUID.match(rid.lower()) else None
 
 
+def _mesmo_paciente(r, b):
+    """O patient_id mandado é o da receita? A página manda o paciente da hora em que mexeu: trocou de paciente no meio,
+    a receita de um não recebe o que era do outro."""
+    return str(b.get("patient_id")) == str(r["patient_id"])
+
+
 def _faltam_medico(m):
     """O que falta para identificar o médico na receita (nome, CRM e UF)."""
     return [rot for k, rot in (("name", "nome"), ("crm", "CRM"), ("crm_uf", "UF do CRM")) if not (m or {}).get(k)]
@@ -1683,6 +1689,9 @@ async def prontuario_receita_nova(request: Request):
         n = await run_in_threadpool(db.get_note, u["id"], int(nid)) if str(nid).isdigit() else None
         if not n or n.get("patient_id") != p["id"]:
             return JSONResponse({"error": "evolução inválida"}, status_code=400)
+    erro = prescricao.erro_itens(b.get("itens"))
+    if erro:
+        return JSONResponse({"error": erro}, status_code=400)
     eid = str(b.get("event_id") or "")[:200] or None
     r = await run_in_threadpool(db.create_receita, u["id"], p["id"], prescricao.itens_limpos(b.get("itens")), "simples",
                                 int(nid) if nid is not None else None, eid, prescricao.orientacoes_limpas(b.get("orientacoes")))
@@ -1691,7 +1700,7 @@ async def prontuario_receita_nova(request: Request):
 
 @app.patch("/prontuario/receitas/{rid}")
 async def prontuario_receita_muda(rid: str, request: Request):
-    """Itens e orientações do rascunho. Emitida não muda (409)."""
+    """Itens e orientações do rascunho. Emitida não muda (409). Exige o patient_id da receita (o paciente na tela)."""
     u, err = _auth_or_401(request)
     if err:
         return err
@@ -1699,6 +1708,11 @@ async def prontuario_receita_muda(rid: str, request: Request):
     if not r:
         return JSONResponse({"error": "receita não encontrada"}, status_code=404)
     b = await _json(request)
+    if not _mesmo_paciente(r, b):
+        return JSONResponse({"error": "receita de outro paciente"}, status_code=409)
+    erro = prescricao.erro_itens(b.get("itens"))
+    if erro:
+        return JSONResponse({"error": erro}, status_code=400)
     ori = prescricao.orientacoes_limpas(b["orientacoes"]) if "orientacoes" in b else None
     novo = await run_in_threadpool(db.update_receita, u["id"], r["id"], prescricao.itens_limpos(b.get("itens")), ori)
     if not novo:
@@ -1744,8 +1758,9 @@ async def prontuario_receitas_conferir(request: Request):
 
 @app.post("/prontuario/receitas/{rid}/emitir")
 async def prontuario_receita_emite(rid: str, request: Request):
-    """Emite o rascunho (com os itens mandados, conferidos de novo aqui). Exige nome, CRM e UF do médico. O que pede
-    Notificação de Receita (talão) não sai pelo app. Controle especial e antimicrobiano viram receitas próprias."""
+    """Emite o rascunho (com os itens mandados, conferidos de novo aqui). Exige o patient_id da receita, e nome, CRM e
+    UF do médico. O que pede Notificação de Receita (talão) não sai pelo app. Controle especial e antimicrobiano viram
+    receitas próprias."""
     u, err = _auth_or_401(request)
     if err:
         return err
@@ -1755,6 +1770,11 @@ async def prontuario_receita_emite(rid: str, request: Request):
     if r["status"] != "rascunho":
         return JSONResponse({"error": "receita já emitida"}, status_code=409)
     b = await _json(request)
+    if not _mesmo_paciente(r, b):
+        return JSONResponse({"error": "receita de outro paciente"}, status_code=409)
+    erro = prescricao.erro_itens(b.get("itens"))
+    if erro:
+        return JSONResponse({"error": erro}, status_code=400)
     itens = prescricao.itens_limpos(b["itens"]) if isinstance(b.get("itens"), list) else r["itens"]
     if not itens:
         return JSONResponse({"error": "receita sem itens"}, status_code=400)

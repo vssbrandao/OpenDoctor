@@ -47,6 +47,9 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
 - `GET /prontuario/receitas?patient_id=` e `POST /prontuario/receitas` (cria o rascunho).
 - `PATCH` e `DELETE /prontuario/receitas/{id}`: só no rascunho. POST, PATCH e emitir aceitam `orientacoes` (texto livre,
   limpo, até 1000 caracteres; sem o campo, ficam como estão).
+- PATCH e emitir exigem o `patient_id` da receita (409 se for outro): a página manda o paciente da hora em que mexeu.
+- Nada do que sai no papel é cortado (`prescricao.erro_itens`): mais de 20 remédios, posologia acima de 500 caracteres
+  ou nome, dose, forma e quantidade acima do limite dão 400 com o motivo, que a tela mostra.
 - `POST /prontuario/receitas/conferir`: avisos de cada item; nada é gravado.
 - `POST /prontuario/receitas/{id}/emitir`:
   - confere de novo;
