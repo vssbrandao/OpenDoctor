@@ -238,21 +238,36 @@ VIAS = ("oral", "sublingual", "tópica", "inalatória", "nasal", "oftálmica", "
         "intramuscular", "intravenosa", "transdérmica")
 ORIGENS = ("ia", "uso", "manual", "anterior", "gravacao")
 MAX_ITENS = 20
+# o que sai no papel: o que o médico manda além disso é recusado (erro_itens), nunca cortado
+LIMITE = {"nome": 120, "dose": 60, "forma": 80, "posologia": 500, "quantidade": 60}
+_CAMPO = {"nome": "o nome", "dose": "a dose", "forma": "a forma", "posologia": "a posologia", "quantidade": "a quantidade"}
 
 
 def item_limpo(it):
     """Um item da receita só com os campos conhecidos e tamanhos limitados. None sem nome."""
-    if not isinstance(it, dict) or not _txt(it.get("nome"), 120):
+    if not isinstance(it, dict) or not _txt(it.get("nome"), LIMITE["nome"]):
         return None
-    return {"nome": _txt(it.get("nome"), 120), "dose": _txt(it.get("dose"), 60), "forma": _txt(it.get("forma"), 80),
-            "posologia": _txt(it.get("posologia"), 160),
-            "quantidade": _txt(it.get("quantidade"), 60), "via": it.get("via") if it.get("via") in VIAS else "",
+    return {**{k: _txt(it.get(k), n) for k, n in LIMITE.items()}, "via": it.get("via") if it.get("via") in VIAS else "",
             "continuo": bool(it.get("continuo")), "origem": it.get("origem") if it.get("origem") in ORIGENS else "manual",
             "fonte": _txt(it.get("fonte"), 240), "ia": _txt(it.get("ia"), 60)}
 
 
 def itens_limpos(itens):
     return [x for x in (item_limpo(i) for i in (itens if isinstance(itens, list) else [])[:MAX_ITENS]) if x]
+
+
+def erro_itens(itens):
+    """Por que os itens do médico não cabem na receita, ou "". O servidor não corta o que sai no papel (a folha
+    impressa é a resposta do servidor): recusa e diz o quê, para a tela mostrar ("Não foi possível emitir: …")."""
+    its = [i for i in (itens if isinstance(itens, list) else []) if item_limpo(i)]
+    if len(its) > MAX_ITENS:
+        return f"a receita passou do limite de {MAX_ITENS} remédios (emita os demais em outra receita)"
+    for it in its:
+        for k, n in LIMITE.items():
+            if len(_txt(it.get(k), n + 1)) > n:
+                quem = " ".join(x for x in (_txt(it.get("nome"), 60), _txt(it.get("dose"), 60)) if x)
+                return f"{_CAMPO[k]} de {quem} passou do limite de {n} caracteres"
+    return ""
 
 
 def orientacoes_limpas(t):

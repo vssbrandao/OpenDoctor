@@ -7379,6 +7379,9 @@
       // antimicrobiano em receitas próprias, impressas em 2 vias, com os dados do médico (Configurações). As sugestões vêm de
       // /prontuario/prescricao/sugerir (contas da gravação): até 2 remédios NOVOS para o paciente; sem a IA, o cartão não aparece.
       var rxs = [], rxKey = null, rxDraft = null, rxItems = [], rxOrient = '', medico = null;   // rxOrient: orientações do rascunho
+      // rxOk: as receitas de rxKey chegaram (antes disso, só leitura); rxAberta.d: o rascunho da consulta aberta (um objeto
+      // novo a cada paciente/consulta: o que foi pedido antes da troca continua sendo do anterior)
+      var rxOk = false, rxFalhou = false, rxVez = 0, rxAberta = { d: null };
       var sgKey = null, sg = null;                        // sg: {st: carregando|pronto|falhou, passo, itens, fontes, obs, ia, assin}
       var ACAO = { manter: 'Manter', ajustar: 'Ajustar', iniciar: 'Iniciar', suspender: 'Suspender' };
       var TIPO = { simples: 'Receita simples', especial: 'Controle especial', antimicrobiano: 'Antimicrobiano' };
@@ -7391,7 +7394,7 @@
                   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="#046E00"/></svg>',
                   x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" fill="#56595E"/></svg>' };
       function rnNum(x) { return String(x).replace('.', ','); }
-      function rxCan() { return !!patient && ready; }      // a receita não depende de a evolução estar aberta (dá para emitir depois)
+      function rxCan() { return !!patient && ready && rxOk; }   // a receita não depende de a evolução estar aberta (dá para emitir depois); sem as receitas carregadas, só leitura
       function rxSame(a, b) { var k = function (n) { return norm(n).replace(/\s+/g, ' ').trim(); }; return k(a.nome) === k(b.nome); }
       function rxHas(it) { return rxItems.some(function (x) { return rxSame(x, it); }); }
       function rxCheios() { return rxItems.filter(function (x) { return (x.nome || '').trim(); }); }
@@ -7417,42 +7420,70 @@
         if (ctx && ctx.event_id) return r.event_id === ctx.event_id;
         return (cur && r.note_id === cur.id) || (!r.note_id && !r.event_id);   // avulsa: o rascunho dela (ou o sem consulta)
       }
+      // trocou de paciente ou de consulta: nada do anterior fica à vista nem editável até as receitas deste chegarem
+      function rxZera() {
+        rxs = []; rxDraft = null; rxItems = []; rxOrient = ''; rxKey = null; rxOk = rxFalhou = rxRecSalvar = false; rxVez++; rxAberta = { d: null };
+        $('rxSync').hidden = true; rhAll = false; $('rhQ').value = '';
+        document.querySelectorAll('.pr-desfaz').forEach(function (o) { o.remove(); });   // o Desfazer era da receita anterior
+        rx.limpa(); rx.estado('rascunho'); rx.recado(''); rx.desenha(); renderRh();
+      }
       function rxLoad(force) {
         if (!patient) return;
         var key = patient.id + '|' + ((ctx && ctx.event_id) || 'avulsa'), pid = patient.id;
-        if (!force && key === rxKey) return;
-        if (key !== rxKey) { $('rxSync').hidden = true; rhAll = false; $('rhQ').value = ''; }
-        rxKey = key;
+        if (key !== rxKey) rxZera();
+        else if (!force && !rxFalhou) return;              // já veio ou está vindo (a que falhou tenta de novo)
+        rxKey = key; rxFalhou = false;
+        var vez = ++rxVez;
         api('GET', '/prontuario/receitas?patient_id=' + pid).then(function (res) {
-          if (!patient || patient.id !== pid || rxKey !== key) return;
-          rxs = res.ok ? res.j.receitas || [] : [];
-          rxDraft = rxs.filter(rxDaConsulta)[0] || null;
+          if (vez !== rxVez) return;
+          if (!res.ok) throw new Error();
+          rxs = res.j.receitas || []; rxOk = true;
+          rxDraft = rxAberta.d = rxs.filter(rxDaConsulta)[0] || null;
           rxItems = rxDraft ? rxDraft.itens.map(function (x) { return Object.assign({}, x); }) : [];
           rxOrient = rxDraft ? rxDraft.orientacoes || '' : '';
           rx.limpa(); rx.estado(rxDraft ? 'rascunho salvo' : 'rascunho'); rx.recado('');
           rx.desenha(); renderRh(); drawSg(); rxConferir();
+        }).catch(function () {                             // sem as receitas não se sabe o rascunho: só leitura, e tenta de novo
+          if (vez !== rxVez) return;
+          rxOk = false; rxFalhou = true;
+          rx.recado('Não foi possível carregar as receitas: tentando de novo.'); rx.desenha(); renderRh();
+          setTimeout(function () { if (vez === rxVez) rxLoad(); }, 10000);
         });
         if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) { medico = res.j.medico; rx.desenha(); } });   // o cabeçalho da folha
       }
       // ----- salvar o rascunho (uma gravação por vez: a primeira cria, vazio sai) -----
-      var rxFila = Promise.resolve(), rxSaveT = null, rxDeNovoT = null;
+      var rxFila = Promise.resolve(), rxSaveT = null, rxDeNovoT = null, rxRecSalvar = false;   // rxRecSalvar: o recado é do salvar
       function rxSalvar() { clearTimeout(rxSaveT); rxSaveT = setTimeout(rxPersist, 600); }
       function rxPersist() {
         clearTimeout(rxSaveT);
+        if (!patient || !rxOk) return rxFila;             // sem as receitas deste paciente carregadas, não grava nada
+        // o que gravar e de quem é: na hora da chamada. Trocou de paciente antes de sair, vai para a receita do anterior
+        var a = rxAberta, s = { pid: patient.id, nid: cur ? cur.id : null, eid: (ctx && ctx.event_id) || null, itens: rxCheios(), ori: rxOrient };
         rxFila = rxFila.then(function () {
-          if (!patient) return;
-          var itens = rxCheios(), ori = rxOrient, d = rxDraft, req, vazio = !itens.length && !ori.trim();
+          var aqui = a === rxAberta, itens = s.itens, ori = s.ori, d = a.d, req, vazio = !itens.length && !ori.trim();
           if (!d && vazio) return;
-          rx.estado('salvando…');
-          if (!d) req = api('POST', '/prontuario/receitas', { patient_id: patient.id, note_id: cur ? cur.id : null,
-                                                             event_id: (ctx && ctx.event_id) || null, itens: itens, orientacoes: ori })
-            .then(function (res) { if (!res.ok) throw new Error(); rxDraft = res.j.receita; rxs.unshift(rxDraft); });
+          if (aqui) rx.estado('salvando…');
+          if (!d) req = api('POST', '/prontuario/receitas', { patient_id: s.pid, note_id: s.nid, event_id: s.eid, itens: itens, orientacoes: ori })
+            .then(function (res) { if (!res.ok) throw res; a.d = res.j.receita; if (a === rxAberta) { rxDraft = a.d; rxs.unshift(rxDraft); } });
           else if (vazio) req = api('DELETE', '/prontuario/receitas/' + d.id)
-            .then(function (res) { if (!res.ok) throw new Error(); rxs = rxs.filter(function (r) { return r !== d; }); if (rxDraft === d) rxDraft = null; });
-          else req = api('PATCH', '/prontuario/receitas/' + d.id, { itens: itens, orientacoes: ori })
-            .then(function (res) { if (!res.ok) throw new Error(); d.itens = res.j.receita.itens; d.orientacoes = res.j.receita.orientacoes; });
-          return req.then(function () { clearTimeout(rxDeNovoT); rx.estado(rxDraft ? 'rascunho salvo' : 'rascunho'); },
-                          function () { rx.estado('não salvou, tentando de novo'); clearTimeout(rxDeNovoT); rxDeNovoT = setTimeout(rxPersist, 10000); });
+            .then(function (res) {
+              if (!res.ok) throw res; if (a.d === d) a.d = null;
+              if (a === rxAberta) { rxs = rxs.filter(function (r) { return r !== d; }); if (rxDraft === d) rxDraft = null; }
+            });
+          else req = api('PATCH', '/prontuario/receitas/' + d.id, { patient_id: s.pid, itens: itens, orientacoes: ori })
+            .then(function (res) { if (!res.ok) throw res; d.itens = res.j.receita.itens; d.orientacoes = res.j.receita.orientacoes; });
+          return req.then(function () {
+            if (a !== rxAberta) return;
+            clearTimeout(rxDeNovoT); rx.estado(rxDraft ? 'rascunho salvo' : 'rascunho');
+            if (rxRecSalvar) { rxRecSalvar = false; rx.recado(''); }
+          }, function (e) {
+            if (a !== rxAberta) return;
+            clearTimeout(rxDeNovoT);
+            if (e && e.status === 400 && e.j && e.j.error) {     // passou do limite (ex.: posologia longa): tentar de novo não adianta
+              rx.estado('não salvou'); rxRecSalvar = true; rx.recado(cap(e.j.error) + '.'); return;
+            }
+            rx.estado('não salvou, tentando de novo'); rxDeNovoT = setTimeout(rxPersist, 10000);
+          });
         });
         return rxFila;
       }
@@ -7646,13 +7677,16 @@
         function altura(t) { t.style.height = 'auto'; if (t.scrollHeight) t.style.height = t.scrollHeight + 'px'; }   // aba escondida: fica 1 linha
         function tira(x, n, focaAntes) {                   // × ou Backspace: sai com Desfazer
           if (!op.pode()) return;
-          var ts = trechos(), antes = ts[ts.indexOf(n.pos) - 1];
+          var ts = trechos(), antes = ts[ts.indexOf(n.pos) - 1], quem = (op.paciente() || {}).id;   // o Desfazer é deste paciente
           n.li.classList.add('saindo');
           setTimeout(function () {
             var its = op.itens(), at = its.indexOf(x); if (at < 0) return;
             its.splice(at, 1); op.mudou(); anuncia(nomeDose(x) + ' saiu da receita');
             if (focaAntes) { if (antes && document.body.contains(antes)) vaiPara(antes, true); else if (barra) barra.foca(); }
-            toastAct(nomeDose(x) + ' saiu da receita', 'Desfazer', function () { var a = op.itens(); a.splice(Math.min(at, a.length), 0, x); novo = x; op.mudou(); });
+            toastAct(nomeDose(x) + ' saiu da receita', 'Desfazer', function () {
+              var p = op.paciente(); if (!op.pode() || !p || p.id !== quem) return;   // trocou de paciente: não mexe na receita do outro
+              var a = op.itens(); a.splice(Math.min(at, a.length), 0, x); novo = x; op.mudou();
+            });
           }, calma ? 0 : 150);
         }
         function monta(x) {
@@ -8002,22 +8036,27 @@
 
       // ----- emitir: confere, separa por tipo, grava e imprime -----
       function rxEmitir(itens) {                           // depois da confirmação no componente (o talão e o que falta ele já barrou)
+        // o paciente, o rascunho e as orientações são os da hora do clique: trocou de paciente no meio, a receita sai
+        // com o nome deste, e a oferta de atualizar as medicações em uso não vai para o outro
+        var a = rxAberta, p = patient, ori = rxOrient;
+        function aqui() { return a === rxAberta; }
+        function diz(m, dados) { if (aqui()) rx.recado(m, dados); else toast(m); }
         rx.recado(''); rx.emitindo(true);
         rxPersist().then(function () {
-          if (!rxDraft) throw new Error('sem rascunho');
-          return api('POST', '/prontuario/receitas/' + rxDraft.id + '/emitir', { itens: itens, orientacoes: rxOrient });
+          if (!a.d) throw new Error('sem rascunho');
+          return api('POST', '/prontuario/receitas/' + a.d.id + '/emitir', { patient_id: p.id, itens: itens, orientacoes: ori });
         }).then(function (res) {
-          if (res.status === 409 && res.j.faltam) { rx.recado('Para emitir, complete seus dados de médico (' + res.j.faltam.join(', ') + ').', true); return; }
-          if (res.status === 409 && res.j.talao) { rx.recado('Tire da receita o que exige Notificação de Receita (talão): ' + res.j.talao.join('; ') + '.'); return; }
-          if (!res.ok) { rx.recado('Não foi possível emitir: ' + ((res.j && res.j.error) || 'tente de novo') + '.'); return; }
+          if (res.status === 409 && res.j.faltam) { diz('Para emitir, complete seus dados de médico (' + res.j.faltam.join(', ') + ').', true); return; }
+          if (res.status === 409 && res.j.talao) { diz('Tire da receita o que exige Notificação de Receita (talão): ' + res.j.talao.join('; ') + '.'); return; }
+          if (!res.ok) { diz('Não foi possível emitir: ' + ((res.j && res.j.error) || 'tente de novo') + '.'); return; }
           var em = res.j.receitas || [];
           toast(em.length > 1 ? em.length + ' receitas emitidas' : 'Receita emitida');
-          rxImprimir(em, false); rxSyncOferta(em); rxLoad(true);
-        }).catch(function () { rx.recado('Não foi possível emitir agora: tente de novo.'); })
+          rxImprimir(em, false, p); if (aqui()) { rxSyncOferta(em); rxLoad(true); }
+        }).catch(function () { diz('Não foi possível emitir agora: tente de novo.'); })
           .then(function () { rx.emitindo(false); });
       }
       // a folha de cada receita (#rxPrint, fora do app): cabeçalho do médico, tipo, via, paciente, itens por via de uso, assinatura
-      function rxFolha(r, via, segunda) {
+      function rxFolha(r, via, segunda, p) {
         var f = el('div', 'rx-folha'), m = medico || {}, cab = el('div', 'rx-med');
         cab.appendChild(el('b', null, m.name || ''));
         cab.appendChild(el('span', null, [m.crm ? 'CRM ' + m.crm + (m.crm_uf ? '/' + m.crm_uf : '') : '', m.especialidade || ''].filter(Boolean).join(' · ')));
@@ -8025,7 +8064,7 @@
         f.appendChild(cab);
         f.appendChild(el('h1', null, r.tipo === 'especial' ? 'Receituário de controle especial' : r.tipo === 'antimicrobiano' ? 'Receita de antimicrobiano' : 'Receita'));
         if (via) f.appendChild(el('div', 'rx-via', via));
-        var ph = el('div', 'rx-ph'), pn = el('span', null, 'Paciente: '); pn.appendChild(el('b', null, patient.name)); ph.appendChild(pn);
+        var ph = el('div', 'rx-ph'), pn = el('span', null, 'Paciente: '); pn.appendChild(el('b', null, p.name)); ph.appendChild(pn);
         ph.appendChild(el('span', null, rxDia(r.emitida_em))); f.appendChild(ph);
         if (r.tipo === 'especial') f.appendChild(el('div', 'rx-line', 'Endereço do paciente: ________________________________________________'));
         var grupos = {}, ordem = [];
@@ -8059,15 +8098,16 @@
         if (segunda) f.appendChild(el('div', 'rx-2via', '2ª via, impressa em ' + rxDia(null)));
         return f;
       }
-      function rxImprimir(lista, segunda) {
-        if (!patient || !lista.length) return;
+      function rxImprimir(lista, segunda, p) {             // p: o paciente da receita (sem ele, o aberto)
+        p = p || patient;
+        if (!p || !lista.length) return;
         var box = $('rxPrint'), a5 = !!(medico && medico.receita_papel === 'A5'); box.innerHTML = '';
         box.classList.toggle('a5', a5);
         $('rxPapel').textContent = '@media print{@page{size:' + (a5 ? 'A5;margin:10mm' : 'A4;margin:16mm') + '}}';
         lista.forEach(function (r) {
-          (r.tipo === 'simples' ? [''] : ['1ª via · retida na farmácia', '2ª via · paciente']).forEach(function (v) { box.appendChild(rxFolha(r, v, segunda)); });
+          (r.tipo === 'simples' ? [''] : ['1ª via · retida na farmácia', '2ª via · paciente']).forEach(function (v) { box.appendChild(rxFolha(r, v, segunda, p)); });
         });
-        if (segunda) api('POST', '/prontuario/audit', { action: 'export', patient_id: patient.id }).catch(function () {});
+        if (segunda) api('POST', '/prontuario/audit', { action: 'export', patient_id: p.id }).catch(function () {});
         // só a folha vai para o papel enquanto body.rxp estiver ligado. O Safari não espera a impressão no window.print():
         // desligar logo depois imprimiria o prontuário inteiro. Desliga quando a impressão termina.
         if (!document.body.classList.contains('rxp')) { rxTitle = document.title; document.title = 'Receita'; document.body.classList.add('rxp'); }
@@ -8136,6 +8176,7 @@
         var conta = function (st) { return todas.filter(function (r) { return r.status === st; }).length; }, ne = conta('emitida'), nc = conta('cancelada'), nr = conta('rascunho');
         $('rhCount').textContent = [ne ? ne + (ne === 1 ? ' receita emitida' : ' receitas emitidas') : '', nc ? nc + (nc === 1 ? ' cancelada' : ' canceladas') : '',
                                     nr ? nr + (nr === 1 ? ' rascunho' : ' rascunhos') : ''].filter(Boolean).join(' · ') || 'Receitas deste paciente';
+        if (!rxOk) { L.appendChild(el('div', 'pr-empty', rxFalhou ? 'Não foi possível carregar as receitas.' : 'Carregando…')); return; }   // não diz "nenhuma" sem saber
         var acha = function (x) { return !q || norm(x.nome).indexOf(q) >= 0; };
         var list = todas.filter(function (r) { return r.itens.some(acha); });
         if (!list.length) { L.appendChild(el('div', 'pr-empty', todas.length ? 'Nenhuma receita com esse remédio.' : 'Nenhuma receita emitida para este paciente ainda. As emitidas aparecem aqui.')); return; }
@@ -8348,10 +8389,11 @@
       function open(c) {
         rrPauseLive();                                     // a gravação não continua na consulta seguinte
         csFecha();                                         // o card do destaque é desta consulta
-        if (ctx && c !== ctx && ready) save();             // salva o que estava aberto
+        if (ctx && c !== ctx && ready) { save(); rxPersist(); }   // salva o que estava aberto (a receita leva o paciente dela)
         clearTimeout(timer); clearTimeout(retryTimer); retry = 0;
         ctx = c || null; persistCtx();
         patient = null; notes = []; cur = null; saved = ''; ready = false; $('prFinalize').disabled = false;
+        rxZera();                                          // a receita do anterior não aparece enquanto esta carrega
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
         $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prProbTags').innerHTML = ''; $('prExport').hidden = true;
