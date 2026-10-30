@@ -1,11 +1,11 @@
 """Receitas e dados do médico em memória, com os MESMOS contratos de app/db.py (list/get/create/update/delete/emit/
-cancel_receita, add_example_receitas, get/update_medico). Uma cópia só, usada pelos testes das rotas
+cancel_receita, rx_link_orphans, add_example_receitas, get/update_medico). Uma cópia só, usada pelos testes das rotas
 (tests/test_receitas.py) e pelo preview local (scripts/preview_gravacao.py): mudou uma regra no db.py, muda aqui."""
 import datetime as dt
 import uuid
 
 NOMES = ("list_receitas", "get_receita", "create_receita", "update_receita", "delete_receita", "emit_receita",
-         "cancel_receita", "add_example_receitas", "get_medico", "update_medico")
+         "cancel_receita", "rx_link_orphans", "add_example_receitas", "get_medico", "update_medico")
 CAMPOS = ("name", "crm", "crm_uf", "especialidade", "consultorio_endereco", "consultorio_telefone", "receita_papel")
 
 
@@ -66,11 +66,13 @@ class FakeReceitas:
             return None
         return self.rx.pop(receita_id)["patient_id"]
 
-    def emit_receita(self, user_id, receita_id, grupos, orientacoes=None):
+    def emit_receita(self, user_id, receita_id, grupos, orientacoes=None, note_id=None):
         r = self.rx.get(receita_id)
         if not r or r["user_id"] != user_id or r["status"] != "rascunho":
             return None
         agora = self._agora()
+        if note_id is not None and r["note_id"] is None and r["event_id"] is None:   # (a rota já conferiu a evolução)
+            r["note_id"] = note_id
         r.update(tipo=grupos[0][0], itens=[dict(i) for i in grupos[0][1]], status="emitida", emitida_em=agora, updated_at=agora)
         if orientacoes is not None:
             r["orientacoes"] = orientacoes
@@ -78,6 +80,16 @@ class FakeReceitas:
         for tipo, itens in grupos[1:]:
             out.append(self._pub(self._nova(user_id, r["patient_id"], itens, tipo, r["note_id"], r["event_id"], "emitida", agora,
                                             r["orientacoes"])))
+        return out
+
+    def rx_link_orphans(self, user_id, patient_id, receita_ids, note_id):   # (a evolução vem do salvar: é deste paciente)
+        out = []
+        for i in list(receita_ids or ())[:20]:
+            r = self.rx.get(str(i))
+            if note_id is not None and r and r["user_id"] == user_id and r["patient_id"] == patient_id \
+                    and r["note_id"] is None and r["event_id"] is None:
+                r["note_id"] = note_id
+                out.append(r["id"])
         return out
 
     def cancel_receita(self, user_id, receita_id, motivo):

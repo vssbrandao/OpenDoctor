@@ -105,6 +105,13 @@ const usaRh = (nome) => ev(`(() => { [...document.querySelectorAll('#rhList .rh-
   .querySelector('button').click(); return 1; })()`);
 const daApi = () => ev(`fetch('/prontuario/receitas?patient_id=9001').then((r) => r.json()).then((j) => j.receitas.map((r) => [r.tipo, r.status, r.itens.map((i) => i.nome).join('+'), r.motivo_cancelamento || '', r.itens]))`);
 const linha = (nome) => `[...document.querySelectorAll('#rxBody .rx-row')].find((r) => r.querySelector('.rx-n').textContent.startsWith(${JSON.stringify(nome)}))`;
+// prontuário avulso: escreve a evolução (S) e espera o salvar automático (é quando ela passa a existir)
+async function evolucao(txt) {
+  await ev(`(() => { const t = document.querySelector('#prSoap textarea[data-f=s]'); t.value = ${JSON.stringify(txt)}; t.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+  await ate(`/^Salvo às/.test(document.getElementById('prStatus').textContent)`, 10000, 'evolução salva');
+}
+const notas = (st) => `fetch('/prontuario/receitas?patient_id=9001').then((r) => r.json()).then((j) => j.receitas.filter((r) => r.status === ${JSON.stringify(st)}).map((r) => r.note_id))`;
+const semConsulta = `[...document.querySelectorAll('#rhList .rh-hs')].some((t) => t.textContent.includes('Sem consulta'))`;
 
 const cenarios = [
   ['renovar o uso contínuo da última receita em um clique', async () => {
@@ -290,6 +297,45 @@ const cenarios = [
     await ev(`(() => { const r = [...document.querySelectorAll('.pr-trow')].find((x) => x.offsetParent !== null && /Retorno/.test(x.innerText)); r.click(); return 1; })()`);
     await ate(`[...document.querySelectorAll('.pr-item.hc .hc-sp')].some((x) => /Receita simples · emitida/.test(x.textContent))`, 6000, 'receita no card');
     return 'seção "Receita simples · emitida em …" no card';
+  }],
+  ['prontuário avulso: a receita emitida antes da evolução entra nela (card do Histórico e PDF)', async () => {
+    await abre(false); await item('losartana 50', '1 comprimido de 12/12 h, uso contínuo'); await salvo();
+    await emite(); await ate(`window.__folhas !== null`, 8000, 'folha');
+    certo((await ev(notas('emitida'))).join() === '', 'emitida sem consulta: a evolução ainda não existe');
+    await evolucao('Renovação das receitas de uso contínuo.');
+    await ate(`${notas('emitida')}.then((n) => n.length === 1 && n[0] > 0)`, 8000, 'a receita ligada à evolução salva');
+    await ate(`!${semConsulta} && [...document.querySelectorAll('#rhList .rh-hs')].some((t) => t.textContent.includes('Evolução avulsa'))`, 5000,
+      'o Histórico de receitas diz a evolução, não "Sem consulta"');
+    // outra vez no prontuário (pela lista de Pacientes): a evolução de antes, com a receita, no card e no PDF
+    await ev(`window.__openProntuario({ patient_id: 9001, patient: 'Maria Silva', from: 'pacientes' })`);
+    await ate(`[...document.querySelectorAll('#prVisits .pr-trow[aria-expanded]')].length === 1`, 8000, 'a evolução de antes no Histórico');
+    await ev(`document.querySelector('#prTabs [data-tab=consultas]').click()`); await sleep(300);
+    await ev(`document.querySelector('#prVisits .pr-trow[aria-expanded]').click()`);
+    await ate(`[...document.querySelectorAll('.pr-item.hc .hc-sp')].some((x) => /Receita simples · emitida/.test(x.textContent))`, 6000, 'receita no card');
+    await ev(`(() => { [...document.querySelectorAll('.pr-item.hc')].forEach((c) => c.remove()); document.getElementById('prExport').click(); return 1; })()`);
+    await ate(`[...document.querySelectorAll('#prVisits .pr-item.hc .hc-sp')].some((x) => /Receita simples · emitida/.test(x.textContent))`, 6000, 'receita no PDF');
+    return 'ligada ao salvar a evolução; no card e no PDF';
+  }],
+  ['prontuário avulso: o rascunho feito antes da evolução passa a ser dela e sai nela', async () => {
+    await abre(false); await item('omeprazol 20', '1 cápsula em jejum por 30 dias'); await salvo();
+    certo((await ev(notas('rascunho'))).join() === '', 'rascunho sem consulta');
+    await evolucao('Dor epigástrica há 1 semana.');
+    await ate(`${notas('rascunho')}.then((n) => n.length === 1 && n[0] > 0)`, 8000, 'o rascunho ligado à evolução salva');
+    const [nid] = await ev(notas('rascunho'));
+    await emite(); await ate(`window.__folhas !== null`, 8000, 'folha');
+    certo((await ev(notas('emitida'))).join() === String(nid), 'emitida na evolução');
+    return 'rascunho e receita emitida na evolução ' + nid;
+  }],
+  ['prontuário avulso: o rascunho que já estava sem consulta sai na evolução escrita aqui', async () => {
+    await srv('/prontuario/receitas', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patient_id: 9001,
+      itens: [{ nome: 'Losartana potássica', dose: '50 mg', posologia: '1 comprimido de 12/12 h, uso contínuo', quantidade: '60 comprimidos' }] }) });
+    await abre(false); await ate(n('#rxBody .rx-row') + ' === 1', 8000, 'o rascunho sem consulta aberto aqui');
+    await evolucao('Renovação.');
+    certo((await ev(notas('rascunho'))).join() === '', 'salvar a evolução não pega o rascunho que não é desta consulta');
+    await emite(); await ate(`window.__folhas !== null`, 8000, 'folha');
+    await ate(`${notas('emitida')}.then((n) => n.length === 1 && n[0] > 0)`, 5000, 'emitida na evolução escrita aqui');
+    certo(!(await ev(semConsulta)), 'o Histórico de receitas não diz "Sem consulta"');
+    return 'emitido na evolução aberta';
   }],
   ['depois de emitir, oferece atualizar as medicações em uso', async () => {
     await abre(); await item('metformina 1000', '1 comprimido de 12/12 h, uso contínuo'); await salvo();

@@ -977,17 +977,20 @@ def delete_receita(user_id, receita_id):
     return r[0] if r else None
 
 
-def emit_receita(user_id, receita_id, grupos, orientacoes=None):
+def emit_receita(user_id, receita_id, grupos, orientacoes=None, note_id=None):
     """Emite o rascunho já conferido. grupos = [(tipo, itens)]: o primeiro fica nesta receita; os outros (controle
     especial, antimicrobiano) viram receitas próprias da mesma consulta, emitidas juntas, com as mesmas orientações.
-    Tudo ou nada. Devolve a lista de receitas emitidas ou None (não é rascunho deste médico)."""
+    note_id: a evolução avulsa escrita depois do rascunho; só o rascunho sem consulta passa a ser dela (e só evolução
+    deste médico e paciente). Tudo ou nada. Devolve a lista de receitas emitidas ou None (não é rascunho deste médico)."""
     from psycopg.types.json import Jsonb
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(f"""update receitas set tipo = %s, itens = %s, orientacoes = coalesce(%s, orientacoes), status = 'emitida',
+                            note_id = coalesce(note_id, (select n.id from clinical_notes n where n.id = %s and receitas.event_id is null
+                                                         and n.user_id = receitas.user_id and n.patient_id = receitas.patient_id)),
                             emitida_em = now(), updated_at = now()
                             where user_id = %s and id = %s and status = 'rascunho' returning {_RX_COLS}""",
-                        (grupos[0][0], Jsonb(grupos[0][1]), orientacoes, user_id, receita_id))
+                        (grupos[0][0], Jsonb(grupos[0][1]), orientacoes, note_id, user_id, receita_id))
             r = cur.fetchone()
             if not r:
                 return None
@@ -999,6 +1002,22 @@ def emit_receita(user_id, receita_id, grupos, orientacoes=None):
                 out.append(_receita(cur.fetchone()))
         conn.commit()
     return out
+
+
+def rx_link_orphans(user_id, patient_id, receita_ids, note_id):
+    """A evolução avulsa acabou de ser salva: a receita desta consulta feita antes dela (rascunho ou já emitida), ainda
+    sem consulta, passa a ser dela (card do Histórico e PDF). Só evolução deste médico e paciente. Devolve os ids ligados."""
+    ids = [str(x) for x in receita_ids or ()][:20]
+    if note_id is None or not ids:
+        return []
+    with connection() as conn:
+        rows = conn.execute("""update receitas x set note_id = %s
+                               where x.user_id = %s and x.patient_id = %s and x.id::text = any(%s::text[])
+                                 and x.note_id is null and x.event_id is null
+                                 and exists (select 1 from clinical_notes n where n.id = %s and n.user_id = %s and n.patient_id = %s)
+                               returning x.id""", (note_id, user_id, patient_id, ids, note_id, user_id, patient_id)).fetchall()
+        conn.commit()
+    return [str(r[0]) for r in rows]
 
 
 def cancel_receita(user_id, receita_id, motivo):
