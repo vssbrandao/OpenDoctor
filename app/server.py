@@ -695,13 +695,15 @@ async def google_start(request: Request):
 # paciente de exemplo) roda no threadpool: o servidor tem um processo só e um login não trava os outros médicos.
 # No threadpool os pedidos correm juntos, e a trava de 5 senhas erradas, os 30 s entre códigos, as tentativas do
 # código e o tíquete de uso único só valem com um pedido por conta de cada vez: _na_vez (por e-mail ou conta).
-_CONTA_LOCKS = [threading.RLock() for _ in range(64)]
+_CONTA_LOCKS = [threading.RLock() for _ in range(1024)]
+_CONTA_SAL = secrets.token_bytes(16)       # de cada processo: ninguém escolhe um e-mail que caia na trava de outra conta
 _CONTA_ESPERA_S = 1.0          # quem espera mais que isso desiste: uma rajada numa conta não faz fila no threadpool
 
 
 def _conta_lock(key):
     """A trava desta conta: pedidos da mesma conta esperam um o outro; os de outras contas, quase nunca."""
-    return _CONTA_LOCKS[int(hashlib.sha256(str(key).encode()).hexdigest()[:8], 16) % len(_CONTA_LOCKS)]
+    h = hashlib.blake2b(str(key).encode(), key=_CONTA_SAL, digest_size=8).digest()
+    return _CONTA_LOCKS[int.from_bytes(h, "big") % len(_CONTA_LOCKS)]
 
 
 @contextlib.contextmanager
@@ -1032,13 +1034,12 @@ def _password_reset(request, b):
         usado = lambda c: not c or int(c.get("sv") or 0) != int(t.get("sv") or 0)   # noqa: E731
         if usado(db.get_user(t["uid"])):
             return _err("sessao_expirada")                   # tíquete já usado (a senha já mudou): nem calcula o hash
-        ph = auth.hash_password(pw)
-        with _na_vez(f"uid:{t['uid']}") as vez:             # dois pedidos com o mesmo tíquete: só um troca a senha
+        with _na_vez(f"uid:{t['uid']}") as vez:             # pedidos juntos com o mesmo tíquete: um só calcula e troca
             if not vez:
                 return _err("limite_ip", 429)
             if usado(db.get_user(t["uid"])):
                 return _err("sessao_expirada")
-            user = db.set_password(t["uid"], ph)
+            user = db.set_password(t["uid"], auth.hash_password(pw))
     except Exception as e:
         print("[login] redefinição falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
@@ -1947,42 +1948,64 @@ async def prontuario_receita_cancela(rid: str, request: Request):
 
 def _meds_gerados(recs):
     """Os nomes dos remédios que as gerações anteriores destas gravações já levaram à receita: a soma de todas
-    (recordings.scribe.receita_meds), não só a última, e a saída guardada de antes desse campo (o suspenso não vai,
-    como em prescricao.da_gravacao)."""
+    (recordings.scribe.receita_meds), não só a última; na gravação gerada antes desse campo, a saída guardada (o
+    suspenso não vai, como em prescricao.da_gravacao)."""
     out = []
     for r in recs:
         sc = r.get("scribe") or {}
-        out += [str(x) for x in sc.get("receita_meds") or [] if isinstance(x, str) and x]
-        res = ((sc.get("saida") or {}).get("result")) or {}
+        if "receita_meds" in sc:                  # a soma do que a receita de fato tratou
+            out += [str(x) for x in sc["receita_meds"] or [] if isinstance(x, str) and x]
+            continue
+        res = ((sc.get("saida") or {}).get("result")) or {}       # gerada antes do campo: a saída da última geração
         out += [str(m["nome"]) for m in res.get("meds") or [] if isinstance(m, dict) and m.get("nome") and m.get("acao") != "suspenso"]
     return out
 
 
-def _meds_levados(recs, meds):
-    """O que fica lembrado depois desta geração: os das anteriores mais os que ela leva agora, cada remédio uma vez só
-    (a mesma lista vai para todas as gravações da consulta: sem tirar os repetidos, ela dobraria a cada geração)."""
-    try:
-        novos = [x["nome"] for x in prescricao.da_gravacao(meds)]
-    except Exception:
-        novos = []
+LEMBRADOS_MAX = 60             # remédios lembrados por consulta (recordings.scribe.receita_meds)
+
+
+def _lembrados(nomes):
+    """Cada remédio uma vez só (prescricao.mesma_formula), até LEMBRADOS_MAX: a mesma lista vai para todas as gravações
+    da consulta e, com repetidos, dobraria a cada geração."""
     out = []
-    for n in _meds_gerados(recs) + novos:
-        if not any(prescricao.mesmo_remedio(n, y) for y in out):
+    for n in nomes:
+        if not any(prescricao.mesma_formula(n, y) for y in out):
             out.append(n)
-    return out
+    return out[:LEMBRADOS_MAX]
+
+
+def _quando(iso):
+    try:
+        return datetime.datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _da_consulta(r, eid, nid, recs):
+    """A receita é desta consulta? Da agenda: o evento; com evolução: ela; avulsa sem evolução: a sem consulta feita
+    depois que a gravação começou."""
+    if eid:
+        return r["event_id"] == eid
+    if nid:
+        return r["note_id"] == nid
+    ini = min(filter(None, (_quando(x.get("consent_at")) for x in recs)), default=None)
+    feita = _quando(r.get("created_at"))
+    return not r["note_id"] and not r["event_id"] and bool(ini and feita and feita >= ini)
 
 
 def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
     """Os remédios que a gravação extraiu entram no rascunho da receita desta consulta (o mesmo que a aba Prescrições
     abre), marcados "Da gravação" para o médico revisar; o que já está lá não repete. Gerar de novo não desfaz o que o
-    médico fez: o remédio que uma geração anterior destas gravações (recs) já levou não volta, e consulta com receita já
-    emitida não ganha rascunho novo. Devolve quantos entraram. Nunca derruba a geração da evolução: falhou, devolve 0
-    (o log só leva o tipo do erro)."""
+    médico fez: o remédio que alguma geração anterior destas gravações (recs) já levou não volta, e consulta com receita
+    já emitida não ganha rascunho novo. Devolve (quantos entraram, o que fica lembrado: os de antes mais os que a receita
+    tratou agora — entraram, já estavam ou foram barrados pela emitida). Nunca derruba a geração da evolução: falhou,
+    devolve 0 e só os de antes, e gerar de novo tenta outra vez (o log só leva o tipo do erro)."""
+    foram = _lembrados(_meds_gerados(recs))
     try:
-        foram = _meds_gerados(recs)
-        novos = [x for x in prescricao.da_gravacao(meds) if not any(prescricao.mesmo_remedio(x["nome"], y) for y in foram)]
+        novos = [x for x in prescricao.da_gravacao(meds) if not any(prescricao.mesma_formula(x["nome"], y) for y in foram)]
         if not novos:
-            return 0
+            return 0, foram
+        levou = _lembrados(foram + [x["nome"] for x in novos])
         def desta(r):
             if r["status"] != "rascunho":
                 return False
@@ -1991,9 +2014,8 @@ def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
             return (nid and r["note_id"] == nid) or (not r["note_id"] and not r["event_id"])
         rs = db.list_receitas(u["id"], p["id"])
         d = next((r for r in rs if desta(r)), None)
-        if not d and any(r["status"] != "rascunho" and (r["event_id"] == eid if eid else bool(nid) and r["note_id"] == nid)
-                         for r in rs):
-            return 0
+        if not d and any(r["status"] != "rascunho" and _da_consulta(r, eid, nid, recs) for r in rs):
+            return 0, levou
         ja = d["itens"] if d else []
         add = [x for x in novos if not any(prescricao.mesmo_remedio(x["nome"], y["nome"]) for y in ja)]
         if add:
@@ -2001,10 +2023,10 @@ def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
                 db.update_receita(u["id"], d["id"], ja + add)
             else:
                 db.create_receita(u["id"], p["id"], add, "simples", nid, eid)
-        return len(add)
+        return len(add), levou
     except Exception as e:
         print("[gravacao] receita da gravação falhou:", type(e).__name__, flush=True)
-        return 0
+        return 0, foram
 
 
 @app.get("/prontuario/remedios")
@@ -2425,12 +2447,13 @@ async def prontuario_scribe(request: Request):
         result = dict(res, fields=fields, fields_src=fsrc)
 
         def save():
-            # a receita só muda com a geração válida e já guardada, com o que ela levou somado ao das anteriores: um
-            # remédio que o médico tirou não volta, nem numa geração que o cita de novo depois de outra que não citou
+            # a receita só muda com a evolução válida (acima); a gravação guarda o que ela tratou somado ao das anteriores:
+            # um remédio que o médico tirou não volta, nem numa geração que o cita de novo depois de outra que não citou
+            n, levou = _receita_da_gravacao(u, p, eid, nid, res.get("meds"), recs)     # remédios → rascunho da receita
             db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table},
-                                                                       receita_meds=_meds_levados(recs, res.get("meds"))), nid)
+                                                                       receita_meds=levou), nid)
             db.log_access(u["id"], "scribe", p["id"], nid)
-            return _receita_da_gravacao(u, p, eid, nid, res.get("meds"), recs)     # remédios → rascunho da receita
+            return n
         n_rx = await run_in_threadpool(save)
         yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta, "receita": n_rx})
     return StreamingResponse(run(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})

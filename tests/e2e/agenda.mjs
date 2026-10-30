@@ -399,8 +399,24 @@ const cenarios = [
     await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
     certo(await val('#evPatient') === 'Zé Carlos' && criados().pop() === 'Zé Carlos', 'nome inteiro: ' + JSON.stringify(criados()));
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);      // a busca que chega depois da escolha não reabre a lista
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await poe('Joana Prado');
+    await ate(`[...document.querySelectorAll('#evPList .evpop-po.on')].some((b) => b.textContent.includes('Joana Prado'))`, 3000, 'Joana na lista');
+    await enter();
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'Joana escolhida');
+    await sleep(LENTA + 300);
+    certo(await ev(`document.getElementById('evPList').hidden`), 'a lista reabriu com a resposta atrasada');
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     MAIS = false; LENTA = 0;
-    return 'Otto e Zé Carlos criados com o nome digitado; o Otávio da lista anterior não foi escolhido';
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);      // campo vazio: o Enter não escolhe o mais recente
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await poe('');
+    await ate(`[...document.querySelectorAll('#evPList .evpop-pmsg')].some((m) => m.textContent === 'Pacientes recentes')`, 3000, 'recentes');
+    await enter(); await sleep(300);
+    certo(await val('#evPatient') === '' && await ev(`document.getElementById('evPClear').hidden`), 'Enter no campo vazio escolheu: ' + await val('#evPatient'));
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
+    return 'Otto e Zé Carlos criados com o nome digitado; o Otávio da lista anterior não foi escolhido; a resposta atrasada não reabriu a lista; Enter vazio não escolheu';
   }],
 ];
 

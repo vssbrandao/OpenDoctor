@@ -3054,6 +3054,7 @@
       var selPatient = null;                                 // {id, name}; id null = evento antigo só com o nome
       var patients = null, patientsAt = 0, patientsMore = false, plItems = [], plActive = -1, plFirst = 0;   // plFirst: a opção do Enter sem destaque
       var plFor = null, plKeys = [], plMoved = false;        // plFor: o texto para o qual a lista foi desenhada; plKeys: o que cada opção escolhe; plMoved: o médico mexeu nas setas
+      var plTok = 0;                                         // muda a cada lista pedida, escolha e Escape: resposta atrasada não redesenha
       function pnorm(v) { return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' '); }
       function initialsOf(name) {                          // Array.from: não quebra emoji/letras fora do BMP
         var w = (name || '').trim().split(/\s+/).filter(Boolean);
@@ -3105,7 +3106,7 @@
       function setPatient(p) {
         selPatient = p; elPatient.value = p ? p.name : ''; avatar(); hideList();
       }
-      function hideList() { elPList.hidden = true; elPList.innerHTML = ''; plItems = []; plKeys = []; plActive = -1; plFor = null; elPatient.setAttribute('aria-expanded', 'false'); }
+      function hideList() { plTok++; elPList.hidden = true; elPList.innerHTML = ''; plItems = []; plKeys = []; plActive = -1; plFor = null; elPatient.setAttribute('aria-expanded', 'false'); }
       function option(cls, avHtml, label, onPick, key) {
         var b = document.createElement('button'); b.type = 'button'; b.className = 'evpop-po' + (cls ? ' ' + cls : '');
         b.setAttribute('role', 'option');
@@ -3134,7 +3135,8 @@
         });
         if (q) {
           var dup = sameName(raw).length;                     // mesmo nome já cadastrado → é outra pessoa?
-          option('new', '+', (dup ? 'Criar outro paciente "' : 'Criar paciente "') + raw + '"', function () { createPatient(raw, !!dup); }, 'new');
+          option('new', '+', (dup ? 'Criar outro paciente "' : 'Criar paciente "') + raw + '"', function () { createPatient(raw, !!dup); },
+            dup ? 'new-dup' : 'new');                         // virou "Criar outro" (sem a confirmação do 409): o destaque das setas não fica nele
         }
         if (!q && !hits.length) {
           var m = document.createElement('div'); m.className = 'evpop-pmsg'; m.textContent = 'Digite o nome para buscar ou criar um paciente.'; elPList.appendChild(m);
@@ -3146,8 +3148,8 @@
         fitPop();
       }
       function showList() {
-        var raw = elPatient.value.trim();
-        var vale = function () { return !pop.hidden && document.activeElement === elPatient && raw === elPatient.value.trim(); };
+        var raw = elPatient.value.trim(), g = ++plTok;
+        var vale = function () { return g === plTok && !pop.hidden && document.activeElement === elPatient && raw === elPatient.value.trim(); };
         loadPatients().then(function () {
           if (!vale()) return;
           drawList(raw);                                      // o que já está carregado aparece na hora
@@ -3189,11 +3191,13 @@
       });
       elPatient.addEventListener('keydown', function (e) {
         if (elPList.hidden) return;
-        if (e.key === 'ArrowDown') { e.preventDefault(); plMoved = true; markP(plActive + 1); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); plMoved = true; markP(plActive - 1); }
+        var was = plActive;
+        if (e.key === 'ArrowDown') { e.preventDefault(); markP(plActive + 1); plMoved = plMoved || plActive !== was; }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); markP(plActive - 1); plMoved = plMoved || plActive !== was; }
         else if (e.key === 'Enter') {
           e.preventDefault();
           if (plFor !== elPatient.value.trim()) drawList(elPatient.value.trim());   // lista de um texto anterior: refaz com o que está escrito
+          if (!pnorm(elPatient.value) && plActive < 0) return;                  // campo vazio, nada destacado: o Enter não escolhe ninguém
           var b = plItems[plActive >= 0 ? plActive : plFirst]; if (b) b.click();
         }
         else if (e.key === 'Escape') { e.stopPropagation(); hideList(); }

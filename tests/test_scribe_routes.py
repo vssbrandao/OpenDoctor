@@ -390,8 +390,8 @@ def test_gerar_de_novo_lembra_os_remedios_de_todas_as_geracoes(fake, monkeypatch
     for _ in range(3):
         gera()
     assert fake.recs[REC]["scribe"]["receita_meds"] == ["Losartana"]  # lembrada uma vez só: a lista não cresce
-    duas = [{"scribe": {"receita_meds": ["Losartana", "Metformina"]}}] * 2   # duas gravações da consulta, a mesma lista
-    assert server._meds_levados(duas, SAIDA_2["meds"]) == ["Losartana", "Metformina"]
+    duas = [{"scribe": {"receita_meds": ["Losartana", "Metformina", "D3"]}}] * 2   # duas gravações, a mesma lista
+    assert server._lembrados(server._meds_gerados(duas) + ["metformina", "D3"]) == ["Losartana", "Metformina", "D3"]
 
     db.update_receita(UID, rx["id"], [])
     vazia = {"soap": {"s": [], "o": [], "a": [], "p": []}, "livre": [], "vitals": {}, "cid": [], "exames": [], "pendencias": [],
@@ -399,3 +399,63 @@ def test_gerar_de_novo_lembra_os_remedios_de_todas_as_geracoes(fake, monkeypatch
     saida[0] = vazia
     assert "error" in gera()                                        # sem evolução: a receita fica como estava
     assert db.get_receita(UID, rx["id"])["itens"] == []
+
+
+def _gerador(c, monkeypatch, corpo):
+    saida = [SAIDA]
+    monkeypatch.setattr(scribe, "ask_model", lambda msgs, model=None: json.dumps(saida[0]))
+
+    def gera(nova=None):
+        if nova is not None:
+            saida[0] = nova
+        return _lines(c.post("/prontuario/scribe", json=dict({"patient_id": 7, "rec_id": REC, "mode": "soap"}, **corpo)))[-1]
+    return gera
+
+
+def test_receita_que_falha_nao_fica_lembrada(fake, monkeypatch):
+    """Erro do banco na receita: a evolução sai, e o remédio não conta como levado — gerar de novo o põe."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
+    certo = db.list_receitas
+
+    def boom(*a):
+        raise RuntimeError("banco fora")
+    monkeypatch.setattr(db, "list_receitas", boom)
+    out = gera()
+    assert out["ok"] and out["receita"] == 0 and fake.recs[REC]["scribe"]["receita_meds"] == []
+    monkeypatch.setattr(db, "list_receitas", certo)
+    assert gera()["receita"] == 1 and [i["nome"] for i in db.list_receitas(UID, 7)[0]["itens"]] == ["Losartana"]
+
+
+def test_memoria_nao_confunde_monodroga_e_associacao_e_lembra_nome_curto(fake, monkeypatch):
+    """O médico tirou a losartana: a associação com hidroclorotiazida, que veio depois, ainda entra. A D3 tirada não
+    volta (nome curto: vale o texto) e não se repete no rascunho."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
+    d3 = {"nome": "D3", "dose": "7.000 UI", "posologia": "1x/semana", "acao": "iniciado", "src": [2]}
+    assert gera(dict(SAIDA, meds=SAIDA["meds"] + [d3]))["receita"] == 2
+    (rx,) = db.list_receitas(UID, 7)
+    db.update_receita(UID, rx["id"], [])                            # tirou as duas
+    assoc = {"nome": "losartana + hidroclorotiazida", "dose": "50/12,5 mg", "posologia": "1x/dia", "acao": "iniciado", "src": [2]}
+    assert gera(dict(SAIDA, meds=SAIDA["meds"] + [d3, assoc]))["receita"] == 1
+    assert [i["nome"] for i in db.get_receita(UID, rx["id"])["itens"]] == ["Losartana + hidroclorotiazida"]
+    for _ in range(3):
+        gera()
+    assert len(db.get_receita(UID, rx["id"])["itens"]) == 1 and len(fake.recs[REC]["scribe"]["receita_meds"]) == 3
+
+
+def test_avulsa_com_receita_emitida_nao_ganha_rascunho_sozinho(fake, monkeypatch):
+    """Consulta avulsa sem evolução salva: emitida a receita feita durante a gravação, gerar de novo não abre outra."""
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1, **{"X-Event-Id": None}))
+    c.post("/prontuario/transcribe", content=wav(20), headers=hdr(2, **{"X-Event-Id": None}))
+    gera = _gerador(c, monkeypatch, {})
+    assert gera()["receita"] == 1
+    (rx,) = db.list_receitas(UID, 7)
+    assert rx["note_id"] is None and rx["event_id"] is None
+    db.emit_receita(UID, rx["id"], [("simples", rx["itens"])])
+    nova = {"nome": "atorvastatina", "dose": "20 mg", "posologia": "à noite", "acao": "iniciado", "src": [2]}
+    assert gera(dict(SAIDA, meds=SAIDA["meds"] + [nova]))["receita"] == 0
+    assert [r["status"] for r in db.list_receitas(UID, 7)] == ["emitida"]

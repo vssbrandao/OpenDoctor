@@ -305,6 +305,24 @@ def mesmo_remedio(a, b):
     return scribe.same_drug(a, b) or scribe.same_drug(b, a)
 
 
+def _ativos(nome):
+    """Os ativos do nome, cada um pelas palavras que o distinguem: "Losartana + Hidroclorotiazida" tem dois."""
+    return [scribe._drug_key(p) for p in re.split(r"\+|/|\bcom\b", scribe.norm(nome)) if p.strip()]
+
+
+def mesma_formula(a, b):
+    """Mais estrito que mesmo_remedio, para lembrar o que a gravação já levou à receita: o mesmo texto, ou os mesmos
+    ativos (com a tolerância de grafia do transcritor). A monodroga não é a associação (losartana ≠ losartana +
+    hidroclorotiazida), vitamina D não é vitamina B12, e nome curto ("D3") vale pelo texto."""
+    if scribe.norm(a) == scribe.norm(b):
+        return True
+    ka, kb = _ativos(a), _ativos(b)
+    if not ka or len(ka) != len(kb) or not all(ka) or not all(kb):
+        return False
+    igual = lambda x, y: len(x) == len(y) and all(scribe._tok_eq(i, j) for i, j in zip(x, y))  # noqa: E731
+    return all(any(igual(x, y) for y in kb) for x in ka) and all(any(igual(y, x) for x in ka) for y in kb)
+
+
 def da_gravacao(meds):
     """Os remédios que a gravação extraiu (scribe: meds com acao) como itens de receita, para revisar: mantido, iniciado
     e ajustado entram (mantido e ajustado como uso contínuo); suspenso não entra."""

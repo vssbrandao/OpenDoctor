@@ -162,7 +162,7 @@ def test_rota_async_so_chama_banco_e_rede_pelo_threadpool():
 
 def test_trava_de_senhas_erradas_vale_com_pedidos_juntos(fake):
     """Fora do laço os pedidos correm juntos: 9 senhas erradas de uma vez conferem só as 5 da trava, e a senha certa
-    que chega logo depois encontra a conta travada (antes, um pedido por vez garantia isso sozinho)."""
+    que vem depois encontra a conta travada (antes, um pedido por vez garantia isso sozinho)."""
     st, lk = {"falhas": 0, "ate": 0.0, "conferidas": 0}, threading.Lock()
 
     def info(email):
@@ -191,10 +191,8 @@ def test_trava_de_senhas_erradas_vale_com_pedidos_juntos(fake):
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=server.app), base_url="http://t") as c:
             def tenta(pw):
                 return c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": pw})
-            erradas = [asyncio.ensure_future(tenta(f"Errada{i}!")) for i in range(9)]
-            await asyncio.sleep(0.05)
-            certa = await tenta(PW)
-            return await asyncio.gather(*erradas), certa
+            erradas = await asyncio.gather(*[tenta(f"Errada{i}!") for i in range(9)])
+            return erradas, await tenta(PW)
     erradas, certa = asyncio.run(ataque())
     assert st["conferidas"] == db.LOCK_AFTER
     assert sorted(r.status_code for r in erradas) == [401] * (db.LOCK_AFTER - 1) + [429] * (10 - db.LOCK_AFTER)
@@ -243,6 +241,8 @@ def test_tiquete_da_nova_senha_vale_uma_vez_com_pedidos_juntos(fake):
             return dict(USER, sv=st["sv"])
     fake.setattr(db, "get_user", usuario)
     fake.setattr(db, "set_password", troca)
+    hashes = []
+    fake.setattr(auth, "hash_password", lambda pw: hashes.append(pw) or "h")
     tk = _tk(k="reset", uid="u1", sv=0)
 
     async def juntos():
@@ -250,8 +250,7 @@ def test_tiquete_da_nova_senha_vale_uma_vez_com_pedidos_juntos(fake):
             return await asyncio.gather(*[c.post("/auth/password/reset", json={"ticket": tk, "password": PW}) for _ in range(3)])
     rs = asyncio.run(juntos())
     assert st["trocas"] == 1 and sorted(r.status_code for r in rs) == [200, 400, 400]
-    hashes = []
-    fake.setattr(auth, "hash_password", lambda pw: hashes.append(pw) or "h")
+    assert len(hashes) == 1                            # só quem troca calcula o hash de 600 mil voltas
     from fastapi.testclient import TestClient
     r = TestClient(server.app).post("/auth/password/reset", json={"ticket": tk, "password": PW})
-    assert r.status_code == 400 and r.json()["error"] == "sessao_expirada" and hashes == []
+    assert r.status_code == 400 and r.json()["error"] == "sessao_expirada" and len(hashes) == 1
