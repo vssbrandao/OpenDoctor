@@ -1961,72 +1961,66 @@ def _meds_gerados(recs):
     return out
 
 
-LEMBRADOS_MAX = 60             # remédios lembrados por consulta (recordings.scribe.receita_meds)
+LEMBRADOS_MAX = 200            # remédios lembrados por consulta (recordings.scribe.receita_meds); cheio, saem os mais antigos
 
 
 def _lembrados(nomes):
-    """Cada remédio uma vez só (prescricao.mesma_formula), até LEMBRADOS_MAX: a mesma lista vai para todas as gravações
-    da consulta e, com repetidos, dobraria a cada geração."""
+    """Cada remédio uma vez só (prescricao.mesma_formula), os LEMBRADOS_MAX mais recentes: a mesma lista vai para todas
+    as gravações da consulta e, com repetidos, dobraria a cada geração."""
     out = []
     for n in nomes:
         if not any(prescricao.mesma_formula(n, y) for y in out):
             out.append(n)
-    return out[:LEMBRADOS_MAX]
+    return out[-LEMBRADOS_MAX:]
 
 
-def _quando(iso):
-    try:
-        return datetime.datetime.fromisoformat(str(iso).replace("Z", "+00:00"))
-    except (TypeError, ValueError):
-        return None
-
-
-def _da_consulta(r, eid, nid, recs):
-    """A receita é desta consulta? Da agenda: o evento; com evolução: ela; avulsa sem evolução: a sem consulta feita
-    depois que a gravação começou."""
-    if eid:
-        return r["event_id"] == eid
-    if nid:
-        return r["note_id"] == nid
-    ini = min(filter(None, (_quando(x.get("consent_at")) for x in recs)), default=None)
-    feita = _quando(r.get("created_at"))
-    return not r["note_id"] and not r["event_id"] and bool(ini and feita and feita >= ini)
+def _receitas_ligadas(recs):
+    """As receitas que estas gravações já alimentaram (recordings.scribe.receita_id)."""
+    return {str((r.get("scribe") or {}).get("receita_id")) for r in recs if (r.get("scribe") or {}).get("receita_id")}
 
 
 def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
     """Os remédios que a gravação extraiu entram no rascunho da receita desta consulta (o mesmo que a aba Prescrições
     abre), marcados "Da gravação" para o médico revisar; o que já está lá não repete. Gerar de novo não desfaz o que o
     médico fez: o remédio que alguma geração anterior destas gravações (recs) já levou não volta, e consulta com receita
-    já emitida não ganha rascunho novo. Devolve (quantos entraram, o que fica lembrado: os de antes mais os que a receita
-    tratou agora — entraram, já estavam ou foram barrados pela emitida). Nunca derruba a geração da evolução: falhou,
-    devolve 0 e só os de antes, e gerar de novo tenta outra vez (o log só leva o tipo do erro)."""
-    foram = _lembrados(_meds_gerados(recs))
+    já emitida não ganha rascunho novo (a da agenda pelo evento, a com evolução por ela, e qualquer uma pela receita que
+    a própria gravação alimentou). Devolve (quantos entraram, o que fica lembrado — os de antes mais os que a receita
+    tratou agora: entraram, já estavam ou foram barrados pela emitida —, a receita alimentada). Nunca derruba a geração
+    da evolução: falhou, devolve 0 e só os de antes, e gerar de novo tenta outra vez (o log só leva o tipo do erro)."""
+    foram, ligadas = _lembrados(_meds_gerados(recs)), _receitas_ligadas(recs)
+    rid = next(iter(ligadas), None)
     try:
         novos = [x for x in prescricao.da_gravacao(meds) if not any(prescricao.mesma_formula(x["nome"], y) for y in foram)]
         if not novos:
-            return 0, foram
+            return 0, foram, rid
         levou = _lembrados(foram + [x["nome"] for x in novos])
+
         def desta(r):
             if r["status"] != "rascunho":
                 return False
             if eid:
                 return r["event_id"] == eid
             return (nid and r["note_id"] == nid) or (not r["note_id"] and not r["event_id"])
+
+        def ja_emitida(r):
+            if r["status"] == "rascunho":
+                return False
+            return r["id"] in ligadas or (r["event_id"] == eid if eid else bool(nid) and r["note_id"] == nid)
         rs = db.list_receitas(u["id"], p["id"])
         d = next((r for r in rs if desta(r)), None)
-        if not d and any(r["status"] != "rascunho" and _da_consulta(r, eid, nid, recs) for r in rs):
-            return 0, levou
+        if not d and any(ja_emitida(r) for r in rs):
+            return 0, levou, rid
         ja = d["itens"] if d else []
-        add = [x for x in novos if not any(prescricao.mesmo_remedio(x["nome"], y["nome"]) for y in ja)]
+        add = [x for x in novos if not any(prescricao.mesma_formula(x["nome"], y["nome"]) for y in ja)]
         if add:
             if d:
                 db.update_receita(u["id"], d["id"], ja + add)
             else:
-                db.create_receita(u["id"], p["id"], add, "simples", nid, eid)
-        return len(add), levou
+                d = db.create_receita(u["id"], p["id"], add, "simples", nid, eid)
+        return len(add), levou, (d["id"] if d else rid)
     except Exception as e:
         print("[gravacao] receita da gravação falhou:", type(e).__name__, flush=True)
-        return 0, foram
+        return 0, foram, rid
 
 
 @app.get("/prontuario/remedios")
@@ -2447,12 +2441,21 @@ async def prontuario_scribe(request: Request):
         result = dict(res, fields=fields, fields_src=fsrc)
 
         def save():
-            # a receita só muda com a evolução válida (acima); a gravação guarda o que ela tratou somado ao das anteriores:
-            # um remédio que o médico tirou não volta, nem numa geração que o cita de novo depois de outra que não citou
-            n, levou = _receita_da_gravacao(u, p, eid, nid, res.get("meds"), recs)     # remédios → rascunho da receita
-            db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table},
-                                                                       receita_meds=levou), nid)
+            # 1º a geração (com o que já estava lembrado), 2º a receita, 3º o que ela tratou: a receita só muda com a
+            # evolução válida e já guardada, e só fica lembrado o que de fato passou por ela — um remédio que o médico
+            # tirou não volta, nem numa geração que o cita de novo depois de outra que não citou
+            def guarda(nomes, rx):
+                db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table},
+                                                                           receita_meds=nomes, receita_id=rx), nid)
+            foram, rx0 = _lembrados(_meds_gerados(recs)), next(iter(_receitas_ligadas(recs)), None)
+            guarda(foram, rx0)
             db.log_access(u["id"], "scribe", p["id"], nid)
+            n, levou, rx = _receita_da_gravacao(u, p, eid, nid, res.get("meds"), recs)     # remédios → rascunho da receita
+            if levou != foram or rx != rx0:
+                try:
+                    guarda(levou, rx)
+                except Exception as e:
+                    print("[gravacao] memória da receita falhou:", type(e).__name__, flush=True)
             return n
         n_rx = await run_in_threadpool(save)
         yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta, "receita": n_rx})

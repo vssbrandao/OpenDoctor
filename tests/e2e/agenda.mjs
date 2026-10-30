@@ -418,6 +418,46 @@ const cenarios = [
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     return 'Otto e Zé Carlos criados com o nome digitado; o Otávio da lista anterior não foi escolhido; a resposta atrasada não reabriu a lista; Enter vazio não escolheu';
   }],
+  ['campo Paciente: o nome exato vem primeiro, a paciente do evento antes da homônima, e Enter duplo cria um cadastro só', async () => {
+    const poe = (v) => ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = ${JSON.stringify(v)}; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    const tecla1 = `document.getElementById('evPatient').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`;
+    const destaque = () => ev(`(() => { const b = document.querySelector('#evPList .evpop-po.on'); return b ? b.lastChild.textContent : null; })()`);
+    PACS.unshift({ id: 60, name: 'Ana Souza Lima' }, { id: 61, name: 'Ana Souza' });   // a mais recente só contém o nome
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela'); await sleep(400);
+    await poe('Ana Souza');
+    await ate(`!!document.querySelector('#evPList .evpop-po.on')`, 3000, 'lista');
+    certo(await destaque() === 'Ana Souza', 'destaque: ' + await destaque());
+    await ev(`${tecla1}; 1`);
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'escolhida');
+    const antes = pedidos.length;
+    await clica('#evCreate');
+    await ate(`document.getElementById('evMsg').textContent === 'Evento criado!'`, 3000, 'criado: ' + await txt('#evMsg'));
+    const novo = pedidos.slice(antes).find((r) => r.method === 'POST' && r.path === '/calendar/events').body;
+    certo(novo.patient_id === 61, 'consulta da Ana Souza: ' + novo.patient_id);
+    await ate(`document.getElementById('evPop').hidden`, 3000, 'fechou sozinha');
+
+    PACS.unshift({ id: 62, name: 'Joana Prado', birth_date: '1990-01-01' });   // homônima mais recente da Joana do evento
+    const p0 = patches('joana').length;
+    await abreEvento('.ev-real[data-evkey="joana"]'); await sleep(400);
+    await ev(`document.getElementById('evPatient').blur(); document.getElementById('evPatient').focus(); 1`);
+    await ate(`!!document.querySelector('#evPList .evpop-po.on')`, 3000, 'lista do evento');
+    certo(await destaque() === 'Joana Prado', 'destaque na homônima: ' + await destaque());
+    await ev(`${tecla1}; 1`); await sleep(200);
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou'); await sleep(300);
+    certo(patches('joana').length === p0, 'trocou a paciente do evento: ' + JSON.stringify(patches('joana').slice(p0).map((x) => x.body.patient_id)));
+
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await poe('Bruno Novo');
+    await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.endsWith('"Bruno Novo"'))`, 3000, 'opção criar');
+    await ev(`${tecla1}; ${tecla1}; 1`);                      // Enter duplo antes da resposta
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'criado');
+    const n = pedidos.filter((r) => r.method === 'POST' && r.path === '/patients' && r.body.name === 'Bruno Novo').length;
+    certo(n === 1, 'cadastros do Bruno Novo: ' + n);
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
+    return 'Ana Souza (exata) escolhida antes da Ana Souza Lima; a Joana do evento ficou; Enter duplo criou um cadastro';
+  }],
 ];
 
 async function main() {

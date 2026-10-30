@@ -306,21 +306,30 @@ def mesmo_remedio(a, b):
 
 
 def _ativos(nome):
-    """Os ativos do nome, cada um pelas palavras que o distinguem: "Losartana + Hidroclorotiazida" tem dois."""
-    return [scribe._drug_key(p) for p in re.split(r"\+|/|\bcom\b", scribe.norm(nome)) if p.strip()]
+    """Os ativos do nome, cada um pelas palavras que o distinguem, sem sal, forma e dose ("cloridrato de metformina 850
+    mg" é metformina): "Losartana + Hidroclorotiazida 50/12,5 mg" tem dois; nome curto ("D3") fica com o que tem."""
+    out = []
+    for p in re.split(r"\+|/|\bcom\b", scribe.norm(nome)):
+        toks = [t for t in re.findall(r"[a-z0-9]+", p) if not t.isdigit() and t not in scribe._FORMA and t not in scribe._PART]
+        if toks:                                   # pedaço só de dose ("12,5 mg") não é ativo
+            out.append(scribe._drug_key(" ".join(toks)) or toks)
+    return out
 
 
 def mesma_formula(a, b):
-    """Mais estrito que mesmo_remedio, para lembrar o que a gravação já levou à receita: o mesmo texto, ou os mesmos
-    ativos (com a tolerância de grafia do transcritor). A monodroga não é a associação (losartana ≠ losartana +
-    hidroclorotiazida), vitamina D não é vitamina B12, e nome curto ("D3") vale pelo texto."""
+    """Mais estrito que mesmo_remedio, para lembrar o que a gravação já levou à receita e para não repetir no rascunho:
+    o mesmo texto, ou os mesmos ativos (com a tolerância de grafia do transcritor). A monodroga não é a associação
+    (losartana ≠ losartana + hidroclorotiazida), nem uma associação é outra que começa igual; vitamina D não é vitamina
+    B12. Com um ativo só, vale também mesmo_remedio ("Insulina NPH" e "Insulina humana NPH")."""
     if scribe.norm(a) == scribe.norm(b):
         return True
     ka, kb = _ativos(a), _ativos(b)
-    if not ka or len(ka) != len(kb) or not all(ka) or not all(kb):
+    if not ka or len(ka) != len(kb):
         return False
     igual = lambda x, y: len(x) == len(y) and all(scribe._tok_eq(i, j) for i, j in zip(x, y))  # noqa: E731
-    return all(any(igual(x, y) for y in kb) for x in ka) and all(any(igual(y, x) for x in ka) for y in kb)
+    if all(any(igual(x, y) for y in kb) for x in ka) and all(any(igual(y, x) for x in ka) for y in kb):
+        return True
+    return len(ka) == 1 and mesmo_remedio(a, b)
 
 
 def da_gravacao(meds):

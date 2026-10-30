@@ -191,12 +191,14 @@ gravação" (`prescricao.da_gravacao`), para revisar:
 - o que já está no rascunho não repete (`prescricao.mesmo_remedio`), nem ao gerar de novo;
 - gerar de novo não desfaz o que o médico fez: o remédio que alguma geração anterior já levou não volta (ele pode tê-lo
   tirado), mesmo que a última não o tenha citado — a gravação guarda a soma do que a receita de fato tratou
-  (`recordings.scribe.receita_meds`, cada remédio uma vez, até 60). A comparação é `prescricao.mesma_formula`, mais
-  estrita que a do rascunho: a associação (losartana + hidroclorotiazida) não conta como a monodroga, e nome curto
-  ("D3") vale pelo texto. Se a receita der erro, nada fica lembrado e gerar de novo tenta outra vez;
-- a consulta com receita já emitida não ganha rascunho novo (a da agenda pelo evento, a com evolução por ela, a avulsa
-  sem evolução pela receita sem consulta feita depois que a gravação começou);
-- a receita só muda depois que a evolução gerada é válida;
+  (`recordings.scribe.receita_meds`, cada remédio uma vez, os 200 mais recentes). A comparação, aqui e contra o que já
+  está no rascunho, é `prescricao.mesma_formula`: sal, forma e dose não mudam o remédio ("cloridrato de metformina" é
+  metformina), mas a associação (losartana + hidroclorotiazida) não conta como a monodroga — a troca entra e o médico
+  tira a outra — e nome curto ("D3") vale pelo texto. Se a receita der erro, nada fica lembrado e gerar de novo tenta
+  outra vez;
+- a consulta com receita já emitida não ganha rascunho novo: a da agenda pelo evento, a com evolução por ela, e qualquer
+  uma pela receita que a própria gravação alimentou (`recordings.scribe.receita_id`; vale para a avulsa sem evolução);
+- a receita só muda depois que a evolução gerada é válida e foi guardada;
 - a tela recarrega a receita e avisa quantos entraram;
 - se der erro, a evolução sai do mesmo jeito, sem a receita (`_receita_da_gravacao`).
 

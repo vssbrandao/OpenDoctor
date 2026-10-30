@@ -459,3 +459,34 @@ def test_avulsa_com_receita_emitida_nao_ganha_rascunho_sozinho(fake, monkeypatch
     nova = {"nome": "atorvastatina", "dose": "20 mg", "posologia": "à noite", "acao": "iniciado", "src": [2]}
     assert gera(dict(SAIDA, meds=SAIDA["meds"] + [nova]))["receita"] == 0
     assert [r["status"] for r in db.list_receitas(UID, 7)] == ["emitida"]
+
+
+def test_memoria_vale_com_o_sal_e_a_troca_por_associacao_entra(fake, monkeypatch):
+    """O modelo reescreve "metformina" como "cloridrato de metformina": a que o médico tirou não volta. E a troca da
+    losartana pela associação, com a losartana ainda no rascunho, põe a associação (o médico tira a outra)."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
+    met = {"nome": "metformina", "dose": "850 mg", "posologia": "2x/dia", "acao": "mantido", "src": [2]}
+    assert gera(dict(SAIDA, meds=SAIDA["meds"] + [met]))["receita"] == 2
+    (rx,) = db.list_receitas(UID, 7)
+    db.update_receita(UID, rx["id"], [i for i in rx["itens"] if i["nome"] != "Metformina"])     # tirou a metformina
+    sal = dict(met, nome="cloridrato de metformina")
+    troca = [dict(SAIDA["meds"][0], acao="suspenso"),
+             {"nome": "losartana + hidroclorotiazida", "dose": "50/12,5 mg", "posologia": "1x/dia", "acao": "iniciado", "src": [2]}]
+    assert gera(dict(SAIDA, meds=troca + [sal]))["receita"] == 1
+    assert [i["nome"] for i in db.get_receita(UID, rx["id"])["itens"]] == ["Losartana", "Losartana + hidroclorotiazida"]
+
+
+def test_geracao_que_nao_foi_guardada_nao_mexe_na_receita(fake, monkeypatch):
+    """Falhou ao guardar a geração: a receita fica como estava (ela só muda depois)."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
+
+    def boom(*a, **k):
+        raise RuntimeError("banco fora")
+    monkeypatch.setattr(db, "rec_generated", boom)
+    with pytest.raises(RuntimeError):
+        gera()
+    assert db.list_receitas(UID, 7) == []

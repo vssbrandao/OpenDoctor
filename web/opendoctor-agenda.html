@@ -3125,7 +3125,12 @@
         var keep = plFor === raw && plMoved && plActive >= 0 ? plKeys[plActive] : null;   // mesma busca redesenhada: o destaque das setas fica
         if (plFor !== raw) plMoved = false;
         elPList.innerHTML = ''; plItems = []; plKeys = []; plActive = -1; plFor = raw;
-        var ord = exampleLast(list.filter(function (p) { return !q || pnorm(p.name).indexOf(q) >= 0; }).slice(0, q ? 6 : 5));
+        // o nome exato vem antes de quem só o contém (o Enter de quem digitou o nome inteiro é ele), e o paciente já
+        // ligado ao evento antes dos homônimos
+        var peso = function (p) { return q && pnorm(p.name) === q ? (selPatient && p.id === selPatient.id ? 0 : 1) : 2; };
+        var ord = exampleLast(list.filter(function (p) { return !q || pnorm(p.name).indexOf(q) >= 0; })
+          .map(function (p, i) { return [peso(p), i, p]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; })
+          .map(function (x) { return x[2]; }).slice(0, q ? 6 : 5));
         var hits = ord.list; plFirst = ord.first;
         if (!q && hits.length) {
           var h = document.createElement('div'); h.className = 'evpop-pmsg'; h.textContent = 'Pacientes recentes'; elPList.appendChild(h);
@@ -3162,11 +3167,15 @@
         plItems.forEach(function (b, j) { b.classList.toggle('on', j === plActive); b.setAttribute('aria-selected', j === plActive ? 'true' : 'false'); });
         plItems[plActive].scrollIntoView({ block: 'nearest' });
       }
+      var criando = false;                                   // um cadastro de cada vez: Enter duplo não cria dois
       function createPatient(name, force) {
+        if (criando) return;
+        criando = true; hideList();
         name = name.split(/\s+/).filter(Boolean).join(' ');
         fetch('/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, force: !!force }) })
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
           .then(function (res) {
+            criando = false;
             if (res.ok && res.j.ok) {
               patients = [res.j.patient].concat((patients || []).filter(function (p) { return p.id !== res.j.patient.id; }));
               setPatient(res.j.patient);
@@ -3177,7 +3186,7 @@
               if (res.status === 401) elMsg.innerHTML = '<a href="/opendoctor-login.html">Entre na sua conta</a> para cadastrar pacientes.';
               else elMsg.textContent = 'Não foi possível criar o paciente.';
             }
-          }).catch(function () { elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false; });
+          }).catch(function () { criando = false; elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false; });
       }
       elPatient.addEventListener('focus', showList);
       elPatient.addEventListener('input', function () {
