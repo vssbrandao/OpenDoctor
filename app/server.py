@@ -628,13 +628,14 @@ async def followups(request: Request):
     if not answer:
         return {"suggestions": []}
     try:
-        out = llm.chat([
+        # a chamada à OpenAI roda fora do laço de eventos: o servidor tem um processo só
+        out = (await run_in_threadpool(llm.chat, [
             {"role": "system", "content": "Você gera perguntas de acompanhamento para um "
              "MÉDICO, a partir de uma resposta clínica. Devolva EXATAMENTE 3 perguntas curtas "
              "(máx. 8 palavras cada), clínicas e úteis para aprofundar (ex.: subgrupo, dose, "
              "alternativa, monitorização). Uma por linha, sem numeração, sem aspas."},
             {"role": "user", "content": f"Pergunta: {query}\n\nResposta:\n{answer[:3000]}"}],
-            temperature=0.4, max_tokens=80, model=config.OPENAI_FAST_MODEL).strip()
+            temperature=0.4, max_tokens=80, model=config.OPENAI_FAST_MODEL)).strip()
         sugg = [s.strip(" -•\t").strip() for s in out.splitlines() if s.strip()]
         sugg = [s for s in sugg if 3 <= len(s) <= 90][:3]
         return {"suggestions": sugg}
@@ -689,6 +690,8 @@ async def google_start(request: Request):
 # Tela inicial: e-mail → (tem conta com senha) senha | (conta só Google) Google | (sem conta) cadastro.
 # O cadastro e a redefinição de senha exigem um código de 6 dígitos enviado ao e-mail: ninguém cria
 # conta (nem troca a senha) de um e-mail que não é seu.
+# Cada rota só lê o corpo no laço de eventos; o resto (banco, hash da senha de 600 mil voltas, envio do e-mail,
+# paciente de exemplo) roda no threadpool: o servidor tem um processo só e um login não trava os outros médicos.
 
 async def _body(request):
     """Corpo JSON. Exige Content-Type application/json: um formulário de outro site só consegue mandar
@@ -787,7 +790,11 @@ def _check_code(email, code, purpose):
 
 @app.post("/auth/email/check")
 async def email_check(request: Request):
-    email = _email_of(await _body(request))
+    return await run_in_threadpool(_email_check, request, await _body(request))
+
+
+def _email_check(request, b):
+    email = _email_of(b)
     if not email:
         return _err("email_invalido")
     if _rate_limited(request, "login_check"):
@@ -802,7 +809,10 @@ async def email_check(request: Request):
 
 @app.post("/auth/password/login")
 async def password_login(request: Request):
-    b = await _body(request)
+    return await run_in_threadpool(_password_login, request, await _body(request))
+
+
+def _password_login(request, b):
     email, pw = _email_of(b), b.get("password")
     if not email:
         return _err("email_invalido")
@@ -840,7 +850,10 @@ def _valid_name(raw):
 @app.post("/auth/signup/start")
 async def signup_start(request: Request):
     """Dados do cadastro → envia o código de confirmação. A conta só é criada no /verify."""
-    b = await _body(request)
+    return await run_in_threadpool(_signup_start, request, await _body(request))
+
+
+def _signup_start(request, b):
     email, name, pw = _email_of(b), _valid_name(b.get("name")), b.get("password")
     if not email:
         return _err("email_invalido")
@@ -873,7 +886,11 @@ def _signup_ticket(b):
 
 @app.post("/auth/signup/resend")
 async def signup_resend(request: Request):
-    t = _signup_ticket(await _body(request))
+    return await run_in_threadpool(_signup_resend, request, await _body(request))
+
+
+def _signup_resend(request, b):
+    t = _signup_ticket(b)
     if not t:
         return _err("sessao_expirada")
     if _rate_limited(request, "login_code"):
@@ -884,7 +901,10 @@ async def signup_resend(request: Request):
 
 @app.post("/auth/signup/verify")
 async def signup_verify(request: Request):
-    b = await _body(request)
+    return await run_in_threadpool(_signup_verify, request, await _body(request))
+
+
+def _signup_verify(request, b):
     t = _signup_ticket(b)
     if not t:
         return _err("sessao_expirada")
@@ -907,7 +927,11 @@ async def signup_verify(request: Request):
 @app.post("/auth/password/forgot")
 async def password_forgot(request: Request):
     """Envia o código para criar uma nova senha (também serve para conta só Google criar uma senha)."""
-    email = _email_of(await _body(request))
+    return await run_in_threadpool(_password_forgot, request, await _body(request))
+
+
+def _password_forgot(request, b):
+    email = _email_of(b)
     if not email:
         return _err("email_invalido")
     if not mailer.configured():
@@ -930,7 +954,10 @@ async def password_forgot(request: Request):
 @app.post("/auth/password/reset/verify")
 async def password_reset_verify(request: Request):
     """Etapa 1 da nova senha: confere o código e devolve um tíquete (15 min) para escolher a senha."""
-    b = await _body(request)
+    return await run_in_threadpool(_password_reset_verify, request, await _body(request))
+
+
+def _password_reset_verify(request, b):
     email = _email_of(b)
     if not email:
         return _err("email_invalido")
@@ -953,7 +980,10 @@ async def password_reset_verify(request: Request):
 @app.post("/auth/password/reset")
 async def password_reset(request: Request):
     """Etapa 2: nova senha com o tíquete da etapa 1."""
-    b = await _body(request)
+    return await run_in_threadpool(_password_reset, request, await _body(request))
+
+
+def _password_reset(request, b):
     pw = b.get("password")
     t = auth.unsign(str(b.get("ticket") or ""), 15 * 60)
     if not t or t.get("k") != "reset" or not t.get("uid"):
@@ -1131,16 +1161,17 @@ def calendar_events(request: Request, start: str = "", end: str = "", limit: int
 @app.post("/calendar/events")
 async def create_calendar_event(request: Request):
     """Cria um evento no calendário conectado do usuário."""
+    # banco e Google fora do laço de eventos: o servidor tem um processo só e um Google lento não trava os outros médicos
+    return await run_in_threadpool(_create_calendar_event, request, await _json(request))
+
+
+def _create_calendar_event(request, payload):
     u = auth.current_user(request)
     if not u:
         return JSONResponse({"error": "não autenticado"}, status_code=401)
     connected = db.connected_providers(u["id"])
     if not connected:
         return JSONResponse({"error": "sem calendário conectado"}, status_code=400)
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
     start = payload.get("start"); end = payload.get("end")
     if not start or not end:
         return JSONResponse({"error": "início e fim são obrigatórios"}, status_code=400)
@@ -1211,14 +1242,14 @@ def _cal_user(request):
 @app.patch("/calendar/events/{event_id}")
 async def update_calendar_event(event_id: str, request: Request):
     """Edita um evento (salvo ao fechar a janela do evento)."""
+    return await run_in_threadpool(_update_calendar_event, request, event_id, await _json(request))
+
+
+def _update_calendar_event(request, event_id, payload):
     ctx, err = _cal_user(request)
     if err:
         return err
     u, prov = ctx
-    try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
     start = payload.get("start"); end = payload.get("end")
     if not start or not end:
         return JSONResponse({"error": "início e fim são obrigatórios"}, status_code=400)
@@ -1544,7 +1575,11 @@ async def prontuario_note_addendum(note_id: int, request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    content = str((await _json(request)).get("content") or "").strip()
+    return await run_in_threadpool(_prontuario_note_addendum, u, note_id, await _json(request))
+
+
+def _prontuario_note_addendum(u, note_id, payload):
+    content = str(payload.get("content") or "").strip()
     if not content:
         return JSONResponse({"error": "adendo vazio"}, status_code=400)
     if len(content) > MAX_NOTE_CHARS:
@@ -1563,7 +1598,11 @@ async def prontuario_visits(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    payload = await _json(request)
+    # o Google (até 25–30 s se lento) e o banco rodam fora do laço de eventos: a gravação de outra consulta não espera
+    return await run_in_threadpool(_prontuario_visits, u, await _json(request))
+
+
+def _prontuario_visits(u, payload):
     pid = payload.get("patient_id")
     p = db.get_patient(u["id"], int(pid)) if str(pid or "").isdigit() else None
     if not p:
@@ -1591,7 +1630,10 @@ async def prontuario_audit(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    payload = await _json(request)
+    return await run_in_threadpool(_prontuario_audit, u, await _json(request))
+
+
+def _prontuario_audit(u, payload):
     action = payload.get("action")
     pid = payload.get("patient_id")
     if action not in ("export",) or not str(pid or "").isdigit() or not db.get_patient(u["id"], int(pid)):
@@ -1875,7 +1917,7 @@ async def prontuario_remedios(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    return {"nomes": prescricao.nomes_remedios()}
+    return {"nomes": await run_in_threadpool(prescricao.nomes_remedios)}      # lê o arquivo fora do laço de eventos
 
 
 @app.get("/prontuario/remedios/busca")
@@ -1940,7 +1982,10 @@ async def prontuario_access(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    pid = (await _json(request)).get("patient_id")
+    return await run_in_threadpool(_prontuario_access, u, (await _json(request)).get("patient_id"))
+
+
+def _prontuario_access(u, pid):
     if not str(pid or "").isdigit() or not db.get_patient(u["id"], int(pid)):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     return {"access": db.list_access(u["id"], int(pid))}
@@ -1976,7 +2021,8 @@ async def prontuario_file_add(request: Request):
     if err:
         return err
     pid = str(request.headers.get("x-patient-id") or "")
-    if not pid.isdigit() or not db.get_patient(u["id"], int(pid)):
+    # o banco (até 10 MB por anexo) roda fora do laço de eventos: o servidor tem um processo só
+    if not pid.isdigit() or not await run_in_threadpool(db.get_patient, u["id"], int(pid)):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     cl = request.headers.get("content-length") or ""
     if cl.isdigit() and int(cl) > MAX_FILE_BYTES:
@@ -1989,9 +2035,13 @@ async def prontuario_file_add(request: Request):
     mime = _sniff(bytes(body[:16]))
     if not mime:
         return JSONResponse({"error": "formato não aceito: envie PDF, JPG, PNG ou WEBP"}, status_code=415)
-    f = db.add_file(u["id"], int(pid), _file_name(request.headers.get("x-file-name")), mime, bytes(body))
-    db.log_access(u["id"], "file_add", int(pid))
-    return {"ok": True, "file": f}
+    name = _file_name(request.headers.get("x-file-name"))
+
+    def save():
+        f = db.add_file(u["id"], int(pid), name, mime, bytes(body))
+        db.log_access(u["id"], "file_add", int(pid))
+        return f
+    return {"ok": True, "file": await run_in_threadpool(save)}
 
 
 @app.post("/prontuario/files/list")
@@ -1999,7 +2049,10 @@ async def prontuario_file_list(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    pid = (await _json(request)).get("patient_id")
+    return await run_in_threadpool(_prontuario_file_list, u, (await _json(request)).get("patient_id"))
+
+
+def _prontuario_file_list(u, pid):
     if not str(pid or "").isdigit() or not db.get_patient(u["id"], int(pid)):
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     return {"files": db.list_files(u["id"], int(pid))}
@@ -2320,7 +2373,10 @@ async def patients_create(request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    payload = await _json(request)
+    return await run_in_threadpool(_patients_create, u, await _json(request))     # banco fora do laço de eventos
+
+
+def _patients_create(u, payload):
     f, msg = _patient_fields(payload, partial=False)
     if msg:
         return JSONResponse({"error": msg}, status_code=400)
@@ -2343,7 +2399,11 @@ async def patients_update(patient_id: int, request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    f, msg = _patient_fields(await _json(request))
+    return await run_in_threadpool(_patients_update, u, patient_id, await _json(request))
+
+
+def _patients_update(u, patient_id, payload):
+    f, msg = _patient_fields(payload)
     if msg:
         return JSONResponse({"error": msg}, status_code=400)
     other = db.find_by_cpf(u["id"], f.get("cpf"), exclude_id=patient_id)
