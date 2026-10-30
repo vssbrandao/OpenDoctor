@@ -505,7 +505,7 @@ def test_mesma_geracao_nao_repete_e_variantes_nao_voltam(fake, monkeypatch):
                                  m("losartana + hidroclorotiazida"), m("cloridrato de sertralina")]))
     (rx,) = db.list_receitas(UID, 7)
     assert out["receita"] == 3 and [i["nome"] for i in rx["itens"]] == [
-        "D3", "Aradois H (losartana potássica + hidroclorotiazida)", "Cloridrato de sertralina"]
+        "D3", "Losartana + hidroclorotiazida", "Cloridrato de sertralina"]          # dito duas vezes: vale o último
     db.update_receita(UID, rx["id"], [])                            # tirou tudo
     assert gera(dict(SAIDA, meds=[m("D3 7.000 UI"), m("Vitamina D3"), m("cloridrato de fluoxetina")]))["receita"] == 1
     assert [i["nome"] for i in db.get_receita(UID, rx["id"])["itens"]] == ["Cloridrato de fluoxetina"]
@@ -545,3 +545,16 @@ def test_duas_geracoes_juntas_criam_um_rascunho_so(fake, monkeypatch):
     assert [i["nome"] for i in rx["itens"]] == ["Losartana", "Metformina"]
     sc = fake.recs[REC]["scribe"]
     assert sc["receita_meds"] == ["Losartana", "Metformina"] and sc["receita_id"] == rx["id"]
+
+
+def test_mesmo_remedio_com_duas_doses_fica_o_ajuste(fake, monkeypatch):
+    """A losartana mantida em 50 mg e depois ajustada para 100 mg na mesma consulta: entra uma vez, com a dose nova.
+    Ajuste dito antes de uma menção de "mantido" continua valendo."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
+    m = lambda nome, dose, acao: {"nome": nome, "dose": dose, "posologia": "12/12h", "acao": acao, "src": [2]}  # noqa: E731
+    assert gera(dict(SAIDA, meds=[m("losartana", "50 mg", "mantido"), m("losartana", "100 mg", "ajustado"),
+                                  m("metformina", "1 g", "ajustado"), m("metformina", "850 mg", "mantido")]))["receita"] == 2
+    (rx,) = db.list_receitas(UID, 7)
+    assert [(i["nome"], i["dose"]) for i in rx["itens"]] == [("Losartana", "100 mg"), ("Metformina", "1 g")]

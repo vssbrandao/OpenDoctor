@@ -2009,10 +2009,17 @@ def _receita_da_gravacao(u, p, eid, nid, meds, recs=()):
     foram, ligadas = _lembrados(_meds_gerados(recs)), _receitas_ligadas(recs)
     rid = next(iter(ligadas), None)
     try:
-        novos = []
-        for x in prescricao.da_gravacao(meds):          # nem o que já foi, nem o mesmo duas vezes nesta geração
-            if not any(_mesmo(x["nome"], y) for y in foram) and not any(_mesmo(x["nome"], y["nome"]) for y in novos):
-                novos.append(x)
+        novos, peso = [], []                            # nem o que já foi, nem o mesmo duas vezes nesta geração
+        for m in (meds if isinstance(meds, list) else []):
+            for x in prescricao.da_gravacao([m]):
+                if any(_mesmo(x["nome"], y) for y in foram):
+                    continue
+                w = {"ajustado": 2, "iniciado": 1}.get(m.get("acao"), 0)
+                j = next((i for i, y in enumerate(novos) if _mesmo(x["nome"], y["nome"])), None)
+                if j is None:
+                    novos.append(x); peso.append(w)
+                elif w >= peso[j]:                       # dito duas vezes: vale o ajuste, depois o início, e o mais recente
+                    novos[j], peso[j] = x, w
         if not novos:
             return 0, foram, rid
         levou = _lembrados(foram + [x["nome"] for x in novos])

@@ -196,8 +196,9 @@ gravação" (`prescricao.da_gravacao`), para revisar:
   que compara o nome sem sal, forma, dose e unidade ("cloridrato de metformina" é metformina, "D3 7.000 UI" e "Vitamina
   D3" são D3, mas "cloridrato de sertralina" não é "cloridrato de fluoxetina"). Na dúvida conta como o mesmo: a
   associação que começa pela losartana não entra se a losartana foi tirada ou está no rascunho. No pior caso a gravação
-  deixa de sugerir (o médico vê no SOAP e põe à mão); nunca repete nem traz de volta o que ele tirou. Se a receita der
-  erro, nada fica lembrado e gerar de novo tenta outra vez;
+  deixa de sugerir (o médico vê no SOAP e põe à mão); nunca repete nem traz de volta o que ele tirou. O mesmo remédio
+  dito duas vezes na consulta entra uma vez: o ajustado, depois o iniciado, depois o mantido, e no empate o mais recente
+  (a dose nova do ajuste). Se a receita der erro, nada fica lembrado e gerar de novo tenta outra vez;
 - duas gerações ao mesmo tempo do mesmo paciente (clique duplo, duas abas) mexem na receita uma de cada vez
   (`_rx_lock`), e cada uma relê a memória na hora: um rascunho só, e nada do que a outra lembrou se perde;
 - a consulta com receita já emitida não ganha rascunho novo: a da agenda pelo evento, a com evolução por ela, e qualquer
