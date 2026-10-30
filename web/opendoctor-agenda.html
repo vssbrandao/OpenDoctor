@@ -4650,15 +4650,16 @@
           return;
         }
         saving = true; if (c === ctx) setStatus('Salvando…');
-        var k0 = dkey(c);
+        var k0 = dkey(c), rxv = (c._rx || []).slice();     // receitas desta consulta avulsa feitas antes da evolução
         api('POST', '/prontuario/notes', {
           patient_id: c.patient_id, patient: c.patient, event_id: c.event_id || null, event_title: c.title || null,
           note_id: c.note_id || null, event_start: c.start && c.start.length > 10 ? c.start : null,
-          content: x.content, data: x.data, rec_ids: rrIdsOf(c)
+          content: x.content, data: x.data, rec_ids: rrIdsOf(c), receita_ids: rxv
         }).then(function (res) {
           saving = false;
           if (res.ok && res.j.ok) {
             retry = 0; c.note_id = res.j.id;
+            if (res.j.receitas) c._rx = (c._rx || []).filter(function (i) { return rxv.indexOf(i) < 0; });   // ligadas (ou já não soltas)
             try { if (k0 !== dkey(c)) localStorage.removeItem(k0); } catch (_) {}
             if (c === ctx) {
               saved = s; persistCtx();
@@ -4666,7 +4667,7 @@
               cur.id = res.j.id; cur.content = x.content; cur.data = x.data; cur.updated_at = new Date().toISOString();
               setStatus(snap() !== saved ? 'Alterações não salvas' : (recovered ? 'Texto recuperado deste navegador e salvo às ' : 'Salvo às ') + hm(new Date()));
               recovered = false;
-              draftWrite(snap()); $('prCopyLast').hidden = !lastOther(); renderKpis();
+              draftWrite(snap()); $('prCopyLast').hidden = !lastOther(); renderKpis(); rxLigou(res.j.receitas, res.j.id);
             } else { try { localStorage.removeItem(dkey(c)); } catch (_) {} }
           } else if (res.status === 409 && res.j && res.j.other_patient) {   // o paciente da consulta foi trocado: não recarrega
             if (c === ctx) { ready = false; setEditable(false); setStatus('Esta consulta já tem evolução de outro paciente: confira o paciente na agenda.', true); }
@@ -7590,13 +7591,13 @@
         clearTimeout(rxSaveT);
         if (!patient || !rxOk) return rxFila;             // sem as receitas deste paciente carregadas, não grava nada
         // o que gravar e de quem é: na hora da chamada. Trocou de paciente antes de sair, vai para a receita do anterior
-        var a = rxAberta, s = { pid: patient.id, nid: cur ? cur.id : null, eid: (ctx && ctx.event_id) || null, itens: rxCheios(), ori: rxOrient };
+        var a = rxAberta, s = { c: ctx, pid: patient.id, nid: cur ? cur.id : null, eid: (ctx && ctx.event_id) || null, itens: rxCheios(), ori: rxOrient };
         rxFila = rxFila.then(function () {
           var aqui = a === rxAberta, itens = s.itens, ori = s.ori, d = a.d, req, vazio = !itens.length && !ori.trim();
           if (!d && vazio) return;
           if (aqui) rx.estado('salvando…');
           if (!d) req = api('POST', '/prontuario/receitas', { patient_id: s.pid, note_id: s.nid, event_id: s.eid, itens: itens, orientacoes: ori })
-            .then(function (res) { if (!res.ok) throw res; a.d = res.j.receita; if (a === rxAberta) { rxDraft = a.d; rxs.unshift(rxDraft); } });
+            .then(function (res) { if (!res.ok) throw res; a.d = res.j.receita; rxSolta(s.c, [a.d]); if (a === rxAberta) { rxDraft = a.d; rxs.unshift(rxDraft); } });
           else if (vazio) req = api('DELETE', '/prontuario/receitas/' + d.id)
             .then(function (res) {
               if (!res.ok) throw res; if (a.d === d) a.d = null;
@@ -7618,6 +7619,19 @@
           });
         });
         return rxFila;
+      }
+      // consulta avulsa: a receita feita antes de a evolução existir (rascunho ou já emitida) fica em c._rx até a
+      // evolução ser salva, e o servidor a liga a ela (card do Histórico e PDF)
+      function rxSolta(c, rs) {
+        var ids = rs.filter(function (r) { return r && !r.note_id && !r.event_id; }).map(function (r) { return r.id; });
+        if (!c || !ids.length) return;
+        c._rx = (c._rx || []).filter(function (i) { return ids.indexOf(i) < 0; }).concat(ids);
+        if (c === ctx) persistCtx();
+      }
+      function rxLigou(ids, nid) {                         // as que o servidor ligou à evolução que acabou de ser salva
+        if (!ids || !ids.length) return;
+        rxs.forEach(function (r) { if (ids.indexOf(r.id) >= 0) r.note_id = nid; });
+        renderHist(); renderRh();
       }
       // ----- conferência de cada item no servidor -----
       var rxConfT = null, rxConfN = 0;
@@ -8170,18 +8184,21 @@
       function rxEmitir(itens) {                           // depois da confirmação no componente (o talão e o que falta ele já barrou)
         // o paciente, o rascunho e as orientações são os da hora do clique: trocou de paciente no meio, a receita sai
         // com o nome deste, e a oferta de atualizar as medicações em uso não vai para o outro
-        var a = rxAberta, p = patient, ori = rxOrient;
+        var a = rxAberta, p = patient, ori = rxOrient, c = ctx;
         function aqui() { return a === rxAberta; }
         function diz(m, dados) { if (aqui()) rx.recado(m, dados); else toast(m); }
         rx.recado(''); rx.emitindo(true);
         rxPersist().then(function () {
           if (!a.d) throw new Error('sem rascunho');
-          return api('POST', '/prontuario/receitas/' + a.d.id + '/emitir', { patient_id: p.id, itens: itens, orientacoes: ori });
+          // avulsa com a evolução já salva: o rascunho feito antes dela (sem consulta) sai ligado a ela
+          return api('POST', '/prontuario/receitas/' + a.d.id + '/emitir', { patient_id: p.id, itens: itens, orientacoes: ori,
+                                                                             note_id: (c && !c.event_id && c.note_id) || null });
         }).then(function (res) {
           if (res.status === 409 && res.j.faltam) { diz('Para emitir, complete seus dados de médico (' + res.j.faltam.join(', ') + ').', true); return; }
           if (res.status === 409 && res.j.talao) { diz('Tire da receita o que exige Notificação de Receita (talão): ' + res.j.talao.join('; ') + '.'); return; }
           if (!res.ok) { diz('Não foi possível emitir: ' + ((res.j && res.j.error) || 'tente de novo') + '.'); return; }
           var em = res.j.receitas || [];
+          rxSolta(c, em);                                  // emitida antes de a evolução existir: vai para ela quando for salva
           toast(em.length > 1 ? em.length + ' receitas emitidas' : 'Receita emitida');
           rxImprimir(em, false, p); if (aqui()) { rxSyncOferta(em); rxLoad(true); }
         }).catch(function () { diz('Não foi possível emitir agora: tente de novo.'); })

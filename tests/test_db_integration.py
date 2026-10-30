@@ -236,6 +236,32 @@ def test_receitas_rascunho_emitida_cancelada(novo_usuario):
     assert db.delete_patient(ana, p2["id"]) == "ok"                                      # o rascunho sai junto
 
 
+def test_receita_avulsa_vai_para_a_evolucao_escrita_depois(novo_usuario):
+    """Prontuário avulso: a receita feita antes de a evolução existir (rascunho ou já emitida) passa a ser dela, e aparece
+    no card e no PDF. A que já tem consulta fica; só evolução deste médico e deste paciente."""
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p, q = db.create_patient(ana, "Paciente Avulso"), db.create_patient(ana, "Outro Paciente")
+    rasc = db.create_receita(ana, p["id"], [{"nome": "Losartana"}])
+    emit = db.create_receita(ana, p["id"], [{"nome": "Metformina"}])
+    db.emit_receita(ana, emit["id"], [("simples", [{"nome": "Metformina"}])])
+    ev = db.create_receita(ana, p["id"], [{"nome": "Dipirona"}], event_id="ev1")
+    nid = db.upsert_note(ana, p["id"], p["key"], p["name"], None, None, None, "S: renovação")
+    outra = db.upsert_note(ana, q["id"], q["key"], q["name"], None, None, None, "S: outro paciente")
+    ids = [rasc["id"], emit["id"], ev["id"], str(uuid.uuid4())]
+    assert db.rx_link_orphans(beto, p["id"], ids, nid) == [] and db.rx_link_orphans(ana, p["id"], ids, outra) == []
+    assert sorted(db.rx_link_orphans(ana, p["id"], ids, nid)) == sorted([rasc["id"], emit["id"]])
+    assert {r["id"]: r["note_id"] for r in db.list_receitas(ana, p["id"])} == {rasc["id"]: nid, emit["id"]: nid, ev["id"]: None}
+    assert db.rx_link_orphans(ana, p["id"], ids, nid) == []                             # já ligadas: nada muda
+    # emitir com a evolução já escrita: o rascunho sem consulta sai dela, com as receitas separadas
+    r = db.create_receita(ana, p["id"], [{"nome": "Losartana"}])
+    assert db.emit_receita(ana, r["id"], [("simples", [{"nome": "Losartana"}])], note_id=outra)[0]["note_id"] is None
+    r = db.create_receita(ana, p["id"], [{"nome": "Losartana"}])
+    out = db.emit_receita(ana, r["id"], [("simples", [{"nome": "Losartana"}]), ("especial", [{"nome": "Sertralina"}])], note_id=nid)
+    assert [x["note_id"] for x in out] == [nid, nid]
+    r = db.create_receita(ana, p["id"], [{"nome": "Losartana"}], event_id="ev2")       # da agenda: fica com a consulta dela
+    assert db.emit_receita(ana, r["id"], [("simples", [{"nome": "Losartana"}])], note_id=nid)[0]["note_id"] is None
+
+
 def test_dados_do_medico(novo_usuario):
     uid = novo_usuario("Dra. Ana")["id"]
     assert db.get_medico(uid)["crm"] is None

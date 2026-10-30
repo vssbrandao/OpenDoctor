@@ -16,7 +16,9 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   `gravacao`), fonte e versão do prompt e do modelo, quando vem da IA. O servidor limpa cada item com
   `prescricao.item_limpo`.
 - **Consulta:** o rascunho é desta consulta (`event_id` da agenda ou `note_id` da evolução). Sem consulta, ou numa
-  avulsa ainda não salva, fica sem os dois, e é a renovação sem consulta.
+  avulsa ainda não salva, fica sem os dois, e é a renovação sem consulta. Na avulsa, a receita feita antes da evolução
+  (rascunho ou já emitida) passa a ser dela quando ela é salva (`receita_ids` no salvar), e o rascunho sem consulta
+  emitido com a evolução já salva sai nela (`note_id` no emitir).
 - **Paciente:** excluir o paciente apaga os rascunhos. Receita emitida ou cancelada é prontuário: segura a exclusão
   (`has_notes`), como as evoluções.
 

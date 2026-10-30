@@ -1480,8 +1480,12 @@ def _prontuario_save(u, payload):
     rids = _rec_ids({"rec_ids": payload.get("rec_ids")})
     if rids:              # gravação desta consulta que ainda não tinha evolução (avulsa): fica ligada a ela desde já
         db.rec_link_orphans(u["id"], p["id"], rids, nid)
+    out = {"ok": True, "id": nid}
+    xids = _rec_ids({"rec_ids": payload.get("receita_ids")})    # mesmo formato (UUID, até 20)
+    if xids:              # receita desta consulta avulsa feita antes da evolução: passa a ser dela (card e PDF)
+        out["receitas"] = db.rx_link_orphans(u["id"], p["id"], xids, nid)
     db.log_access(u["id"], "note_edit", p["id"], nid, dedupe_minutes=10)
-    return {"ok": True, "id": nid}
+    return out
 
 
 @app.patch("/prontuario/notes/{note_id}")
@@ -1793,7 +1797,7 @@ async def prontuario_receitas_conferir(request: Request):
 async def prontuario_receita_emite(rid: str, request: Request):
     """Emite o rascunho (com os itens mandados, conferidos de novo aqui). Exige o patient_id da receita, e nome, CRM e
     UF do médico. O que pede Notificação de Receita (talão) não sai pelo app. Controle especial e antimicrobiano viram
-    receitas próprias."""
+    receitas próprias. note_id: a evolução avulsa já escrita, para o rascunho feito antes dela (sem consulta)."""
     u, err = _auth_or_401(request)
     if err:
         return err
@@ -1805,6 +1809,11 @@ async def prontuario_receita_emite(rid: str, request: Request):
     b = await _json(request)
     if not _mesmo_paciente(r, b):
         return JSONResponse({"error": "receita de outro paciente"}, status_code=409)
+    nid = b.get("note_id") if not r["note_id"] and not r["event_id"] else None    # a consulta que já tem fica
+    if nid is not None:
+        n = await run_in_threadpool(db.get_note, u["id"], int(nid)) if str(nid).isdigit() else None
+        if not n or n.get("patient_id") != r["patient_id"]:
+            return JSONResponse({"error": "evolução inválida"}, status_code=400)
     erro = prescricao.erro_itens(b.get("itens"))
     if erro:
         return JSONResponse({"error": erro}, status_code=400)
@@ -1820,10 +1829,11 @@ async def prontuario_receita_emite(rid: str, request: Request):
     if talao:
         return JSONResponse({"error": "exige Notificação de Receita (talão)", "talao": talao}, status_code=409)
     ori = prescricao.orientacoes_limpas(b["orientacoes"]) if "orientacoes" in b else None
-    out = await run_in_threadpool(db.emit_receita, u["id"], r["id"], prescricao.grupos(itens, conf), ori)
+    out = await run_in_threadpool(db.emit_receita, u["id"], r["id"], prescricao.grupos(itens, conf), ori,
+                                  int(nid) if nid is not None else None)
     if not out:
         return JSONResponse({"error": "receita já emitida"}, status_code=409)
-    await run_in_threadpool(db.log_access, u["id"], "receita_emitida", p["id"], r["note_id"])
+    await run_in_threadpool(db.log_access, u["id"], "receita_emitida", p["id"], out[0]["note_id"])
     return {"receitas": out}
 
 

@@ -143,7 +143,11 @@ async def _save(request: Request):
     if n["data"] and n["data"].get("scribe"):
         db.rec_link_note(UID, pid, n["data"]["scribe"]["rec_ids"], n["id"])
     db.rec_link_orphans(UID, pid, server._rec_ids({"rec_ids": b.get("rec_ids")}), n["id"])
-    return {"ok": True, "id": n["id"]}
+    out = {"ok": True, "id": n["id"]}
+    xids = server._rec_ids({"rec_ids": b.get("receita_ids")})      # como em server._prontuario_save
+    if xids:
+        out["receitas"] = db.rx_link_orphans(UID, pid, xids, n["id"])
+    return out
 
 
 @mock.post("/prontuario/notes/{nid}/finalize")

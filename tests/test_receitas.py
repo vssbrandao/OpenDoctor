@@ -81,6 +81,37 @@ def test_emitir_separa_por_tipo_e_trava(cli):
     assert cli.post(f"/prontuario/receitas/{rx['id']}/emitir", json={"patient_id": 7}).status_code == 409
 
 
+def test_receita_avulsa_feita_antes_da_evolucao_sai_ligada_a_ela(cli):
+    """Prontuário avulso: o rascunho feito antes de a evolução existir (sem consulta) sai na evolução já escrita, com as
+    receitas separadas. A consulta que a receita já tem fica; evolução de outro paciente não serve."""
+    rx = nova(cli, note_id=None)
+    assert cli.post(f"/prontuario/receitas/{rx['id']}/emitir", json={"patient_id": 7, "note_id": 80}).status_code == 400   # do João
+    itens = [LOS, {"nome": "Azitromicina", "dose": "500 mg"}]
+    out = cli.post(f"/prontuario/receitas/{rx['id']}/emitir", json={"patient_id": 7, "itens": itens, "note_id": 70}).json()["receitas"]
+    assert [x["note_id"] for x in out] == [70, 70] and cli.acessos == [("receita_emitida", 7, 70)]
+    ev = nova(cli, note_id=None, event_id="ev1")
+    assert cli.post(f"/prontuario/receitas/{ev['id']}/emitir", json={"patient_id": 7, "note_id": 70}).json()["receitas"][0]["note_id"] is None
+    ja = nova(cli)
+    assert cli.post(f"/prontuario/receitas/{ja['id']}/emitir", json={"patient_id": 7, "note_id": 80}).json()["receitas"][0]["note_id"] == 70
+
+
+def test_salvar_a_evolucao_avulsa_liga_a_receita_feita_antes(cli, monkeypatch):
+    """A evolução avulsa salva depois da receita (rascunho ou já emitida): o servidor liga as que a página manda e ainda
+    estão sem consulta, deste paciente; devolve quais ligou."""
+    monkeypatch.setattr(db, "upsert_note", lambda *a, **k: 70)
+    monkeypatch.setattr(db, "touch_patient", lambda *a, **k: None)
+    rasc, emit, ja, ev = nova(cli, note_id=None), nova(cli, note_id=None), nova(cli), nova(cli, note_id=None, event_id="ev1")
+    assert cli.post(f"/prontuario/receitas/{emit['id']}/emitir", json={"patient_id": 7}).json()["receitas"][0]["note_id"] is None
+    joao = cli.post("/prontuario/receitas", json={"patient_id": 8, "itens": [LOS]}).json()["receita"]
+    corpo = {"patient_id": 7, "content": "S: renovação", "data": {"mode": "free"}}
+    r = cli.post("/prontuario/notes", json=dict(corpo, receita_ids=[rasc["id"], emit["id"], ja["id"], ev["id"], joao["id"], "nao-e-uuid"]))
+    assert r.json() == {"ok": True, "id": 70, "receitas": [rasc["id"], emit["id"]]}
+    assert {x["id"]: x["note_id"] for x in cli.get("/prontuario/receitas?patient_id=7").json()["receitas"]} == {
+        rasc["id"]: 70, emit["id"]: 70, ja["id"]: 70, ev["id"]: None}
+    assert cli.get("/prontuario/receitas?patient_id=8").json()["receitas"][0]["note_id"] is None          # a do João fica
+    assert cli.post("/prontuario/notes", json=corpo).json() == {"ok": True, "id": 70}                     # nada a ligar
+
+
 def test_emitir_exige_dados_do_medico(cli):
     cli.fake.medicos[UID] = {"name": "Dra. Ana Souza"}
     r = cli.post(f"/prontuario/receitas/{nova(cli)['id']}/emitir", json={"patient_id": 7})
