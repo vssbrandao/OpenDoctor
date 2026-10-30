@@ -238,8 +238,11 @@ VIAS = ("oral", "sublingual", "tópica", "inalatória", "nasal", "oftálmica", "
         "intramuscular", "intravenosa", "transdérmica")
 ORIGENS = ("ia", "uso", "manual", "anterior", "gravacao")
 MAX_ITENS = 20
-# o que sai no papel: o que o médico manda além disso é recusado (erro_itens), nunca cortado
-LIMITE = {"nome": 120, "dose": 60, "forma": 80, "posologia": 500, "quantidade": 60}
+# o que sai no papel: o que o médico manda além disso é recusado (erro_itens), nunca cortado. Posologia e quantidade o
+# médico escreve na folha: o limite é dele. Nome, dose e forma vêm da base CMED (app/data/medicamentos.tsv.gz) e não se
+# editam na folha: o teto fica bem acima do maior da base (em 10/2026: nome 1471, Pneumovax 23; dose 82; forma 120) e
+# só barra abuso, nunca um remédio de verdade (tests/test_receitas.py confere a base inteira)
+LIMITE = {"nome": 2000, "dose": 200, "forma": 300, "posologia": 500, "quantidade": 60}
 _CAMPO = {"nome": "o nome", "dose": "a dose", "forma": "a forma", "posologia": "a posologia", "quantidade": "a quantidade"}
 
 

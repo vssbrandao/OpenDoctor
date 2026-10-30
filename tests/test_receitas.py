@@ -3,7 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app import auth, db, prescricao as pr, server
+from app import auth, db, medicamentos, prescricao as pr, server
 from tests.fake_receitas import FakeReceitas
 
 UID, OUTRO = "u-1", "u-2"
@@ -144,6 +144,51 @@ def test_limite_mede_o_texto_como_sai():
     assert pr.erro_itens([{"nome": "Losartana", "posologia": "  " + "a " * 250}]) == ""   # espaço sobrando não conta (499)
     assert pr.erro_itens(None) == "" and pr.erro_itens([{"nome": " ", "posologia": "x" * 900}]) == ""   # sem nome sai
     assert pr.item_limpo({"nome": "Losartana", "posologia": "p" * 900})["posologia"] == "p" * 500   # gravação/IA: no limite
+    assert pr.erro_itens([{"nome": "x" * 2001}]) == "o nome de " + "x" * 60 + " passou do limite de 2000 caracteres"   # abuso
+
+
+def _apresentacoes_cmed():
+    """Cada apresentação da base CMED como a barra "Buscar remédio…" a põe na receita (escolhe() da página): o nome do
+    resultado, a dose e a forma da apresentação e cada quantidade de embalagem."""
+    subs, marcas = medicamentos._carrega()
+    for g in subs + marcas:
+        nome = medicamentos._saida(g)["nome"]
+        for (dose, forma), qs in g["aps"].items():
+            for q in sorted(qs) or [""]:
+                yield {"nome": nome, "dose": dose, "forma": forma, "quantidade": q, "posologia": "Conforme orientação médica."}
+
+
+def test_toda_apresentacao_da_base_cabe_na_receita():
+    """Nome, dose e forma vêm da base CMED e não se editam na folha: nenhuma apresentação pode passar do limite (com 120,
+    60 e 80, 148 delas, como Foraseq, Enbrel e Enfuvirtida, travavam o rascunho inteiro). O teto tem folga para a base nova."""
+    maior, n = dict.fromkeys(("nome", "dose", "forma", "quantidade"), 0), 0
+    for it in _apresentacoes_cmed():
+        n += 1
+        assert pr.erro_itens([it]) == "", it
+        for k in maior:
+            maior[k] = max(maior[k], len(it[k]))
+    assert n > 15000 and maior["nome"] > 1400                           # a base inteira (o maior nome: Pneumovax 23)
+    assert all(maior[k] * 1.25 < pr.LIMITE[k] for k in maior), maior     # 25% de folga sobre o maior da base
+
+
+def test_a_apresentacao_mais_longa_da_base_salva_e_sai_inteira(cli):
+    """O maior nome, a maior dose e a maior forma da base CMED, e o Foraseq escolhido pela busca de verdade: o rascunho
+    salva, muda e é emitido com o texto inteiro (a folha impressa é a resposta do servidor)."""
+    todas = list(_apresentacoes_cmed())
+    itens = [max(todas, key=lambda it: len(it[k])) for k in ("nome", "dose", "forma")]
+    (fs, *_) = cli.get("/prontuario/remedios/busca?q=foraseq&patient_id=7").json()["itens"]
+    a = fs["apresentacoes"][0]
+    itens.append({"nome": fs["nome"], "dose": a["dose"], "forma": a["forma"], "posologia": "Inalar 1 cápsula de 12/12 h.",
+                  "quantidade": "1 caixa"})
+    assert len(itens[0]["nome"]) == 1471 and len(itens[2]["forma"]) == 120 and len(a["forma"]) > 80   # Foraseq: antes, 400
+    texto = lambda its: sorted((i["nome"], i["dose"], i["forma"], i["quantidade"]) for i in its)   # noqa: E731
+    rx = nova(cli, itens=itens)
+    assert texto(rx["itens"]) == texto(itens)
+    r = cli.patch(f"/prontuario/receitas/{rx['id']}", json={"patient_id": 7, "itens": itens})
+    assert r.status_code == 200 and texto(r.json()["receita"]["itens"]) == texto(itens)
+    r = cli.post(f"/prontuario/receitas/{rx['id']}/emitir", json={"patient_id": 7, "itens": itens})
+    assert r.status_code == 200, r.text
+    assert texto([i for x in r.json()["receitas"] for i in x["itens"]]) == texto(itens) and cli.acessos == [("receita_emitida", 7, 70)]
 
 
 def test_cancelar_so_emitida_e_com_motivo(cli):
