@@ -2971,8 +2971,12 @@
           elDateTxt = document.getElementById('evDateTxt'), elAllDay = document.getElementById('evAllDay');
       var allDay = false, POP_W = 360;                   // largura da janela (= .evpop)
       // a janela tem uma data só: fim antes do início = termina no dia seguinte (plantão 19h–7h, 23h30–0h);
-      // extraDays = dias inteiros a mais do evento aberto (24 h ou mais; dia inteiro de vários dias, como férias)
-      var extraDays = 0;
+      // extraDays = dias a mais de um evento de dia inteiro (férias de vários dias).
+      // Com horário, o fim fica em endMin = minutos desde a 0h do dia de início (passa de 1440 nos dias seguintes);
+      // ao mudar o horário do fim, ele vai para o dia mais próximo do fim atual (empate: o mais curto). Assim um
+      // plantão de 24 h estendido para 08:00 vira 25 h e encurtado para 06:00 vira 23 h. longOk = o evento aberto já
+      // tinha 24 h ou mais (só então o fim igual ao início vale como "um dia inteiro depois").
+      var extraDays = 0, endMin = 0, longOk = false;
       // horários a cada 15 min (formato 24h)
       [elStart, elEnd].forEach(function (sel) {
         for (var q = 0; q < 96; q++) {
@@ -2990,7 +2994,21 @@
       }
       function hmMin(v) { var a = v.split(':'); return +a[0] * 60 + +a[1]; }
       function spanMin() {                                // duração em minutos (pode passar da meia-noite)
-        return (hmMin(elEnd.value) - hmMin(elStart.value) + 1440) % 1440 + extraDays * 1440;
+        return endMin - hmMin(elStart.value);
+      }
+      function endFromTimes() {                           // evento novo: fim antes do início = no dia seguinte
+        var s = hmMin(elStart.value), e = hmMin(elEnd.value);
+        endMin = e + (e < s ? 1440 : 0);
+      }
+      function endNearest() {                             // fim mudou: o dia mais próximo do fim atual
+        var s = hmMin(elStart.value), e = hmMin(elEnd.value), best = null;
+        if (e === s % 1440 && !longOk) { endMin = s; return; }        // fim = início: avisa ao salvar
+        for (var k = 0; k <= 31; k++) {
+          var c = e + k * 1440;
+          if (c <= s) continue;
+          if (best === null || Math.abs(c - endMin) < Math.abs(best - endMin)) best = c;
+        }
+        endMin = best === null ? s : best;
       }
       function durLabel() {
         if (!elStart.value || !elEnd.value) { elDur.textContent = ''; return; }
@@ -3008,10 +3026,11 @@
         var a = elStart.value.split(':'); if (a.length < 2) return;
         var dur = 30;
         if (elDur.dataset.min) dur = +elDur.dataset.min;
-        var t = (+a[0] * 60 + +a[1] + dur) % (24 * 60);
-        elEnd.value = pad(Math.floor(t / 60)) + ':' + pad(t % 60); durLabel(); remember();
+        endMin = +a[0] * 60 + +a[1] + dur;                 // o evento anda inteiro (mesma duração, inclusive de dias)
+        var t = endMin % (24 * 60);
+        ensureOption(elEnd, pad(Math.floor(t / 60)) + ':' + pad(t % 60)); durLabel(); remember();
       });
-      elEnd.addEventListener('change', function () { durLabel(); remember(); });
+      elEnd.addEventListener('change', function () { endNearest(); durLabel(); remember(); });
       function remember() {
         var min = spanMin();
         if (min > 0) elDur.dataset.min = min;
@@ -3021,7 +3040,7 @@
         try { elDate.showPicker(); } catch (_) { elDate.focus(); }
       });
       elDate.addEventListener('change', dateLabel);
-      elAllDay.addEventListener('click', function () { setAllDay(!allDay); extraDays = 0; durLabel(); remember(); });
+      elAllDay.addEventListener('click', function () { setAllDay(!allDay); extraDays = 0; longOk = false; endFromTimes(); durLabel(); remember(); });
       // ===== paciente: escolher um do cadastro ou criar um novo (ligado ao prontuário dele) =====
       // A lista vem inteira de GET /patients e é filtrada aqui (o nome nunca vai em URL).
       var elAv = document.getElementById('evAv'), elAvTxt = document.getElementById('evAvTxt');
@@ -3157,6 +3176,7 @@
         elStart.value = pad(h) + ':' + pad(m);
         var eh = h, em = m + 30; if (em >= 60) { eh = (h + 1) % 24; em -= 60; }
         elEnd.value = pad(eh) + ':' + pad(em);
+        longOk = false; endFromTimes();
         selPatient = null; hideList(); loadPatients(true);   // sempre fresca (pode ter mudado na tela Pacientes)
         seq++;
         remember(); durLabel(); dateLabel(); avatar();
@@ -3191,7 +3211,7 @@
           startISO = elDate.value; endISO = dayPlus(1 + extraDays);          // fim exclusivo: o dia seguinte ao último
         } else {
           startISO = isoFrom(elDate.value, elStart.value);
-          endISO = isoFrom(dayPlus(extraDays + (hmMin(elEnd.value) < hmMin(elStart.value) ? 1 : 0)), elEnd.value);
+          endISO = isoFrom(dayPlus(Math.floor(endMin / 1440)), elEnd.value);
           if (new Date(endISO) <= new Date(startISO)) return { error: 'O fim deve ser depois do início.' };
         }
         var summary = patient ? (title ? title + ' — ' + patient : patient) : title;
@@ -3260,7 +3280,12 @@
         if (!isAll) { ensureOption(elStart, pad(s0.getHours()) + ':' + pad(s0.getMinutes()));
                       ensureOption(elEnd, pad(e0.getHours()) + ':' + pad(e0.getMinutes())); }
         // guarda o dia em que o evento termina (senão editar um plantão 19h–7h ou as férias encurtava o evento)
-        extraDays = Math.max(0, dayN(e0) - dayN(s0) - (isAll || hmMin(elEnd.value) < hmMin(elStart.value) ? 1 : 0)) || 0;
+        extraDays = isAll ? Math.max(0, dayN(e0) - dayN(s0) - 1) || 0 : 0;
+        if (!isAll) {
+          endMin = (dayN(e0) - dayN(s0)) * 1440 + e0.getHours() * 60 + e0.getMinutes();
+          if (!(endMin > hmMin(elStart.value))) endFromTimes();            // fim inválido no Google: lê como novo
+          longOk = spanMin() >= 1440;
+        } else { longOk = false; endFromTimes(); }
         // paciente do evento: pelo id do cadastro; eventos antigos só têm o nome
         hideList();
         selPatient = patient ? { id: ev.patient_id || null, name: patient } : null;

@@ -184,6 +184,47 @@ const cenarios = [
     certo(await ev(`document.getElementById('evPop').hidden`) && patches('joana').length === 0, 'fechar de novo descarta, sem PATCH');
     return 'avisou; fechar de novo descartou';
   }],
+  ['plantão de 24 h: fim 08:00 grava 25 h e fim 06:00 grava 23 h (o fim fica no dia mais próximo)', async () => {
+    const t24 = { id: 't24', title: 'Plantão 24 h', start: `${dia(0)}T07:00:00-03:00`, end: `${dia(1)}T07:00:00-03:00`, allDay: false };
+    const abre = async () => { await ev(`window.__openEventEdit(400, 300, ${JSON.stringify(t24)}); 1`);
+      await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento'); };
+    const fim = (hm) => ev(`(() => { const s = document.getElementById('evEnd'); s.value = ${JSON.stringify(hm)}; s.dispatchEvent(new Event('change')); return 1; })()`);
+    await abre();
+    certo(await txt('#evDur') === '24 h', 'abre com 24 h: ' + await txt('#evDur'));
+    await fim('08:00'); certo(await txt('#evDur') === '25 h', 'estender: ' + await txt('#evDur'));
+    await fecha(); await sleep(300);
+    let p = patches('t24');
+    certo(p.length === 1 && p[0].body.end === utc(dia(1), '08:00'), 'gravou 25 h: ' + JSON.stringify(p.map((x) => x.body.end)));
+    await abre();
+    await fim('06:00'); certo(await txt('#evDur') === '23 h', 'encurtar: ' + await txt('#evDur'));
+    await fecha(); await sleep(300);
+    p = patches('t24');
+    certo(p.length === 2 && p[1].body.end === utc(dia(1), '06:00'), 'gravou 23 h: ' + JSON.stringify(p.map((x) => x.body.end)));
+    return '25 h e 23 h, como na tela';
+  }],
+  ['plantão de 36 h (19h → 7h dois dias depois): fim 19:00 vira 24 h, depois fim 07:00 vira 12 h', async () => {
+    const t36 = { id: 't36', title: 'Plantão 36 h', start: `${dia(0)}T19:00:00-03:00`, end: `${dia(2)}T07:00:00-03:00`, allDay: false };
+    await ev(`window.__openEventEdit(400, 300, ${JSON.stringify(t36)}); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento');
+    const fim = (hm) => ev(`(() => { const s = document.getElementById('evEnd'); s.value = ${JSON.stringify(hm)}; s.dispatchEvent(new Event('change')); return 1; })()`);
+    certo(await txt('#evDur') === '36 h', 'abre com 36 h: ' + await txt('#evDur'));
+    await fim('19:00'); certo(await txt('#evDur') === '24 h', 'fim 19:00: ' + await txt('#evDur'));
+    await fim('07:00'); certo(await txt('#evDur') === '12 h', 'fim 07:00: ' + await txt('#evDur'));
+    await fecha(); await sleep(300);
+    const p = patches('t36');
+    certo(p.length === 1 && p[0].body.end === utc(dia(1), '07:00'), 'gravou 12 h: ' + JSON.stringify(p.map((x) => x.body.end)));
+    return '36 h → 24 h → 12 h';
+  }],
+  ['fim igual ao início numa consulta curta avisa e não grava um dia inteiro', async () => {
+    await abreEvento('.ev-real[data-evkey="manha"]');
+    await ev(`(() => { const s = document.getElementById('evEnd'); s.value = '10:00'; s.dispatchEvent(new Event('change')); return 1; })()`);
+    await fecha();
+    certo(await ev(`!document.getElementById('evPop').hidden`), 'a janela fica aberta');
+    certo(await txt('#evMsg') === 'O fim deve ser depois do início.', 'aviso: ' + await txt('#evMsg'));
+    await fecha();
+    certo(patches('manha').length === 0, 'sem PATCH');
+    return 'avisou e não gravou';
+  }],
   ['semana: linha de dia inteiro abaixo dos dias, fixa ao rolar; pede o teto', async () => {
     const antes = pedidos.length;
     await clica('#viewSel');
