@@ -1111,9 +1111,9 @@ def integrations_events(provider: str, request: Request, limit: int = 50,
 
 
 @app.get("/calendar/events")
-def calendar_events(request: Request, start: str = "", end: str = "", limit: int = 50):
+def calendar_events(request: Request, start: str = "", end: str = "", limit: int = 250):
     """Eventos do provedor conectado do usuário (o que a agenda consome).
-    `limit` maior (até 250) é usado pela busca, que filtra no navegador."""
+    `limit` maior (até integrations.EVENTS_MAX) é usado pela semana e pela busca, que filtra no navegador."""
     u = auth.current_user(request)
     if not u:
         return {"logged_in": False, "connected": None, "events": []}
@@ -1122,7 +1122,7 @@ def calendar_events(request: Request, start: str = "", end: str = "", limit: int
         return {"logged_in": True, "connected": None, "events": []}
     prov = "google" if "google" in connected else next(iter(connected))
     try:
-        evs = integrations.events(u["id"], prov, max(1, min(limit, 250)), start or None, end or None)
+        evs = integrations.events(u["id"], prov, max(1, min(limit, integrations.EVENTS_MAX)), start or None, end or None)
     except integrations.NeedsReconnect:              # a agenda mostra "Reconectar" em vez de um dia vazio
         return {"logged_in": True, "connected": prov, "events": [], "needs_reconnect": True}
     return {"logged_in": True, "connected": prov, "events": evs}
