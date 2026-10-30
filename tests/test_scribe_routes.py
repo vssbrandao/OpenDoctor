@@ -558,3 +558,21 @@ def test_mesmo_remedio_com_duas_doses_fica_o_ajuste(fake, monkeypatch):
                                   m("metformina", "1 g", "ajustado"), m("metformina", "850 mg", "mantido")]))["receita"] == 2
     (rx,) = db.list_receitas(UID, 7)
     assert [(i["nome"], i["dose"]) for i in rx["itens"]] == [("Losartana", "100 mg"), ("Metformina", "1 g")]
+
+
+def test_associacao_dita_junto_dos_componentes_nao_repete(fake, monkeypatch):
+    """Losartana e hidroclorotiazida ditas separadas e depois a associação ajustada: a associação bate com as duas, então
+    ficam as duas (nenhuma em dobro). Ditas na outra ordem, fica a associação."""
+    c = TestClient(server.app)
+    _record(fake, c)
+    gera = _gerador(c, monkeypatch, {"event_id": "ev9"})
+    m = lambda nome, dose, acao: {"nome": nome, "dose": dose, "posologia": "1x/dia", "acao": acao, "src": [2]}  # noqa: E731
+    assert gera(dict(SAIDA, meds=[m("losartana", "50 mg", "mantido"), m("hidroclorotiazida", "25 mg", "mantido"),
+                                  m("losartana + hidroclorotiazida", "50/12,5 mg", "ajustado")]))["receita"] == 2
+    (rx,) = db.list_receitas(UID, 7)
+    assert [i["nome"] for i in rx["itens"]] == ["Losartana", "Hidroclorotiazida"]
+    db.delete_receita(UID, rx["id"])
+    fake.recs[REC]["scribe"] = {}                                       # outra consulta, sem memória
+    assert gera(dict(SAIDA, meds=[m("losartana + hidroclorotiazida", "50/12,5 mg", "ajustado"), m("losartana", "50 mg", "mantido"),
+                                  m("hidroclorotiazida", "25 mg", "mantido")]))["receita"] == 1
+    assert [i["nome"] for i in db.list_receitas(UID, 7)[0]["itens"]] == ["Losartana + hidroclorotiazida"]
