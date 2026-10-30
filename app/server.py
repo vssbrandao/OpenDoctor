@@ -2469,7 +2469,9 @@ async def prontuario_scribe(request: Request):
             def guarda(nomes, rx):
                 db.rec_generated(u["id"], p["id"], meta["rec_ids"], dict(meta, saida={"result": result, "flags": flags, "segs": table},
                                                                            receita_meds=nomes, receita_id=rx), nid)
-            with _rx_lock(u["id"], p["id"]):
+            lk = _rx_lock(u["id"], p["id"])
+            vez = lk.acquire(timeout=30)                 # banco travado na outra geração: segue sem a vez (como antes)
+            try:
                 agora = db.rec_list(u["id"], p["id"], eid, nid, rids)   # relida: outra geração pode ter terminado enquanto o modelo escrevia
                 foram, rx0 = _lembrados(_meds_gerados(agora)), next(iter(_receitas_ligadas(agora)), None)
                 guarda(foram, rx0)
@@ -2480,6 +2482,9 @@ async def prontuario_scribe(request: Request):
                         guarda(levou, rx)
                     except Exception as e:
                         print("[gravacao] memória da receita falhou:", type(e).__name__, flush=True)
+            finally:
+                if vez:
+                    lk.release()
             return n
         n_rx = await run_in_threadpool(save)
         yield _line({"ok": True, "result": result, "flags": flags, "segs": table, "meta": meta, "receita": n_rx})

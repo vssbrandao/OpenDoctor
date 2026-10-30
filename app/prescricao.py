@@ -300,11 +300,12 @@ def conferir(itens, alergias, tfg_=None):
     return out
 
 
-def _nucleo(nome):
+def _nucleo(nome, sem_vitamina=True):
     """O nome sem sal, forma, dose e unidade (scribe._FORMA): "Cloridrato de sertralina 50 mg" → "sertralina", "D3
-    7.000 UI" → "d3"; "Vitamina D3" → "d3"."""
+    7.000 UI" → "d3"; sem_vitamina: "Vitamina D3" → "d3" (só para comparar o texto: o "vitamina" é o que deixa
+    scribe.same_drug achar a "Vitamina D3 (colecalciferol)" da busca)."""
     toks = [t for t in re.findall(r"[a-z0-9]+", scribe.norm(nome)) if not t.isdigit() and t not in scribe._FORMA]
-    if len(toks) > 1 and toks[0] == "vitamina":
+    if sem_vitamina and len(toks) > 1 and toks[0] == "vitamina":
         toks = toks[1:]
     return " ".join(toks)
 
@@ -315,7 +316,7 @@ def mesmo_remedio(a, b):
     na, nb = _nucleo(a), _nucleo(b)
     if na and na == nb:
         return True
-    a, b = na or a, nb or b
+    a, b = _nucleo(a, False) or a, _nucleo(b, False) or b
     return scribe.same_drug(a, b) or scribe.same_drug(b, a)
 
 

@@ -210,6 +210,9 @@ def test_o_item_guarda_a_forma():
     ("Metformina", "Cloridrato de metformina", True), ("D3", "D3 7.000 UI", True), ("D3", "Vitamina D3", True),
     ("Losartana", "losartana potássica", True), ("Salbutamol 100 mcg/dose", "salbutamol", True),
     ("Aradois H (losartana potássica + hidroclorotiazida)", "losartana + hidroclorotiazida", True),
+    ("Vitamina D3", "Vitamina D3 (colecalciferol)", True), ("vitamina E", "Vitamina E (acetato de racealfatocoferol)", True),
+    ("Vitamina D3", "Vitamina D3 em gotas", True), ("Vitamina C", "Vitamina C efervescente", True),
+    ("Vitamina D", "Vitamina D3", False),
 ])
 def test_mesmo_remedio_sem_sal_nem_dose(a, b, igual):
     """O sal na frente não faz dois remédios diferentes virarem o mesmo; dose, unidade e forma não fazem o mesmo virar
