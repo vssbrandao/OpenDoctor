@@ -5,7 +5,8 @@
 //
 // Confere: eventos de dia inteiro aparecem no Dia e na Semana (e abrem a janela); plantão que passa da meia-noite abre,
 // salva e vai ao prontuário com o fim no dia seguinte; criar às 23h30 funciona; editar as férias mantém os dias;
-// alteração que não dá para salvar avisa em vez de sumir; a semana e a busca pedem o teto e a busca lê o futuro à parte.
+// alteração que não dá para salvar avisa em vez de sumir; a semana e a busca pedem o teto e a busca lê o futuro à parte;
+// no campo Paciente, a de exemplo fica por último e o Enter nunca a escolhe (só a seta ou o mouse).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -56,9 +57,11 @@ const EVS = [
 ];
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
+const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
 function rota(method, path, q, body) {
   if (path === '/me') return { logged_in: true, scribe: false, user: { id: 'u-teste' } };
-  if (path === '/patients' && method === 'GET') return { patients: [{ id: 5, name: 'Joana Prado' }] };
+  if (path === '/patients' && method === 'GET') return { patients: PACS };
+  if (path === '/patients' && method === 'POST') { const p = { id: 40 + PACS.length, name: body.name }; PACS.push(p); return { ok: true, patient: p }; }
   if (path === '/calendar/events' && method === 'GET') return { logged_in: true, connected: 'google', events: EVS };
   if (path === '/calendar/events' && method === 'POST') {
     const e = { id: 'novo' + EVS.length, title: body.title, start: body.start, end: body.end, allDay: !!body.all_day };
@@ -219,6 +222,51 @@ const cenarios = [
     const itens = await ev(`[...document.querySelectorAll('#srchList .srch-item .srch-t')].map((t) => t.textContent)`);
     certo(new Set(itens).size === itens.length, 'sem repetidos: ' + itens.join(' | '));
     return itens.length + ' próximas, sem repetir';
+  }],
+  ['paciente: "Maria Silva" + Enter nunca escolhe a de exemplo; com a seta, sim', async () => {
+    const lista = () => ev(`[...document.querySelectorAll('#evPList .evpop-po')].map((b) => (b.classList.contains('on') ? '*' : '') + b.lastChild.textContent)`);
+    const digita = async (v) => {
+      await ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = ${JSON.stringify(v)}; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+      await ate(`(() => { const b = [...document.querySelectorAll('#evPList .evpop-po')], u = b[b.length - 1];   // a lista já é a deste nome
+        return !!document.querySelector('#evPList .evpop-po.on') && !!u && u.textContent.endsWith(${JSON.stringify('"' + v + '"')}); })()`, 3000, 'lista de ' + v);
+    };
+    const noCampo = (k) => ev(`(() => { document.getElementById('evPatient').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true })); return 1; })()`);
+    const cria = async () => {
+      const antes = pedidos.length;
+      await clica('#evCreate');
+      await ate(`document.getElementById('evMsg').textContent === 'Evento criado!'`, 3000, 'criado: ' + await txt('#evMsg'));
+      await ate(`document.getElementById('evPop').hidden`, 3000, 'fechou sozinha');
+      return pedidos.slice(antes).find((r) => r.method === 'POST' && r.path === '/calendar/events').body;
+    };
+    await fecha();
+    await ev(`window.__openEventAt(200, 200, new Date(), 9, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await digita('a');                                         // a de exemplo vai para o fim, o destaque fica na de verdade
+    let l = await lista();
+    certo(l.join(' | ') === '*Joana Prado | Maria Silva (exemplo) | Criar paciente "a"', 'lista "a": ' + l.join(' | '));
+    await digita('Maria Silva');                               // só a de exemplo tem o nome: o destaque vai para Criar
+    l = await lista();
+    certo(l.join(' | ') === 'Maria Silva (exemplo) | *Criar paciente "Maria Silva"', 'lista "Maria Silva": ' + l.join(' | '));
+    await noCampo('Enter');
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
+    const novo = pedidos.filter((r) => r.method === 'POST' && r.path === '/patients');
+    certo(novo.length === 1 && novo[0].body.name === 'Maria Silva' && !novo[0].body.force, 'criou a Maria de verdade: ' + JSON.stringify(novo.map((r) => r.body)));
+    const real = PACS[PACS.length - 1].id;
+    const a = await cria();
+    certo(a.patient_id === real, 'consulta da Maria de verdade: ' + a.patient_id);
+    await ev(`window.__openEventAt(200, 200, new Date(), 10, 0); 1`);   // agora há a de verdade: ela fica em destaque
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await digita('Maria Silva');
+    l = await lista();
+    certo(l.join(' | ') === '*Maria Silva | Maria Silva (exemplo) | Criar outro paciente "Maria Silva"', 'com a de verdade: ' + l.join(' | '));
+    await noCampo('ArrowDown');                                // escolher a de exemplo de propósito continua valendo
+    l = await lista();
+    certo(l[1] === '*Maria Silva (exemplo)', 'seta na de exemplo: ' + l.join(' | '));
+    await noCampo('Enter');
+    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
+    const b = await cria();
+    certo(b.patient_id === 7, 'escolhida com a seta: ' + b.patient_id);
+    return 'Enter criou a Maria de verdade (id ' + real + '); a seta ainda escolhe a de exemplo';
   }],
 ];
 

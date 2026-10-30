@@ -3027,7 +3027,7 @@
       var elAv = document.getElementById('evAv'), elAvTxt = document.getElementById('evAvTxt');
       var elPList = document.getElementById('evPList');
       var selPatient = null;                                 // {id, name}; id null = evento antigo só com o nome
-      var patients = null, patientsAt = 0, plItems = [], plActive = -1;
+      var patients = null, patientsAt = 0, plItems = [], plActive = -1, plFirst = 0;   // plFirst: a opção do Enter sem destaque
       function pnorm(v) { return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/\s+/).filter(Boolean).join(' '); }
       function initialsOf(name) {                          // Array.from: não quebra emoji/letras fora do BMP
         var w = (name || '').trim().split(/\s+/).filter(Boolean);
@@ -3059,6 +3059,12 @@
         return k && patients ? patients.filter(function (p) { return !p.example && pnorm(p.name) === k; }) : [];
       }
       function byKey(name) { var l = sameName(name); return l.length === 1 ? l[0] : null; }   // só se não houver dúvida
+      // a de exemplo vai para o fim e nunca é a escolha padrão (destaque/Enter): first = 1ª opção que não é ela
+      // (sem paciente de verdade, é o "Criar paciente" logo depois); escolher com o mouse ou as setas continua valendo
+      function exampleLast(hits) {
+        var l = hits.filter(function (p) { return !p.example; });
+        return { list: l.concat(hits.filter(function (p) { return p.example; })), first: l.length ? 0 : hits.length };
+      }
       function setPatient(p) {
         selPatient = p; elPatient.value = p ? p.name : ''; avatar(); hideList();
       }
@@ -3080,7 +3086,8 @@
         loadPatients().then(function (list) {
           if (pop.hidden || document.activeElement !== elPatient || raw !== elPatient.value.trim()) return;
           elPList.innerHTML = ''; plItems = []; plActive = -1;
-          var hits = list.filter(function (p) { return !q || pnorm(p.name).indexOf(q) >= 0; }).slice(0, q ? 6 : 5);
+          var ord = exampleLast(list.filter(function (p) { return !q || pnorm(p.name).indexOf(q) >= 0; }).slice(0, q ? 6 : 5));
+          var hits = ord.list; plFirst = ord.first;
           if (!q && hits.length) {
             var h = document.createElement('div'); h.className = 'evpop-pmsg'; h.textContent = 'Pacientes recentes'; elPList.appendChild(h);
           }
@@ -3096,7 +3103,7 @@
           }
           elPList.hidden = !elPList.children.length;
           elPatient.setAttribute('aria-expanded', elPList.hidden ? 'false' : 'true');
-          if (q && plItems.length) markP(0);
+          if (q && plItems.length) markP(plFirst);
           fitPop();
         });
       }
@@ -3137,7 +3144,7 @@
         if (elPList.hidden) return;
         if (e.key === 'ArrowDown') { e.preventDefault(); markP(plActive + 1); }
         else if (e.key === 'ArrowUp') { e.preventDefault(); markP(plActive - 1); }
-        else if (e.key === 'Enter') { e.preventDefault(); if (plItems[plActive >= 0 ? plActive : 0]) plItems[plActive >= 0 ? plActive : 0].click(); }
+        else if (e.key === 'Enter') { e.preventDefault(); var b = plItems[plActive >= 0 ? plActive : plFirst]; if (b) b.click(); }
         else if (e.key === 'Escape') { e.stopPropagation(); hideList(); }
       });
 
