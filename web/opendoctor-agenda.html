@@ -3141,7 +3141,8 @@
         }
         elPList.hidden = !elPList.children.length;
         elPatient.setAttribute('aria-expanded', elPList.hidden ? 'false' : 'true');
-        if (q && plItems.length) markP(keep != null && plKeys.indexOf(keep) >= 0 ? plKeys.indexOf(keep) : plFirst);
+        var ki = keep != null ? plKeys.indexOf(keep) : -1;
+        if (q && plItems.length) { if (ki >= 0) markP(ki); else markP(plFirst); }
         fitPop();
       }
       function showList() {
