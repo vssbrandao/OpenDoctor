@@ -649,3 +649,73 @@ def test_cadastro_verificado_no_cfm_e_google_sem_trocar_o_crm(novo_usuario):
         with db.connection() as c:
             c.execute("delete from users where id = %s", (g["id"],))
             c.commit()
+
+
+def test_crm_repetido_decidido_na_hora_de_criar_a_conta(novo_usuario):
+    """Dois cadastros do mesmo CRM/UF começados antes de qualquer conta existir: os dois tíquetes dizem 'verificado',
+    mas quem decide é o banco, na hora de criar (db._CRM_DECISAO) — o 2º nasce pendente e sem fonte."""
+    n = _crm_novo()
+    dec = {"crm": n, "uf": "SP", "status": "verificado", "fonte": "cfm", "situacao": "A"}
+    a = novo_usuario("Ana Lima", crm=dec)
+    b = novo_usuario("Ana Lima", crm=dec)
+    assert (a["crm_status"], a["crm_fonte"]) == ("verificado", "cfm")
+    assert (b["crm_status"], b["crm_fonte"]) == ("pendente", None)
+    assert _crm_cols(b["id"]) == (n, "SP", "pendente", None, "A", False, True)
+    assert [p["outras_contas"] for p in db.pending_doctors() if p["id"] == b["id"]] == [1]
+    # pelo Google também (conta nova com o Registro profissional)
+    email = f"teste-{uuid.uuid4().hex[:12]}@example.invalid"
+    g = db.upsert_user(email, "Ana Lima", None, "sub-" + uuid.uuid4().hex, crm=dec)
+    try:
+        assert (g["crm_status"], g["crm_fonte"]) == ("pendente", None)
+    finally:
+        with db.connection() as c:
+            c.execute("delete from users where id = %s", (g["id"],))
+            c.commit()
+    # conta recusada com o mesmo CRM não conta; outra UF também não
+    m = _crm_novo()
+    r = novo_usuario("Outra Pessoa", crm={"crm": m, "uf": "RJ", "status": "pendente"})
+    db.decide_crm(r["id"], False)
+    assert novo_usuario("Ana Lima", crm=dict(dec, crm=m, uf="RJ"))["crm_status"] == "verificado"
+    assert novo_usuario("Ana Lima", crm=dict(dec, crm=m, uf="MG"))["crm_status"] == "verificado"
+
+
+def test_crm_repetido_com_cadastros_ao_mesmo_tempo(novo_usuario):
+    """Os verify do mesmo CRM chegando juntos (conexões diferentes, como dois processos): um só fica verificado."""
+    import threading
+    n = _crm_novo()
+    dec = {"crm": n, "uf": "BA", "status": "verificado", "fonte": "cfm", "situacao": "A"}
+    largada, contas, erros = threading.Barrier(3), [], []
+
+    def cria():
+        try:
+            largada.wait(10)
+            contas.append(novo_usuario("Ana Lima", crm=dec))
+        except Exception as e:          # o teste mostra o erro
+            erros.append(e)
+    ts = [threading.Thread(target=cria) for _ in range(3)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join(30)
+    assert erros == []
+    assert sorted(u["crm_status"] for u in contas) == ["pendente", "pendente", "verificado"]
+
+
+def test_limite_de_conferencias_no_cfm_no_banco(test_db):
+    """O contador por CRM vale entre processos (está no banco): até `maximo` na janela; outra chave conta à parte."""
+    k1, k2 = f"teste:{uuid.uuid4().hex}", f"teste:{uuid.uuid4().hex}"
+    try:
+        assert [db.cfm_tentativa_usa(k1, 2, 3600) for _ in range(3)] == [True, True, False]
+        assert db.cfm_tentativas(k1, 3600) == 2 and db.cfm_tentativas(k1, 0) == 0
+        assert db.cfm_tentativa_usa(k2, 2, 3600) is True
+        db.cfm_tentativa_registra(k2)
+        assert db.cfm_tentativas(k2, 3600) == 2 and db.cfm_tentativa_usa(k2, 2, 3600) is False
+        with db.connection() as c:                                   # passou da janela: volta a valer
+            c.execute("update cfm_tentativas set created_at = now() - interval '2 hours' where chave = %s", (k1,))
+            c.commit()
+        assert db.cfm_tentativa_usa(k1, 2, 3600) is True
+        assert "cfm_tentativas" in db.RETENTION
+    finally:
+        with db.connection() as c:
+            c.execute("delete from cfm_tentativas where chave in (%s, %s)", (k1, k2))
+            c.commit()

@@ -23,9 +23,11 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
    - **Pendente:** a tela mostra a espera.
 
 ### Conta nova pelo Google
-- **Na volta do Google:** e-mail sem conta → `/opendoctor-login.html?registro=google`, direto no Registro profissional.
+- **Na volta do Google:** e-mail sem conta → `/opendoctor-login.html?registro=google` (com o `next` da página de
+  origem, se houver), direto no Registro profissional.
   - O perfil do Google (e-mail, foto, id) espera num cookie assinado deste navegador: `od_greg`, 15 min, `path=/auth/`.
-  - Nada do perfil vai na URL.
+  - Nada do perfil vai na URL. O `registro=google` e o `next` ficam nela até a conta existir: recarregar a página volta
+    ao Registro, e a seta tira só o `registro`.
 - **Criar conta:** `POST /auth/google/registro` confere o CRM e só então cria a conta.
   - Não há código: o Google já confirmou o e-mail.
   - O cookie só cria conta. Se o e-mail ganhou uma conta no meio do caminho, a resposta é `sessao_expirada` e o médico
@@ -36,8 +38,14 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 ### A decisão (`server._crm_decide`)
 - **Com `CFM_CHAVE`:**
   1. **Consultar:** a situação tem de ser `A` (regular), e o nome digitado tem de bater com o do CFM.
-     - A comparação ignora acentos, maiúsculas, espaços, conectores (de, da, do, dos, das, e) e "Dr./Dra.".
-     - O primeiro nome tem de ser igual, e o último sobrenome digitado tem de estar entre as palavras do nome no CFM.
+     - A comparação ignora acentos (também o acento colado separado da letra, de PDF ou do macOS: tudo em NFC),
+       maiúsculas, espaços, conectores (de, da, do, dos, das, e) e "Dr./Dra.".
+     - O primeiro nome tem de ser igual, e o último sobrenome digitado tem de estar entre os **sobrenomes** do CFM: não
+       vale repetir o primeiro nome ("Ana Ana"), e o nome digitado precisa de 2 palavras diferentes.
+     - Apóstrofo junto ou separado: D'Ávila = Davila = Ávila; Sant'Anna = Santanna.
+     - Sufixos: Jr. = Júnior, Fº = Filho. Se o último digitado é um sufixo (Filho, Júnior, Neto, Sobrinho), vale também
+       o sobrenome antes dele.
+     - A mesma regra de palavras roda na página (`palavras`), que só confere se há nome e sobrenome.
   2. **Validar** (CRM + UF + CPF + nascimento) tem de dar `true`: prova que é o próprio médico.
   - Tudo certo → **verificado** (`crm_fonte = 'cfm'`).
 - **Recusas claras:** o cadastro é recusado com a mensagem, e nada é criado (nem código, nem conta):
@@ -52,11 +60,35 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - pedido recusado (4000/4010/4020).
 - **CRM que outra conta (não recusada) já usa:** fica pendente mesmo verificado. Quem tem os dados de um médico não
   abre uma segunda conta sozinho; a página de cadastros mostra o alerta.
-- **Limite:** a rota que chama o CFM tem um limite por IP (balde `cfm`: 10 por hora). O Validar responde se um CPF é de
-  um CRM, e o limite impede usar o cadastro para testar CPFs.
+  - Conferido no início **e de novo na hora de criar a conta**, no banco (`db._CRM_DECISAO`, com uma trava por CRM/UF:
+    `pg_advisory_xact_lock`). Dois cadastros do mesmo CRM começados juntos (o tíquete espera o código por até 30 min)
+    não viram os dois verificados: o segundo a confirmar o código nasce pendente, sem fonte, e os administradores
+    recebem o aviso.
+- **Limites** (o Validar responde se um CPF e uma data de nascimento são do médico de um CRM; sem eles, o cadastro
+  público viraria um jeito de descobrir a data de um médico):
+  - **Por CRM/UF, de qualquer IP:** no máximo 5 conferências no CFM a cada 24 h (`server.CRM_TENTATIVAS`), contadas no
+    banco (`cfm_tentativas`, migração `0018`; vale entre processos). Passou disso, o cadastro fica **pendente** sem
+    chamar o CFM, e a resposta é a mesma com a data certa ou errada.
+  - **Por IP:** balde `cfm`, 10 por hora. IPv6 conta pelo prefixo **/64** (trocar de endereço dentro dele não ganha um
+    limite novo); vale para todos os baldes.
+  - Valem também no cadastro pelo Google (`/auth/google/registro`).
+  - Não adotado: chamar o CFM só depois do código de e-mail. A decisão do dono é recusar antes de mandar o código
+    (nada é criado nem enviado num cadastro recusado); o limite por CRM já tira o oráculo.
+- **Chave recusada (3010):** vai para o log e avisa os administradores por e-mail (no máximo a cada 12 h por
+  processo): é sinal de chave colada errada ou contrato vencido.
 
 ### CRM e UF
 - **Máscaras:** CPF `000.000.000-00`; nascimento `DD/MM/AAAA`; CRM só números (até 7); UF 2 letras maiúsculas.
+  - O cursor fica depois do mesmo número de dígitos (apagar ou digitar no meio não o joga para o fim). Apagar logo
+    depois de um ponto, barra ou traço apaga o dígito antes dele.
+  - Nascimento com 1 dígito e barra: `1/5/1985` vira `01/05/1985` (digitado ou colado).
+  - CRM com mais de 7 dígitos não é cortado sem aviso: os zeros à esquerda saem (`00123456` → `123456`, como no
+    servidor) e, se ainda passar de 7, aparece "Confira o CRM.".
+- **Enter** (ou "Próximo" no celular) passa para o campo seguinte: Nome → CPF → Nascimento → CRM → UF. Só o Enter na UF
+  manda o cadastro.
+- **Erros:** curtos nas meias colunas, para caberem numa linha ("Digite a data.", "Confira o CRM."). O "Não achamos
+  este CRM no CFM" fala do número e da UF: fica numa linha só embaixo dos dois, e mexer em qualquer um deles o tira.
+  Cada envio limpa os erros do envio anterior.
 - **CRM colado ou digitado com a UF:** a UF vai para o campo UF e fica só o número. Exemplos:
   - `CRM-SP 123456`, `CRM/SP 123.456`, `SP 123456`, `123456/SP`, `123456-SP`;
   - `52-1234/RJ` vira 1234 (o 52- com que o RJ mostra os números);
@@ -73,6 +105,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - **Rotas da API:** respondem `403 {"error": "crm_pendente" | "crm_recusado" | "crm_confirmar"}`.
 - **`/me`:** devolve `bloqueio` com o motivo.
 - **Login com senha e outros logins:** a resposta traz `bloqueio`, e a tela mostra a espera em vez de abrir o app.
+- **Conta criada:** a página apaga o CPF, o nascimento, a senha e o tíquete. O Voltar do navegador continua na espera
+  (não reabre o Registro com o CPF à vista).
 - **Contas anteriores a esta regra** (`crm_status` vazio; as 3 que existiam): seguem exatamente como antes.
 
 ## Aprovação à mão (administradores)
@@ -95,11 +129,17 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 ## Contas aprovadas à mão, quando a chave chegar
 - **O problema:** o CPF não foi guardado. Quando `CFM_CHAVE` passar a existir, quem tem `crm_fonte = 'manual'` precisa
   confirmar no CFM.
-- **Quando:** na próxima vez que abrir o app, a tela pede **uma vez** o CPF e o nascimento (passo "Confirme seu registro").
+- **Quando:** **no login** seguinte à chegada da chave, a tela pede **uma vez** o CPF e o nascimento (passo "Confirme
+  seu registro"). O pedido fica marcado na sessão (`cc` no cookie assinado, `_logged`): a sessão que já estava aberta
+  quando a chave chegou continua (o médico no meio do atendimento não perde a agenda nem o prontuário).
 - **Como:** `POST /auth/crm/confirmar` roda o Validar.
-  - **`true`:** `crm_fonte = 'cfm'`, e o app abre.
-  - **`false`:** a mensagem aparece e o pedido continua até dar certo.
-  - **CFM fora do ar:** pede para tentar de novo em alguns minutos (fechado por padrão).
+  - **`true`:** `crm_fonte = 'cfm'`, a sessão perde a marca e o app abre.
+  - **`false`:** a mensagem aparece e o pedido continua até dar certo. Limite **por conta** (não por IP: os colegas da
+    mesma clínica não gastam o dela): 5 que não bateram a cada 24 h (`server.CONF_FALHAS`, no banco); passou, a tela
+    pede para tentar no dia seguinte.
+  - **O CFM não respondeu** (fora do ar, erro passageiro repetido, chave inválida ou vencida — 3010): a conta já foi
+    aprovada por um administrador, então **esta sessão segue** (resposta `adiado`); o pedido volta no próximo login.
+    O 3010 avisa os administradores. Só o Validar `false` mantém o bloqueio.
 
 ## O que é guardado (e o que não é)
 - **Guardado em `users` (migração `0017_crm.sql`):**
@@ -107,6 +147,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - `crm_status`: NULL = conta antiga; `pendente` | `verificado` | `recusado`;
   - `crm_fonte`: `cfm` | `manual`;
   - `crm_situacao` (a letra do CFM), `crm_verificado_em`, `crm_pedido_em`.
+- **Contador `cfm_tentativas` (migração `0018_cfm_tentativas.sql`, RLS ligado):** só a chave (`crm:UF:NUMERO` ou
+  `conf:<id da conta>`) e a hora. Limpo depois de 2 dias (`db.RETENTION`).
 - **Não guardado:** CPF e data de nascimento. Vão só ao CFM, no corpo do SOAP. Não entram em banco, log, tíquete
   assinado, cookie nem e-mail.
 - **Log do CFM (`app/cfm.py`):** só a operação, o código de erro e o tempo. Nunca a chave, o CPF ou o nascimento.
@@ -128,8 +170,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - 3010: chave inválida ou vencida;
   - 4000/4010/4020: pedido inválido;
   - 8101: médico não encontrado.
-- **Leitura:** campo que falta não vem. Só as tags conhecidas são lidas, pelo nome. XML com DOCTYPE ou entidades nem é
-  lido.
+- **Leitura:** campo que falta não vem. Só as tags conhecidas são lidas, pelo nome. Só UTF-8, e o próprio parser
+  (expat) recusa DOCTYPE e entidades, em qualquer codificação (não é uma busca de bytes, que um UTF-16 escaparia).
 
 ## Contrato com o CFM (passos do dono)
 1. Pedir o acesso ao web service pelo **SEI-Medicina**, como representante legal da empresa (CNPJ do OpenDoctor).
@@ -147,9 +189,10 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 - **`ADMIN_EMAILS`:** e-mails dos administradores, separados por vírgula. Aprovam os cadastros e recebem o aviso.
 
 ## Publicar
-- **Banco primeiro:** aplicar `0017_crm.sql` no banco de produção **antes** de subir o código.
-  - `get_user` já lê as colunas novas: sem elas, ninguém entra.
-  - A migração é aditiva (`add column if not exists`).
+- **Banco primeiro:** aplicar `0017_crm.sql` e `0018_cfm_tentativas.sql` no banco de produção **antes** de subir o
+  código.
+  - `get_user` já lê as colunas novas: sem elas, ninguém entra. O cadastro com a chave usa `cfm_tentativas`.
+  - As migrações são aditivas (`add column if not exists`, `create table if not exists`).
 - **Ordem:** primeiro no banco de testes, depois em produção.
 - **Depois de publicar:** definir `ADMIN_EMAILS` no Render, para receber os avisos e abrir a página de cadastros.
 
@@ -159,10 +202,13 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - cadastro verificado, pendente e recusado;
   - Google;
   - a espera;
-  - confirmação;
+  - confirmação (pedida no login; CFM sem responder deixa a sessão seguir; limite por conta);
+  - limites por CRM (qualquer IP) e por IP (IPv6 pelo /64); CRM repetido decidido na hora de criar;
+  - nome com apóstrofo, sufixo, acento separado (NFD) e o primeiro nome repetido; XML com DTD em UTF-16;
   - página de cadastros;
   - trava do CRM em Configurações.
-- **`tests/test_db_integration.py`:** no banco de testes.
+- **`tests/test_db_integration.py`:** no banco de testes, inclusive dois cadastros do mesmo CRM ao mesmo tempo (um só
+  fica verificado) e o contador `cfm_tentativas`.
 - **`tests/test_laco_de_eventos.py`:** o CFM entra na lista do que só roda fora do laço.
 - **`tests/test_security.py`:** as rotas novas sob `/auth/` estão revisadas; as de `/admin/` são privadas.
 - **E2E:** `node tests/e2e/cadastro.mjs`. Chrome sem tela, sem servidor; `SHOT=/pasta` salva as telas.

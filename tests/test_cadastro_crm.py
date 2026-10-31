@@ -52,6 +52,8 @@ def ws(monkeypatch):
             raise r
         if isinstance(r, int):
             return httpx.Response(r, text="erro")
+        if isinstance(r, bytes):
+            return httpx.Response(200, content=r, headers={"content-type": "text/xml"})
         return httpx.Response(200, text=r, headers={"content-type": "text/xml; charset=utf-8"})
     monkeypatch.setattr(cfm, "_TRANSPORT", httpx.MockTransport(handler))
     monkeypatch.setattr(cfm.time, "sleep", lambda s: None)
@@ -95,6 +97,29 @@ def test_consultar_erros(ws):
     assert cfm.consultar("1", "SP")["status"] == "indisponivel"
     ws["fila"] = ["<S:Envelope xmlns:S='x'><S:Body><dadosMedico><crm>1</crm></dadosMedico></S:Body></S:Envelope>"]
     assert cfm.consultar("1", "SP") == {"status": "indisponivel", "codigo": "resposta"}   # sem nome e situação
+
+
+_AMPLIA = ('<?xml version="1.0" encoding="UTF-16"?><!DOCTYPE d [<!ENTITY a "aaaaaaaaaa"><!ENTITY b "&a;&a;&a;&a;&a;">]>'
+           '<dadosMedico><nome>&b;</nome><situacao>A</situacao></dadosMedico>')
+
+
+def test_ler_recusa_dtd_e_entidades_em_qualquer_codificacao():
+    """O parser recusa o DOCTYPE (e as entidades) sozinho, sem procurar bytes: em UTF-16 o "<!DOCTYPE" não aparece cru."""
+    utf8 = _AMPLIA.replace("UTF-16", "UTF-8")
+    for ruim in (_AMPLIA.encode("utf-16"), _AMPLIA.encode("utf-16-le"), _AMPLIA.encode("utf-16-be"),
+                 utf8.encode("utf-8"), utf8.replace('<?xml version="1.0" encoding="UTF-8"?>', "").encode("utf-8"),
+                 '<!DOCTYPE d SYSTEM "file:///etc/passwd"><dadosMedico><nome>x</nome></dadosMedico>'.encode(),
+                 b"<dadosMedico><nome>&a;</nome></dadosMedico>",                             # entidade sem DTD
+                 "<dadosMedico><nome>ANA</nome><situacao>A</situacao></dadosMedico>".encode("utf-16")):   # só UTF-8
+        with pytest.raises(ValueError):
+            cfm.ler(ruim)
+    ok = cfm.ler(("﻿" + _medico_xml("ANA &amp; LIMA")).encode("utf-8"))           # UTF-8 com BOM e &amp; valem
+    assert ok["nome"] == "ANA & LIMA" and ok["situacao"] == "A" and len(ok["especialidade"]) == 2
+
+
+def test_consultar_recusa_resposta_em_utf16_com_entidades(ws):
+    ws["fila"] = [_AMPLIA.encode("utf-16")]
+    assert cfm.consultar("1", "SP") == {"status": "indisponivel", "codigo": "rede"}
 
 
 def test_validar(ws, capsys):
@@ -143,6 +168,31 @@ def test_nome_confere_com_o_cfm():
     assert not cfm.nome_confere("Maria Lima", "ANA MARIA DE LIMA")                    # primeiro nome diferente
     assert not cfm.nome_confere("Ana", "ANA MARIA DE LIMA")                           # só uma palavra
     assert not cfm.nome_confere("Ana de", "ANA MARIA DE LIMA")
+    # o primeiro nome repetido não serve de sobrenome (o nome vai na receita)
+    assert not cfm.nome_confere("Ana Ana", "ANA MARIA DE LIMA")
+    assert not cfm.nome_confere("Ana de Ana", "ANA MARIA DE LIMA")
+    assert cfm.nome_confere("Ana Maria", "ANA MARIA DE LIMA")                         # o nome do meio está lá
+
+
+def test_nome_com_apostrofo_e_sufixo():
+    """D'Ávila = Davila = Ávila; Sant'Anna = Santanna; Jr. = Júnior; Fº = Filho; com sufixo, vale o sobrenome antes dele."""
+    for digitado, do_cfm in (("Maria José D'Ávila", "MARIA JOSE DAVILA"), ("Maria Jose Davila", "MARIA JOSÉ D'ÁVILA"),
+                             ("Maria Avila", "MARIA D'AVILA"), ("Ana Sant'Anna", "ANA SANTANNA"),
+                             ("Ana Sant’Anna", "ANA SANT'ANNA"), ("Carlos Silva Jr", "CARLOS SILVA JUNIOR"),
+                             ("Carlos Silva Júnior", "CARLOS SILVA JR"), ("Carlos Silva Jr.", "CARLOS SILVA"),
+                             ("Carlos Silva Filho", "CARLOS SILVA Fº"), ("Pedro Souza Neto", "PEDRO HENRIQUE SOUZA")):
+        assert cfm.nome_confere(digitado, do_cfm), (digitado, do_cfm)
+    assert not cfm.nome_confere("Carlos Junior", "CARLOS SILVA")                      # o sufixo sozinho não é sobrenome
+    assert not cfm.nome_confere("Ana Souza Neto", "ANA MARIA DE LIMA")
+    assert cfm.palavras("Dr. João D'Ávila Jr.") == ["joao", "davila", "junior"]
+
+
+def test_nome_colado_com_o_acento_separado():
+    """Nome copiado de PDF ou do macOS (NFD: a letra e o acento separados) vale como o digitado, e é guardado em NFC."""
+    import unicodedata
+    nfd = unicodedata.normalize("NFD", "José Conceição")
+    assert nfd != "José Conceição" and server._nome_completo(nfd) == "José Conceição"
+    assert cfm.nome_confere(nfd, "JOSE DA CONCEICAO")
 
 
 # ===================== cadastro por e-mail =====================
@@ -162,7 +212,23 @@ def _cfm_simulado(monkeypatch, consulta=None, valido=True, em_uso=False):
     monkeypatch.setattr(cfm, "consultar", consultar)
     monkeypatch.setattr(cfm, "validar", validar)
     monkeypatch.setattr(db, "crm_in_use", lambda crm, uf: em_uso)
+    _tentativas(monkeypatch, st)
     return st
+
+
+def _tentativas(monkeypatch, st):
+    """O contador do banco (cfm_tentativas) em memória: chave → quantas vezes contou."""
+    st.setdefault("tentativas", {})
+
+    def usa(chave, maximo, janela_s):
+        if st["tentativas"].get(chave, 0) >= maximo:
+            return False
+        st["tentativas"][chave] = st["tentativas"].get(chave, 0) + 1
+        return True
+    monkeypatch.setattr(db, "cfm_tentativa_usa", usa, raising=False)
+    monkeypatch.setattr(db, "cfm_tentativas", lambda chave, janela_s: st["tentativas"].get(chave, 0), raising=False)
+    monkeypatch.setattr(db, "cfm_tentativa_registra",
+                        lambda chave: st["tentativas"].__setitem__(chave, st["tentativas"].get(chave, 0) + 1), raising=False)
 
 
 def _avisos(monkeypatch, fake):
@@ -286,9 +352,75 @@ def test_limite_de_conferencias_no_cfm(monkeypatch):
     c = _client(monkeypatch, fake)
     st = _cfm_simulado(monkeypatch, {"status": "nao_encontrado"})
     monkeypatch.setitem(server.RATE_LIMITS, "login_code", (100, 600))
-    rs = [c.post("/auth/signup/start", json=_novo()) for _ in range(server.RATE_LIMITS["cfm"][0] + 1)]
+    rs = [c.post("/auth/signup/start", json=_novo(crm=str(1000 + i))) for i in range(server.RATE_LIMITS["cfm"][0] + 1)]
     assert rs[-1].status_code == 429 and rs[-1].json()["error"] == "limite_ip"
     assert len(st["consultas"]) == server.RATE_LIMITS["cfm"][0]
+
+
+def test_limite_por_ip_conta_o_ipv6_pelo_prefixo_64(monkeypatch):
+    assert server._rl_ip("2001:db8:1:1::1") == server._rl_ip("2001:db8:1:1:ffff::9") == "2001:db8:1:1::/64"
+    assert server._rl_ip("2001:db8:1:2::1") == "2001:db8:1:2::/64"
+    assert server._rl_ip("203.0.113.7") == "203.0.113.7" == server._rl_ip("::ffff:203.0.113.7")
+    assert server._rl_ip("?") == "?"
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _cfm_simulado(monkeypatch, {"status": "nao_encontrado"})
+    monkeypatch.setitem(server.RATE_LIMITS, "login_code", (100, 600))
+    n = server.RATE_LIMITS["cfm"][0]
+    rs = [c.post("/auth/signup/start", json=_novo(crm=str(2000 + i)), headers={"CF-Connecting-IP": f"2001:db8:1:1::{i + 1:x}"})
+          for i in range(n + 1)]
+    assert [r.status_code for r in rs[:n]] == [400] * n and rs[n].status_code == 429    # trocar dentro do /64 não ajuda
+    r = c.post("/auth/signup/start", json=_novo(crm="3000"), headers={"CF-Connecting-IP": "2001:db8:1:2::1"})
+    assert r.status_code == 400                                                         # outro /64: outro limite
+
+
+def test_limite_por_crm_vale_para_qualquer_ip(monkeypatch):
+    """O Validar não vira oráculo do CPF/nascimento de um médico: o mesmo CRM/UF tem poucas conferências por dia, de
+    qualquer IP; passou disso, o cadastro fica pendente sem chamar o CFM (a resposta é a mesma com a data certa ou não)."""
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    st = _cfm_simulado(monkeypatch, valido=False)
+    monkeypatch.setitem(server.RATE_LIMITS, "login_code", (100, 600))
+    n = server.CRM_TENTATIVAS[0]
+    for i in range(n):
+        r = c.post("/auth/signup/start", json=_novo(nascimento=f"{i + 1:02d}/03/1979"), headers={"CF-Connecting-IP": f"198.51.100.{i}"})
+        assert r.status_code == 400 and r.json() == {"error": "crm_dados"}
+    r = c.post("/auth/signup/start", json=_novo(nascimento="07/03/1979"), headers={"CF-Connecting-IP": "192.0.2.77"})
+    assert r.status_code == 200 and json.loads(_corpo_do_tiquete(r.json()["ticket"]))["crm"]["status"] == "pendente"
+    assert len(st["consultas"]) == len(st["validacoes"]) == n                   # a 6ª nem foi ao CFM
+    assert st["tentativas"] == {"crm:SP:123456": n}
+    r = c.post("/auth/signup/start", json=_novo(email="outra@clinica.com.br", crm="654321"), headers={"CF-Connecting-IP": "192.0.2.78"})
+    assert r.json() == {"error": "crm_dados"} and len(st["validacoes"]) == n + 1     # outro CRM: conferido normalmente
+
+
+def test_crm_repetido_na_hora_de_criar_a_conta_fica_pendente_e_avisa(monkeypatch):
+    """Dois cadastros com o mesmo CRM começados juntos: os dois tíquetes dizem 'verificado' (nenhuma conta existia no
+    início), mas só o primeiro a confirmar o código fica verificado; o segundo nasce pendente (quem decide é o banco, na
+    hora de criar: db._CRM_DECISAO) e os administradores recebem o aviso."""
+    monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _avisos(monkeypatch, fake)
+    _cfm_simulado(monkeypatch)
+    ta = c.post("/auth/signup/start", json=_novo(email="a@clinica.com.br")).json()["ticket"]
+    ca = fake.sent[-1][1]
+    tb = c.post("/auth/signup/start", json=_novo(email="b@clinica.com.br")).json()["ticket"]
+    cb = fake.sent[-1][1]
+    assert [json.loads(_corpo_do_tiquete(t))["crm"]["status"] for t in (ta, tb)] == ["verificado", "verificado"]
+    assert "bloqueio" not in c.post("/auth/signup/verify", json={"ticket": ta, "code": ca}).json()
+    r = c.post("/auth/signup/verify", json={"ticket": tb, "code": cb})
+    assert r.json()["bloqueio"] == "crm_pendente"
+    b = fake.users["b@clinica.com.br"]
+    assert (b["crm_status"], b["crm_fonte"]) == ("pendente", None) and fake.users["a@clinica.com.br"]["crm_status"] == "verificado"
+    assert [s for s in fake.sent if s[0] == "admins"] == [("admins", ("dono@opendoctor.app",), "Ana Lima", "123456", "SP")]
+
+
+def test_nome_colado_com_o_acento_separado_no_cadastro(monkeypatch):
+    import unicodedata
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    r = c.post("/auth/signup/start", json=_novo(nome=unicodedata.normalize("NFD", "José Conceição")))
+    assert r.json()["ok"] and json.loads(_corpo_do_tiquete(r.json()["ticket"]))["name"] == "José Conceição"
 
 
 # ===================== conta nova pelo Google =====================
@@ -313,11 +445,23 @@ def _google(monkeypatch, fake, existe=False):
     return criadas
 
 
-def _volta_do_google(c):
+def _volta_do_google(c, q=""):
     import urllib.parse as up
-    r = c.get("/auth/google/login", follow_redirects=False)
+    r = c.get("/auth/google/login" + q, follow_redirects=False)
     state = up.parse_qs(up.urlparse(r.headers["location"]).query)["state"][0]
     return c.get("/auth/google/callback?code=x&state=" + up.quote(state), follow_redirects=False)
+
+
+def test_google_conta_nova_guarda_o_next_e_o_registro_na_url(monkeypatch):
+    """Recarregar o Registro (ou voltar e entrar de novo) não perde a etapa nem a página de origem."""
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _google(monkeypatch, fake)
+    r = _volta_do_google(c, "?next=/opendoctor-configuracoes.html")
+    assert r.headers["location"] == "/opendoctor-login.html?registro=google&next=%2Fopendoctor-configuracoes.html"
+    r = _volta_do_google(c, "?next=https://mal.example/x")                      # destino de fora: fica sem next
+    assert r.headers["location"] == "/opendoctor-login.html?registro=google"
+    assert c.post("/auth/google/registro", json=REG).json()["redirect"] == auth.HOME + "?bemvindo=1"
 
 
 def test_google_conta_nova_passa_pelo_registro(monkeypatch):
@@ -374,12 +518,17 @@ def test_google_conta_que_ja_existe_entra_como_sempre(monkeypatch):
 
 # ===================== a espera das contas pendentes =====================
 
-def _logado(monkeypatch, **conta):
+def _logado(monkeypatch, cc=False, **conta):
+    """Sessão aberta da conta u1. `cc`: a sessão nasceu pedindo a confirmação do CRM (login com a chave do CFM)."""
     u = dict({"id": "u1", "email": "ana@clinica.com.br", "name": "Ana Lima", "sv": 0, "crm_status": None, "crm_fonte": None}, **conta)
     monkeypatch.setattr(db, "get_user", lambda uid: dict(u) if uid == "u1" else None)
     c = TestClient(server.app)
-    c.cookies.set(auth.COOKIE_NAME, auth.sign({"k": "sess", "uid": "u1", "sv": 0}))
+    c.cookies.set(auth.COOKIE_NAME, auth.sign(dict({"k": "sess", "uid": "u1", "sv": 0}, **({"cc": 1} if cc else {}))))
     return c
+
+
+def _sessao(resp):
+    return auth.unsign(resp.cookies.get(auth.COOKIE_NAME) or "", auth.SESSION_MAX_AGE)
 
 
 @pytest.mark.parametrize("status,motivo", [("pendente", "crm_pendente"), ("recusado", "crm_recusado"), ("??", "crm_pendente")])
@@ -421,24 +570,101 @@ def test_login_com_senha_de_conta_pendente_avisa_a_tela(monkeypatch):
 # ===================== aprovada à mão: confirma CPF e nascimento quando houver a chave =====================
 
 def test_aprovada_a_mao_confirma_uma_vez_quando_ha_chave(monkeypatch):
-    c = _logado(monkeypatch, crm_status="verificado", crm_fonte="manual")
+    c = _logado(monkeypatch, cc=True, crm_status="verificado", crm_fonte="manual")
     monkeypatch.setattr(db, "get_medico", lambda uid: {"name": "Ana Lima", "crm": "123456", "crm_uf": "SP"})
     confirmou = []
     monkeypatch.setattr(db, "crm_confirmed", lambda uid: confirmou.append(uid) or True)
     st = _cfm_simulado(monkeypatch, valido=False)
     assert c.get("/cid10?q=diabetes").json() == {"error": "crm_confirmar"}
     assert c.get("/me").json()["bloqueio"] == "crm_confirmar"
+    assert "crm_cc" not in c.get("/me").json()["user"]
     assert c.post("/auth/crm/confirmar", json={"cpf": "123", "nascimento": "12/05/1985"}).json() == {"error": "cpf"}
     r = c.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985"})
     assert r.json() == {"error": "crm_dados"} and confirmou == []                    # não bateu: pede de novo
-    _cfm_simulado(monkeypatch, valido={"status": "indisponivel", "codigo": "2010"})
-    r = c.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985"})
-    assert r.status_code == 503 and r.json() == {"error": "cfm_indisponivel"} and confirmou == []
+    assert c.get("/cid10?q=diabetes").status_code == 403
     st = _cfm_simulado(monkeypatch, valido=True)
     r = c.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985", "next": "/opendoctor-prontuario.html"})
     assert r.json() == {"ok": True, "redirect": "/opendoctor-prontuario.html"} and confirmou == ["u1"]
+    assert "cc" not in _sessao(r) and _sessao(r)["uid"] == "u1"                      # a mesma conta, sem a marca
     assert st["validacoes"] == [("123456", "SP", CPF, "12/05/1985")]
+    assert c.get("/cid10?q=diabetes").status_code == 200
     assert TestClient(server.app).post("/auth/crm/confirmar", json={"cpf": CPF}).status_code == 401   # sem sessão
+
+
+def test_aprovada_a_mao_nao_perde_a_sessao_aberta_quando_a_chave_chega(monkeypatch):
+    """A chave do CFM chega no Render com o médico no meio do atendimento: a sessão aberta segue; a confirmação é
+    pedida no próximo login."""
+    c = _logado(monkeypatch, crm_status="verificado", crm_fonte="manual")
+    _cfm_simulado(monkeypatch)
+    assert c.get("/cid10?q=diabetes").status_code == 200
+    assert c.get("/opendoctor-agenda.html", follow_redirects=False).status_code == 200
+    assert c.get("/me").json()["bloqueio"] is None
+
+
+def test_aprovada_a_mao_confirma_ao_entrar(monkeypatch):
+    fake = _Fake(_user("ana@clinica.com.br", crm_status="verificado", crm_fonte="manual"))
+    c = _client(monkeypatch, fake)
+    r = c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": PW})
+    assert r.json() == {"ok": True, "redirect": auth.HOME} and "cc" not in _sessao(r)          # sem a chave: nada
+    _cfm_simulado(monkeypatch)
+    r = c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": PW})
+    assert r.json() == {"ok": True, "redirect": auth.HOME, "bloqueio": "crm_confirmar"} and _sessao(r)["cc"] == 1
+    fake = _Fake(_user("bia@clinica.com.br", crm_status="verificado", crm_fonte="cfm"))       # conferida no CFM: nada
+    c = _client(monkeypatch, fake)
+    r = c.post("/auth/password/login", json={"email": "bia@clinica.com.br", "password": PW})
+    assert "bloqueio" not in r.json() and "cc" not in _sessao(r)
+
+
+@pytest.mark.parametrize("codigo", ["3010", "2010", "rede"])
+def test_confirmacao_com_o_cfm_sem_responder_deixa_a_sessao_seguir(monkeypatch, codigo):
+    """Chave vencida (3010), CFM fora do ar ou sem rede: a conta já foi aprovada à mão, então esta sessão segue sem
+    a marca; o pedido volta no próximo login. Só o Validar 'false' mantém o bloqueio. 3010 avisa os administradores."""
+    from tests.test_login import _NaHora
+    monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
+    monkeypatch.setattr(server, "_AUDIT", _NaHora())
+    monkeypatch.setattr(server, "_CFM_ALERTA", {"t": 0.0}, raising=False)
+    monkeypatch.setattr(mailer, "configured", lambda: True)
+    alertas = []
+    monkeypatch.setattr(mailer, "send_cfm_alerta", lambda admins: alertas.append(tuple(admins)), raising=False)
+    c = _logado(monkeypatch, cc=True, crm_status="verificado", crm_fonte="manual")
+    monkeypatch.setattr(db, "get_medico", lambda uid: {"name": "Ana Lima", "crm": "123456", "crm_uf": "SP"})
+    confirmou = []
+    monkeypatch.setattr(db, "crm_confirmed", lambda uid: confirmou.append(uid) or True)
+    _cfm_simulado(monkeypatch, valido={"status": "indisponivel", "codigo": codigo})
+    assert c.get("/patients").status_code == 403
+    r = c.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985", "next": "/opendoctor-agenda.html"})
+    assert r.status_code == 200 and r.json() == {"ok": True, "redirect": "/opendoctor-agenda.html", "adiado": True}
+    assert confirmou == [] and "cc" not in _sessao(r)                   # não confirmou: o próximo login pede de novo
+    assert c.get("/cid10?q=diabetes").status_code == 200
+    assert alertas == ([("dono@opendoctor.app",)] if codigo == "3010" else [])
+    c = _logado(monkeypatch, cc=True, crm_status="verificado", crm_fonte="manual")   # outro 3010 logo depois: 1 aviso só
+    c.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985"})
+    assert len(alertas) == (1 if codigo == "3010" else 0)
+
+
+def test_confirmacao_nao_usa_o_limite_por_ip_e_limita_por_conta(monkeypatch):
+    """Os colegas da mesma clínica (mesmo IP) gastam o limite de cadastros, não o da confirmação; o limite da
+    confirmação é por conta e só conta os CPFs/datas que não bateram."""
+    fake = _Fake()
+    cad = _client(monkeypatch, fake)
+    _cfm_simulado(monkeypatch, {"status": "nao_encontrado"})
+    monkeypatch.setitem(server.RATE_LIMITS, "login_code", (100, 600))
+    for i in range(server.RATE_LIMITS["cfm"][0]):
+        cad.post("/auth/signup/start", json=_novo(email=f"colega{i}@clinica.com.br", crm=str(1000 + i)))
+    assert cad.post("/auth/signup/start", json=_novo(crm="999")).status_code == 429          # o IP da clínica esgotou
+    c = _logado(monkeypatch, cc=True, crm_status="verificado", crm_fonte="manual")
+    monkeypatch.setattr(db, "get_medico", lambda uid: {"name": "Ana Lima", "crm": "123456", "crm_uf": "SP"})
+    monkeypatch.setattr(db, "crm_confirmed", lambda uid: True)
+    st = _cfm_simulado(monkeypatch, valido=False)
+    for _ in range(server.CONF_FALHAS[0]):
+        assert c.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985"}).json() == {"error": "crm_dados"}
+    r = c.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985"})
+    assert r.status_code == 429 and r.json() == {"error": "limite_conta"}
+    assert len(st["validacoes"]) == server.CONF_FALHAS[0]                     # passou do limite: nem chama o CFM
+    assert c.get("/cid10?q=diabetes").status_code == 403                      # e continua pedindo a confirmação
+    st = _cfm_simulado(monkeypatch, valido=True)                              # outro dia (contador zerado)
+    r = c.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985"})
+    assert r.json()["ok"] and "adiado" not in r.json()
 
 
 def test_confirmar_sem_nada_a_confirmar_nao_chama_o_cfm(monkeypatch):

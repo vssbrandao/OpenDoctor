@@ -114,15 +114,12 @@
     .back::before{content:"";position:absolute;inset:-11px}                   /* área de toque maior, sem mexer no layout */
     .back svg{display:block}
     .back:focus-visible{outline:2px solid #0B57D0;outline-offset:2px;border-radius:4px}
-    .col.at-registro .logo{display:none}
-    .col.at-registro .main{margin-top:77px}
+    .col.at-registro .logo{display:none}                                      /* .main: os mesmos 77px abaixo da seta */
     .reg-form{display:flex;flex-direction:column;gap:16px}
     .reg-fields{display:flex;flex-direction:column;gap:8px}
     .reg-row{display:flex;gap:8px;align-items:flex-start}
     .reg-cell{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px}
     [data-step="registro"] .fl-label{color:#000}      /* rótulo vazio preto como no Figma; digitando, o de sempre (12px #7D7D82) */
-    .btn-reg{background:#10132C}
-    .btn-reg:hover{background:#1B1F3F}
     .wait-link{align-self:flex-start}
     .legal{margin-top:auto;padding-top:48px;width:447px;max-width:100%;   /* 447 (Figma: 341) para caber em 2 linhas com o link da Política de Privacidade */
      font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
@@ -228,16 +225,18 @@
               </div>
               <div class="reg-row">
                 <div class="reg-cell">
-                  <div class="fl"><input class="fl-input" id="rCrm" type="text" placeholder=" " autocomplete="off" inputmode="numeric" maxlength="24" enterkeyhint="next" aria-describedby="rCrmErr"><label class="fl-label" for="rCrm">CRM</label></div>
+                  <div class="fl"><input class="fl-input" id="rCrm" type="text" placeholder=" " autocomplete="off" inputmode="numeric" maxlength="24" enterkeyhint="next" aria-describedby="rCrmErr rCrmUfErr"><label class="fl-label" for="rCrm">CRM</label></div>
                   <div class="err" id="rCrmErr" role="alert" hidden></div>
                 </div>
                 <div class="reg-cell">
-                  <div class="fl"><input class="fl-input" id="rUf" type="text" placeholder=" " autocomplete="off" maxlength="2" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-describedby="rUfErr"><label class="fl-label" for="rUf">UF</label></div>
+                  <div class="fl"><input class="fl-input" id="rUf" type="text" placeholder=" " autocomplete="off" maxlength="2" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-describedby="rUfErr rCrmUfErr"><label class="fl-label" for="rUf">UF</label></div>
                   <div class="err" id="rUfErr" role="alert" hidden></div>
                 </div>
               </div>
+              <!-- o CFM não achou o CRM: a mensagem fala do número e da UF, então fica embaixo dos dois -->
+              <div class="err" id="rCrmUfErr" role="alert" data-linha hidden></div>
             </div>
-            <button class="btn btn-dark btn-reg" id="regGo" type="submit">Criar conta</button>
+            <button class="btn btn-dark" id="regGo" type="submit">Criar conta</button>
           </form>
 
           <!-- 4. código de 6 dígitos (confirmar cadastro / redefinir senha) — Figma 1046-44660 -->
@@ -340,7 +339,7 @@
       var nextUrl = safeNext(params.get('next') || '');
       // codeMode: 'signup' (confirmar cadastro) | 'reset' (redefinir/criar senha); firstPw: conta Google criando a 1ª senha
       // google: Registro profissional de quem voltou do Google com um e-mail sem conta (o perfil fica num cookie do servidor)
-      var st = { email: '', ticket: '', resetTicket: '', codeMode: '', firstPw: false, emailOk: true, google: false }, timer = null;
+      var st = { email: '', ticket: '', resetTicket: '', codeMode: '', firstPw: false, emailOk: true, google: false, wait: '' }, timer = null;
       var HOME = '/opendoctor-agenda.html';
       var TITLES = { email: 'Bem-vindo à OpenDoctor', password: 'Digite sua senha', signup: 'Crie sua conta',
                      registro: 'Registro profissional', code: 'Confirme seu e-mail', reset: 'Crie uma nova senha',
@@ -363,6 +362,7 @@
       }
       function clearErrs(form) {          // limpa erros e volta as senhas a ficarem ocultas
         [].forEach.call(form.querySelectorAll('.fl-input'), function (f) { fieldErr(f, ''); });
+        [].forEach.call(form.querySelectorAll('.err[data-linha]'), function (e) { e.textContent = ''; e.hidden = true; });
         [].forEach.call(form.querySelectorAll('[data-eye]'), function (b) {
           $(b.getAttribute('data-eye')).type = 'password'; b.setAttribute('aria-pressed', 'false'); b.setAttribute('aria-label', 'Mostrar senha');
         });
@@ -407,15 +407,27 @@
         $('wantPw').hidden = !st.emailOk;
         if (push) history.pushState({ step: step }, '');
       }
+      // st.wait: a conta já existe e espera (conferência do CRM, recusada, a confirmar) — o Voltar não reabre o cadastro
       var REACH = { password: function () { return !!st.email; }, signup: function () { return !!st.email; },
                     registro: function () { return st.google || (!!st.email && !!$('newPw').value); },
                     google: function () { return !!st.email; },
                     code: function () { return st.codeMode === 'signup' ? !!st.ticket : st.codeMode === 'reset' && !!st.email; },
                     reset: function () { return !!st.resetTicket; } };
       window.addEventListener('popstate', function (e) {
+        if (st.wait) { show(st.wait); return; }
         var s = e.state && e.state.step;
         show(REACH[s] && REACH[s]() ? s : 'email');
       });
+      // a URL sem o registro=google (desistiu do Google, o tempo acabou ou a conta já existe); o next fica
+      function semRegistro() {
+        params.delete('registro');
+        return location.pathname + (params.toString() ? '?' + params.toString() : '');
+      }
+      // conta criada (ou login concluído): o CPF, o nascimento, a senha e o tíquete saem da página
+      function limpaCadastro() {
+        ['rCpf', 'rNasc', 'newPw', 'cCpf', 'cNasc', 'pw', 'rPw'].forEach(function (id) { $(id).value = ''; });
+        st.ticket = ''; st.resetTicket = ''; st.google = false;
+      }
       history.replaceState({ step: 'email' }, '');
 
       function go(url) { location.href = url || nextUrl || HOME; }
@@ -423,10 +435,12 @@
       // conta que entrou mas ainda não usa o app: CRM em conferência, recusado ou a confirmar no CFM
       function waitFor(b) {
         var step = b === 'crm_recusado' ? 'recusado' : b === 'crm_confirmar' ? 'confirmar' : 'aguardando';
-        show(step); history.replaceState({ step: step }, '');
+        limpaCadastro(); st.wait = step;
+        show(step); history.replaceState({ step: step }, '', semRegistro());
         if (step === 'confirmar') { clearErrs($('confForm')); $('cCpf').focus(); }
       }
-      function done(j) { if (j.bloqueio) waitFor(j.bloqueio); else go(j.redirect); }   // resposta de login concluído
+      function done(j) { if (j.bloqueio) waitFor(j.bloqueio); else { limpaCadastro(); go(j.redirect); } }   // login concluído
+      window.addEventListener('pageshow', function (e) { if (e.persisted) limpaCadastro(); });   // volta pelo cache do navegador
 
       // link do Google leva junto a página de origem
       if (nextUrl) $('google').href = '/auth/google/login?next=' + encodeURIComponent(nextUrl);
@@ -450,10 +464,10 @@
       }
       $('backBtn').addEventListener('click', function () { show('email', true); $('email').focus(); });
       // volta do Google com um e-mail sem conta: Registro profissional antes de a conta existir
+      // (o registro=google e o next ficam na URL até a conta existir: recarregar a página volta para cá)
       if (params.get('registro') === 'google') {
         st.google = true;
-        params.delete('registro');
-        history.replaceState({ step: 'registro' }, '', location.pathname + (params.toString() ? '?' + params.toString() : ''));
+        history.replaceState({ step: 'registro' }, '');
         show('registro'); setTimeout(function () { $('rNome').focus(); }, 0);
       }
 
@@ -642,9 +656,36 @@
         if (d.length > 4) o += '/' + d.slice(4);
         return o;
       }
+      // dia ou mês de um dígito antes de uma barra ganha o zero: "1/5/1985" → "01/05/1985"
+      function zeroData(v) { return v.replace(/(^|\/)(\d)(?=\/)/g, '$10$2'); }
+      // remascara sem jogar o cursor para o fim: ele fica depois do mesmo número de dígitos de antes
+      function remask(inp, fn, valor, pos) {
+        var v = valor == null ? inp.value : valor, foco = document.activeElement === inp;
+        var p = pos == null ? (foco ? inp.selectionStart : v.length) : pos, n = digits(v.slice(0, p)).length;
+        var m = fn(v);
+        if (m !== inp.value) inp.value = m;
+        if (!foco) return;
+        var i = 0, k = 0;
+        while (i < m.length && k < n) { if (/\d/.test(m.charAt(i))) k++; i++; }
+        inp.setSelectionRange(i, i);
+      }
       [].forEach.call(document.querySelectorAll('[data-mask]'), function (inp) {
-        var fn = inp.getAttribute('data-mask') === 'cpf' ? maskCpf : maskData;
-        inp.addEventListener('input', function () { var m = fn(inp.value); if (m !== inp.value) inp.value = m; fieldErr(inp, ''); alertMsg(''); });
+        var data = inp.getAttribute('data-mask') === 'data', fn = data ? maskData : maskCpf;
+        inp.addEventListener('input', function (e) {
+          var v = inp.value, pos = inp.selectionStart;
+          if (data && (e.inputType === 'insertFromPaste' || e.inputType === 'insertReplacementText')) v = zeroData(v);
+          else if (data && e.inputType === 'insertText' && e.data === '/' && pos != null) {       // "1/" → "01/"
+            var antes = zeroData(v.slice(0, pos)); v = antes + v.slice(pos); pos = antes.length;
+          }
+          remask(inp, fn, v, pos); fieldErr(inp, ''); alertMsg('');
+        });
+        // apagar logo depois de um ponto, barra ou traço apaga o dígito antes dele (e não o separador, que a máscara repõe)
+        inp.addEventListener('keydown', function (e) {
+          var p = inp.selectionStart;
+          if (p == null || p !== inp.selectionEnd || e.altKey || e.ctrlKey || e.metaKey) return;
+          if (e.key === 'Backspace' && p > 0 && /\D/.test(inp.value.charAt(p - 1))) inp.setSelectionRange(p - 1, p - 1);
+          if (e.key === 'Delete' && p < inp.value.length && /\D/.test(inp.value.charAt(p))) inp.setSelectionRange(p + 1, p + 1);
+        });
       });
       // mesmas regras de cfm.separa_crm no servidor: tira a sigla CRM, a UF escrita junto (vai para o campo UF), o -P da
       // inscrição provisória, o 52- com que o RJ mostra os números e o prefixo de outras inscrições (300-EMFE-1234567)
@@ -659,19 +700,34 @@
         if (uf === 'RJ') t = t.replace(/^\D*52\s*[-.]\s*(?=\d)/, '');
         return { crm: digits(t), uf: uf, achou: achou };
       }
+      function crmLongo(c) { return c.replace(/^0+(?=\d)/, '').length > 7; }   // zeros à esquerda não contam (como no servidor)
       function normCrm() {
-        var raw = rCrm.value;
+        var raw = rCrm.value.trim();
         // "52-1234" ainda sem UF: espera a UF (no RJ, o 52- sai)
         if (!rUf.value && !UF_RE.test(raw.toUpperCase().replace(/CRM/g, ' ')) && /^\D*52\s*[-.]\s*\d/.test(raw)) return;
         var s = separaCrm(raw, rUf.value);
         if (s.achou) { rUf.value = s.uf; fieldErr(rUf, ''); }
         if (rCrm.value !== s.crm) rCrm.value = s.crm;
+        if (crmLongo(s.crm)) fieldErr(rCrm, MSG.crm);
+      }
+      // o erro do CFM sobre o CRM fala do número e da UF: fica embaixo dos dois, e mexer em qualquer um deles o tira
+      function crmUfErr(msg) {
+        var box = $('rCrmUfErr');
+        box.textContent = msg || ''; box.hidden = !msg;
+        [rCrm, rUf].forEach(function (i) {
+          if (msg || !$(i.id + 'Err').textContent) { i.setAttribute('aria-invalid', msg ? 'true' : 'false'); i.closest('.fl').classList.toggle('bad', !!msg); }
+        });
       }
       rCrm.addEventListener('input', function (e) {
-        fieldErr(rCrm, ''); alertMsg('');
-        var raw = rCrm.value.replace(/[^0-9A-Za-z\s\/.\-]/g, '');
-        if (/^\d*$/.test(raw)) { rCrm.value = raw.slice(0, 7); return; }                  // só números: até 7
-        rCrm.value = raw;
+        fieldErr(rCrm, ''); crmUfErr(''); alertMsg('');
+        var raw = rCrm.value.replace(/[^0-9A-Za-z\s\/.\-]/g, '').trim();
+        if (/^\d*$/.test(raw)) {                                      // só números: nada é cortado sem aviso
+          if (raw.length > 7) raw = raw.replace(/^0+(?=\d)/, '');
+          if (rCrm.value !== raw) rCrm.value = raw;
+          if (raw.length > 7) fieldErr(rCrm, MSG.crm);
+          return;
+        }
+        if (rCrm.value !== raw) rCrm.value = raw;
         // colou, ou terminou de escrever a UF junto ("123456/SP"): arruma na hora; senão, ao sair do campo
         if (e.inputType === 'insertFromPaste' || e.inputType === 'insertReplacementText' || UF_RE.test(raw.toUpperCase().replace(/CRM/g, ' '))) normCrm();
       });
@@ -679,16 +735,29 @@
       rUf.addEventListener('input', function () {
         var v = rUf.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 2);
         if (v !== rUf.value) rUf.value = v;
-        fieldErr(rUf, ''); alertMsg('');
+        fieldErr(rUf, ''); crmUfErr(''); alertMsg('');
         if (v.length === 2) normCrm();
       });
       rUf.addEventListener('blur', function () { if (rUf.value && UFS.indexOf(rUf.value) < 0) fieldErr(rUf, MSG.uf); });
       rNome.addEventListener('input', function () { fieldErr(rNome, ''); alertMsg(''); });
+      // Enter (ou "Próximo" no celular) passa para o campo seguinte; só o da UF (e o do nascimento na confirmação) envia
+      [[rNome, rCpf], [rCpf, rNasc], [rNasc, rCrm], [rCrm, rUf], [$('cCpf'), $('cNasc')]].forEach(function (par) {
+        par[0].addEventListener('keydown', function (e) {
+          if (e.key !== 'Enter' || e.isComposing || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey) return;
+          e.preventDefault();
+          if (par[0] === rCrm) normCrm();
+          par[1].focus();
+        });
+      });
 
-      var CONECT = { de: 1, da: 1, 'do': 1, dos: 1, das: 1, e: 1, d: 1 }, TIT = { dr: 1, dra: 1, doutor: 1, doutora: 1, prof: 1, profa: 1, professor: 1, professora: 1 };
+      // como cfm.palavras no servidor: sem acento, sem conectores nem tratamento; o apóstrofo junta (Sant'Anna → santanna)
+      var CONECT = { de: 1, da: 1, 'do': 1, dos: 1, das: 1, e: 1, d: 1 }, TIT = { dr: 1, dra: 1, doutor: 1, doutora: 1, prof: 1, profa: 1, professor: 1, professora: 1 },
+          ABREV = { jr: 'junior', fo: 'filho' };
+      function nfc(v) { return String(v || '').normalize('NFC'); }     // acento colado separado da letra (PDF, macOS)
+      function nomeLimpo() { return nfc(rNome.value).replace(/\s+/g, ' ').trim(); }
       function palavras(n) {
-        var w = n.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]+/g, ' ').trim().split(' ')
-          .filter(function (p) { return p && !CONECT[p]; });
+        var w = nfc(n).replace(/['’‘`´ʼ]/g, '').normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]+/g, ' ').trim()
+          .split(' ').filter(function (p) { return p && !CONECT[p]; }).map(function (p) { return ABREV[p] || p; });
         while (w.length && TIT[w[0]]) w.shift();
         return w;
       }
@@ -709,48 +778,54 @@
         var h = new Date(), idade = h.getFullYear() - y - ((h.getMonth() + 1 < mo || (h.getMonth() + 1 === mo && h.getDate() < d)) ? 1 : 0);
         return idade >= 20 && idade <= 100;
       }
-      var MSG = { nome: 'Digite seu nome completo, com sobrenome.', cpf: 'Confira o CPF.', nascimento: 'Confira a data de nascimento.',
-                  crm: 'Confira o número do CRM.', uf: 'Confira a UF.',
-                  crm_nao_encontrado: 'Não encontramos este CRM no CFM. Confira o número e a UF.',
-                  crm_nome: 'O nome não confere com o do CRM. Digite como está no seu registro.' };
+      // mensagens curtas nas meias colunas (CPF | Nascimento, CRM | UF): cabem numa linha e não empurram o formulário
+      var MSG = { nome: 'Digite seu nome completo, com sobrenome.', cpf: 'Confira o CPF.', nascimento: 'Confira a data.',
+                  crm: 'Confira o CRM.', uf: 'Confira a UF.',
+                  crm_nao_encontrado: 'Não achamos este CRM no CFM. Confira o número e a UF.',
+                  crm_nome: 'O nome não confere com o do CFM. Digite como no registro.' };
+      var VAZIO = { cpf: 'Digite seu CPF.', nascimento: 'Digite a data.', crm: 'Digite o CRM.', uf: 'Digite a UF.' };
       function checkReg() {               // as mesmas regras do servidor; devolve o primeiro campo com erro
-        var first = null, n = rNome.value.replace(/\s+/g, ' ').trim();
+        var first = null, n = nomeLimpo();
         function bad(inp, msg) { fieldErr(inp, msg); first = first || inp; }
-        if (palavras(n).length < 2 || /[^\p{L}\s'’.\-]/u.test(n)) bad(rNome, MSG.nome);
-        if (!cpfOk(digits(rCpf.value))) bad(rCpf, rCpf.value ? MSG.cpf : 'Digite seu CPF.');
-        if (!dataOk(rNasc.value)) bad(rNasc, rNasc.value ? MSG.nascimento : 'Digite sua data de nascimento.');
+        if (palavras(n).length < 2 || /[^\p{L}\s'’‘`´.\-]/u.test(n)) bad(rNome, MSG.nome);
+        if (!cpfOk(digits(rCpf.value))) bad(rCpf, rCpf.value ? MSG.cpf : VAZIO.cpf);
+        if (!dataOk(rNasc.value)) bad(rNasc, rNasc.value ? MSG.nascimento : VAZIO.nascimento);
         var c = rCrm.value.replace(/^0+/, '');
-        if (!/^\d{1,7}$/.test(c)) bad(rCrm, rCrm.value ? MSG.crm : 'Digite o número do CRM.');
-        if (UFS.indexOf(rUf.value) < 0) bad(rUf, rUf.value ? MSG.uf : 'Digite a UF.');
+        if (!/^\d{1,7}$/.test(c)) bad(rCrm, rCrm.value ? MSG.crm : VAZIO.crm);
+        if (UFS.indexOf(rUf.value) < 0) bad(rUf, rUf.value ? MSG.uf : VAZIO.uf);
         return first;
       }
       function openRegistro() {
         clearErrs($('regForm')); show('registro', true);
         ([rNome, rCpf, rNasc, rCrm, rUf].filter(function (i) { return !i.value; })[0] || rNome).focus();
       }
+      function desisteGoogle() {           // a seta (ou o tempo do Google acabou): volta ao início, sem o registro=google
+        st.google = false; show('email'); history.pushState({ step: 'email' }, '', semRegistro());
+      }
       $('back').addEventListener('click', function () {
-        if (st.google) { st.google = false; show('email', true); $('email').focus(); return; }   // desiste do Google
+        if (st.google) { desisteGoogle(); $('email').focus(); return; }
         if (history.state && history.state.step === 'registro') history.back(); else show('signup', true);
       });
       function regFail(j) {
         var er = j.error;
-        if (MSG[er]) { var inp = { nome: rNome, cpf: rCpf, nascimento: rNasc, crm: rCrm, uf: rUf, crm_nao_encontrado: rCrm, crm_nome: rNome }[er];
+        if (er === 'crm_nao_encontrado') { crmUfErr(MSG[er]); rCrm.focus(); return; }
+        if (MSG[er]) { var inp = { nome: rNome, cpf: rCpf, nascimento: rNasc, crm: rCrm, uf: rUf, crm_nome: rNome }[er];
                        fieldErr(inp, MSG[er]); inp.focus(); return; }
         if (er === 'crm_irregular') { alertMsg('O CFM não mostra este CRM como regular. O OpenDoctor é só para médicos com inscrição regular.'); return; }
         if (er === 'crm_dados') { alertMsg('O CPF ou a data de nascimento não conferem com o registro deste CRM no CFM.'); rCpf.focus(); return; }
         if (er === 'senha_fraca') { show('signup', true); paintRules('newPw'); fieldErr($('newPw'), 'Confira os requisitos da senha abaixo.'); $('newPw').focus(); return; }
         if (er === 'conta_existe') { $('pw').value = ''; show('password', true); alertMsg('Este e-mail já tem uma conta. Digite sua senha.', true); $('pw').focus(); return; }
-        if (er === 'sessao_expirada' && st.google) { st.google = false; show('email', true); alertMsg('O tempo para concluir o cadastro com o Google acabou. Toque em Continuar com o Google de novo.'); return; }
+        if (er === 'sessao_expirada' && st.google) { desisteGoogle(); alertMsg('O tempo para concluir o cadastro com o Google acabou. Toque em Continuar com o Google de novo.'); return; }
         if (er === 'email_invalido') { show('email', true); fieldErr(email, 'Confira o e-mail digitado.'); return; }
         sendFail(er);
       }
       $('regForm').addEventListener('submit', function (e) {
         e.preventDefault();
         normCrm();
+        clearErrs($('regForm'));           // o erro de um envio anterior não fica na tela junto com o novo
         var first = checkReg();
         if (first) { first.focus(); return; }
-        var body = { nome: rNome.value.replace(/\s+/g, ' ').trim(), cpf: digits(rCpf.value), nascimento: rNasc.value,
-                     crm: rCrm.value, uf: rUf.value };
+        var body = { nome: nomeLimpo(), cpf: digits(rCpf.value), nascimento: rNasc.value, crm: rCrm.value, uf: rUf.value };
         var btn = $('regGo'); busy(btn, true); alertMsg('');
         var req = st.google ? post('/auth/google/registro', body)
           : post('/auth/signup/start', { email: st.email, password: $('newPw').value, nome: body.nome, cpf: body.cpf,
@@ -768,19 +843,21 @@
       $('confForm').addEventListener('submit', function (e) {
         e.preventDefault();
         var cpf = $('cCpf'), nasc = $('cNasc'), first = null;
-        if (!cpfOk(digits(cpf.value))) { fieldErr(cpf, cpf.value ? MSG.cpf : 'Digite seu CPF.'); first = cpf; }
-        if (!dataOk(nasc.value)) { fieldErr(nasc, nasc.value ? MSG.nascimento : 'Digite sua data de nascimento.'); first = first || nasc; }
+        clearErrs($('confForm'));
+        if (!cpfOk(digits(cpf.value))) { fieldErr(cpf, cpf.value ? MSG.cpf : VAZIO.cpf); first = cpf; }
+        if (!dataOk(nasc.value)) { fieldErr(nasc, nasc.value ? MSG.nascimento : VAZIO.nascimento); first = first || nasc; }
         if (first) { first.focus(); return; }
         var btn = $('confGo'); busy(btn, true); alertMsg('');
         post('/auth/crm/confirmar', { cpf: digits(cpf.value), nascimento: nasc.value, next: nextUrl }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
-          if (res.ok && j.redirect) { go(j.redirect); return; }
+          // confirmou — ou o CFM não respondeu (adiado): a conta já foi aprovada, a confirmação volta no próximo login
+          if (res.ok && j.redirect) { limpaCadastro(); go(j.redirect); return; }
           if (er === 'cpf') { fieldErr(cpf, MSG.cpf); return; }
           if (er === 'nascimento') { fieldErr(nasc, MSG.nascimento); return; }
           if (er === 'crm_dados') { alertMsg('O CPF ou a data de nascimento não conferem com o seu registro no CFM. Confira e tente de novo.'); cpf.focus(); return; }
-          if (er === 'cfm_indisponivel') { alertMsg('O CFM não respondeu agora. Tente de novo em alguns minutos.'); return; }
-          if (res.status === 401) { show('email', true); alertMsg('Sua sessão expirou. Entre novamente.', true); return; }
+          if (er === 'limite_conta') { alertMsg('Muitas tentativas com dados que não conferem. Tente de novo amanhã ou fale com a equipe do OpenDoctor.'); return; }
+          if (res.status === 401) { st.wait = ''; show('email', true); alertMsg('Sua sessão expirou. Entre novamente.', true); return; }
           alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
         }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
       });

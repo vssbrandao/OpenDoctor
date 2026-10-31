@@ -37,11 +37,13 @@ def fake(monkeypatch):
         "set_password": lambda uid, ph, sv=None: dict(USER),
         "crm_in_use": lambda crm, uf: False, "pending_doctors": lambda: [], "decide_crm": lambda uid, ap: dict(USER),
         "crm_confirmed": lambda uid: True, "get_medico": lambda uid: {"name": "Ana Lima", "crm": "123456", "crm_uf": "SP"},
-        "upsert_user": lambda *a, **k: dict(USER),
+        "upsert_user": lambda *a, **k: dict(USER), "cfm_tentativa_usa": lambda *a: True, "cfm_tentativas": lambda *a: 0,
+        "cfm_tentativa_registra": lambda *a: None,
     }.items():
         monkeypatch.setattr(db, nome, v)
     monkeypatch.setattr(mailer, "configured", lambda: True)
-    for nome in ("send_code", "send_password_changed", "send_new_device", "send_crm_pending", "send_crm_decision"):
+    for nome in ("send_code", "send_password_changed", "send_new_device", "send_crm_pending", "send_crm_decision",
+                 "send_cfm_alerta"):
         monkeypatch.setattr(mailer, nome, lambda *a, **k: None)
     # CFM com chave, que confere o médico (cada caso pode deixar a consulta lenta); USER é administrador
     monkeypatch.setattr(cfm, "configured", lambda: True)
@@ -67,7 +69,8 @@ SIGNUP = {"k": "signup", "email": "nova@clinica.com.br", "name": "Ana Lima", "ph
 REG = {"nome": "Ana Lima", "cpf": "529.982.247-25", "nascimento": "12/05/1985", "crm": "123456", "uf": "SP"}
 NOVA = dict(REG, email="nova@clinica.com.br", password=PW)
 GREG = {"cookie": "od_greg=" + auth.sign({"k": "greg", "email": "nova@clinica.com.br", "sub": "g1", "nx": "/"})}
-MANUAL = {"_user": {"crm_status": "verificado", "crm_fonte": "manual"}}      # aprovada à mão: confirma no CFM
+# aprovada à mão, numa sessão que nasceu pedindo a confirmação no CFM (marca "cc" no cookie)
+MANUAL = {"_user": {"crm_status": "verificado", "crm_fonte": "manual", "crm_cc": True}}
 CASOS = [   # (método, rota, pedido, (módulo, função lenta), troca no banco simulado)
     ("post", "/auth/password/login", {"json": {"email": "ana@clinica.com.br", "password": PW}}, (auth, "check_password"), {}),
     ("post", "/auth/password/login", {"json": {"email": "ana@clinica.com.br", "password": PW}}, (db, "password_login_info"), {}),
@@ -77,10 +80,12 @@ CASOS = [   # (método, rota, pedido, (módulo, função lenta), troca no banco 
     ("post", "/auth/signup/start", {"json": NOVA}, (cfm, "consultar"), {}),
     ("post", "/auth/signup/start", {"json": NOVA}, (cfm, "validar"), {}),
     ("post", "/auth/signup/start", {"json": NOVA}, (db, "crm_in_use"), {}),
+    ("post", "/auth/signup/start", {"json": NOVA}, (db, "cfm_tentativa_usa"), {}),
     ("post", "/auth/google/registro", {"json": REG, "headers": GREG}, (cfm, "consultar"), {"user_by_email": None}),
     ("post", "/auth/google/registro", {"json": REG, "headers": GREG}, (db, "upsert_user"), {"user_by_email": None}),
     ("post", "/auth/crm/confirmar", {"json": {"cpf": "52998224725", "nascimento": "12/05/1985"}}, (cfm, "validar"), MANUAL),
     ("post", "/auth/crm/confirmar", {"json": {"cpf": "52998224725", "nascimento": "12/05/1985"}}, (db, "crm_confirmed"), MANUAL),
+    ("post", "/auth/crm/confirmar", {"json": {"cpf": "52998224725", "nascimento": "12/05/1985"}}, (db, "cfm_tentativas"), MANUAL),
     ("get", "/admin/cadastros", {}, (db, "pending_doctors"), {}),
     ("post", "/admin/cadastros/aprovar", {"json": {"id": "8f14e45f-ceea-467a-9575-1a2b3c4d5e6f"}}, (db, "decide_crm"), {}),
     ("post", "/admin/cadastros/recusar", {"json": {"id": "8f14e45f-ceea-467a-9575-1a2b3c4d5e6f"}}, (mailer, "send_crm_decision"), {}),

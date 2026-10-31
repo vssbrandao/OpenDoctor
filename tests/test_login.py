@@ -195,8 +195,13 @@ def _client(monkeypatch, fake, configured=True):
 
     def create(e, n, ph, crm=None):
         crm = crm or {}
+        st, fonte = crm.get("status"), crm.get("fonte")
+        # como db._CRM_DECISAO: 'verificado' de um CRM/UF que outra conta (não recusada) já tem nasce pendente
+        if st == "verificado" and any(u.get("crm") == crm.get("crm") and u.get("crm_uf") == crm.get("uf")
+                                      and u.get("crm_status") != "recusado" for k, u in fake.users.items() if k != e):
+            st, fonte = "pendente", None
         fake.users.setdefault(e, {"id": "u-" + e, "email": e, "name": n, "hash": ph, "sv": 0, "crm": crm.get("crm"),
-                                  "crm_uf": crm.get("uf"), "crm_status": crm.get("status"), "crm_fonte": crm.get("fonte")})
+                                  "crm_uf": crm.get("uf"), "crm_status": st, "crm_fonte": fonte})
         return fake.users[e]
     monkeypatch.setattr(db, "create_email_user", create)
 

@@ -23,6 +23,8 @@ import contextlib
 import mimetypes
 import asyncio
 import struct
+import ipaddress
+import unicodedata
 
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse, JSONResponse, RedirectResponse, FileResponse, Response
@@ -418,10 +420,25 @@ def _client_ip(request):
     return ip or (request.client.host if request.client else "?")
 
 
-def _rate_limited(request, bucket):
+def _rl_ip(ip):
+    """IP para o limite: IPv6 conta pelo prefixo /64 (uma casa ou um provedor dá o /64 inteiro a um aparelho — trocar de
+    endereço dentro dele não ganha um limite novo); IPv4 (e IPv4 dentro de IPv6) pelo endereço."""
+    try:
+        a = ipaddress.ip_address(str(ip).strip().strip("[]"))
+    except ValueError:
+        return str(ip)
+    if a.version == 6 and a.ipv4_mapped:
+        return str(a.ipv4_mapped)
+    if a.version == 6:
+        return str(ipaddress.ip_network(f"{a}/64", strict=False))
+    return str(a)
+
+
+def _rate_limited(request, bucket, key=None):
+    """Passou do limite do balde? Conta por IP (IPv6 pelo /64); `key` conta por outra coisa (ex.: a conta)."""
     n, win = RATE_LIMITS[bucket]
     now = time.time()
-    key = (bucket, _client_ip(request))
+    key = (bucket, key if key is not None else _rl_ip(_client_ip(request)))
     with _RL_LOCK:
         q = _RL.setdefault(key, collections.deque())
         while q and now - q[0] > win:
@@ -779,10 +796,12 @@ def _logged(request, user, nxt, method, welcome=False):
     """Resposta de login concluído: cookie de sessão + para onde ir. Registra a entrada."""
     dest = auth.safe_next(nxt)
     out = {"ok": True, "redirect": auth.with_welcome(dest) if welcome else dest}
-    if _crm_bloqueio(user):
-        out["bloqueio"] = _crm_bloqueio(user)      # a tela de login mostra a espera em vez de abrir o app
+    cc = _crm_a_confirmar(user)                     # aprovada à mão e já há a chave do CFM: esta sessão confirma antes
+    bloqueio = _crm_bloqueio(dict(user, crm_cc=cc))
+    if bloqueio:
+        out["bloqueio"] = bloqueio                  # a tela de login mostra a espera em vez de abrir o app
     resp = JSONResponse(out)
-    auth.set_session(resp, user["id"], user.get("sv", 0))
+    auth.set_session(resp, user["id"], user.get("sv", 0), cc=cc)
     _audit(request, user["id"], "entrou", method, _device(request, resp))
     return resp
 
@@ -896,16 +915,23 @@ def _password_login(request, b):
 # Validar (CPF + nascimento são do médico daquele CRM). Sem a chave, ou com o CFM fora do ar, a conta nasce pendente e um
 # administrador aprova à mão. O CPF e a data de nascimento vão só ao CFM: não entram em banco, log, tíquete nem e-mail.
 
+def _crm_a_confirmar(user):
+    """Conta aprovada à mão (crm_fonte 'manual') que confirma o CPF e o nascimento no CFM agora que há a chave. É pedido
+    ao entrar (marca na sessão, _logged), não no meio de uma sessão aberta."""
+    return bool(user) and user.get("crm_status") == "verificado" and user.get("crm_fonte") == "manual" and cfm.configured()
+
+
 def _crm_bloqueio(user):
     """Por que esta conta ainda não usa o app (None = liberada). Conta sem crm_status é anterior a esta regra e segue
-    como sempre. Aprovada à mão (crm_fonte 'manual') confirma o CPF e o nascimento no CFM quando a chave existir."""
+    como sempre. A aprovada à mão só é barrada ('crm_confirmar') na sessão que nasceu pedindo a confirmação (auth: "cc");
+    se o CFM não responder, a sessão segue sem a marca e o pedido volta no próximo login (_crm_confirmar)."""
     if not user:
         return None
     st = user.get("crm_status")
     if st is None:
         return None
     if st == "verificado":
-        return "crm_confirmar" if user.get("crm_fonte") == "manual" and cfm.configured() else None
+        return "crm_confirmar" if user.get("crm_cc") and _crm_a_confirmar(user) else None
     return "crm_recusado" if st == "recusado" else "crm_pendente"     # pendente (ou qualquer outro valor): fechado
 
 
@@ -915,9 +941,10 @@ def _valid_name(raw):
 
 
 def _nome_completo(raw):
-    """Nome completo (pelo menos 2 palavras, sem contar 'de', 'da'… nem 'Dr.'), só com letras, espaço, ' . e -."""
-    name = _valid_name(raw)
-    if not name or not all(c.isalpha() or c in " '’.-" for c in name) or len(cfm.palavras(name)) < 2:
+    """Nome completo (pelo menos 2 palavras, sem contar 'de', 'da'… nem 'Dr.'), só com letras, espaço, ' . e -.
+    Em NFC: o nome colado com o acento separado da letra (PDF, macOS) vale como o digitado."""
+    name = _valid_name(unicodedata.normalize("NFC", str(raw or "")))
+    if not name or not all(c.isalpha() or c in " '’‘`´.-" for c in name) or len(cfm.palavras(name)) < 2:
         return None
     return name
 
@@ -958,16 +985,27 @@ def _registro(b):
     return {"nome": nome, "cpf": cpf, "nascimento": nasc, "crm": crm, "uf": uf}, None
 
 
+CRM_TENTATIVAS = (5, 24 * 3600)     # conferências no CFM por CRM/UF, de qualquer IP (contador no banco: vários processos)
+CONF_FALHAS = (5, 24 * 3600)        # CPF/nascimento que não bateram na confirmação de uma conta aprovada à mão
+
+
 def _crm_decide(r):
     """Confere o registro no CFM. Devolve ({crm, uf, status, fonte, situacao}, None) para criar a conta, ou
     (None, resposta) para recusar o cadastro com o motivo. Recusa só o que é claro (CRM não encontrado, situação
     irregular, nome diferente, CPF/nascimento que não batem); CFM sem chave, fora do ar ou com erro passageiro → pendente.
-    CRM que outra conta já usa também fica pendente: alguém com os dados de um médico não abre uma 2ª conta sozinho."""
+    Cada CRM/UF tem poucas conferências por dia, valendo para qualquer IP (CRM_TENTATIVAS): passou disso, a conta fica
+    pendente sem chamar o CFM — o cadastro não vira um jeito de testar datas de nascimento até achar a certa.
+    CRM que outra conta já usa também fica pendente: alguém com os dados de um médico não abre uma 2ª conta sozinho
+    (conferido aqui e, de novo e sem corrida, na hora de criar a conta: db._CRM_DECISAO)."""
     dec = {"crm": r["crm"], "uf": r["uf"], "status": "pendente", "fonte": None, "situacao": None}
     if cfm.configured():
+        if not db.cfm_tentativa_usa(f"crm:{r['uf']}:{r['crm']}", *CRM_TENTATIVAS):
+            print("[cadastro] limite de conferências deste CRM: fica pendente", flush=True)
+            return dec, None
         c = cfm.consultar(r["crm"], r["uf"])
         if c["status"] == "nao_encontrado":
             return None, _err("crm_nao_encontrado")
+        _cfm_alerta(c)
         if c["status"] == "ok":
             med = c["medico"]
             dec["situacao"] = med["situacao"]
@@ -978,6 +1016,7 @@ def _crm_decide(r):
             v = cfm.validar(r["crm"], r["uf"], r["cpf"], r["nascimento"])
             if v["status"] == "ok" and not v["valido"]:
                 return None, _err("crm_dados")
+            _cfm_alerta(v)
             if v["status"] == "ok":
                 dec.update(status="verificado", fonte="cfm")
     if dec["status"] == "verificado" and db.crm_in_use(r["crm"], r["uf"]):
@@ -985,15 +1024,41 @@ def _crm_decide(r):
     return dec, None
 
 
-def _avisa_pendente(dec, nome):
-    """Cadastro pendente: avisa os administradores por e-mail (em segundo plano; falha só vai para o log)."""
+_CFM_ALERTA = {"t": 0.0}
+_CFM_ALERTA_LOCK = threading.Lock()
+CFM_ALERTA_S = 12 * 3600            # um e-mail a cada 12 h, no máximo, enquanto a chave continuar recusada
+
+
+def _cfm_alerta(r):
+    """Chave do CFM recusada (3010: inválida ou vencida — o contrato é anual): vai para o log e, no máximo a cada 12 h,
+    avisa os administradores por e-mail. Enquanto isso o cadastro fica pendente e a confirmação é adiada."""
+    if (r or {}).get("codigo") != "3010":
+        return
+    print("[cfm] chave recusada (3010): confira CFM_CHAVE no Render", flush=True)
     admins = auth.admin_emails()
-    if (dec or {}).get("status") != "pendente" or not mailer.configured() or not admins:
+    with _CFM_ALERTA_LOCK:
+        if time.time() - _CFM_ALERTA["t"] < CFM_ALERTA_S or not admins or not mailer.configured():
+            return
+        _CFM_ALERTA["t"] = time.time()
+
+    def run():
+        try:
+            mailer.send_cfm_alerta(admins)
+        except Exception as e:
+            print("[cfm] aviso da chave falhou:", str(e)[:200], flush=True)
+    _AUDIT.submit(run)
+
+
+def _avisa_pendente(user, nome, crm, uf):
+    """Conta criada pendente (pela decisão do cadastro ou pelo CRM repetido na hora de criar): avisa os administradores
+    por e-mail (em segundo plano; falha só vai para o log)."""
+    admins = auth.admin_emails()
+    if (user or {}).get("crm_status") != "pendente" or not mailer.configured() or not admins:
         return
 
     def run():
         try:
-            mailer.send_crm_pending(admins, nome, dec.get("crm"), dec.get("uf"))
+            mailer.send_crm_pending(admins, nome, crm, uf)
         except Exception as e:
             print("[cadastro] aviso de pendente falhou:", str(e)[:200], flush=True)
     _AUDIT.submit(run)
@@ -1087,7 +1152,7 @@ def _signup_verify(request, b):
         return _err("erro", 500)
     if novo:
         exemplo.seed_safe(user["id"])                   # conta nova: paciente de exemplo (fictícia)
-        _avisa_pendente(dec, t.get("name"))
+        _avisa_pendente(user, t.get("name"), dec.get("crm"), dec.get("uf"))
     return _logged(request, user, b.get("next"), "cadastro", welcome=True)
 
 
@@ -1137,7 +1202,7 @@ def _google_registro_cria(request, b):
         print("[auth] registro Google falhou:", type(e).__name__, flush=True)
         return _err("erro", 500)
     exemplo.seed_safe(user["id"])                        # conta nova: paciente de exemplo (fictícia)
-    _avisa_pendente(dec, reg["nome"])
+    _avisa_pendente(user, reg["nome"], dec.get("crm"), dec.get("uf"))
     resp = _logged(request, user, t.get("nx"), "cadastro", welcome=True)
     resp.delete_cookie(GREG_COOKIE, path="/auth/")
     return resp
@@ -1163,20 +1228,34 @@ def _crm_confirmar(request, b):
     nasc = _nascimento(b.get("nascimento"))
     if not nasc:
         return _err("nascimento")
-    if _rate_limited(request, "cfm"):
-        return _err("limite_ip", 429)
+    falhas = "conf:" + u["id"]
     try:
-        m = db.get_medico(u["id"]) or {}
-        v = cfm.validar(m.get("crm") or "", m.get("crm_uf") or "", cpf, nasc)
-        if v["status"] != "ok":
-            return _err("cfm_indisponivel", 503)
-        if not v["valido"]:
-            return _err("crm_dados")
-        db.crm_confirmed(u["id"])
+        with _na_vez(falhas) as vez:           # duas tentativas juntas não passam ambas pelo limite de CPFs errados
+            if not vez:
+                return _err("limite_ip", 429)
+            # limite por conta (não por IP: os colegas da mesma clínica não gastam o dela), só dos que não bateram
+            if db.cfm_tentativas(falhas, CONF_FALHAS[1]) >= CONF_FALHAS[0]:
+                return _err("limite_conta", 429)
+            m = db.get_medico(u["id"]) or {}
+            v = cfm.validar(m.get("crm") or "", m.get("crm_uf") or "", cpf, nasc)
+            if v["status"] == "ok" and not v["valido"]:
+                db.cfm_tentativa_registra(falhas)
+                return _err("crm_dados")                  # não bateu: a confirmação continua pedida
+            if v["status"] == "ok":
+                db.crm_confirmed(u["id"])
+                out = {"ok": True, "redirect": auth.safe_next(b.get("next"))}
+            else:
+                # o CFM não respondeu (fora do ar, erro passageiro repetido, chave vencida): a conta já foi aprovada por
+                # um administrador, então esta sessão segue; a confirmação volta a ser pedida no próximo login
+                _cfm_alerta(v)
+                print("[cadastro] confirmação adiada: CFM", v.get("codigo"), flush=True)
+                out = {"ok": True, "redirect": auth.safe_next(b.get("next")), "adiado": True}
     except Exception as e:
         print("[cadastro] confirmação do CRM falhou:", type(e).__name__, flush=True)
         return _err("erro", 500)
-    return {"ok": True, "redirect": auth.safe_next(b.get("next"))}
+    resp = JSONResponse(out)
+    auth.set_session(resp, u["id"], u.get("sv", 0))          # a mesma sessão, sem a marca de confirmar
+    return resp
 
 
 @app.post("/auth/password/forgot")
@@ -1289,7 +1368,7 @@ def me(request: Request):
     on = scribe_on(u)
     bloqueio = _crm_bloqueio(u)
     if u:
-        u = {k: v for k, v in u.items() if k != "sv"}
+        u = {k: v for k, v in u.items() if k not in ("sv", "crm_cc")}
     return {"logged_in": bool(u), "user": u, "scribe": on, "bloqueio": bloqueio}
 
 
@@ -1344,7 +1423,11 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             if db.user_by_email(email) is None:
                 # e-mail sem conta: antes de a conta existir, o Registro profissional (só médicos criam conta). O perfil
                 # do Google espera num cookie assinado deste navegador (15 min), fora da URL
-                resp = RedirectResponse("/opendoctor-login.html?registro=google")
+                # registro=google e a página de origem ficam na URL até a conta existir (recarregar não perde a etapa)
+                q = {"registro": "google"}
+                if auth.safe_next(payload.get("nx")) != auth.HOME:
+                    q["next"] = auth.safe_next(payload.get("nx"))
+                resp = RedirectResponse("/opendoctor-login.html?" + urllib.parse.urlencode(q))
                 resp.set_cookie(GREG_COOKIE, auth.sign({
                     "k": "greg", "email": email, "pic": info.get("picture"),
                     "sub": info.get("sub"), "nx": auth.safe_next(payload.get("nx"))}),
@@ -1355,7 +1438,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             user = db.upsert_user(email, info.get("name"), info.get("picture"), info.get("sub"))
             dest = auth.safe_next(payload.get("nx"))
             resp = RedirectResponse(dest)
-            auth.set_session(resp, user["id"], user.get("sv", 0))
+            auth.set_session(resp, user["id"], user.get("sv", 0), cc=_crm_a_confirmar(user))
             _audit(request, user["id"], "entrou", "google", _device(request, resp))
             resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
             return resp

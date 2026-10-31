@@ -8,6 +8,7 @@ logo · "Nome," + título 40px · texto · bloco (código em 6 caixas ou botão)
   crm_pendente  aos administradores (ADMIN_EMAILS): cadastro novo esperando a conferência do CRM (só nome e CRM/UF)
   crm_aprovado  ao médico: CRM conferido à mão, conta liberada
   crm_recusado  ao médico: não deu para confirmar o CRM, conta não liberada
+  cfm_chave     aos administradores: o CFM recusou a chave (3010, inválida ou vencida)
 
 Configuração (variáveis de ambiente no Render):
   RESEND_API_KEY   chave da API do Resend
@@ -122,6 +123,17 @@ _TEXTS = {
         "button": "Abrir o OpenDoctor",
         "notes": ["Se você acha que houve um engano, entre em contato com a equipe do OpenDoctor.",
                   "Se você não criou uma conta no OpenDoctor, ignore este e-mail."],
+    },
+    "cfm_chave": {
+        "subject": "O CFM recusou a chave do OpenDoctor",
+        "title": "O CFM recusou a chave",
+        "lead": "O web service do CFM respondeu que a chave do OpenDoctor é inválida ou venceu (código 3010). Enquanto "
+                "isso, os cadastros novos ficam pendentes para aprovação à mão e as contas aprovadas à mão entram sem "
+                "confirmar o CPF.",
+        "button": "Conferir cadastros",
+        "link": "/opendoctor-cadastros.html",
+        "notes": ["Confira a variável CFM_CHAVE no Render e a validade do contrato com o CFM (docs/cadastro-crm.md).",
+                  "Enquanto a chave continuar recusada, este aviso se repete no máximo a cada 12 horas."],
     },
 }
 
@@ -273,3 +285,12 @@ def send_crm_decision(to, name="", aprovado=True):
         print(f"[login-mail:{purpose}] {to}", flush=True)
         return
     _send(to, *render(purpose, name=name))
+
+
+def send_cfm_alerta(admins):
+    """Avisa os administradores de que o CFM recusou a chave (3010). Nada do médico vai junto."""
+    for to in admins:
+        if debug_codes():
+            print(f"[login-mail:cfm_chave] {to}", flush=True)
+            continue
+        _send(to, *render("cfm_chave"))

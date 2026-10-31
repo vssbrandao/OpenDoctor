@@ -19,7 +19,7 @@ import re
 import ssl
 import time
 import unicodedata
-import xml.etree.ElementTree as ET
+from xml.parsers import expat
 from xml.sax.saxutils import escape
 
 import httpx
@@ -85,23 +85,44 @@ def crm_numero(digitos):
 
 _CONECTORES = {"de", "da", "do", "dos", "das", "e", "d"}
 _TITULOS = {"dr", "dra", "doutor", "doutora", "prof", "profa", "professor", "professora"}
+_ABREVIADOS = {"jr": "junior", "fo": "filho"}               # Jr. = Júnior; Fº (º vira "o" sem acento) = Filho
+_SUFIXOS = {"filho", "junior", "neto", "sobrinho"}
+_APOSTROFOS = "'’‘`´ʼ"
 
 
-def palavras(nome):
-    """Palavras do nome sem acento, em minúsculas, sem conectores (de, da, dos…) nem tratamento (Dr., Dra.)."""
-    s = unicodedata.normalize("NFKD", str(nome or ""))
+def _limpa(nome, apostrofo):
+    """Palavras sem acento, em minúsculas, sem conectores nem tratamento. `apostrofo`: o que vira o apóstrofo —
+    "" junta ("D'Ávila" → davila) e " " separa ("D'Ávila" → d avila → avila, porque d é conector)."""
+    s = unicodedata.normalize("NFC", str(nome or ""))
+    s = "".join(apostrofo if c in _APOSTROFOS else c for c in s)
+    s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c)).lower()
     s = re.sub(r"[^a-z]+", " ", s)
-    out = [p for p in s.split() if p not in _CONECTORES]
+    out = [_ABREVIADOS.get(p, p) for p in s.split() if p not in _CONECTORES]
     while out and out[0] in _TITULOS:
         out = out[1:]
     return out
 
 
+def palavras(nome):
+    """Palavras do nome sem acento, em minúsculas, sem conectores (de, da, dos…) nem tratamento (Dr., Dra.); o apóstrofo
+    junta ("Sant'Anna" → santanna) e as abreviações viram a palavra inteira (Jr. → junior, Fº → filho)."""
+    return _limpa(nome, "")
+
+
 def nome_confere(digitado, do_cfm):
-    """O primeiro nome é o mesmo e o último sobrenome digitado está entre as palavras do nome no CFM."""
+    """O primeiro nome é o mesmo e o último sobrenome digitado está entre os SOBRENOMES do CFM (não vale repetir o
+    primeiro nome: "Ana Ana"). O apóstrofo pode vir junto ou separado (D'Ávila = Davila = Ávila); quando o último é
+    um sufixo (Filho, Júnior, Neto, Sobrinho), vale também o sobrenome antes dele."""
     a, b = palavras(digitado), palavras(do_cfm)
-    return len(a) >= 2 and bool(b) and a[0] == b[0] and a[-1] in b
+    if len(a) < 2 or len(set(a)) < 2 or not b or a[0] != b[0]:
+        return False
+    a_sep, b_sep = _limpa(digitado, " "), _limpa(do_cfm, " ")
+    sobrenomes = set(b[1:]) | set(b_sep[1:])
+    candidatos = {a[-1], a_sep[-1] if a_sep else ""}
+    if a[-1] in _SUFIXOS and len(a) >= 3:
+        candidatos |= {a[-2]} | ({a_sep[-2]} if len(a_sep) >= 3 else set())
+    return bool(candidatos & sobrenomes)
 
 
 # ----- SOAP -----
@@ -125,24 +146,61 @@ def _log(op, oque, t0):
     print(f"[cfm] {op} {oque} {round((time.monotonic() - t0) * 1000)} ms", flush=True)
 
 
+class _Recusado(Exception):
+    """A resposta trouxe DTD ou entidade: o parser para na hora (nada é expandido)."""
+
+
+def _recusa(*_):
+    raise _Recusado()
+
+
+_BOMS_NAO_UTF8 = (b"\xff\xfe", b"\xfe\xff")              # UTF-16/32: o CFM responde em UTF-8
+
+
 def ler(xml_bytes):
     """Tags conhecidas da resposta, pelo nome (sem namespace): {tag: texto}, com 'especialidade' em lista.
+    Só UTF-8, e o próprio parser recusa DOCTYPE e entidades (em qualquer codificação, não por busca de bytes).
     Levanta ValueError se não for um XML que dê para ler com segurança."""
-    if len(xml_bytes) > MAX_RESPOSTA or b"<!DOCTYPE" in xml_bytes.upper() or b"<!ENTITY" in xml_bytes.upper():
+    if not isinstance(xml_bytes, (bytes, bytearray)) or len(xml_bytes) > MAX_RESPOSTA:
+        raise ValueError("resposta fora do formato")
+    xml_bytes = bytes(xml_bytes)
+    if xml_bytes.lstrip(b"\x00").startswith(_BOMS_NAO_UTF8) or b"\x00" in xml_bytes:
         raise ValueError("resposta fora do formato")
     try:
-        raiz = ET.fromstring(xml_bytes)
-    except ET.ParseError as e:
-        raise ValueError("xml inválido") from e
-    out = {"especialidade": []}
-    for el in raiz.iter():
-        tag = str(el.tag).rsplit("}", 1)[-1]
-        txt = (el.text or "").strip()
+        texto = xml_bytes.decode("utf-8")
+    except UnicodeDecodeError as e:
+        raise ValueError("resposta fora do formato") from e
+    decl = re.match(r"\ufeff?\s*<\?xml[^>]*?encoding\s*=\s*[\"']([^\"']+)", texto)
+    if decl and decl.group(1).strip().lower().replace("_", "-") not in ("utf-8", "utf8"):
+        raise ValueError("resposta fora do formato")
+    p = expat.ParserCreate(encoding="UTF-8", namespace_separator="}")
+    p.SetParamEntityParsing(expat.XML_PARAM_ENTITY_PARSING_NEVER)
+    p.StartDoctypeDeclHandler = p.EntityDeclHandler = p.UnparsedEntityDeclHandler = _recusa
+    p.NotationDeclHandler = p.ExternalEntityRefHandler = _recusa
+    out, pilha = {"especialidade": []}, []
+
+    def abre(nome, _attrs):
+        pilha.append((str(nome).rsplit("}", 1)[-1], []))
+
+    def texto_(dado):
+        if pilha:
+            pilha[-1][1].append(dado)
+
+    def fecha(_nome):
+        tag, partes = pilha.pop()
+        txt = "".join(partes).strip()
         if tag == "especialidade":
             if txt:
                 out["especialidade"].append(txt[:200])
         elif tag in _TAGS_MEDICO + ("codigoErro", "resultadoConsulta") and tag not in out:
             out[tag] = txt[:200]
+    p.StartElementHandler, p.CharacterDataHandler, p.EndElementHandler = abre, texto_, fecha
+    try:
+        p.Parse(xml_bytes, True)
+    except _Recusado as e:
+        raise ValueError("resposta fora do formato") from e
+    except expat.ExpatError as e:
+        raise ValueError("xml inválido") from e
     return out
 
 

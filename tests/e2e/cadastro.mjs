@@ -103,6 +103,21 @@ const digita = (s, t) => ev(`(() => { const i = document.querySelector(${JSON.st
 const cola = (s, t) => ev(`(() => { const i = document.querySelector(${JSON.stringify(s)}); i.focus(); i.value = ${JSON.stringify(t)};
   i.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' })); return i.value; })()`);
 const sai = (s) => ev(`(() => { document.querySelector(${JSON.stringify(s)}).blur(); return 1; })()`);
+// teclado de verdade (DevTools): teclas especiais e texto digitado no campo com o foco
+const TECLAS = { Enter: [13, '\r'], Backspace: [8, ''], Delete: [46, ''] };
+async function tecla(key) {
+  const [vk, text] = TECLAS[key];
+  await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+  if (text) await send('Input.dispatchKeyEvent', { type: 'char', key, code: key, text, unmodifiedText: text, windowsVirtualKeyCode: vk });
+  await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: vk, nativeVirtualKeyCode: vk });
+  await sleep(30);
+}
+async function escreve(t) { for (const ch of t) { await send('Input.insertText', { text: ch }); await sleep(5); } }
+const foca = (s, pos) => ev(`(() => { const i = document.querySelector(${JSON.stringify(s)}); i.focus();
+  ${pos == null ? '' : `i.setSelectionRange(${pos}, ${pos});`} return 1; })()`);
+const cursor = (s) => ev(`document.querySelector(${JSON.stringify(s)}).selectionStart`);
+const focado = () => ev(`document.activeElement && document.activeElement.id`);
+const errosVisiveis = () => ev(`[...document.querySelectorAll('#regForm .err')].filter((e) => !e.hidden).map((e) => e.id)`);
 const posts = (path) => pedidos.filter((r) => r.method === 'POST' && r.path === path);
 async function abre(q = '') {
   await send('Page.navigate', { url: ORIG + '/opendoctor-login.html' + q });
@@ -187,7 +202,10 @@ const cenarios = [
     certo(await digita('#rCpf', '529a98224725999') === '529.982.247-25', 'CPF: ' + await val('#rCpf'));
     certo(await digita('#rNasc', '12051985') === '12/05/1985', 'nascimento: ' + await val('#rNasc'));
     certo(await cola('#rNasc', '1985-05-12') === '12/05/1985', 'nascimento ISO: ' + await val('#rNasc'));
-    certo(await digita('#rCrm', '123456789') === '1234567', 'CRM até 7: ' + await val('#rCrm'));
+    // mais de 7 dígitos: nada é cortado sem aviso (zeros à esquerda não contam, como no servidor)
+    certo(await digita('#rCrm', '123456789') === '123456789' && await txt('#rCrmErr') === 'Confira o CRM.', 'CRM com 9 dígitos: ' + await val('#rCrm') + ' / ' + await txt('#rCrmErr'));
+    certo(await cola('#rCrm', '00123456') === '123456' && !(await vis('#rCrmErr')), 'CRM com zeros à esquerda: ' + await val('#rCrm'));
+    certo(await digita('#rCrm', '0001234') === '0001234', 'CRM de 7 com zeros: ' + await val('#rCrm'));
     const casos = [['CRM-SP 123456', '123456', 'SP'], ['CRM/SP 123.456', '123456', 'SP'], ['SP 123456', '123456', 'SP'],
       ['123456/SP', '123456', 'SP'], ['123456-SP', '123456', 'SP'], ['52-1234/RJ', '1234', 'RJ'], ['1234567-P/SP', '1234567', 'SP'],
       ['crm-mg 4321', '4321', 'MG']];
@@ -221,7 +239,7 @@ const cenarios = [
     await digita('#rCrm', '123456'); await digita('#rUf', 'XX');
     await clica('#regGo');
     certo(await txt('#rNomeErr') === 'Digite seu nome completo, com sobrenome.', 'nome: ' + await txt('#rNomeErr'));
-    certo(await txt('#rCpfErr') === 'Confira o CPF.' && await txt('#rNascErr') === 'Confira a data de nascimento.', 'CPF/nascimento');
+    certo(await txt('#rCpfErr') === 'Confira o CPF.' && await txt('#rNascErr') === 'Confira a data.', 'CPF/nascimento');
     certo(await txt('#rUfErr') === 'Confira a UF.' && !(await vis('#rCrmErr')), 'UF/CRM');
     certo(await ev(`document.querySelector('#rCpf').closest('.fl').classList.contains('bad')`), 'campo com erro sem a borda vermelha');
     certo(posts('/auth/signup/start').length === n0, 'foi ao servidor com erro');
@@ -261,8 +279,8 @@ const cenarios = [
     return 'signup/start com os 7 campos; código; "Estamos conferindo seu CRM" sem abrir o app';
   }],
   ['recusas do CFM no campo certo', async () => {
-    const esperado = [[{ error: 'crm_nao_encontrado' }, '#rCrmErr', 'Não encontramos este CRM no CFM. Confira o número e a UF.'],
-      [{ error: 'crm_nome' }, '#rNomeErr', 'O nome não confere com o do CRM. Digite como está no seu registro.'],
+    const esperado = [[{ error: 'crm_nao_encontrado' }, '#rCrmUfErr', 'Não achamos este CRM no CFM. Confira o número e a UF.'],
+      [{ error: 'crm_nome' }, '#rNomeErr', 'O nome não confere com o do CFM. Digite como no registro.'],
       [{ error: 'crm_dados' }, '#alertText', 'O CPF ou a data de nascimento não conferem com o registro deste CRM no CFM.'],
       [{ error: 'crm_irregular' }, '#alertText', 'O CFM não mostra este CRM como regular. O OpenDoctor é só para médicos com inscrição regular.']];
     await ateRegistro();
@@ -279,7 +297,7 @@ const cenarios = [
   ['Google com conta nova cai direto no Registro e cria a conta', async () => {
     await abre('?registro=google');
     await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google');
-    certo(await ev(`location.search`) === '', 'parâmetro ficou na URL: ' + await ev(`location.search`));
+    certo(await ev(`location.search`) === '?registro=google', 'o registro=google saiu da URL: ' + await ev(`location.search`));
     await preenche();
     await clica('#regGo');
     await ate(`location.pathname === '/opendoctor-agenda.html'`, 4000, 'abriu o app');
@@ -325,6 +343,166 @@ const cenarios = [
     certo((await txt('#msg')).includes('Nenhum outro cadastro esperando'), 'mensagem: ' + await txt('#msg'));
     return 'aprovou Ana (POST com o id), recusou Bia depois do confirm; lista vazia';
   }],
+  ['o erro de um envio anterior não fica na tela junto com o novo', async () => {
+    await ateRegistro();
+    await preenche();
+    START = [400, { error: 'crm_nao_encontrado' }];
+    await clica('#regGo');
+    await ate(`!document.getElementById('rCrmUfErr').hidden`, 3000, 'erro do CRM/UF');
+    const borda = () => ev(`['rCrm', 'rUf'].map((i) => document.getElementById(i).closest('.fl').classList.contains('bad')).join()`);
+    certo(await borda() === 'true,true', 'CRM e UF sem a borda vermelha: ' + await borda());
+    await digita('#rUf', 'RJ');                                              // a mensagem fala da UF também
+    certo(!(await vis('#rCrmUfErr')) && await borda() === 'false,false', 'trocar a UF não limpou o erro do CRM');
+    START = [400, { error: 'crm_nome' }];
+    await clica('#regGo');
+    await ate(`!document.getElementById('rNomeErr').hidden`, 3000, 'erro do nome');
+    certo((await errosVisiveis()).join() === 'rNomeErr', 'erros juntos: ' + (await errosVisiveis()).join());
+    START = [400, { error: 'crm_dados' }];
+    await clica('#regGo');                                                   // corrigiu o nome? o erro dele some no envio
+    await ate(`!document.getElementById('alert').hidden`, 3000, 'alerta de CPF/nascimento');
+    certo((await errosVisiveis()).length === 0, 'erro velho ficou: ' + (await errosVisiveis()).join());
+    START = [400, { error: 'crm_nao_encontrado' }];
+    await clica('#regGo');
+    await ate(`!document.getElementById('rCrmUfErr').hidden`, 3000, 'erro do CRM/UF de novo');
+    await digita('#rCrm', '654321');
+    certo(!(await vis('#rCrmUfErr')), 'editar o CRM não limpou o erro');
+    START = null;
+    return 'cada envio limpa os erros do anterior; mexer no CRM ou na UF tira o "não achamos"';
+  }],
+  ['Enter passa para o campo seguinte; só o da UF envia', async () => {
+    await ateRegistro();
+    const n0 = posts('/auth/signup/start').length;
+    await foca('#rNome'); await escreve('Ana Maria Lima');
+    await tecla('Enter');
+    certo(await focado() === 'rCpf' && !(await errosVisiveis()).length, `Enter no Nome: foco ${await focado()}, erros ${await errosVisiveis()}`);
+    await escreve(CPF); await tecla('Enter');
+    certo(await focado() === 'rNasc', 'Enter no CPF: ' + await focado());
+    await escreve('12051985'); await tecla('Enter');
+    certo(await focado() === 'rCrm', 'Enter no nascimento: ' + await focado());
+    await escreve('123456/SP'); await tecla('Enter');
+    certo(await focado() === 'rUf' && await val('#rUf') === 'SP' && await val('#rCrm') === '123456', 'Enter no CRM: ' + await focado());
+    certo(posts('/auth/signup/start').length === n0 && !(await errosVisiveis()).length, 'enviou ou validou antes da UF');
+    await tecla('Enter');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'Enter na UF envia');
+    certo(posts('/auth/signup/start').length === n0 + 1, 'Enter na UF não enviou');
+    return 'Nome → CPF → Nascimento → CRM → UF com Enter, sem erros; Enter na UF manda o cadastro';
+  }],
+  ['máscaras com o cursor no lugar, data com 1 dígito e CRM sem espaço', async () => {
+    await ateRegistro();
+    await cola('#rCpf', '52998224725');
+    await foca('#rCpf', 5); await tecla('Backspace');                 // apaga o 9 depois do ponto
+    certo(await val('#rCpf') === '529.822.472-5' && await cursor('#rCpf') === 3, `meio do CPF: ${await val('#rCpf')} cursor ${await cursor('#rCpf')}`);
+    await cola('#rCpf', '52998224725');
+    await foca('#rCpf', 4); await tecla('Backspace');                 // logo depois do ponto: apaga o dígito antes dele
+    certo(await val('#rCpf') === '529.822.472-5' && await cursor('#rCpf') === 2, `depois do ponto: ${await val('#rCpf')} cursor ${await cursor('#rCpf')}`);
+    await foca('#rCpf', 3); await escreve('9');                        // digitar no meio também não pula para o fim
+    certo(await val('#rCpf') === '529.982.247-25' && await cursor('#rCpf') === 5, `digitou no meio: ${await val('#rCpf')} cursor ${await cursor('#rCpf')}`);
+    await ev(`document.getElementById('rNasc').value = ''; 1`);
+    await foca('#rNasc'); await escreve('1/5/1985');
+    certo(await val('#rNasc') === '01/05/1985', 'data com 1 dígito: ' + await val('#rNasc'));
+    await ev(`document.getElementById('rNasc').value = ''; 1`);
+    await foca('#rNasc'); await escreve('12/11/1985');
+    certo(await val('#rNasc') === '12/11/1985', 'data com 2 dígitos e barras: ' + await val('#rNasc'));
+    certo(await cola('#rNasc', '3/9/1980') === '03/09/1980', 'data colada com 1 dígito: ' + await val('#rNasc'));
+    await ev(`document.getElementById('rCrm').value = ''; document.getElementById('rUf').value = ''; 1`);
+    await foca('#rCrm');
+    const vistos = [];
+    for (const ch of 'CRM-SP 123456') { await escreve(ch); vistos.push(await val('#rCrm')); }
+    certo(vistos.every((v) => v === v.trim()), 'espaço na ponta do CRM: ' + JSON.stringify(vistos));
+    certo(await val('#rCrm') === '123456' && await val('#rUf') === 'SP', `CRM-SP 123456 → ${await val('#rCrm')} / ${await val('#rUf')}`);
+    return 'Backspace no meio e depois do ponto; 1/5/1985 → 01/05/1985; CRM digitado sem espaço na ponta';
+  }],
+  ['nome colado com o acento separado e com apóstrofo', async () => {
+    await ateRegistro();
+    await preenche();
+    await cola('#rNome', 'José Conceição D’Ávila Jr.');      // NFD, como no PDF/macOS
+    await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'nome NFD recusado: ' + await txt('#rNomeErr'));
+    const b = posts('/auth/signup/start').slice(-1)[0].body;
+    certo(b.nome === 'José Conceição D’Ávila Jr.' && b.nome === b.nome.normalize('NFC'), 'nome no POST: ' + JSON.stringify(b.nome));
+    return 'nome em NFD aceito e enviado em NFC';
+  }],
+  ['depois de criar a conta, o Voltar não reabre o Registro nem mostra o CPF', async () => {
+    await ateRegistro();
+    await preenche();
+    await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'etapa do código');
+    await cola('#otp input', '123456');
+    await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera');
+    for (let i = 0; i < 3; i++) {
+      await ev(`history.back(); 1`); await sleep(300);
+      certo(await titulo() === 'Estamos conferindo seu CRM', `Voltar ${i + 1}: ${await titulo()}`);
+    }
+    const vazios = await ev(`['rCpf', 'rNasc', 'newPw'].map((i) => document.getElementById(i).value).join('|')`);
+    certo(vazios === '||', 'CPF/nascimento/senha ficaram na página: ' + vazios);
+    return 'Voltar 3× continua na espera; CPF, nascimento e senha limpos';
+  }],
+  ['Google: recarregar e voltar não perdem a etapa nem a página de origem', async () => {
+    await abre('?registro=google&next=%2Fopendoctor-configuracoes.html');
+    await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google');
+    await send('Page.reload');
+    await ate(`document.readyState === 'complete' && !document.getElementById('regForm').hidden`, 5000, 'recarregou e perdeu o Registro: ' + await titulo());
+    certo(await titulo() === 'Registro profissional', 'título depois de recarregar: ' + await titulo());
+    certo((await ev(`document.getElementById('google').getAttribute('href')`)).includes('next=%2Fopendoctor-configuracoes.html'), 'o botão do Google perdeu o next');
+    await clica('#back');
+    await ate(`!document.getElementById('emailForm').closest('[data-step]').hidden`, 2000, 'a seta voltou para o início');
+    certo(await ev(`location.search`) === '?next=%2Fopendoctor-configuracoes.html', 'URL depois da seta: ' + await ev(`location.search`));
+    certo((await ev(`document.getElementById('google').getAttribute('href')`)).includes('next=%2Fopendoctor-configuracoes.html'), 'o next se perdeu na seta');
+    REG_GOOGLE = [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1', bloqueio: 'crm_pendente' }];
+    await abre('?registro=google');
+    await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google');
+    await preenche(); await clica('#regGo');
+    await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera do Google');
+    certo(await ev(`location.search`) === '', 'conta criada e o registro=google ficou na URL: ' + await ev(`location.search`));
+    REG_GOOGLE = null;
+    return 'registro=google e next ficam até a conta existir; recarregar mantém o Registro; a seta tira só o registro';
+  }],
+  ['mensagens das meias colunas numa linha só; o "não achamos" embaixo de CRM e UF', async () => {
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 780, deviceScaleFactor: 1, mobile: false });
+    await ateRegistro();
+    await clica('#regGo');
+    const alturas = await ev(`['rNomeErr', 'rCpfErr', 'rNascErr', 'rCrmErr', 'rUfErr'].map((i) => Math.round(document.getElementById(i).getBoundingClientRect().height))`);
+    certo(alturas.every((h) => h > 0 && h <= 20), 'erros com mais de uma linha: ' + alturas.join(','));
+    const linhas = await ev(`(() => { const y = (i) => document.getElementById(i).getBoundingClientRect().top;
+      return [y('rCpfErr') === y('rNascErr'), y('rCrmErr') === y('rUfErr')]; })()`);
+    certo(linhas.join() === 'true,true', 'erros da mesma linha em alturas diferentes');
+    if (process.env.SHOT) {
+      await ev(`document.activeElement.blur(); 1`); await sleep(200);
+      const r = await send('Page.captureScreenshot', { format: 'png' });
+      writeFileSync(join(process.env.SHOT, 'registro-todos-erros.png'), Buffer.from(r.data, 'base64'));
+    }
+    await preenche();
+    START = [400, { error: 'crm_nao_encontrado' }];
+    await clica('#regGo');
+    await ate(`!document.getElementById('rCrmUfErr').hidden`, 3000, 'erro do CRM/UF');
+    const e = await caixa('#rCrmUfErr'), f = await caixa('#rCrm');
+    certo(e.h <= 20 && e.w === 447 && e.x === 803 && e.y > f.y + f.h, 'o "não achamos" fora do lugar: ' + JSON.stringify(e));
+    START = [400, { error: 'crm_nome' }];
+    await clica('#regGo');
+    await ate(`!document.getElementById('rNomeErr').hidden`, 3000, 'erro do nome');
+    certo((await caixa('#rNomeErr')).h <= 20, 'o erro do nome quebrou a linha');
+    START = null;
+    await send('Emulation.clearDeviceMetricsOverride');
+    return `5 erros com ${alturas.join('/')} px; "não achamos" numa linha de 447 px embaixo de CRM | UF`;
+  }],
+  ['as outras etapas continuam com o visual novo (logo 34 px, "Bem-vindo à", botão #10132C)', async () => {
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 780, deviceScaleFactor: 1, mobile: false });
+    await abre();
+    const logo = await ev(`(() => { const l = document.querySelector('.logo'); const r = l.getBoundingClientRect();
+      return { src: l.getAttribute('src'), w: r.width, y: r.top }; })()`);
+    certo(logo.src === 'assets/login/logo-simbolo.svg' && logo.w === 34 && logo.y === 60, 'logo: ' + JSON.stringify(logo));
+    certo(await titulo() === 'Bem-vindo à OpenDoctor' && (await caixa('#title')).y === 171, 'título: ' + await titulo() + ' ' + JSON.stringify(await caixa('#title')));
+    certo(await ev(`getComputedStyle(document.getElementById('go')).backgroundColor`) === 'rgb(16, 19, 44)', 'botão do e-mail');
+    certo(!(await ev(`[...document.styleSheets].some((s) => [...s.cssRules].some((r) => /btn-reg/.test(r.cssText)))`)), '.btn-reg ainda existe');
+    ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_confirmar' };
+    await abre();
+    await ate(`!document.getElementById('confForm').hidden`, 3000, 'confirmar');
+    const cor = await ev(`getComputedStyle(document.getElementById('confGo')).backgroundColor`);
+    ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
+    certo(cor === 'rgb(16, 19, 44)', 'botão da confirmação: ' + cor);
+    await send('Emulation.clearDeviceMetricsOverride');
+    return 'logo-simbolo 34 px em y=60; título y=171; botões #10132C; sem .btn-reg';
+  }],
   ['CPF e nascimento nunca em URL', async () => {
     const ruins = pedidos.filter((r) => r.url.includes(CPF) || r.url.includes('529.982') || r.url.includes('1985'));
     certo(!ruins.length, 'na URL: ' + ruins.map((r) => r.url).join(' '));
@@ -351,6 +529,7 @@ async function main() {
   let falhas = 0;
   for (const [nome, fn] of cenarios) {
     const t0 = Date.now();
+    START = null; REG_GOOGLE = null; ME = { logged_in: false, user: null, scribe: false, bloqueio: null };   // um cenário não herda o outro
     try { const r = await fn(); log(`✓ ${nome} (${Math.round((Date.now() - t0) / 1000)} s): ${r}`); }
     catch (e) { falhas++; log(`✗ ${nome}: ${e.message}`); }
   }

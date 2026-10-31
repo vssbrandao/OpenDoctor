@@ -168,17 +168,32 @@ def _row_to_user(row):
             "crm_status": row[5] if len(row) > 5 else None, "crm_fonte": row[6] if len(row) > 6 else None}
 
 
-def _crm_valores(crm):
-    """Colunas do CRM de uma conta nova, a partir da decisão do cadastro: {crm, uf, status, fonte, situacao}.
+def _crm_params(email, crm):
+    """Parâmetros do CRM de uma conta nova, a partir da decisão do cadastro: {crm, uf, status, fonte, situacao}.
     Sem decisão (None), a conta nasce como as anteriores (só nos testes e scripts)."""
     crm = crm or {}
-    status = crm.get("status")
-    return (crm.get("crm") or None, crm.get("uf") or None, status, crm.get("fonte") or None,
-            crm.get("situacao") or None, status == "verificado", status == "pendente")
+    return {"email": (email or "").strip().lower(), "crm": crm.get("crm") or None, "uf": crm.get("uf") or None,
+            "st": crm.get("status"), "fonte": crm.get("fonte") or None, "sit": crm.get("situacao") or None}
 
 
-_CRM_INSERT = ("crm, crm_uf, crm_status, crm_fonte, crm_situacao, crm_verificado_em, crm_pedido_em",
-               "%s, %s, %s, %s, %s, case when %s then now() end, case when %s then now() end")
+def _crm_trava(cur, crm):
+    """Dois cadastros do mesmo CRM/UF ao mesmo tempo (até em dois processos) esperam um o outro: o segundo já vê a
+    conta do primeiro e fica pendente (pg_advisory_xact_lock: solta no commit)."""
+    crm = crm or {}
+    if crm.get("crm") and crm.get("uf"):
+        cur.execute("select pg_advisory_xact_lock(hashtextextended(%s, 0))", (f"crm:{crm['uf']}:{crm['crm']}",))
+
+
+# O CRM repetido é decidido aqui, na hora de criar a conta (e não só no início do cadastro, que espera o código por até
+# 30 min): 'verificado' de um CRM/UF que outra conta (não recusada) já tem vira 'pendente', sem fonte — alguém com os
+# dados de um médico não abre uma 2ª conta verificada enquanto o médico ainda está no passo do código.
+_CRM_DECISAO = """with dec as (select case when %(st)s::text = 'verificado' and exists(
+                      select 1 from users where crm = %(crm)s::text and crm_uf = %(uf)s::text
+                        and coalesce(crm_status, '') <> 'recusado' and lower(email) <> %(email)s::text)
+                    then 'pendente' else %(st)s::text end as st)"""
+_CRM_COLS = "crm, crm_uf, crm_status, crm_fonte, crm_situacao, crm_verificado_em, crm_pedido_em"
+_CRM_VALS = """%(crm)s::text, %(uf)s::text, dec.st, case when dec.st = 'verificado' then %(fonte)s::text end,
+               %(sit)s::text, case when dec.st = 'verificado' then now() end, case when dec.st = 'pendente' then now() end"""
 
 
 def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
@@ -189,10 +204,12 @@ def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
     email = (email or "").strip().lower()
     with connection() as conn:
         with conn.cursor() as cur:
+            _crm_trava(cur, crm)
             cur.execute(
                 f"""
-                insert into users (email, name, picture, google_sub, terms_accepted_at, last_login, {_CRM_INSERT[0]})
-                values (%s,%s,%s,%s, now(), now(), {_CRM_INSERT[1]})
+                {_CRM_DECISAO}
+                insert into users (email, name, picture, google_sub, terms_accepted_at, last_login, {_CRM_COLS})
+                select %(email)s, %(name)s, %(pic)s, %(sub)s, now(), now(), {_CRM_VALS} from dec
                 on conflict (email) do update set
                   name = coalesce(nullif(users.name, ''), excluded.name),
                   picture = coalesce(excluded.picture, users.picture),
@@ -200,7 +217,7 @@ def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
                   last_login = now()
                 returning {_USER_COLS}
                 """,
-                (email, name, picture, google_sub, *_crm_valores(crm)),
+                dict(_crm_params(email, crm), name=name, pic=picture, sub=google_sub),
             )
             row = cur.fetchone()
         conn.commit()
@@ -237,13 +254,16 @@ def create_email_user(email, name, password_hash, crm=None):
     """Cadastro por e-mail, depois de confirmar o código: grava a senha, o aceite dos termos e o CRM com a decisão
     do cadastro (`crm`: {crm, uf, status, fonte, situacao}).
     Se o e-mail passou a existir no meio do caminho (entrou pelo Google), o dono do e-mail acabou de
-    prová-lo com o código: só define a senha se a conta ainda não tinha uma (o CRM dela não muda)."""
+    prová-lo com o código: só define a senha se a conta ainda não tinha uma (o CRM dela não muda).
+    CRM/UF que outra conta já tem: a conta nasce pendente mesmo que o tíquete diga 'verificado' (_CRM_DECISAO)."""
     with connection() as conn:
         with conn.cursor() as cur:
+            _crm_trava(cur, crm)
             cur.execute(
                 f"""
-                insert into users (email, name, password_hash, terms_accepted_at, last_login, {_CRM_INSERT[0]})
-                values (%s, %s, %s, now(), now(), {_CRM_INSERT[1]})
+                {_CRM_DECISAO}
+                insert into users (email, name, password_hash, terms_accepted_at, last_login, {_CRM_COLS})
+                select %(email)s, %(name)s, %(ph)s, now(), now(), {_CRM_VALS} from dec
                 on conflict (email) do update set
                   name = coalesce(users.name, excluded.name),
                   password_hash = coalesce(users.password_hash, excluded.password_hash),
@@ -251,7 +271,7 @@ def create_email_user(email, name, password_hash, crm=None):
                   last_login = now()
                 returning {_USER_COLS}
                 """,
-                (email, name, password_hash, *_crm_valores(crm)),
+                dict(_crm_params(email, crm), email=email, name=name, ph=password_hash),
             )
             row = cur.fetchone()
         conn.commit()
@@ -330,7 +350,7 @@ def record_login(user_id, event, method, ip=None, user_agent=None, device=None):
 # ----- limpeza (LGPD: não guardar além do necessário) -----
 # Códigos de e-mail: 1 dia. Registro de acessos: 1 ano (o Marco Civil exige pelo menos 6 meses).
 # O registro de acesso ao PRONTUÁRIO (access_log) não entra aqui: faz parte do prontuário.
-RETENTION = {"login_codes": "1 day", "login_events": "1 year"}
+RETENTION = {"login_codes": "1 day", "login_events": "1 year", "cfm_tentativas": "2 days"}
 
 
 def cleanup_old_records():
@@ -1246,6 +1266,36 @@ def decide_crm(user_id, aprovado):
             ("verificado" if aprovado else "recusado", bool(aprovado), user_id)).fetchone()
         conn.commit()
     return {"id": str(r[0]), "email": r[1], "name": r[2]} if r else None
+
+
+def cfm_tentativa_usa(chave, maximo, janela_s):
+    """Conta uma conferência no CFM para `chave` (ex.: 'crm:SP:123456') se ainda cabe no limite — no máximo `maximo` em
+    `janela_s` segundos, somando todos os processos. True: pode chamar o CFM (e já ficou contada); False: passou."""
+    with connection() as conn:
+        conn.execute("select pg_advisory_xact_lock(hashtextextended(%s, 0))", ("cfm_tentativas:" + str(chave),))
+        n = conn.execute("""select count(*) from cfm_tentativas
+                            where chave = %s and created_at > now() - %s * interval '1 second'""",
+                         (str(chave), float(janela_s))).fetchone()[0]
+        if n >= maximo:
+            conn.commit()
+            return False
+        conn.execute("insert into cfm_tentativas (chave) values (%s)", (str(chave),))
+        conn.commit()
+    return True
+
+
+def cfm_tentativas(chave, janela_s):
+    """Quantas vezes `chave` foi contada nos últimos `janela_s` segundos."""
+    with connection() as conn:
+        return int(conn.execute("""select count(*) from cfm_tentativas
+                                   where chave = %s and created_at > now() - %s * interval '1 second'""",
+                                (str(chave), float(janela_s))).fetchone()[0])
+
+
+def cfm_tentativa_registra(chave):
+    with connection() as conn:
+        conn.execute("insert into cfm_tentativas (chave) values (%s)", (str(chave),))
+        conn.commit()
 
 
 def crm_confirmed(user_id):

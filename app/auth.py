@@ -65,11 +65,15 @@ def unsign(token: str, max_age: int = None):
 
 # ----- sessão (cookie) -----
 
-def set_session(response, user_id: str, sv: int = 0):
-    """`sv` = versão da sessão do usuário; ao trocar a senha ela muda e os cookies antigos param de valer."""
+def set_session(response, user_id: str, sv: int = 0, cc: bool = False):
+    """`sv` = versão da sessão do usuário; ao trocar a senha ela muda e os cookies antigos param de valer.
+    `cc`: esta sessão nasceu pedindo a confirmação do CRM no CFM (conta aprovada à mão; server._crm_bloqueio)."""
     secure = integrations.REDIRECT_BASE.startswith("https://")
+    payload = {"k": "sess", "uid": user_id, "sv": int(sv or 0)}
+    if cc:
+        payload["cc"] = 1
     response.set_cookie(
-        COOKIE_NAME, sign({"k": "sess", "uid": user_id, "sv": int(sv or 0)}),
+        COOKIE_NAME, sign(payload),
         max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
         secure=secure, path="/")
 
@@ -141,6 +145,8 @@ def _session_user(request):
         return None
     if not user or int(payload.get("sv", 0)) != int(user.get("sv") or 0):
         return None                      # senha trocada depois deste login: sessão encerrada
+    if payload.get("cc"):
+        user = dict(user, crm_cc=True)   # sessão que ainda confirma o CRM no CFM (não sai em /me)
     return user
 
 
