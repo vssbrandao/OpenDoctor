@@ -3174,19 +3174,44 @@
       var criando = -1;                                      // a abertura da janela com um cadastro em andamento (um de cada vez)
       var AGUARDE = 'Aguarde o cadastro do paciente.';
       function aguarde() { elMsg.className = 'evpop-msg'; elMsg.textContent = AGUARDE; elMsg.hidden = false; }
+      // tentativa que não voltou (prazo ou rede): o servidor pode ter criado o paciente mesmo assim. nome → os ids com esse
+      // nome antes dela; antes de cadastrar de novo, a lista é recarregada e um paciente novo com o nome é o dela
+      var semResposta = {};
+      function recarregada() { return Promise.race([loadPatients(true), new Promise(function (r) { setTimeout(r, 10000); })]); }
+      function novoComNome(name, antes) { return sameName(name).filter(function (p) { return antes.indexOf(p.id) < 0; })[0] || null; }
+      function ligaCriado(my, name, p) {
+        if (my !== seq || pop.hidden) return;
+        if (pnorm(elPatient.value) === pnorm(name)) { setPatient(p); elMsg.hidden = true; }
+        else if (document.activeElement === elPatient) showList();
+      }
       function createPatient(name, force) {
         if (criando === seq) { aguarde(); return; }            // Enter duplo (ou outro nome) não cria dois ao mesmo tempo
         var my = criando = seq;
         name = name.split(/\s+/).filter(Boolean).join(' ');
+        var k = pnorm(name);
+        if (semResposta[k]) {
+          var antes0 = semResposta[k];
+          recarregada().then(function () {
+            var p = novoComNome(name, antes0);
+            if (!p) { enviar(antes0); return; }
+            delete semResposta[k];
+            if (criando === my) criando = -1;
+            ligaCriado(my, name, p);
+          });
+          return;
+        }
+        enviar(sameName(name).map(function (p) { return p.id; }));
+        function enviar(antes) {
         var ctl = window.AbortController ? new AbortController() : null;
-        var prazo = ctl ? setTimeout(function () { ctl.abort(); }, 15000) : 0;    // servidor sem resposta: libera o Criar
+        // 45 s: mais que o servidor leva para desistir sozinho (pool 30 s + conexão 15 s); só corta o que de fato não volta
+        var prazo = ctl ? setTimeout(function () { ctl.abort(); }, window.__prazoCadastro || 45000) : 0;   // __prazoCadastro: só o teste
         fetch('/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, force: !!force }),
                              signal: ctl ? ctl.signal : undefined })
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
           .then(function (res) {
             clearTimeout(prazo);
             if (criando === my) criando = -1;
-            if (res.ok && res.j.ok) patients = [res.j.patient].concat((patients || []).filter(function (p) { return p.id !== res.j.patient.id; }));
+            if (res.ok && res.j.ok) { delete semResposta[k]; patients = [res.j.patient].concat((patients || []).filter(function (p) { return p.id !== res.j.patient.id; })); }
             if (my !== seq || pop.hidden) return;              // a janela é outra: o cadastro fica na lista, sem mexer nela
             if (elMsg.textContent === AGUARDE) elMsg.hidden = true;
             if (res.ok && res.j.ok) {
@@ -3201,10 +3226,16 @@
             }
           }).catch(function () {
             clearTimeout(prazo);
-            if (criando === my) criando = -1;
-            if (my !== seq || pop.hidden) return;
-            elMsg.className = 'evpop-msg'; elMsg.textContent = 'Não foi possível criar o paciente agora. Tente de novo.'; elMsg.hidden = false;
+            semResposta[k] = antes;
+            recarregada().then(function () {                  // pode ter sido criado: aí é ele, sem cadastrar outro
+              if (criando === my) criando = -1;
+              var p = novoComNome(name, antes);
+              if (p) { delete semResposta[k]; ligaCriado(my, name, p); return; }
+              if (my !== seq || pop.hidden) return;
+              elMsg.className = 'evpop-msg'; elMsg.textContent = 'Não foi possível criar o paciente agora. Tente de novo.'; elMsg.hidden = false;
+            });
           });
+        }
       }
       elPatient.addEventListener('focus', showList);
       elPatient.addEventListener('input', function () {

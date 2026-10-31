@@ -302,17 +302,25 @@ def conferir(itens, alergias, tfg_=None):
 
 _SAIS = scribe._FORMA | {"oxalato", "hemifumarato", "hemitartarato", "butilbrometo", "nitrato", "bissulfato"}
 _VARIANTE = {"nph", "regular", "lispro", "asparte", "glulisina", "glargina", "detemir", "degludeca"}
-_DOSE = re.compile(r"\d+(?:[.,]\d+)*(?:\s*/\s*\d+(?:[.,]\d+)*)?\s*(?:mg|mcg|ug|g|ml|ui|u)\b")
+_DOSE = re.compile(r"(?<![\d.,])\d+(?:[.,]\d+)*(?:\s*/\s*\d+(?:[.,]\d+)*)?\s*(?:mg|mcg|ug|g|ml|u\.?\s?i\.?|u)(?![a-z])")
 
 
 def _marcas(nome):
     """O que separa remédios da mesma família: letra ou número da vitamina ("A", "E", "D3", "B 12"), do ômega ("3",
-    "6"), da marca ("Humulin N"/"R") e o tipo da insulina ("NPH", "regular"). A dose com unidade não conta."""
-    n = re.sub(r"\b([a-z])\s+(\d{1,2})\b", r"\1\2", _DOSE.sub(" ", scribe.norm(nome)))     # "b 12" → "b12"
+    "6"), da marca ("Humulin N"/"R") e o tipo da insulina ("NPH", "regular"). Só no nome: o que vem entre parênteses, a
+    dose e a posologia ("D3 7.000", "NPH 10-0-8", "50 mil") não contam — o primeiro número que não é do ômega encerra."""
+    n = _DOSE.sub(" ", scribe.norm(nome).split("(")[0])
+    n = re.sub(r"\b([bdk])\s+(\d{1,2})\b(?![.,]\d|\s*mil\b)", r"\1\2", n)               # "b 12" → "b12"
     toks = re.findall(r"[a-z0-9]+", n)
-    out = set()
+    out, omega = set(), False
     for i, t in enumerate(toks):
-        if t in _VARIANTE or re.fullmatch(r"[a-z]{1,2}\d{1,2}|\d", t):
+        if t.isdigit():
+            if omega and t in ("3", "6", "7", "9"):
+                out.add(t)
+                continue
+            break
+        omega = t == "omega" or (omega and t == "e")
+        if t in _VARIANTE or re.fullmatch(r"[a-z]{1,2}\d{1,2}", t):
             out.add(t)
         elif len(t) == 1 and t.isalpha() and (t not in _SAIS or (i and toks[i - 1] == "vitamina")):
             out.add(t)
@@ -335,12 +343,12 @@ def mesmo_remedio(a, b):
     os da mesma família ("Insulina NPH" não é "Insulina regular", vitamina A não é E, ômega 3 não é 6) e junta a marca
     ao nome ("Addera D3 (colecalciferol)" é "Vitamina D3")."""
     ma, mb = _marcas(a), _marcas(b)
-    if ma and mb and ma != mb:
+    if ma and mb and not (ma <= mb or mb <= ma):   # nenhuma contém a outra: NPH × regular; "D3 + K2" contém "D3"
         return False
     na, nb = _nucleo(a), _nucleo(b)
     if na and na == nb:
         return True
-    if ma and ma == mb and any(ch.isdigit() for t in ma for ch in t):
+    if ma and ma == mb and any(re.fullmatch(r"[a-z]{1,2}\d{1,2}", t) for t in ma):    # o código da vitamina, não a dose
         return True
     a, b = _nucleo(a, False) or a, _nucleo(b, False) or b
     return scribe.same_drug(a, b) or scribe.same_drug(b, a)

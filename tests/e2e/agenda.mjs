@@ -516,6 +516,29 @@ const cenarios = [
     certo(patches('mx').length === 0, 'trocou a paciente do evento: ' + JSON.stringify(patches('mx').map((x) => x.body.patient_id)));
     return 'Enter foi para "Criar paciente"; Criar esperou o cadastro e a consulta ficou nele; a de exemplo do evento ficou';
   }],
+  ['campo Paciente: cadastro que responde depois do prazo não vira dois pacientes', async () => {
+    const poe = (v) => ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = ${JSON.stringify(v)}; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    const enter = () => ev(`document.getElementById('evPatient').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); 1`);
+    const posts = () => pedidos.filter((r) => r.method === 'POST' && r.path === '/patients' && r.body.name === 'Lia Demorada').length;
+    await ev(`window.__prazoCadastro = 400; 1`);
+    LENTO_PAC = 1200;                                            // o servidor cria aos 1,2 s; a tela desiste aos 0,4 s
+    await ev(`window.__openEventAt(200, 200, new Date(), 17, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela'); await sleep(400);
+    await poe('Lia Demorada');
+    await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.endsWith('"Lia Demorada"'))`, 3000, 'opção criar');
+    await enter();
+    await ate(`document.getElementById('evMsg').textContent.startsWith('Não foi possível criar o paciente agora')`, 4000, 'desistiu: ' + await txt('#evMsg'));
+    await sleep(1200);                                           // o cadastro chegou no servidor
+    LENTO_PAC = 0;
+    await poe('Lia Demorada');
+    await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.endsWith('"Lia Demorada"'))`, 3000, 'opção criar de novo');
+    await enter();
+    await ate(`!document.getElementById('evPClear').hidden`, 4000, 'paciente ligado: ' + await txt('#evMsg'));
+    certo(posts() === 1 && PACS.filter((p) => p.name === 'Lia Demorada').length === 1, 'cadastros: ' + posts());
+    await ev(`window.__prazoCadastro = 0; 1`);
+    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
+    return 'a segunda tentativa achou o paciente criado e não cadastrou outro';
+  }],
 ];
 
 async function main() {
@@ -524,7 +547,8 @@ async function main() {
   ws.addEventListener('message', (m) => {
     const j = JSON.parse(m.data);
     if (j.id && espera.has(j.id)) { const w = espera.get(j.id); espera.delete(j.id); j.error ? w.no(new Error(j.error.message)) : w.ok(j.result); return; }
-    if (j.method === 'Fetch.requestPaused') responde(j.params).catch((e) => erros.push('interceptação: ' + e.message));
+    // pedido que a página cancelou (o prazo do cadastro) já não tem a quem responder: não é erro
+    if (j.method === 'Fetch.requestPaused') responde(j.params).catch((e) => { if (!/Invalid InterceptionId/.test(e.message)) erros.push('interceptação: ' + e.message); });
     if (j.method === 'Page.javascriptDialogOpening') { erros.push('diálogo: ' + j.params.message); send('Page.handleJavaScriptDialog', { accept: true }); }
     if (j.method === 'Runtime.exceptionThrown') erros.push(j.params.exceptionDetails.exception?.description || j.params.exceptionDetails.text);
   });

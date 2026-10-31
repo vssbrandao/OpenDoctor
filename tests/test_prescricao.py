@@ -219,6 +219,12 @@ def test_o_item_guarda_a_forma():
     ("Vitamina A", "Vitamina E", False), ("Ômega 3", "Ômega 6", False), ("Ômega 3", "Ômega 3 1000 mg", True),
     ("Vitamina B 12", "Vitamina B 6", False), ("Vitamina B12", "Vitamina B 12", True),
     ("Addera D3 (colecalciferol)", "Vitamina D3", True), ("Losartana 50", "Losartana 100", True),
+    ("D3 7.000", "D3", True), ("vitamina D 50 mil", "Vitamina D", True), ("insulina NPH 10-0-8", "insulina NPH", True),
+    ("ômega 3 2 cápsulas", "ômega 3", True), ("insulina NPH (Humulin N)", "insulina NPH", True),
+    ("Vitamina D3 7.000 U.I.", "Vitamina D3", True), ("vitamina D3 + K2", "vitamina D3", True),
+    ("bisoprolol 2,5", "bisoprolol 5", True), ("vitamina C 1 grama", "vitamina C", True),
+    ("anlodipino 5", "glibenclamida 5", False), ("varfarina 5", "anlodipino 5", False),
+    ("losartana 1 comprimido", "metformina 1 comprimido", False), ("dipirona 1 grama", "paracetamol 1 grama", False),
 ])
 def test_mesmo_remedio_sem_sal_nem_dose(a, b, igual):
     """O sal na frente não faz dois remédios diferentes virarem o mesmo; dose, unidade e forma não fazem o mesmo virar
