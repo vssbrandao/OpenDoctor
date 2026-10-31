@@ -8,7 +8,9 @@
 // UF; o CRM colado com a UF ("CRM-SP 123.456", "52-1234/RJ", "1234567-P/SP"…) separa os dois; erros nos campos; a seta
 // volta para a senha; Criar conta manda tudo num POST só (nada de CPF em URL); a conta pendente mostra a espera; as
 // recusas do CFM aparecem no campo certo; o Google com conta nova cai direto no registro; recusada e a confirmar; a
-// página de cadastros dos administradores lista, aprova e recusa (com confirmação).
+// espera confere o /me a cada 30 s com a aba à vista (relógio curto no teste) e abre o app quando liberada; o aviso do
+// Google com e-mail não verificado; o nascimento sem preenchimento automático; a página de cadastros dos administradores
+// lista (com o e-mail), aprova e recusa (com confirmação) e libera sem confirmar as aprovadas à mão presas no CFM.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -544,6 +546,81 @@ const cenarios = [
     certo(cor === 'rgb(16, 19, 44)', 'botão da confirmação: ' + cor);
     await send('Emulation.clearDeviceMetricsOverride');
     return 'logo-simbolo 34 px em y=60; título y=171; botões #10132C; sem .btn-reg';
+  }],
+  ['a espera confere o /me a cada 30 s com a aba à vista e abre o app quando liberada', async () => {
+    // relógio do teste: o intervalo da página (OD_ESPERA_MS, 30 s de verdade) vira 250 ms; a aba "escondida" é simulada
+    const { identifier } = await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.OD_ESPERA_MS = 250;
+      (() => { let h = false;
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') });
+        Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+        window.__aba = (esc) => { h = esc; document.dispatchEvent(new Event('visibilitychange')); }; })();` });
+    const mes = () => pedidos.filter((r) => r.method === 'GET' && r.path === '/me').length;
+    try {
+      // cadastro novo pendente: o destino do login (bemvindo=1) fica guardado para quando liberar
+      await ateRegistro();
+      await preenche();
+      await clica('#regGo');
+      await ate(`!document.getElementById('codeForm').hidden`, 3000, 'etapa do código');
+      ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_pendente' };
+      await cola('#otp input', '123456');
+      await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera');
+      const m0 = mes();
+      await sleep(1100);
+      certo(mes() - m0 >= 3 && mes() - m0 <= 5, `conferências do /me em 1,1 s com 250 ms: ${mes() - m0}`);
+      certo(await titulo() === 'Estamos conferindo seu CRM', 'ainda pendente e saiu da espera: ' + await titulo());
+      await ev(`window.__aba(true); 1`);                                         // aba escondida: para
+      await sleep(200);                                                          // (o pedido que já tinha saído chega aqui)
+      const m1 = mes();
+      await sleep(900);
+      certo(mes() === m1, `conferiu com a aba escondida: ${mes() - m1}`);
+      await ev(`window.__aba(false); 1`);                                        // voltou: confere logo (passou do intervalo)
+      await sleep(200);
+      certo(mes() >= m1 + 1, `não voltou a conferir com a aba à vista: ${mes() - m1}`);
+      ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: null };   // o administrador aprovou
+      await ate(`location.pathname === '/opendoctor-agenda.html'`, 3000, 'liberada e não abriu o app');
+      certo(await ev(`location.search`) === '?bemvindo=1', 'destino diferente do login: ' + await ev(`location.search`));
+      // recarregou a espera (sem o destino do login) e foi recusada: mostra a recusa e para de conferir
+      ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_pendente' };
+      await abre('?next=%2F%2Fmal.example%2Fx');
+      await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera ao recarregar');
+      ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_recusado' };
+      await ate(`document.getElementById('title').textContent === 'Não foi possível liberar sua conta'`, 3000, 'recusa: ' + await titulo());
+      const m2 = mes();
+      await sleep(700);
+      certo(mes() === m2 && await ev(`location.pathname`) === '/opendoctor-login.html', 'continuou conferindo depois da recusa');
+      // liberada depois de abrir com um next de fora: vai para a agenda (a mesma regra de auth.safe_next)
+      ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_pendente' };
+      await abre('?next=%2F%2Fmal.example%2Fx');
+      await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera de novo');
+      ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: null };
+      await ate(`location.pathname === '/opendoctor-agenda.html'`, 3000, 'liberada com o next de fora');
+      certo(await ev(`location.origin + location.search`) === ORIG, 'next de fora: ' + await ev(`location.href`));
+    } finally {
+      await send('Page.removeScriptToEvaluateOnNewDocument', { identifier });
+    }
+    // sem o relógio do teste, o intervalo é de 30 s
+    const { identifier: id2 } = await send('Page.addScriptToEvaluateOnNewDocument', { source: `window.__esperas = [];
+      (() => { const st = window.setTimeout; window.setTimeout = (f, ms, ...a) => { window.__esperas.push(ms); return st(f, ms, ...a); }; })();` });
+    try {
+      ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_pendente' };
+      await abre();
+      await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera (30 s)');
+      const esperas = await ev(`window.__esperas`);
+      certo(esperas.some((ms) => ms > 29000 && ms <= 30000), 'intervalos: ' + JSON.stringify(esperas));
+    } finally {
+      await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: id2 });
+    }
+    return '/me a cada intervalo, parado com a aba escondida, de volta ao voltar; liberada vai ao destino do login; recusada para';
+  }],
+  ['Google com e-mail não verificado e o nascimento sem preenchimento automático', async () => {
+    await abre('?erro=google_nao_verificado&next=%2Fopendoctor-configuracoes.html');
+    certo(await vis('#alert') && await txt('#alertText') === 'Esse e-mail não foi verificado pelo Google.', 'mensagem: ' + await txt('#alertText'));
+    certo(!(await ev(`document.getElementById('alert').classList.contains('info')`)), 'o aviso devia sair em vermelho (erro), não em cinza');
+    certo(await vis('#emailForm') && await titulo() === 'Bem-vindo à OpenDoctor', 'não ficou na tela inicial: ' + await titulo());
+    certo(await ev(`location.search`) === '?next=%2Fopendoctor-configuracoes.html', 'o erro ficou na URL: ' + await ev(`location.search`));
+    const ac = await ev(`['rNasc', 'cNasc'].map((i) => document.getElementById(i).getAttribute('autocomplete')).join()`);
+    certo(ac === 'off,off', 'autocomplete do nascimento: ' + ac);
+    return 'aviso "Esse e-mail não foi verificado pelo Google." na tela inicial; nascimento com autocomplete=off';
   }],
   ['CPF e nascimento nunca em URL', async () => {
     const ruins = pedidos.filter((r) => r.url.includes(CPF) || r.url.includes('529.982') || r.url.includes('1985'));

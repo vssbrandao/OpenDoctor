@@ -92,6 +92,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - O cursor fica depois do mesmo número de dígitos (apagar ou digitar no meio não o joga para o fim). Apagar logo
     depois de um ponto, barra ou traço apaga o dígito antes dele.
   - Nascimento com 1 dígito e barra: `1/5/1985` vira `01/05/1985` (digitado ou colado).
+  - O nascimento (no Registro e no "Confirme seu registro") tem `autocomplete="off"`: o navegador não sugere a data
+    guardada (computador da clínica, de mais de um médico). O CPF e o CRM já eram `off`.
   - CRM com mais de 7 dígitos não é cortado sem aviso: os zeros à esquerda saem (`00123456` → `123456`, como no
     servidor) e, se ainda passar de 7, aparece "Confira o CRM.".
 - **Enter** (ou "Próximo" no celular) passa para o campo seguinte: Nome → CPF → Nascimento → CRM → UF. Só o Enter na UF
@@ -111,6 +113,12 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 - **O resto** é barrado pela regra central (middleware `_no_cache_html` + `_crm_bloqueio`):
   - **Páginas:** voltam para a tela de login, que mostra a espera.
     - Pendente: título "Estamos conferindo seu CRM", com um texto curto e "Sair".
+      - A tela pergunta ao `/me` a cada **30 s**, só com a aba à vista: com a aba escondida, para; ao voltar, pergunta
+        logo se já passaram 30 s desde a última vez (nunca mais de uma vez a cada 30 s).
+      - **Liberada** (`bloqueio` vazio): vai para o app, no mesmo destino que o login daria (o `redirect` da resposta
+        do login, que passou por `auth.safe_next`; depois de recarregar, o `next` da URL pela mesma regra, ou a agenda).
+      - **Recusada:** mostra a recusa e para de perguntar. **Sessão que acabou:** volta para entrar.
+      - No teste ponta a ponta, `window.OD_ESPERA_MS` encurta o intervalo (nenhum link consegue mudá-lo).
     - Recusado: uma mensagem curta.
   - **Rotas da API:** respondem `403 {"error": "crm_pendente" | "crm_recusado" | "crm_confirmar"}`.
 - **`/me`:** devolve `bloqueio` com o motivo.
@@ -232,16 +240,25 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 - **`tests/test_cadastro_crm.py`:**
   - cliente do CFM com respostas XML prontas;
   - cadastro verificado, pendente e recusado;
-  - Google;
+  - Google, inclusive o e-mail não verificado pelo Google (recusado na conta que existe e na nova; verificado segue
+    igual), o `email_verified`/`verified_email` lido do userinfo e do `id_token`, e o cookie do Registro sem a marca;
   - a espera;
   - confirmação (pedida no login; CFM sem responder deixa a sessão seguir; limite por conta);
+  - "Liberar sem confirmar": só administrador (403), só conta aprovada à mão (409), de novo sem mudar nada, a sessão
+    barrada que volta a usar o app, o login sem o pedido e o servidor sem a migração 0019 (login como antes, 503);
   - limites por CRM (qualquer IP) e por IP (IPv6 pelo /64); CRM repetido decidido na hora de criar;
   - nome com apóstrofo, sufixo, acento separado (NFD) e o primeiro nome repetido; XML com DTD em UTF-16;
-  - página de cadastros;
+  - página de cadastros (com o e-mail);
+  - nascimento com `autocomplete="off"`;
   - trava do CRM em Configurações.
 - **`tests/test_db_integration.py`:** no banco de testes, inclusive dois cadastros do mesmo CRM ao mesmo tempo (um só
-  fica verificado) e o contador `cfm_tentativas`.
+  fica verificado), o contador `cfm_tentativas`, o e-mail na lista de pendentes e a liberação sem confirmar (lista dos
+  aprovados à mão com as falhas, só conta aprovada à mão, a data da primeira liberação fica).
+  - A 0019 vai ao banco de testes sozinha (o `scripts.setup_test_db` refaz todas): com as mesmas travas dele (marca de
+    banco de testes, projeto diferente do de produção), aplicar só o arquivo da 0019.
 - **`tests/test_laco_de_eventos.py`:** o CFM entra na lista do que só roda fora do laço.
 - **`tests/test_security.py`:** as rotas novas sob `/auth/` estão revisadas; as de `/admin/` são privadas.
 - **E2E:** `node tests/e2e/cadastro.mjs`. Chrome sem tela, sem servidor; `SHOT=/pasta` salva as telas.
+  - A espera com o relógio curto (`OD_ESPERA_MS` = 250 ms) e a aba escondida simulada; o intervalo de verdade (30 s);
+    o aviso do Google não verificado; a lista dos aprovados à mão e o "Liberar sem confirmar".
 - **Conftest:** zera `CFM_CHAVE`, então nenhum teste chama o CFM de verdade.

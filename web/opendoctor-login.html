@@ -219,7 +219,7 @@
                   <div class="err" id="rCpfErr" role="alert" hidden></div>
                 </div>
                 <div class="reg-cell">
-                  <div class="fl"><input class="fl-input" id="rNasc" type="text" placeholder=" " autocomplete="bday" inputmode="numeric" maxlength="10" enterkeyhint="next" data-mask="data" aria-describedby="rNascErr"><label class="fl-label" for="rNasc">Nascimento</label></div>
+                  <div class="fl"><input class="fl-input" id="rNasc" type="text" placeholder=" " autocomplete="off" inputmode="numeric" maxlength="10" enterkeyhint="next" data-mask="data" aria-describedby="rNascErr"><label class="fl-label" for="rNasc">Nascimento</label></div>
                   <div class="err" id="rNascErr" role="alert" hidden></div>
                 </div>
               </div>
@@ -312,7 +312,7 @@
                   <div class="err" id="cCpfErr" role="alert" hidden></div>
                 </div>
                 <div class="reg-cell">
-                  <div class="fl"><input class="fl-input" id="cNasc" type="text" placeholder=" " autocomplete="bday" inputmode="numeric" maxlength="10" enterkeyhint="go" data-mask="data" aria-describedby="cNascErr"><label class="fl-label" for="cNasc">Nascimento</label></div>
+                  <div class="fl"><input class="fl-input" id="cNasc" type="text" placeholder=" " autocomplete="off" inputmode="numeric" maxlength="10" enterkeyhint="go" data-mask="data" aria-describedby="cNascErr"><label class="fl-label" for="cNasc">Nascimento</label></div>
                   <div class="err" id="cNascErr" role="alert" hidden></div>
                 </div>
               </div>
@@ -438,8 +438,40 @@
         limpaCadastro(); st.wait = step;
         show(step); history.replaceState({ step: step }, '', semRegistro());
         if (step === 'confirmar') { clearErrs($('confForm')); $('cCpf').focus(); }
+        if (step === 'aguardando') { espera.ult = Date.now(); esperaAgenda(); } else esperaPara();
       }
-      function done(j) { if (j.bloqueio) waitFor(j.bloqueio); else { limpaCadastro(); go(j.redirect); } }   // login concluído
+      // login concluído; na espera, o destino que o servidor deu (auth.safe_next) fica guardado para quando liberar
+      function done(j) {
+        if (j.bloqueio) { espera.dest = safeNext(j.redirect || ''); waitFor(j.bloqueio); }
+        else { limpaCadastro(); go(j.redirect); }
+      }
+
+      // "Estamos conferindo seu CRM": confere o /me a cada 30 s com a aba à vista (com a aba escondida, para; ao voltar,
+      // confere se já passaram 30 s desde a última vez). Liberada: vai para o app, no mesmo destino do login. Recusada (ou
+      // outro motivo): mostra o motivo. Sessão que acabou: volta para entrar. window.OD_ESPERA_MS: só o teste (e2e) muda
+      var ESPERA_MS = window.OD_ESPERA_MS > 0 ? window.OD_ESPERA_MS : 30000, espera = { t: null, ult: 0, dest: '' };
+      function esperaPara() { clearTimeout(espera.t); espera.t = null; }
+      function esperaAtiva() { return st.wait === 'aguardando' && document.visibilityState !== 'hidden'; }
+      function esperaAgenda() {
+        esperaPara();
+        if (esperaAtiva()) espera.t = setTimeout(esperaConfere, Math.max(0, ESPERA_MS - (Date.now() - espera.ult)));
+      }
+      function esperaConfere() {
+        espera.t = null;
+        if (!esperaAtiva()) return;
+        espera.ult = Date.now();
+        fetch('/me', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            if (st.wait !== 'aguardando') return;
+            if (j && j.logged_in && !j.bloqueio) { st.wait = ''; location.replace(espera.dest || nextUrl || HOME); return; }
+            if (j && j.logged_in && j.bloqueio !== 'crm_pendente') { waitFor(j.bloqueio); return; }
+            if (j && !j.logged_in) { st.wait = ''; show('email', true); alertMsg('Sua sessão expirou. Entre novamente.', true); return; }
+            esperaAgenda();                      // ainda pendente, ou o servidor não respondeu: confere de novo depois
+          }).catch(function () { esperaAgenda(); });
+      }
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') esperaPara(); else esperaAgenda();
+      });
       window.addEventListener('pageshow', function (e) { if (e.persisted) limpaCadastro(); });   // volta pelo cache do navegador
 
       // link do Google leva junto a página de origem

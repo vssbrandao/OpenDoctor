@@ -991,3 +991,15 @@ def test_crm_conferido_nao_muda_em_configuracoes(monkeypatch):
     c = _logado(monkeypatch)                                                    # conta antiga: edita como sempre
     assert c.get("/me/medico").json()["crm_conferido"] is False
     assert c.patch("/me/medico", json={"crm": "777"}).status_code == 200 and medico["crm"] == "777"
+
+
+# ===================== nascimento sem preenchimento automático =====================
+
+def test_nascimento_sem_preenchimento_automatico():
+    """O navegador não sugere a data de nascimento guardada (computador da clínica, de mais de um médico)."""
+    import os
+    import re
+    html = open(os.path.join(server.WEB_DIR, "opendoctor-login.html"), encoding="utf-8").read()
+    for campo in ("rNasc", "cNasc"):                                    # Registro profissional e "Confirme seu registro"
+        assert 'autocomplete="off"' in re.search(rf'<input[^>]*id="{campo}"[^>]*>', html).group(0), campo
+    assert 'autocomplete="bday' not in html
