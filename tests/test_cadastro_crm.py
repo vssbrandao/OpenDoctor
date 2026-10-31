@@ -244,6 +244,7 @@ def _corpo_do_tiquete(t):
 
 
 def test_cadastro_verificado_no_cfm(monkeypatch, capsys):
+    monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")          # há quem avisar: o verificado não avisa ninguém
     fake = _Fake()
     c = _client(monkeypatch, fake)
     _avisos(monkeypatch, fake)
@@ -548,7 +549,11 @@ def test_google_registro_nao_entra_em_conta_que_passou_a_existir(monkeypatch):
     fake.users.update(_user("nova@clinica.com.br"))
     r = c.post("/auth/google/registro", json=REG)
     assert r.json() == {"error": "sessao_expirada"} and auth.COOKIE_NAME not in r.cookies and criadas == []
-    assert c.post("/auth/google/registro", json=REG).json() == {"error": "sessao_expirada"}     # o cookie foi apagado
+    assert server.GREG_COOKIE not in c.cookies                                                  # o cookie foi apagado
+    assert any(h.startswith(server.GREG_COOKIE + "=") and "Max-Age=0" in h and "Path=/auth/" in h
+               for h in r.headers.get_list("set-cookie"))
+    fake.users.pop("nova@clinica.com.br")                       # mesmo sem a conta, o cookie apagado não cria nenhuma
+    assert c.post("/auth/google/registro", json=REG).json() == {"error": "sessao_expirada"} and criadas == []
 
 
 def test_google_conta_que_ja_existe_entra_como_sempre(monkeypatch):
