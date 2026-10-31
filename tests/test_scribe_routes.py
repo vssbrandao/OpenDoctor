@@ -223,6 +223,16 @@ def test_estado_da_gravacao_e_apagar_transcricao(fake):
     assert c.delete("/prontuario/recordings/" + REC).status_code == 404
 
 
+def test_id_com_sobra_nao_chega_ao_banco(fake, monkeypatch):
+    """UUID com sobra no fim (letra, quebra de linha, outro pedaço) é recusado antes do banco, que daria erro 500."""
+    c = TestClient(server.app)
+    pedidos = []
+    monkeypatch.setattr(db, "rec_delete", lambda uid, rid: pedidos.append(rid))
+    for sobra in ("x", "%0A", "-0000"):
+        assert c.delete("/prontuario/recordings/" + REC + sobra).status_code == 404
+    assert pedidos == []
+
+
 def test_evolucao_guarda_so_o_rastreio_da_gravacao():
     d = server._note_data({"mode": "soap", "s": "x", "scribe": {
         "rec_ids": [REC, "nao-e-uuid"], "prompt": "2026-10-15.5", "model": "gpt-5.4", "consent_at": "2026-10-15T10:00:00Z",

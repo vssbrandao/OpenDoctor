@@ -22,11 +22,13 @@ create index if not exists clinical_notes_patient_id_idx
   on clinical_notes (user_id, patient_id, event_start desc);
 
 -- quem já tem prontuário vira paciente cadastrado, e as anotações passam a apontar para ele
+-- (sem "on conflict": a 0007 tira o unique, e o scripts/setup_test_db roda tudo de novo num banco já montado)
 insert into patients (user_id, patient_key, name)
-select distinct on (user_id, patient_key) user_id, patient_key, patient_name
-  from clinical_notes
- order by user_id, patient_key, updated_at desc
-on conflict (user_id, patient_key) do nothing;
+select distinct on (n.user_id, n.patient_key) n.user_id, n.patient_key, n.patient_name
+  from clinical_notes n
+ where n.patient_id is null
+   and not exists (select 1 from patients p where p.user_id = n.user_id and p.patient_key = n.patient_key)
+ order by n.user_id, n.patient_key, n.updated_at desc;
 
 update clinical_notes n set patient_id = p.id
   from patients p

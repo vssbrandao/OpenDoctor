@@ -1729,7 +1729,7 @@ def _scribe_rastreio(sc):
         x = sc.get(k)
         return x if isinstance(x, int) and not isinstance(x, bool) and 0 <= x <= top else 0
     pts = sc.get("pontos") if isinstance(sc.get("pontos"), dict) else {}
-    return {"rec_ids": [str(x).lower() for x in (sc.get("rec_ids") or [])[:20] if _UUID.match(str(x).lower())],
+    return {"rec_ids": [str(x).lower() for x in (sc.get("rec_ids") or [])[:20] if _UUID.fullmatch(str(x).lower())],
             "prompt": str(sc.get("prompt") or "")[:40], "model": str(sc.get("model") or "")[:40],
             "consent_at": _iso_or_none(sc.get("consent_at")), "generated_at": _iso_or_none(sc.get("generated_at")),
             "pontos": {k: pts[k] for k in ("alto", "medio", "info") if isinstance(pts.get(k), int) and 0 <= pts[k] < 1000},
@@ -2097,7 +2097,7 @@ _UFS = ("AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", 
 
 def _receita_do_medico(u, rid):
     """A receita deste médico (id em UUID) ou None."""
-    return db.get_receita(u["id"], rid.lower()) if _UUID.match(rid.lower()) else None
+    return db.get_receita(u["id"], rid.lower()) if _UUID.fullmatch(rid.lower()) else None
 
 
 def _mesmo_paciente(r, b):
@@ -2511,9 +2511,6 @@ async def _admin_decide(request, aprovado):
     return await run_in_threadpool(_admin_decide_now, await _body(request), aprovado)
 
 
-_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-
-
 def _admin_decide_now(b, aprovado):
     """Aprova (conta liberada) ou recusa um cadastro pendente e avisa o médico por e-mail (a falha do e-mail não desfaz)."""
     uid = str(b.get("id") or "").strip().lower()
@@ -2717,7 +2714,7 @@ def _num_or_none(v, lo, hi):
 
 def _rec_ids(b):
     ids = [b.get("rec_id")] + (b.get("rec_ids") if isinstance(b.get("rec_ids"), list) else [])
-    return [str(x).lower() for x in ids[:20] if _UUID.match(str(x or "").lower())]
+    return [str(x).lower() for x in ids[:20] if _UUID.fullmatch(str(x or "").lower())]
 
 
 def _years(bd):
@@ -2741,7 +2738,7 @@ async def prontuario_transcribe(request: Request):
         return gate
     h = request.headers
     pid, rid, seq = str(h.get("x-patient-id") or ""), str(h.get("x-rec-id") or "").lower(), str(h.get("x-seq") or "")
-    if not (pid.isdigit() and _UUID.match(rid) and seq.isdigit() and 0 < int(seq) <= 2000):
+    if not (pid.isdigit() and _UUID.fullmatch(rid) and seq.isdigit() and 0 < int(seq) <= 2000):
         return JSONResponse({"error": "trecho sem identificação"}, status_code=400)
     consent = _iso_or_none(h.get("x-consent"))
     if not consent:
@@ -2954,7 +2951,7 @@ def prontuario_recording_delete(rec_id: str, request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    pid = db.rec_delete(u["id"], rec_id.lower()) if _UUID.match(rec_id.lower()) else None
+    pid = db.rec_delete(u["id"], rec_id.lower()) if _UUID.fullmatch(rec_id.lower()) else None
     if pid is None:
         return JSONResponse({"error": "gravação não encontrada"}, status_code=404)
     db.log_access(u["id"], "recording_delete", pid)
