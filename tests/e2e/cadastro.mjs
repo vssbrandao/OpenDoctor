@@ -9,8 +9,11 @@
 // volta para a senha; Criar conta manda tudo num POST só (nada de CPF em URL); a conta pendente mostra a espera; as
 // recusas do CFM aparecem no campo certo; o Google com conta nova cai direto no registro; recusada e a confirmar; a
 // espera confere o /me a cada 30 s com a aba à vista (relógio curto no teste) e abre o app quando liberada; o aviso do
-// Google com e-mail não verificado; o nascimento sem preenchimento automático; a página de cadastros dos administradores
-// lista (com o e-mail), aprova e recusa (com confirmação) e libera sem confirmar as aprovadas à mão presas no CFM.
+// Google com e-mail não verificado e o da conta Google ligada a outro e-mail; o nascimento sem preenchimento automático; a
+// página de cadastros dos administradores lista (com o e-mail), aprova e recusa (com confirmação), libera sem confirmar as
+// aprovadas à mão presas no CFM e avisa quando a lista veio cortada; o tíquete que venceu na tela do código (a seta volta
+// para a senha); a nova senha de uma conta pendente não fica na espera; CPF e nascimento em nenhuma URL (pedidos, páginas
+// abertas e trocas de URL da própria página).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -33,7 +36,7 @@ const fim = () => { try { chrome.kill(); } catch (_) {} try { rmSync(PROF, { rec
 process.on('exit', fim);
 
 let ws, id = 0;
-const espera = new Map(), erros = [], pedidos = [];
+const espera = new Map(), erros = [], pedidos = [], urls = [];   // urls: todo pedido, página aberta e troca de URL
 function send(method, params = {}) {
   return new Promise((ok, no) => { const i = ++id; espera.set(i, { ok, no }); ws.send(JSON.stringify({ id: i, method, params })); });
 }
@@ -53,6 +56,9 @@ const certo = (cond, msg) => { if (!cond) throw new Error(msg); };
 const CPF = '52998224725';
 let ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
 let START = null;                 // resposta do /auth/signup/start (null = ok com tíquete)
+let VERIFY = null;                // resposta do /auth/signup/verify (null = código 123456 certo, conta pendente)
+let CHECK = null;                 // resposta do /auth/email/check (null = e-mail sem conta)
+let MAIS = false;                 // a lista de pendentes veio cortada (pendentes_mais)
 let REG_GOOGLE = null;            // resposta do /auth/google/registro
 let PENDENTES = [{ id: '8f14e45f-ceea-467a-9575-1a2b3c4d5e6f', name: 'Ana Lima', email: 'ana@clinica.com.br', crm: '123456', crm_uf: 'SP', pedido_em: '2026-10-30T12:00:00+00:00', outras_contas: 0 },
   { id: '9a14e45f-ceea-467a-9575-1a2b3c4d5e70', name: 'Bia Souza', email: '<img src=x>bia@clinica.com.br', crm: '4321', crm_uf: 'RJ', pedido_em: '2026-10-30T13:00:00+00:00', outras_contas: 1 }];
@@ -66,14 +72,18 @@ const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
   '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json', '.ico': 'image/x-icon' };
 function rota(method, path, body) {
   if (path === '/me') return [200, ME];
-  if (path === '/auth/email/check') return [200, { exists: false, password: false, email_ok: true }];
+  if (path === '/auth/email/check') return CHECK || [200, { exists: false, password: false, email_ok: true }];
   if (path === '/auth/signup/start') return START || [200, { ok: true, ticket: 'tk.sig', resend_in: 30, sent: true }];
-  if (path === '/auth/signup/verify') return body.code === '123456'
+  if (path === '/auth/signup/verify') return VERIFY || (body.code === '123456'
     ? [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1', bloqueio: 'crm_pendente' }]
-    : [400, { error: 'codigo_incorreto', left: 4 }];
+    : [400, { error: 'codigo_incorreto', left: 4 }]);
+  if (path === '/auth/password/forgot') return [200, { ok: true, resend_in: 30, sent: true }];
+  if (path === '/auth/password/reset/verify') return [200, { ok: true, ticket: 'rt.sig' }];
+  if (path === '/auth/password/reset') return [200, { ok: true, redirect: '/opendoctor-agenda.html', bloqueio: 'crm_pendente' }];
   if (path === '/auth/google/registro') return REG_GOOGLE || [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1' }];
   if (path === '/auth/crm/confirmar') return [200, { ok: true, redirect: '/opendoctor-agenda.html' }];
-  if (path === '/admin/cadastros') return [200, { pendentes: PENDENTES, manuais: MANUAIS, dispensa: DISPENSA, cfm: true, limite_falhas: 5 }];
+  if (path === '/admin/cadastros') return [200, { pendentes: PENDENTES, pendentes_mais: MAIS, manuais: MANUAIS, manuais_mais: false,
+                                                  dispensa: DISPENSA, cfm: true, limite_falhas: 5 }];
   if (path === '/admin/cadastros/liberar') {
     if (!DISPENSA) return [503, { error: 'migracao_pendente' }];
     const antes = MANUAIS.length; MANUAIS = MANUAIS.filter((p) => p.id !== body.id);
@@ -88,6 +98,7 @@ function rota(method, path, body) {
 async function responde(p) {
   const u = new URL(p.request.url), method = p.request.method;
   if (u.origin !== ORIG) return send('Fetch.failRequest', { requestId: p.requestId, errorReason: 'BlockedByClient' });
+  urls.push(p.request.url);
   let body = null; try { body = p.request.postData ? JSON.parse(p.request.postData) : null; } catch (_) {}
   const arq = normalize(join(WEB, decodeURIComponent(u.pathname)));
   let status = 200, tipo = 'application/json', dado;
@@ -612,7 +623,7 @@ const cenarios = [
     }
     return '/me a cada intervalo, parado com a aba escondida, de volta ao voltar; liberada vai ao destino do login; recusada para';
   }],
-  ['Google com e-mail não verificado e o nascimento sem preenchimento automático', async () => {
+  ['Google com e-mail não verificado, conta Google com outro e-mail e o nascimento sem preenchimento automático', async () => {
     await abre('?erro=google_nao_verificado&next=%2Fopendoctor-configuracoes.html');
     certo(await vis('#alert') && await txt('#alertText') === 'Esse e-mail não foi verificado pelo Google.', 'mensagem: ' + await txt('#alertText'));
     certo(!(await ev(`document.getElementById('alert').classList.contains('info')`)), 'o aviso devia sair em vermelho (erro), não em cinza');
@@ -620,12 +631,65 @@ const cenarios = [
     certo(await ev(`location.search`) === '?next=%2Fopendoctor-configuracoes.html', 'o erro ficou na URL: ' + await ev(`location.search`));
     const ac = await ev(`['rNasc', 'cNasc'].map((i) => document.getElementById(i).getAttribute('autocomplete')).join()`);
     certo(ac === 'off,off', 'autocomplete do nascimento: ' + ac);
-    return 'aviso "Esse e-mail não foi verificado pelo Google." na tela inicial; nascimento com autocomplete=off';
+    await abre('?erro=google_outro_email');
+    certo(await txt('#alertText') === 'Esta conta Google está ligada a outro e-mail no OpenDoctor. Entre com o e-mail da sua conta.',
+      'mensagem da conta Google com outro e-mail: ' + await txt('#alertText'));
+    certo(await vis('#emailForm') && await ev(`location.search`) === '', 'o erro ficou na URL: ' + await ev(`location.search`));
+    return 'avisos do Google (e-mail não verificado, conta ligada a outro e-mail) na tela inicial; nascimento com autocomplete=off';
+  }],
+  ['o tíquete que venceu na tela do código: a seta volta para a senha', async () => {
+    await ateRegistro();
+    await preenche();
+    await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'etapa do código');
+    VERIFY = [400, { error: 'sessao_expirada' }];
+    await cola('#otp input', '123456');
+    await ate(`!document.getElementById('regForm').hidden`, 3000, 'voltou ao Registro');
+    certo(await txt('#alertText') === 'A confirmação expirou. Confira os dados e toque em Criar conta de novo.', 'aviso: ' + await txt('#alertText'));
+    await clica('#back');
+    await ate(`document.getElementById('title').textContent === 'Crie sua conta'`, 2000, 'a seta foi para: ' + await titulo());
+    certo(await val('#newPw') === 'Abcdef12!', 'a senha se perdeu');
+    return '"A confirmação expirou" no Registro; a seta volta para a senha, com a senha guardada';
+  }],
+  ['nova senha de uma conta pendente: a espera não guarda a senha', async () => {
+    CHECK = [200, { exists: true, password: true, email_ok: true }];
+    await abre();
+    await digita('#email', 'ana@clinica.com.br');
+    await clica('#go');
+    await ate(`!document.getElementById('forgotBtn').closest('[data-step]').hidden`, 3000, 'etapa da senha');
+    await clica('#forgotBtn');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código da nova senha');
+    await cola('#otp input', '123456');
+    await ate(`!document.getElementById('resetForm').hidden`, 3000, 'nova senha');
+    await digita('#rPw', 'Novaa12!x'); await digita('#rPw2', 'Novaa12!x');
+    await clica('#resetGo');
+    await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera');
+    const vazios = await ev(`['rPw', 'rPw2', 'pw'].map((i) => document.getElementById(i).value).join('|')`);
+    certo(vazios === '||', 'senha na página da espera: ' + vazios);
+    return 'nova senha → espera da conferência, sem a senha nem a confirmação na página';
+  }],
+  ['página de cadastros: a lista cortada avisa que há mais', async () => {
+    const antes = PENDENTES;
+    PENDENTES = [{ id: '5d14e45f-ceea-467a-9575-1a2b3c4d5e73', name: 'Eva Prado', email: 'eva@clinica.com.br', crm: '999', crm_uf: 'PR', pedido_em: '2026-10-30T14:00:00+00:00', outras_contas: 0 },
+      { id: '4e14e45f-ceea-467a-9575-1a2b3c4d5e74', name: 'Fabio Lins', email: 'fabio@clinica.com.br', crm: '998', crm_uf: 'PE', pedido_em: '2026-10-30T15:00:00+00:00', outras_contas: 0 }];
+    MAIS = true;
+    try {
+      await send('Page.navigate', { url: ORIG + '/opendoctor-cadastros.html' });
+      await ate(`document.querySelectorAll('#list .card').length === 2`, 5000, 'lista de pendentes');
+      certo(await txt('#msg') === 'Mostrando os 2 cadastros mais antigos.', 'mensagem: ' + await txt('#msg'));
+      await clica('#list .card .btn-dark');
+      await ate(`document.querySelectorAll('#list .card').length === 1`, 3000, '1º aprovado');
+      await clica('#list .card .btn-dark');
+      await ate(`document.querySelectorAll('#list .card').length === 0`, 3000, '2º aprovado');
+      certo((await txt('#msg')).includes('Há mais cadastros esperando: recarregue a página.'), 'mensagem: ' + await txt('#msg'));
+    } finally { PENDENTES = antes; }
+    return '"Mostrando os 2…" e, com a lista vazia, "Há mais cadastros esperando" em vez de "nenhum outro"';
   }],
   ['CPF e nascimento nunca em URL', async () => {
-    const ruins = pedidos.filter((r) => r.url.includes(CPF) || r.url.includes('529.982') || r.url.includes('1985'));
-    certo(!ruins.length, 'na URL: ' + ruins.map((r) => r.url).join(' '));
-    return `${pedidos.length} pedidos conferidos`;
+    const ruins = urls.filter((u) => u.includes(CPF) || u.includes('529.982') || u.includes('1985'));
+    certo(!ruins.length, 'na URL: ' + ruins.join(' '));
+    certo(urls.some((u) => u.includes('/opendoctor-login.html')) && urls.length > pedidos.length, 'as páginas abertas não foram conferidas');
+    return `${urls.length} URLs conferidas (${pedidos.length} pedidos à API, as páginas abertas e as trocas de URL)`;
   }],
 ];
 
@@ -636,6 +700,8 @@ async function main() {
     const j = JSON.parse(m.data);
     if (j.id && espera.has(j.id)) { const w = espera.get(j.id); espera.delete(j.id); j.error ? w.no(new Error(j.error.message)) : w.ok(j.result); return; }
     if (j.method === 'Fetch.requestPaused') responde(j.params).catch((e) => erros.push('interceptação: ' + e.message));
+    if (j.method === 'Page.frameNavigated') urls.push(j.params.frame.url);                 // página aberta
+    if (j.method === 'Page.navigatedWithinDocument') urls.push(j.params.url);              // pushState / replaceState
     if (j.method === 'Page.javascriptDialogOpening') {
       if (RECUSAS > 0) { RECUSAS--; send('Page.handleJavaScriptDialog', { accept: false }); return; }
       if (DIALOGOS > 0) DIALOGOS--; else erros.push('diálogo: ' + j.params.message);
@@ -649,7 +715,8 @@ async function main() {
   let falhas = 0;
   for (const [nome, fn] of cenarios) {
     const t0 = Date.now();
-    START = null; REG_GOOGLE = null; ME = { logged_in: false, user: null, scribe: false, bloqueio: null };   // um cenário não herda o outro
+    START = null; REG_GOOGLE = null; VERIFY = null; CHECK = null; MAIS = false;            // um cenário não herda o outro
+    ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
     try { const r = await fn(); log(`✓ ${nome} (${Math.round((Date.now() - t0) / 1000)} s): ${r}`); }
     catch (e) { falhas++; log(`✗ ${nome}: ${e.message}`); }
   }

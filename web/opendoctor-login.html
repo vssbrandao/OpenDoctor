@@ -425,12 +425,12 @@
       }
       // conta criada (ou login concluído): o CPF, o nascimento, a senha e o tíquete saem da página
       function limpaCadastro() {
-        ['rCpf', 'rNasc', 'newPw', 'cCpf', 'cNasc', 'pw', 'rPw'].forEach(function (id) { $(id).value = ''; });
+        ['rCpf', 'rNasc', 'newPw', 'cCpf', 'cNasc', 'pw', 'rPw', 'rPw2'].forEach(function (id) { $(id).value = ''; });
         st.ticket = ''; st.resetTicket = ''; st.google = false;
       }
       history.replaceState({ step: 'email' }, '');
 
-      function go(url) { location.href = url || nextUrl || HOME; }
+      function go(url) { st.saiu = true; location.href = url || nextUrl || HOME; }
       function busy(btn, on) { btn.disabled = on; }
       // conta que entrou mas ainda não usa o app: CRM em conferência, recusado ou a confirmar no CFM
       function waitFor(b) {
@@ -472,17 +472,27 @@
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'hidden') esperaPara(); else esperaAgenda();
       });
-      window.addEventListener('pageshow', function (e) { if (e.persisted) limpaCadastro(); });   // volta pelo cache do navegador
+      // volta pelo cache do navegador depois de ir para o app (já limpa por done): confere a sessão, como ao abrir. O
+      // cadastro em andamento (foi ler a Política e voltou) fica como estava: o tíquete, o Google e o que já digitou
+      window.addEventListener('pageshow', function (e) {
+        if (!e.persisted || !st.saiu) return;
+        st.saiu = false; limpaCadastro(); confereSessao(true);
+      });
 
       // link do Google leva junto a página de origem
       if (nextUrl) $('google').href = '/auth/google/login?next=' + encodeURIComponent(nextUrl);
 
-      // quem já entrou vai direto (ou vê a espera da conferência do CRM)
-      fetch('/me', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) {
-          if (!j || !j.logged_in) return;
-          if (j.bloqueio) waitFor(j.bloqueio); else location.replace(nextUrl || HOME);
-        }).catch(function () {});
+      // quem já entrou vai direto (ou vê a espera da conferência do CRM). `volta`: a página voltou do cache do navegador;
+      // sem sessão, recomeça no e-mail
+      function confereSessao(volta) {
+        fetch('/me', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            if (j && !j.logged_in && volta) { show('email'); history.replaceState({ step: 'email' }, '', semRegistro()); return; }
+            if (!j || !j.logged_in) return;
+            if (j.bloqueio) waitFor(j.bloqueio); else location.replace(nextUrl || HOME);
+          }).catch(function () {});
+      }
+      confereSessao();
 
       // volta do Google / sessão expirada
       var erro = params.get('erro');
@@ -841,8 +851,14 @@
       }
       $('back').addEventListener('click', function () {
         if (st.google) { desisteGoogle(); $('email').focus(); return; }
-        if (history.state && history.state.step === 'registro') history.back(); else show('signup', true);
+        if (history.state && history.state.expirou) history.go(-2);          // o Registro que tomou o lugar do código
+        else if (history.state && history.state.step === 'registro') history.back(); else show('signup', true);
       });
+      // o tíquete do cadastro venceu na tela do código: ela vira o Registro (sem empilhar outro), e a seta volta para a senha
+      function expirou() {
+        st.ticket = ''; show('registro'); history.replaceState({ step: 'registro', expirou: true }, '');
+        alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.');
+      }
       function regFail(j) {
         var er = j.error;
         if (er === 'crm_nao_encontrado') { crmUfErr(MSG[er]); rCrm.focus(); return; }
@@ -922,7 +938,7 @@
             st.resetTicket = j.ticket;
             var f = $('resetForm'); f.reset(); clearErrs(f); paintRules('rPw'); show('reset', true); $('rPw').focus(); return;
           }
-          if (er === 'sessao_expirada') { st.ticket = ''; show('registro', true); alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.'); return; }
+          if (er === 'sessao_expirada') { expirou(); return; }
           var m = codeErrMsg(er, j);
           if (m) {
             otpErr(m); boxes[5].focus();
@@ -942,7 +958,7 @@
             cooldown(res.j.resend_in); return;
           }
           cooldown(0);
-          if (res.j.error === 'sessao_expirada') { st.ticket = ''; show('registro', true); alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.'); return; }
+          if (res.j.error === 'sessao_expirada') { expirou(); return; }
           sendFail(res.j.error);
         }).catch(function () { cooldown(0); alertMsg(OFFLINE); });
       });
