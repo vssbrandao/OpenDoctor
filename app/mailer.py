@@ -155,7 +155,7 @@ def _code_boxes(code):
 
 def _button(label, href):
     return ('<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
-            f'<td height="84" align="center" valign="middle" style="height:84px;background:#000033;border-radius:999px">'
+            f'<td height="84" align="center" valign="middle" style="height:84px;background:#10132C;border-radius:999px">'
             f'<a href="{html.escape(href)}" style="display:inline-block;padding:0 48px;line-height:84px;font-family:{_FONT};'
             f'font-weight:500;font-size:14px;color:#FFFFFF;text-decoration:none;white-space:nowrap">{html.escape(label)}</a>'
             '</td></tr></table>')
