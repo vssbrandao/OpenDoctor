@@ -792,18 +792,46 @@ def _device(request, resp):
     return dev
 
 
-def _logged(request, user, nxt, method, welcome=False):
-    """Resposta de login concluído: cookie de sessão + para onde ir. Registra a entrada."""
+def _logged(request, user, nxt, method, welcome=False, agenda=False):
+    """Resposta de login concluído: cookie de sessão + para onde ir. Registra a entrada. `agenda`: conta nova pelo Google,
+    que segue direto para a permissão do Google Agenda (`agenda` na resposta: a tela de login vai para lá)."""
     dest = auth.safe_next(nxt)
     out = {"ok": True, "redirect": auth.with_welcome(dest) if welcome else dest}
     cc = _cc_ao_entrar(user)
     bloqueio = _crm_bloqueio(dict(user, crm_cc=cc))
     if bloqueio:
         out["bloqueio"] = bloqueio                  # a tela de login mostra a espera em vez de abrir o app
+    nonce = None
+    if agenda and integrations.configured("google"):
+        out["agenda"], nonce = _agenda_pede(user, dest)
     resp = JSONResponse(out)
     auth.set_session(resp, user["id"], user.get("sv", 0), cc=cc)
+    if nonce:
+        auth.set_oauth_cookie(resp, nonce, auth.CAL_COOKIE)
     _audit(request, user["id"], "entrou", method, _device(request, resp))
     return resp
+
+
+# ----- conta nova pelo Google: a permissão do Google Agenda logo depois do Registro -----
+def _agenda_pede(user, dest):
+    """URL do Google para conectar a agenda da conta que acabou de nascer, já aberta na conta dela (login_hint). Vale a
+    mesma conferência da conexão em Integrações (nonce neste navegador + a conta logada); `ap` faz o retorno seguir para
+    `dest`, como o cadastro seguiria (`_agenda_volta`). Também na conta pendente: a agenda fica pronta para a aprovação."""
+    nonce = secrets.token_urlsafe(16)
+    state = auth.sign({"k": "cal", "prov": "google", "uid": user["id"], "n": nonce, "ap": 1, "nx": dest})
+    return integrations.connect_url("google", state, str(user.get("email") or "")), nonce
+
+
+def _agenda_volta(payload, u, conectada=False):
+    """Fim da permissão da agenda pedida no cadastro: conectada ou não (desmarcou a caixa, cancelou, deu erro), a conta já
+    existe e segue para onde o cadastro ia, com as boas-vindas. Conta que ainda não usa o app vai à espera do CRM, que leva
+    o destino junto para quando liberar. Sem dizer o motivo: a agenda se conecta depois em Integrações."""
+    dest = auth.safe_next(payload.get("nx"))
+    if u and u.get("id") == payload.get("uid"):          # as boas-vindas só para a conta que acabou de nascer
+        dest = auth.with_welcome(dest, agenda=conectada)
+    if u and _crm_bloqueio(u):
+        dest = "/opendoctor-login.html?next=" + urllib.parse.quote(dest, safe="")
+    return RedirectResponse(dest)
 
 
 def _send_code(email, purpose, name=""):
@@ -1218,7 +1246,7 @@ def _google_registro_cria(request, b):
         return _err("erro", 500)
     exemplo.seed_safe(user["id"])                        # conta nova: paciente de exemplo (fictícia)
     _avisa_pendente(user, reg["nome"], dec.get("crm"), dec.get("uf"))
-    resp = _logged(request, user, t.get("nx"), "cadastro", welcome=True)
+    resp = _logged(request, user, t.get("nx"), "cadastro", welcome=True, agenda=True)
     resp.delete_cookie(GREG_COOKIE, path="/auth/")
     return resp
 
@@ -1426,8 +1454,19 @@ def integrations_connect(provider: str, request: Request):
 def auth_callback(provider: str, request: Request, code: str = "", state: str = "", error: str = ""):
     """Callback único por provedor: distingue login x conexão de calendário pelo `state`."""
     payload = auth.unsign(state, auth.STATE_MAX_AGE) if state else None
+    velho = auth.unsign(state) if state and not payload else None
+    if (velho or {}).get("k") == "cal" and velho.get("ap") == 1:
+        # passou mais de 15 min na tela do Google da agenda do cadastro: nada é gravado (o prazo vale), mas a conta já
+        # existe e segue para onde ia, como quem não deu a agenda — o state vencido só escolhe o destino
+        resp = _agenda_volta(velho, auth.current_user(request))
+        resp.delete_cookie(auth.CAL_COOKIE, path="/auth/")
+        return resp
     if error or not code or not payload:
         if (payload or {}).get("k") == "cal":
+            if payload.get("ap") == 1:                 # não quis dar a agenda no cadastro: a conta segue sem ela
+                resp = _agenda_volta(payload, auth.current_user(request))
+                resp.delete_cookie(auth.CAL_COOKIE, path="/auth/")
+                return resp
             return RedirectResponse("/opendoctor-integracao.html?erro=" + urllib.parse.quote(error or "sem_code"))
         # cancelou na tela do Google → aviso simples; o resto é erro de conexão
         return RedirectResponse(_login_page("cancelado" if error == "access_denied" else "conexao",
@@ -1488,22 +1527,31 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
     # --- conexão de calendário ---
     if payload.get("k") == "cal":
         dest = "/opendoctor-integracao.html"
+        ap = payload.get("ap") == 1                    # pedida logo depois do cadastro: volta para onde ele ia
         u = auth.current_user(request)
         if (payload.get("prov") != provider or not auth.login_nonce_ok(request, payload, auth.CAL_COOKIE)
-                or not u or u["id"] != payload.get("uid")):
-            # começou em outro navegador, em outra conta ou noutro provedor: não grava a agenda em ninguém
-            resp = RedirectResponse(dest + "?erro=sessao")
+                or not u or u["id"] != payload.get("uid") or _crm_bloqueio(u) == "crm_recusado"):
+            # começou em outro navegador, em outra conta ou noutro provedor: não grava a agenda em ninguém. Nem na conta
+            # recusada enquanto o médico estava na tela do Google (a recusa já apagou o que havia)
+            resp = _agenda_volta(payload, u) if ap else RedirectResponse(dest + "?erro=sessao")
             resp.delete_cookie(auth.CAL_COOKIE, path="/auth/")
             return resp
+        pendente = u.get("crm_status") == "pendente"
         try:
             integrations.exchange_and_store(provider, code, u["id"])
-            resp = RedirectResponse(dest + "?conectado=" + provider)
+            if pendente and (db.get_user(u["id"]) or {}).get("crm_status") == "recusado":
+                # recusada durante a troca (só a pendente pode ser): a recusa grava a decisão antes de apagar a agenda,
+                # então ou ela apagou o que foi gravado aqui, ou esta releitura já a vê — a agenda não fica na recusada
+                integrations.disconnect(u["id"], provider)
+                resp = _agenda_volta(payload, u) if ap else RedirectResponse(dest + "?erro=sessao")
+            else:
+                resp = _agenda_volta(payload, u, conectada=True) if ap else RedirectResponse(dest + "?conectado=" + provider)
         except integrations.MissingScope:              # desmarcou a caixa da agenda no Google: nada foi gravado
             print(f"[oauth] conexão sem a permissão da agenda: {provider}", flush=True)
-            resp = RedirectResponse(dest + "?erro=permissao")
+            resp = _agenda_volta(payload, u) if ap else RedirectResponse(dest + "?erro=permissao")
         except Exception as e:
             print("[oauth] callback falhou:", str(e)[:200])
-            resp = RedirectResponse(dest + "?erro=" + provider)
+            resp = _agenda_volta(payload, u) if ap else RedirectResponse(dest + "?erro=" + provider)
         resp.delete_cookie(auth.CAL_COOKIE, path="/auth/")
         return resp
 
@@ -2556,6 +2604,13 @@ def _admin_decide_now(b, aprovado):
     if not r:
         return _err("nao_pendente", 409)                  # já decidido (outro clique, outro administrador)
     print("[cadastro] aprovado" if aprovado else "[cadastro] recusado", flush=True)
+    if not aprovado:
+        # a agenda conectada no cadastro (_agenda_pede) não fica guardada para quem não vai usar o app
+        for prov in integrations.PROVIDERS:
+            try:
+                integrations.disconnect(uid, prov)
+            except Exception as e:
+                print("[cadastro] desconectar a agenda falhou:", type(e).__name__, flush=True)
     enviado = False
     if mailer.configured():
         try:

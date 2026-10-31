@@ -326,6 +326,24 @@ def test_conexao_morta_e_reconexao(novo_usuario):
     assert db.dead_providers(uid) == set() and db.connected_providers(uid) == {"google": "ana@gmail.com"}
 
 
+def test_limpeza_tira_a_agenda_so_da_conta_recusada(novo_usuario):
+    """A recusa apaga a agenda conectada no cadastro; a limpeza diária cobre a falha dela (e uma volta do Google que a
+    recusa não viu). Pendente, aprovada e conta antiga ficam com a agenda."""
+    agora = datetime.datetime.now(datetime.timezone.utc)
+    recusada = novo_usuario(crm={"crm": _crm_novo(), "uf": "SP", "status": "pendente"})["id"]
+    pendente = novo_usuario(crm={"crm": _crm_novo(), "uf": "SP", "status": "pendente"})["id"]
+    aprovada = novo_usuario(crm={"crm": _crm_novo(), "uf": "SP", "status": "pendente"})["id"]
+    antiga = novo_usuario()["id"]
+    db.decide_crm(recusada, False)
+    db.decide_crm(aprovada, True)
+    for uid in (recusada, pendente, aprovada, antiga):
+        db.set_token(uid, "google", access_token="a", refresh_token="r", expires_at=agora + datetime.timedelta(hours=1),
+                     scope="calendar.events", account_email="ana@gmail.com")
+    assert db.cleanup_old_records()["oauth_tokens_recusadas"] >= 1
+    assert db.get_token(recusada, "google") is None
+    assert all(db.get_token(uid, "google") for uid in (pendente, aprovada, antiga))
+
+
 def test_renomear_a_de_exemplo_nao_tira_a_marca(novo_usuario):
     from app import exemplo
     uid = novo_usuario()["id"]

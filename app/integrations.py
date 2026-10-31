@@ -55,13 +55,15 @@ def _utcnow():
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-def connect_url(provider, state):
+def connect_url(provider, state, hint=""):
     """URL de consentimento p/ CONECTAR o calendário. `state` é assinado pelo caller
-    (auth.sign) e carrega o user_id."""
+    (auth.sign) e carrega o user_id. `hint`: e-mail da conta para o provedor já abrir nela."""
     p = PROVIDERS[provider]
     params = {"client_id": _cid(provider), "redirect_uri": redirect_uri(provider),
               "response_type": "code", "scope": p["scope"], "state": state}
     params.update(p["extra_auth"])
+    if hint:
+        params["login_hint"] = hint
     return p["auth"] + "?" + urllib.parse.urlencode(params)
 
 

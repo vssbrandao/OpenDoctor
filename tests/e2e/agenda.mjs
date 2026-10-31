@@ -58,6 +58,7 @@ const EVS = [
   { id: 'joana', title: 'Consulta — Joana Prado', patient_id: 5, start: `${dia(0)}T23:30:00-03:00`, end: `${dia(1)}T00:00:00-03:00`, allDay: false },
 ];
 let RECONECTAR = null;                                     // 'permissao' ou 'expirada': o servidor pede reconectar
+let SEM_AGENDA = false;                                    // a conta não tem agenda conectada
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
 const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
@@ -71,6 +72,7 @@ function rota(method, path, q, body) {
   if (path === '/patients' && method === 'GET') return { patients: PACS, more: MAIS };
   if (path === '/patients/search' && method === 'POST') return { patients: ANTIGOS.filter((p) => sem(p.name).includes(sem(body.q).trim())) };
   if (path === '/patients' && method === 'POST') { const p = { id: 40 + PACS.length, name: body.name }; PACS.push(p); return { ok: true, patient: p }; }
+  if (path === '/calendar/events' && method === 'GET' && SEM_AGENDA) return { logged_in: true, connected: null, events: [] };
   if (path === '/calendar/events' && method === 'GET') return RECONECTAR
     ? { logged_in: true, connected: 'google', events: [], needs_reconnect: true, reason: RECONECTAR }
     : { logged_in: true, connected: 'google', events: EVS };
@@ -538,6 +540,33 @@ const cenarios = [
     await ev(`window.__prazoCadastro = 0; 1`);
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     return 'a segunda tentativa achou o paciente criado e não cadastrou outro';
+  }],
+  ['boas-vindas: dizem se a agenda está conectada pela resposta da agenda (a URL é só o palpite)', async () => {
+    const CONECTADA = 'Bem-vindo à OpenDoctor! Sua agenda do Google já está conectada.';
+    const CONVITE = 'Bem-vindo à OpenDoctor! Conecte sua agenda do Google para ver suas consultas.';
+    const boas = async (q) => {
+      const antes = pedidos.length;
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await ate(`document.readyState === 'complete' && !document.getElementById('odWelcome').hidden`, 8000, 'boas-vindas ' + q);
+      await ate(`!!window.__calUltima`, 8000, 'a 1ª resposta da agenda');
+      certo(pedidos.slice(antes).some((r) => r.path === '/calendar/events'), 'a agenda não perguntou');
+      return ev(`({ t: document.querySelector('#odWelcome span').textContent, a: !!document.querySelector('#odWelcome a').offsetParent,
+                  q: location.search })`);
+    };
+    let r = await boas('?bemvindo=agenda');                                   // voltou do Google com a agenda
+    certo(r.t === CONECTADA && !r.a && r.q === '', 'agenda: ' + JSON.stringify(r));
+    await foto('boas-vindas-agenda.png');
+    r = await boas('?bemvindo=1');                                            // =1, mas a agenda já está conectada
+    certo(r.t === CONECTADA && !r.a, '=1 com a agenda conectada: ' + JSON.stringify(r));
+    SEM_AGENDA = true;
+    try {
+      r = await boas('?bemvindo=1');
+      await foto('boas-vindas-1.png');
+      certo(r.t === CONVITE && r.a && r.q === '', '=1: ' + JSON.stringify(r));
+      r = await boas('?bemvindo=agenda');                                     // =agenda numa conta sem agenda (next velho)
+      certo(r.t === CONVITE && r.a, '=agenda sem a agenda: ' + JSON.stringify(r));
+    } finally { SEM_AGENDA = false; }
+    return 'conectada: sem o link (com =agenda ou =1); sem a agenda: Conectar agenda (com =1 ou =agenda)';
   }],
 ];
 

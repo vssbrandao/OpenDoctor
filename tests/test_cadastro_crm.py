@@ -540,8 +540,209 @@ def test_google_registro_recusado_e_verificado(monkeypatch):
     assert c.post("/auth/google/registro", json=REG).json() == {"error": "crm_nao_encontrado"} and criadas == []
     _cfm_simulado(monkeypatch)
     r = c.post("/auth/google/registro", json=REG)
-    assert r.json() == {"ok": True, "redirect": auth.HOME + "?bemvindo=1"}
+    j = r.json()
+    assert j["ok"] and j["redirect"] == auth.HOME + "?bemvindo=1" and "bloqueio" not in j and j["agenda"]
     assert criadas[0][2]["status"] == "verificado" and fake.users["nova@clinica.com.br"]["crm_fonte"] == "cfm"
+
+
+# ----- conta nova pelo Google: a permissão do Google Agenda logo depois do Registro -----
+
+def _agenda_do_registro(c):
+    """Conclui o Registro do Google: a resposta, a URL da permissão da agenda (partes) e os parâmetros dela."""
+    import urllib.parse as up
+    r = c.post("/auth/google/registro", json=REG)
+    url = up.urlparse(r.json()["agenda"])
+    return r, url, {k: v[0] for k, v in up.parse_qs(url.query).items()}
+
+
+def _volta_da_agenda(c, q, antes="code=x&"):
+    import urllib.parse as up
+    return c.get("/auth/google/callback?" + antes + "state=" + up.quote(q["state"]), follow_redirects=False)
+
+
+def _grava_agenda(monkeypatch, erro=None):
+    from app import integrations
+    gravou = []
+
+    def troca(prov, code, uid):
+        if erro:
+            raise erro
+        gravou.append((prov, code, uid))
+    monkeypatch.setattr(integrations, "exchange_and_store", troca)
+    return gravou
+
+
+def _cal_apagado(r):
+    """O nonce da agenda sai do navegador (um Set-Cookie só)."""
+    hs = [h for h in r.headers.get_list("set-cookie") if h.startswith(auth.CAL_COOKIE + "=")]
+    return len(hs) == 1 and "Max-Age=0" in hs[0]
+
+
+def test_google_registro_segue_para_a_permissao_da_agenda(monkeypatch):
+    """A conta nasce e a tela de login vai direto ao Google pedir a agenda, já aberto na conta do médico; o Registro
+    (nome, CPF, nascimento, CRM) não vai na URL do Google."""
+    from app import integrations
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _google(monkeypatch, fake)
+    _cfm_simulado(monkeypatch)
+    _volta_do_google(c, "?next=/opendoctor-configuracoes.html")
+    r, url, q = _agenda_do_registro(c)
+    assert r.json()["redirect"] == "/opendoctor-configuracoes.html" and auth.COOKIE_NAME in r.cookies
+    assert f"{url.scheme}://{url.netloc}{url.path}" == integrations.PROVIDERS["google"]["auth"]
+    assert q["scope"] == integrations.PROVIDERS["google"]["scope"] and q["login_hint"] == "nova@clinica.com.br"
+    assert q["access_type"] == "offline" and q["prompt"] == "consent" and q["redirect_uri"].endswith("/auth/google/callback")
+    st = auth.unsign(q["state"])
+    assert {k: v for k, v in st.items() if k != "t"} == {
+        "k": "cal", "prov": "google", "uid": "u-nova@clinica.com.br", "n": r.cookies.get(auth.CAL_COOKIE), "ap": 1,
+        "nx": "/opendoctor-configuracoes.html"}
+    assert set(q) == {"client_id", "redirect_uri", "response_type", "scope", "state", "access_type", "prompt",
+                      "include_granted_scopes", "login_hint"}                  # nada além do que a conexão pede
+    import urllib.parse as up
+    url_inteira = up.unquote_plus(r.json()["agenda"]) + json.dumps(st)
+    for dado in ("Ana", "Lima", CPF, "529.982.247-25", "12/05/1985", "1985-05-12", "123456"):
+        assert dado not in url_inteira
+    assert any(h.startswith(auth.CAL_COOKIE + "=") and "HttpOnly" in h and "Path=/auth/" in h
+               for h in r.headers.get_list("set-cookie"))
+
+
+def test_agenda_do_cadastro_conectada_volta_ao_app_com_as_boas_vindas(monkeypatch):
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _google(monkeypatch, fake)
+    _cfm_simulado(monkeypatch)
+    _volta_do_google(c)
+    _, _, q = _agenda_do_registro(c)
+    gravou = _grava_agenda(monkeypatch)
+    r = _volta_da_agenda(c, q)
+    assert r.headers["location"] == auth.HOME + "?bemvindo=agenda" and gravou == [("google", "x", "u-nova@clinica.com.br")]
+    assert _cal_apagado(r)
+    assert _volta_da_agenda(c, q).headers["location"] == auth.HOME + "?bemvindo=1" and len(gravou) == 1   # o nonce já saiu
+
+
+def test_agenda_do_cadastro_pendente_conecta_e_vai_para_a_espera(monkeypatch):
+    """Conta pendente (sem a chave do CFM, toda conta nova): a agenda já fica pronta para a aprovação; a espera leva o
+    destino com as boas-vindas para quando liberar."""
+    import urllib.parse as up
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _google(monkeypatch, fake)
+    _volta_do_google(c)
+    r, _, q = _agenda_do_registro(c)
+    assert r.json()["bloqueio"] == "crm_pendente"
+    gravou = _grava_agenda(monkeypatch)
+    r = _volta_da_agenda(c, q)
+    assert r.headers["location"] == "/opendoctor-login.html?next=" + up.quote(auth.HOME + "?bemvindo=agenda", safe="")
+    assert gravou == [("google", "x", "u-nova@clinica.com.br")]
+
+
+def test_agenda_nao_fica_na_conta_recusada_enquanto_o_medico_estava_no_google(monkeypatch):
+    """O administrador recusa o cadastro com o médico ainda na tela do Google: o Permitir não grava a agenda (antes da
+    troca), e a troca que já estava em andamento quando a recusa chegou é desfeita (a releitura vê a recusa)."""
+    import urllib.parse as up
+    from app import integrations
+    for quando in ("antes", "durante"):
+        fake = _Fake()
+        c = _client(monkeypatch, fake)
+        _google(monkeypatch, fake)
+        _volta_do_google(c)
+        _, _, q = _agenda_do_registro(c)
+        conta = fake.users["nova@clinica.com.br"]
+        # como o banco: cada leitura é uma cópia (a conta da sessão é o retrato do início do pedido)
+        monkeypatch.setattr(db, "get_user", lambda uid: dict(conta) if uid == conta["id"] else None)
+        gravou, apagou = [], []
+
+        def troca(prov, code, uid):
+            gravou.append((prov, uid))
+            if quando == "durante":
+                conta["crm_status"] = "recusado"                   # a recusa chega enquanto o Google respondia
+        monkeypatch.setattr(integrations, "exchange_and_store", troca)
+        monkeypatch.setattr(db, "delete_token", lambda uid, prov: apagou.append((uid, prov)))
+        if quando == "antes":
+            conta["crm_status"] = "recusado"
+        r = _volta_da_agenda(c, q)
+        assert r.headers["location"] == "/opendoctor-login.html?next=" + up.quote(auth.HOME + "?bemvindo=1", safe="")
+        if quando == "antes":
+            assert gravou == [] and apagou == []
+        else:
+            assert gravou == [("google", "u-nova@clinica.com.br")] and apagou == [("u-nova@clinica.com.br", "google")]
+        assert _cal_apagado(r)
+
+
+def test_agenda_do_cadastro_depois_do_prazo_segue_sem_ela(monkeypatch):
+    """Mais de 15 min na tela do Google: o state vencido não grava nada, mas a conta segue para onde ia (não cai em
+    "Erro de conexão" sem o destino)."""
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _google(monkeypatch, fake)
+    _cfm_simulado(monkeypatch)
+    _volta_do_google(c, "?next=/opendoctor-configuracoes.html")
+    _, _, q = _agenda_do_registro(c)
+    gravou = _grava_agenda(monkeypatch)
+    monkeypatch.setattr(auth, "STATE_MAX_AGE", -1)                           # todo state já passou do prazo
+    for antes in ("code=x&", "error=access_denied&"):
+        r = _volta_da_agenda(c, q, antes)
+        assert r.headers["location"] == "/opendoctor-configuracoes.html" and gravou == []
+        assert _cal_apagado(r)
+    # o state vencido de outra coisa (o login, a conexão em Integrações) continua como antes
+    velho = auth.sign({"k": "cal", "prov": "google", "uid": "u-nova@clinica.com.br", "n": "x"})
+    r = c.get("/auth/google/callback?code=x&state=" + velho, follow_redirects=False)
+    assert r.headers["location"].startswith("/opendoctor-login.html?erro=conexao") and gravou == []
+
+
+def test_agenda_do_cadastro_com_outra_conta_logada_nao_da_as_boas_vindas(monkeypatch):
+    """A cria a conta e vai ao Google; no mesmo navegador, B (conta antiga) entra; A toca em Permitir (ou o state velho
+    volta pelo histórico): nada é gravado, e B não recebe as boas-vindas de primeiro acesso."""
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _google(monkeypatch, fake)
+    _cfm_simulado(monkeypatch)
+    _volta_do_google(c)
+    _, _, q = _agenda_do_registro(c)
+    fake.users.update(_user("antiga@clinica.com.br"))
+    assert c.post("/auth/password/login", json={"email": "antiga@clinica.com.br", "password": PW}).json()["ok"]
+    gravou = _grava_agenda(monkeypatch)
+    r = _volta_da_agenda(c, q)
+    assert r.headers["location"] == auth.HOME and gravou == []
+    monkeypatch.setattr(auth, "STATE_MAX_AGE", -1)                           # o mesmo state, vencido
+    for antes in ("code=x&", "error=access_denied&"):
+        assert _volta_da_agenda(c, q, antes).headers["location"] == auth.HOME and gravou == []
+
+
+@pytest.mark.parametrize("como", ["cancelou", "desmarcou", "erro", "outro_navegador"])
+def test_agenda_do_cadastro_sem_a_permissao_segue_sem_ela(monkeypatch, como):
+    """Cancelou no Google, desmarcou a caixa da agenda, o Google falhou ou o retorno chegou noutro navegador: a conta já
+    existe e segue para o app (ou a espera) com as boas-vindas de sempre, que convidam a conectar; nada é gravado."""
+    import urllib.parse as up
+    from app import integrations
+    for pendente in (False, True):
+        fake = _Fake()
+        c = _client(monkeypatch, fake)
+        _google(monkeypatch, fake)
+        if not pendente:
+            _cfm_simulado(monkeypatch)
+        else:
+            monkeypatch.setattr(cfm, "configured", lambda: False)
+        _volta_do_google(c)
+        _, _, q = _agenda_do_registro(c)
+        erro = {"desmarcou": integrations.MissingScope("sem a permissão da agenda"),
+                "erro": RuntimeError("token 400: invalid_grant")}.get(como)
+        gravou = _grava_agenda(monkeypatch, erro)
+        if como == "cancelou":
+            r = _volta_da_agenda(c, q, "error=access_denied&")
+        elif como == "outro_navegador":
+            r = _volta_da_agenda(TestClient(server.app), q)
+        else:
+            r = _volta_da_agenda(c, q)
+        dest = auth.HOME + "?bemvindo=1"
+        if como == "outro_navegador":                         # sem a conta, sem as boas-vindas (o app manda entrar)
+            dest = auth.HOME
+        elif pendente:
+            dest = "/opendoctor-login.html?next=" + up.quote(dest, safe="")
+        assert r.headers["location"] == dest, (como, pendente)
+        assert gravou == []
+        if como != "outro_navegador":
+            assert _cal_apagado(r)
 
 
 def test_google_registro_nao_entra_em_conta_que_passou_a_existir(monkeypatch):
@@ -914,6 +1115,8 @@ def test_administrador_aprova_e_recusa(monkeypatch):
         decisoes.append((uid, aprovado))
         return pendentes.pop(uid, None)
     monkeypatch.setattr(db, "decide_crm", decide)
+    apagou = []
+    monkeypatch.setattr(db, "delete_token", lambda uid, prov: apagou.append((uid, prov)))
     monkeypatch.setattr(mailer, "configured", lambda: True)
     monkeypatch.setattr(mailer, "send_crm_decision", lambda to, name="", aprovado=True: enviados.append((to, aprovado)))
     j = c.get("/admin/cadastros").json()
@@ -924,12 +1127,13 @@ def test_administrador_aprova_e_recusa(monkeypatch):
     assert c.post("/admin/cadastros/aprovar", content=json.dumps({"id": UID}), headers={"content-type": "text/plain"}).json()["error"] == "id_invalido"
     r = c.post("/admin/cadastros/aprovar", json={"id": UID.upper()})
     assert r.json() == {"ok": True, "email_enviado": True}
-    assert decisoes == [(UID, True)] and enviados == [("ana@clinica.com.br", True)]
+    assert decisoes == [(UID, True)] and enviados == [("ana@clinica.com.br", True)] and apagou == []   # a agenda fica
     r = c.post("/admin/cadastros/recusar", json={"id": UID})                    # já decidido: não muda nem avisa de novo
-    assert r.status_code == 409 and r.json()["error"] == "nao_pendente" and len(enviados) == 1
+    assert r.status_code == 409 and r.json()["error"] == "nao_pendente" and len(enviados) == 1 and apagou == []
     pendentes[UID] = {"id": UID, "email": "ana@clinica.com.br", "name": "Ana Lima"}
     assert c.post("/admin/cadastros/recusar", json={"id": UID}).json()["ok"]
     assert enviados[-1] == ("ana@clinica.com.br", False)
+    assert apagou == [(UID, "google"), (UID, "microsoft")]              # a agenda conectada no cadastro não fica guardada
 
 
 def test_lista_de_cadastros_cortada_avisa_que_ha_mais(monkeypatch):

@@ -395,6 +395,10 @@ def cleanup_old_records():
         for table, keep in RETENTION.items():
             cur = conn.execute(f"delete from {table} where created_at < now() - interval '{keep}'")
             out[table] = cur.rowcount
+        # conta recusada não guarda a agenda: a recusa já apaga; isto cobre a falha dela e uma volta do Google que a
+        # recusa não viu (a agenda pedida logo depois do cadastro pelo Google)
+        cur = conn.execute("delete from oauth_tokens where user_id in (select id from users where crm_status = 'recusado')")
+        out["oauth_tokens_recusadas"] = cur.rowcount
         conn.commit()
     return out
 

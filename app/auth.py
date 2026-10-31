@@ -184,15 +184,20 @@ def safe_next(nxt) -> str:
     parts = urllib.parse.urlsplit(nxt)
     if parts.scheme or parts.netloc:
         return HOME
+    if "bemvindo" in parts.query:
+        # a marca de primeiro acesso não viaja no destino: só o servidor a põe (with_welcome), na conta que acabou de
+        # nascer — senão um next velho (o histórico da aba) a levaria para outra conta que entrasse ali
+        q = [kv for kv in parts.query.split("&") if kv.split("=", 1)[0] != "bemvindo"]
+        nxt = urllib.parse.urlunsplit(("", "", parts.path, "&".join(q), parts.fragment))
     return nxt
 
 
-def with_welcome(url: str) -> str:
-    """Marca o primeiro acesso para a agenda mostrar as boas-vindas."""
+def with_welcome(url: str, agenda: bool = False) -> str:
+    """Marca o primeiro acesso para a agenda mostrar as boas-vindas (`agenda`: o Google Agenda já ficou conectado)."""
     if not url.split("?")[0].split("#")[0] == HOME:
         return url
     base, _, frag = url.partition("#")
-    base += ("&" if "?" in base else "?") + "bemvindo=1"
+    base += ("&" if "?" in base else "?") + "bemvindo=" + ("agenda" if agenda else "1")
     return base + ("#" + frag if frag else "")
 
 

@@ -449,9 +449,19 @@
         if (step === 'confirmar') { clearErrs($('confForm')); $('cCpf').focus(); }
         if (step === 'aguardando') { espera.ult = Date.now(); esperaAgenda(); } else esperaPara();
       }
-      // login concluído; na espera, o destino que o servidor deu (auth.safe_next) fica guardado para quando liberar
+      // login concluído; na espera, o destino que o servidor deu (auth.safe_next) fica guardado para quando liberar. Conta
+      // nova pelo Google: antes, a permissão do Google Agenda (o servidor volta dela para o app ou para a espera)
       function done(j) {
-        if (j.bloqueio) { espera.dest = safeNext(j.redirect || ''); waitFor(j.bloqueio); }
+        if (j.agenda) {
+          // o Voltar da tela do Google (a conta já existe) segue para o destino do cadastro, com as boas-vindas: ele fica
+          // no lugar do registro=google, na URL desta entrada do histórico (sem o cache do navegador a página recarrega). Vai
+          // em `params`, que a espera também usa para reescrever a URL
+          nextUrl = espera.dest = safeNext(j.redirect || '');
+          if (nextUrl) params.set('next', nextUrl); else params.delete('next');
+          history.replaceState({ step: 'email' }, '', semRegistro());
+          limpaCadastro(); go(j.agenda);
+        }
+        else if (j.bloqueio) { espera.dest = safeNext(j.redirect || ''); waitFor(j.bloqueio); }
         else { limpaCadastro(); go(j.redirect); }
       }
 

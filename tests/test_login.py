@@ -61,6 +61,11 @@ def test_safe_next():
         assert auth.safe_next(bad) == auth.HOME
     assert auth.with_welcome(auth.HOME) == auth.HOME + "?bemvindo=1"
     assert auth.with_welcome(auth.HOME + "#pacientes") == auth.HOME + "?bemvindo=1#pacientes"
+    assert auth.with_welcome(auth.HOME + "#pacientes", agenda=True) == auth.HOME + "?bemvindo=agenda#pacientes"
+    # a marca de primeiro acesso não viaja no next (um next velho da aba a levaria para outra conta); o resto fica
+    assert auth.safe_next(auth.HOME + "?bemvindo=agenda") == auth.HOME
+    assert auth.safe_next("/opendoctor-agenda.html?a=1&bemvindo=1&b=2#pacientes") == "/opendoctor-agenda.html?a=1&b=2#pacientes"
+    assert auth.with_welcome(auth.safe_next(auth.HOME + "?bemvindo=agenda")) == auth.HOME + "?bemvindo=1"
     assert auth.with_welcome("/opendoctor-integracao.html") == "/opendoctor-integracao.html"
 
 

@@ -43,6 +43,40 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - Não há código: o Google já confirmou o e-mail.
   - O cookie só cria conta. Se o e-mail (ou a conta Google, pelo `sub`) ganhou uma conta no meio do caminho, a resposta
     é `sessao_expirada` e o médico entra de novo pelo Google: uma cópia do cookie não vale como login.
+- **A agenda, logo depois** (pedido do dono, 31/10): com a conta criada, a tela de login vai direto ao Google pedir a
+  permissão do Google Agenda. É a mesma conexão de Integrações, já aberta na conta do médico: um toque em Permitir.
+  - O login pelo Google continua pedindo só nome, e-mail e foto. O botão do Google aparece antes do e-mail, então nessa
+    hora não se sabe quem vai criar conta: pedir a agenda ali seria pedi-la a todo login.
+  - **Resposta:** o `/auth/google/registro` devolve `agenda` (a URL do Google: o escopo da agenda, `login_hint` com o
+    e-mail, `access_type=offline`, `prompt=consent`) e põe o nonce no cookie `od_oauth_cal`. A tela de login vai para lá
+    em vez do `redirect`, mesmo na conta pendente. Nada do Registro vai na URL.
+  - **O state** é o da conexão de Integrações (`k=cal`, a conta, o nonce deste navegador), com `ap=1` e o destino do
+    cadastro (`nx`). A volta grava a agenda com a mesma conferência: nonce neste navegador, a conta logada nele, o mesmo
+    provedor.
+  - **Volta (`_agenda_volta`):** com a agenda, o destino com `?bemvindo=agenda`; a agenda diz "Sua agenda do Google já
+    está conectada", sem o link. Sem ela (cancelou, desmarcou a caixa da agenda, o Google falhou, outro navegador, mais
+    de 15 min na tela do Google), o destino com `?bemvindo=1`, que convida a conectar, sem mensagem de erro: a conta já
+    existe e a agenda se conecta depois em Integrações. Conta que ainda não usa o app vai para a espera com esse destino
+    no `next`, que abre quando liberar.
+    - **Prazo:** o state vencido não grava nada, mas o da agenda do cadastro (`ap=1`, assinatura conferida) ainda escolhe
+      o destino; os outros vencidos continuam em "Erro de conexão".
+    - **O Voltar** da tela do Google não passa pelo servidor: antes de sair, a tela de login troca o `registro=google` da
+      URL pelo `next` com o destino do cadastro, e o Voltar (com ou sem o cache do navegador) vai a ele, ou à espera, que
+      mantém o `next` (inclusive num F5).
+    - **Só a conta do state** recebe as boas-vindas: outra conta logada naquele navegador (ou nenhuma) volta ao destino
+      sem elas.
+    - **As boas-vindas seguem a agenda de verdade:** o `bemvindo` é só o palpite; a 1ª resposta do `/calendar/events`
+      decide o texto (conectada e sem reconectar: "já está conectada", sem o link; senão, o convite).
+    - **O `bemvindo` não viaja no `next`:** o `auth.safe_next` o tira (só o servidor o põe, na conta que acabou de
+      nascer). Um `next` velho no histórico da aba não leva as boas-vindas a outra conta que entre ali.
+  - **Conta pendente:** a agenda já fica conectada, pronta para a aprovação. Se o cadastro for **recusado**, a conexão é
+    apagada (todos os provedores); a aprovação não mexe nela.
+    - **Recusa com o médico ainda na tela do Google:** a volta não grava na conta recusada; a troca que já estava em
+      andamento relê a conta depois de gravar e, recusada, apaga (a recusa grava a decisão antes de apagar: nenhuma
+      ordem deixa a agenda).
+    - **Limpeza diária** (`db.cleanup_old_records`): apaga a agenda de toda conta recusada, para a falha da recusa (o 2º
+      clique dá 409 e não apaga de novo) e o que escapar.
+  - O cadastro por e-mail e senha não muda: a agenda continua em Integrações (e no convite das boas-vindas).
 - A seta volta para a tela inicial.
 - **Contas Google que já existem:** entram como sempre, desde que o Google tenha confirmado o e-mail.
 - **Conta Google cujo e-mail mudou no Google** (o `sub` já é de uma conta do OpenDoctor com o e-mail antigo): nem o
@@ -162,6 +196,7 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - `POST /admin/cadastros/aprovar | recusar` com `{"id"}` (JSON).
   - Só muda uma conta que ainda está pendente: dois cliques não decidem duas vezes.
   - Grava `crm_fonte = 'manual'`.
+  - Recusar apaga a agenda conectada no cadastro pelo Google (a falha só vai para o log).
 - **E-mails (Resend):**
   - **Aos administradores**, a cada cadastro pendente: só o nome e o CRM/UF do médico. Um a um: o endereço que o
     Resend recusa não impede os outros. O nome digitado não vira link, neste e em todo e-mail (a saudação do código
@@ -272,6 +307,10 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - cadastro verificado, pendente e recusado;
   - Google, inclusive o e-mail não verificado pelo Google (recusado na conta que existe e na nova; verificado segue
     igual), o `email_verified`/`verified_email` lido do userinfo e do `id_token`, e o cookie do Registro sem a marca;
+  - a agenda depois do Registro pelo Google: a URL (só os parâmetros da conexão, nada do Registro), o state e o
+    cookie; a volta conectada (`bemvindo=agenda`), na conta pendente (a espera com o destino) e sem a permissão
+    (cancelou, desmarcou, erro, outro navegador, prazo vencido: `bemvindo=1`, nada gravado); a recusa antes e durante a
+    troca; recusar apaga a conexão, aprovar não; o `bemvindo` fora do `next` (`tests/test_login.py`);
   - a espera;
   - confirmação (pedida no login; CFM sem responder deixa a sessão seguir; limite por conta);
   - "Liberar sem confirmar": só administrador (403), só conta aprovada à mão (409), de novo sem mudar nada, a sessão
@@ -283,7 +322,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - trava do CRM em Configurações.
 - **`tests/test_db_integration.py`:** no banco de testes, inclusive dois cadastros do mesmo CRM ao mesmo tempo (um só
   fica verificado), o contador `cfm_tentativas`, o e-mail na lista de pendentes e a liberação sem confirmar (lista dos
-  aprovados à mão com as falhas, só conta aprovada à mão, a data da primeira liberação fica).
+  aprovados à mão com as falhas, só conta aprovada à mão, a data da primeira liberação fica) e a limpeza que tira a
+  agenda só da conta recusada.
   - A 0019 vai ao banco de testes sozinha (o `scripts.setup_test_db` refaz todas): com as mesmas travas dele (marca de
     banco de testes, projeto diferente do de produção), aplicar só o arquivo da 0019.
 - **`tests/test_laco_de_eventos.py`:** o CFM entra na lista do que só roda fora do laço.
@@ -291,4 +331,7 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 - **E2E:** `node tests/e2e/cadastro.mjs`. Chrome sem tela, sem servidor; `SHOT=/pasta` salva as telas.
   - A espera com o relógio curto (`OD_ESPERA_MS` = 250 ms) e a aba escondida simulada; o intervalo de verdade (30 s);
     o aviso do Google não verificado; a lista dos aprovados à mão e o "Liberar sem confirmar".
+  - O Registro pelo Google vai à permissão da agenda (também a conta pendente); o Voltar dela abre o app (ou a espera,
+    que liberada abre o destino) com `bemvindo=1`; a espera depois da agenda abre o destino com `bemvindo=agenda`.
+    `node tests/e2e/agenda.mjs`: as boas-vindas pela agenda de verdade (`=1` e `=agenda`, com e sem agenda conectada).
 - **Conftest:** zera `CFM_CHAVE`, então nenhum teste chama o CFM de verdade.
