@@ -274,7 +274,12 @@
             CAMPOS.forEach(function (k) { f[k].value = m[k] || ''; salvo[k] = f[k].value; });
             papel = m.receita_papel || 'A4';
             [].forEach.call(p.querySelectorAll('input'), function (r) { r.checked = r.value === papel; });
-            ultFaltam = res.j.faltam || []; carregado = true; campos(true); sync();
+            ultFaltam = res.j.faltam || []; carregado = true; campos(true);
+            if (res.j.crm_conferido) {           // CRM conferido no cadastro (CFM ou à mão): vai na receita, não se troca aqui
+              f.crm.disabled = f.crm_uf.disabled = true;
+              document.getElementById('cfCrmH').textContent = 'Conferido no cadastro';
+            }
+            sync();
           })
           .catch(function () { e1 = 'Não foi possível carregar seus dados.'; retry.hidden = false; sync(); });
       }

@@ -20,4 +20,6 @@ Usa a `OPENAI_API_KEY` do `.env` da raiz do projeto (`../.env`).
 
 ## Conteúdo
 - `opendoctor-agenda.html` — a tela (SVGs inline; fontes em `assets/fonts/`)
+- `opendoctor-login.html` — entrar / criar conta, com o Registro profissional (CRM conferido; `docs/cadastro-crm.md`)
+- `opendoctor-cadastros.html` — cadastros de médicos esperando a conferência do CRM (só administradores)
 - `assets/fonts/` — Helvetica Now Display (Regular/Medium/Bold)

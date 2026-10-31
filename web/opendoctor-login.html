@@ -107,6 +107,23 @@
     .rules li.ok::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.3l3 3 6-6.6' fill='none' stroke='%23000033' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
     .forgot{align-self:flex-start;margin:0 32px;font-weight:500;font-size:14px;line-height:1.4;color:#6B6B70}
     .sr-user{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}   /* usuário para o gerenciador de senhas */
+    /* Registro profissional (Figma 1178-7176): seta de voltar (SF arrow.backward 16px, caixa 19×18 em y=60) no lugar
+       do logo; título em y=155 (77px abaixo da seta); campos de 84px com 8px entre eles, em 3 linhas (Nome; CPF |
+       Nascimento; CRM | UF); botão 16px abaixo, #10132C */
+    .back{position:relative;display:block;width:19px;height:18px;padding:3px 2px 2px;border:0;background:none;color:#000;cursor:pointer}
+    .back::before{content:"";position:absolute;inset:-11px}                   /* área de toque maior, sem mexer no layout */
+    .back svg{display:block}
+    .back:focus-visible{outline:2px solid #0B57D0;outline-offset:2px;border-radius:4px}
+    .col.at-registro .logo{display:none}
+    .col.at-registro .main{margin-top:77px}
+    .reg-form{display:flex;flex-direction:column;gap:16px}
+    .reg-fields{display:flex;flex-direction:column;gap:8px}
+    .reg-row{display:flex;gap:8px;align-items:flex-start}
+    .reg-cell{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:8px}
+    [data-step="registro"] .fl-label{color:#000}      /* rótulo vazio preto como no Figma; digitando, o de sempre (12px #7D7D82) */
+    .btn-reg{background:#10132C}
+    .btn-reg:hover{background:#1B1F3F}
+    .wait-link{align-self:flex-start}
     .legal{margin-top:auto;padding-top:48px;width:447px;max-width:100%;   /* 447 (Figma: 341) para caber em 2 linhas com o link da Política de Privacidade */
      font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
     .legal a{color:inherit;text-decoration:underline;text-underline-offset:2px}
@@ -134,6 +151,10 @@
     </div>
     <div class="side">
       <div class="col">
+        <!-- Registro profissional: volta para a senha (Figma 1178-7259, SF arrow.backward) -->
+        <button class="back" id="back" type="button" aria-label="Voltar" hidden>
+          <svg width="15" height="13" viewBox="0 0 15 13" fill="none" aria-hidden="true"><path d="M4.46825 7.00794L2.61905 6.89683L4.96032 9.03968L6.7381 10.8413C6.89683 10.9921 6.99206 11.2063 6.99206 11.4524C6.99206 11.9286 6.63492 12.2857 6.13492 12.2857C5.92063 12.2857 5.70635 12.1984 5.51587 12.0159L0.285714 6.78571C0.103175 6.61111 0 6.38095 0 6.14286C0 5.90476 0.103175 5.66667 0.285714 5.5L5.5 0.277778C5.70635 0.0793651 5.92063 0 6.13492 0C6.63492 0 6.99206 0.349206 6.99206 0.825397C6.99206 1.07143 6.89683 1.28571 6.7381 1.44444L4.96032 3.24603L2.61905 5.38095L4.46825 5.27778H14.119C14.6349 5.27778 15 5.62698 15 6.14286C15 6.65079 14.6349 7.00794 14.119 7.00794H4.46825Z" fill="currentColor"/></svg>
+        </button>
         <img class="logo" src="assets/login/logo-simbolo.svg" width="34" height="34" alt="OpenDoctor">
         <div class="main">
           <div class="head">
@@ -169,11 +190,9 @@
             <button class="resend-link forgot-link" id="forgotBtn" type="button">Esqueci minha senha</button>
           </form>
 
-          <!-- 3. criar conta (e-mail sem conta) -->
+          <!-- 3. criar conta (e-mail sem conta): só a senha; o nome vai no Registro profissional -->
           <form class="email-form" data-step="signup" id="signupForm" novalidate hidden>
             <input class="sr-user" type="email" autocomplete="username" tabindex="-1" aria-hidden="true" data-user>
-            <div class="fl"><input class="fl-input" id="name" type="text" placeholder=" " autocomplete="name" maxlength="120" autocapitalize="words" enterkeyhint="next" aria-describedby="nameErr"><label class="fl-label" for="name">Nome completo</label></div>
-            <div class="err" id="nameErr" role="alert" hidden></div>
             <div class="fl pw"><input class="fl-input" id="newPw" type="password" placeholder=" " autocomplete="new-password" enterkeyhint="go" aria-describedby="newPwErr"><label class="fl-label" for="newPw">Crie uma senha</label>
               <button class="eye" type="button" aria-label="Mostrar senha" aria-pressed="false" data-eye="newPw">
                 <svg class="on" width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true"><path d="M1.8 11s3.4-6.2 9.2-6.2 9.2 6.2 9.2 6.2-3.4 6.2-9.2 6.2S1.8 11 1.8 11z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="11" cy="11" r="2.9" stroke="currentColor" stroke-width="1.6"/></svg>
@@ -186,7 +205,39 @@
               <li data-rule="letras">Letras maiúsculas e minúsculas e 2 números</li>
               <li data-rule="especial">Pelo menos 1 caractere especial (ex.: ! $ @ %)</li>
             </ul>
-            <button class="btn btn-dark" id="signupGo" type="submit">Criar conta</button>
+            <button class="btn btn-dark" id="signupGo" type="submit">Continuar</button>
+          </form>
+
+          <!-- 3b. Registro profissional (Figma 1178-7176): só médicos criam conta. Vem da senha (e-mail) ou da volta do
+               Google com um e-mail sem conta. O CPF e o nascimento vão só para a conferência no CFM, não ficam guardados -->
+          <form class="reg-form" data-step="registro" id="regForm" novalidate hidden>
+            <div class="reg-fields">
+              <div class="reg-cell">
+                <div class="fl"><input class="fl-input" id="rNome" type="text" placeholder=" " autocomplete="name" maxlength="120" autocapitalize="words" enterkeyhint="next" aria-describedby="rNomeErr"><label class="fl-label" for="rNome">Nome</label></div>
+                <div class="err" id="rNomeErr" role="alert" hidden></div>
+              </div>
+              <div class="reg-row">
+                <div class="reg-cell">
+                  <div class="fl"><input class="fl-input" id="rCpf" type="text" placeholder=" " autocomplete="off" inputmode="numeric" maxlength="14" enterkeyhint="next" data-mask="cpf" aria-describedby="rCpfErr"><label class="fl-label" for="rCpf">CPF</label></div>
+                  <div class="err" id="rCpfErr" role="alert" hidden></div>
+                </div>
+                <div class="reg-cell">
+                  <div class="fl"><input class="fl-input" id="rNasc" type="text" placeholder=" " autocomplete="bday" inputmode="numeric" maxlength="10" enterkeyhint="next" data-mask="data" aria-describedby="rNascErr"><label class="fl-label" for="rNasc">Nascimento</label></div>
+                  <div class="err" id="rNascErr" role="alert" hidden></div>
+                </div>
+              </div>
+              <div class="reg-row">
+                <div class="reg-cell">
+                  <div class="fl"><input class="fl-input" id="rCrm" type="text" placeholder=" " autocomplete="off" inputmode="numeric" maxlength="24" enterkeyhint="next" aria-describedby="rCrmErr"><label class="fl-label" for="rCrm">CRM</label></div>
+                  <div class="err" id="rCrmErr" role="alert" hidden></div>
+                </div>
+                <div class="reg-cell">
+                  <div class="fl"><input class="fl-input" id="rUf" type="text" placeholder=" " autocomplete="off" maxlength="2" autocapitalize="characters" spellcheck="false" enterkeyhint="go" aria-describedby="rUfErr"><label class="fl-label" for="rUf">UF</label></div>
+                  <div class="err" id="rUfErr" role="alert" hidden></div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-dark btn-reg" id="regGo" type="submit">Criar conta</button>
           </form>
 
           <!-- 4. código de 6 dígitos (confirmar cadastro / redefinir senha) — Figma 1046-44660 -->
@@ -244,6 +295,32 @@
           <div class="email-form" data-step="erro" hidden>
             <button class="btn btn-dark" id="backBtn" type="button">Voltar para entrar</button>
           </div>
+
+          <!-- 8. conta que ainda não usa o app: CRM em conferência (aprovação à mão) ou recusado — só título e texto -->
+          <div class="email-form" data-step="aguardando" hidden>
+            <a class="resend-link wait-link" href="/auth/logout">Sair</a>
+          </div>
+          <div class="email-form" data-step="recusado" hidden>
+            <a class="resend-link wait-link" href="/auth/logout">Sair</a>
+          </div>
+
+          <!-- 9. conta aprovada à mão: confirma CPF e nascimento no CFM (uma vez, quando a conferência automática existir) -->
+          <form class="reg-form" data-step="confirmar" id="confForm" novalidate hidden>
+            <div class="reg-fields">
+              <div class="reg-row">
+                <div class="reg-cell">
+                  <div class="fl"><input class="fl-input" id="cCpf" type="text" placeholder=" " autocomplete="off" inputmode="numeric" maxlength="14" enterkeyhint="next" data-mask="cpf" aria-describedby="cCpfErr"><label class="fl-label" for="cCpf">CPF</label></div>
+                  <div class="err" id="cCpfErr" role="alert" hidden></div>
+                </div>
+                <div class="reg-cell">
+                  <div class="fl"><input class="fl-input" id="cNasc" type="text" placeholder=" " autocomplete="bday" inputmode="numeric" maxlength="10" enterkeyhint="go" data-mask="data" aria-describedby="cNascErr"><label class="fl-label" for="cNasc">Nascimento</label></div>
+                  <div class="err" id="cNascErr" role="alert" hidden></div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-dark" id="confGo" type="submit">Confirmar</button>
+            <a class="resend-link wait-link" href="/auth/logout">Sair</a>
+          </form>
         </div>
         <p class="legal">Ao acessar este app e/ou criar uma conta de usuário, você concorda com os <a href="terms.html">Termos de Serviço</a> e a <a href="privacy.html">Política de Privacidade</a> da OpenDoctor.</p>
       </div>
@@ -262,11 +339,13 @@
       }
       var nextUrl = safeNext(params.get('next') || '');
       // codeMode: 'signup' (confirmar cadastro) | 'reset' (redefinir/criar senha); firstPw: conta Google criando a 1ª senha
-      var st = { email: '', ticket: '', resetTicket: '', codeMode: '', firstPw: false, emailOk: true }, timer = null;
+      // google: Registro profissional de quem voltou do Google com um e-mail sem conta (o perfil fica num cookie do servidor)
+      var st = { email: '', ticket: '', resetTicket: '', codeMode: '', firstPw: false, emailOk: true, google: false }, timer = null;
       var HOME = '/opendoctor-agenda.html';
       var TITLES = { email: 'Bem-vindo à OpenDoctor', password: 'Digite sua senha', signup: 'Crie sua conta',
-                     code: 'Confirme seu e-mail', reset: 'Crie uma nova senha', google: 'Entre com o Google',
-                     erro: 'Erro de conexão' };
+                     registro: 'Registro profissional', code: 'Confirme seu e-mail', reset: 'Crie uma nova senha',
+                     google: 'Entre com o Google', erro: 'Erro de conexão', aguardando: 'Estamos conferindo seu CRM',
+                     recusado: 'Não foi possível liberar sua conta', confirmar: 'Confirme seu registro' };
       var GENERIC = 'Ocorreu um erro. Tente novamente em instantes.', OFFLINE = 'Sem conexão. Verifique a internet e tente de novo.',
           TOO_FAST = 'Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo.';
 
@@ -309,6 +388,8 @@
         var col = document.querySelector('.col');
         col.classList.toggle('at-code', step === 'code');
         col.classList.toggle('at-password', step === 'password');
+        col.classList.toggle('at-registro', step === 'registro');
+        $('back').hidden = step !== 'registro';
         $('title').textContent = step === 'reset' && st.firstPw ? 'Crie uma senha' : TITLES[step];
         alertMsg('');
         [].forEach.call(document.querySelectorAll('[data-user]'), function (u) { u.value = st.email; });
@@ -319,10 +400,15 @@
         if (step === 'reset') sub(['Para a conta ', e, '.']);
         if (step === 'google') sub(['A conta ', e, ' foi criada com o Google.', true]);
         if (step === 'erro') sub(['Houve um problema ao conectar sua conta do Google. Tente entrar novamente.']);
+        if (step === 'registro') sub(null);
+        if (step === 'aguardando') sub(['Assim que confirmarmos seu registro no CFM, avisamos por e-mail e sua conta fica liberada.']);
+        if (step === 'recusado') sub(['Não conseguimos confirmar seu CRM no CFM. Se você acha que houve um engano, fale com a equipe do OpenDoctor.']);
+        if (step === 'confirmar') sub(['Para continuar, confirme seu CPF e sua data de nascimento. Eles são conferidos no CFM e não ficam guardados.']);
         $('wantPw').hidden = !st.emailOk;
         if (push) history.pushState({ step: step }, '');
       }
       var REACH = { password: function () { return !!st.email; }, signup: function () { return !!st.email; },
+                    registro: function () { return st.google || (!!st.email && !!$('newPw').value); },
                     google: function () { return !!st.email; },
                     code: function () { return st.codeMode === 'signup' ? !!st.ticket : st.codeMode === 'reset' && !!st.email; },
                     reset: function () { return !!st.resetTicket; } };
@@ -334,13 +420,23 @@
 
       function go(url) { location.href = url || nextUrl || HOME; }
       function busy(btn, on) { btn.disabled = on; }
+      // conta que entrou mas ainda não usa o app: CRM em conferência, recusado ou a confirmar no CFM
+      function waitFor(b) {
+        var step = b === 'crm_recusado' ? 'recusado' : b === 'crm_confirmar' ? 'confirmar' : 'aguardando';
+        show(step); history.replaceState({ step: step }, '');
+        if (step === 'confirmar') { clearErrs($('confForm')); $('cCpf').focus(); }
+      }
+      function done(j) { if (j.bloqueio) waitFor(j.bloqueio); else go(j.redirect); }   // resposta de login concluído
 
       // link do Google leva junto a página de origem
       if (nextUrl) $('google').href = '/auth/google/login?next=' + encodeURIComponent(nextUrl);
 
-      // quem já entrou vai direto
+      // quem já entrou vai direto (ou vê a espera da conferência do CRM)
       fetch('/me', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { if (j && j.logged_in) location.replace(nextUrl || HOME); }).catch(function () {});
+        .then(function (j) {
+          if (!j || !j.logged_in) return;
+          if (j.bloqueio) waitFor(j.bloqueio); else location.replace(nextUrl || HOME);
+        }).catch(function () {});
 
       // volta do Google / sessão expirada
       var erro = params.get('erro');
@@ -353,6 +449,13 @@
         history.replaceState({ step: simples ? 'email' : 'erro' }, '', location.pathname + (params.toString() ? '?' + params.toString() : ''));
       }
       $('backBtn').addEventListener('click', function () { show('email', true); $('email').focus(); });
+      // volta do Google com um e-mail sem conta: Registro profissional antes de a conta existir
+      if (params.get('registro') === 'google') {
+        st.google = true;
+        params.delete('registro');
+        history.replaceState({ step: 'registro' }, '', location.pathname + (params.toString() ? '?' + params.toString() : ''));
+        show('registro'); setTimeout(function () { $('rNome').focus(); }, 0);
+      }
 
       // mostrar/ocultar senha
       [].forEach.call(document.querySelectorAll('[data-eye]'), function (btn) {
@@ -468,7 +571,7 @@
           if (j.exists && j.password) { $('pw').value = ''; clearErrs($('pwForm')); show('password', true); $('pw').focus(); return; }
           if (j.exists) { show('google', true); return; }
           if (!st.emailOk) { alertMsg('Ainda não é possível criar conta com e-mail. Use Continuar com o Google.', true); return; }
-          clearErrs($('signupForm')); paintRules('newPw'); show('signup', true); $('name').focus();
+          st.google = false; clearErrs($('signupForm')); paintRules('newPw'); show('signup', true); $('newPw').focus();
         }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
       });
 
@@ -482,7 +585,7 @@
         post('/auth/password/login', { email: st.email, password: pw, next: nextUrl }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
-          if (res.ok && j.redirect) { go(j.redirect); return; }
+          if (res.ok && j.redirect) { done(j); return; }
           if (er === 'senha_incorreta') {
             fieldErr($('pw'), 'Senha incorreta.' + (j.left <= 2 ? (j.left === 1 ? ' Resta 1 tentativa' : ' Restam ' + j.left + ' tentativas') + ' antes de um bloqueio de 15 minutos.' : ''));
             $('pw').select(); return;
@@ -511,24 +614,174 @@
       $('wantPw').addEventListener('click', function () { st.firstPw = true; forgot($('wantPw')); });
       $('googleHint').addEventListener('click', function () { googleWithHint(st.email); });
 
-      // ----- 3. criar conta → código (modo signup) -----
-      var name = $('name');
-      name.addEventListener('input', function () { fieldErr(name, ''); });
+      // ----- 3. criar conta: senha → Registro profissional (sem ir ao servidor) -----
       $('signupForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var n = name.value.replace(/\s+/g, ' ').trim(), pw = $('newPw').value, first = null;
-        if (n.length < 2) { fieldErr(name, 'Digite seu nome completo.'); first = first || name; }
-        if (paintRules('newPw').length) { fieldErr($('newPw'), pw ? 'Confira os requisitos da senha abaixo.' : 'Crie uma senha.'); first = first || $('newPw'); }
+        var pw = $('newPw').value;
+        if (paintRules('newPw').length) { fieldErr($('newPw'), pw ? 'Confira os requisitos da senha abaixo.' : 'Crie uma senha.'); $('newPw').focus(); return; }
+        st.google = false; openRegistro();
+      });
+
+      // ----- 3b. Registro profissional → confere o CRM (servidor/CFM) → código (e-mail) ou conta criada (Google) -----
+      var UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN',
+                 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
+      var UF_RE = new RegExp('(^|[^A-Z])(' + UFS.join('|') + ')(?![A-Z])');
+      var rNome = $('rNome'), rCpf = $('rCpf'), rNasc = $('rNasc'), rCrm = $('rCrm'), rUf = $('rUf');
+      function digits(v) { return String(v || '').replace(/\D/g, ''); }
+      function maskCpf(v) {
+        var d = digits(v).slice(0, 11), o = d.slice(0, 3);
+        if (d.length > 3) o += '.' + d.slice(3, 6);
+        if (d.length > 6) o += '.' + d.slice(6, 9);
+        if (d.length > 9) o += '-' + d.slice(9);
+        return o;
+      }
+      function maskData(v) {
+        var iso = /^\s*(\d{4})-(\d{2})-(\d{2})\s*$/.exec(v || '');         // preenchimento automático (AAAA-MM-DD)
+        var d = (iso ? iso[3] + iso[2] + iso[1] : digits(v)).slice(0, 8), o = d.slice(0, 2);
+        if (d.length > 2) o += '/' + d.slice(2, 4);
+        if (d.length > 4) o += '/' + d.slice(4);
+        return o;
+      }
+      [].forEach.call(document.querySelectorAll('[data-mask]'), function (inp) {
+        var fn = inp.getAttribute('data-mask') === 'cpf' ? maskCpf : maskData;
+        inp.addEventListener('input', function () { var m = fn(inp.value); if (m !== inp.value) inp.value = m; fieldErr(inp, ''); alertMsg(''); });
+      });
+      // mesmas regras de cfm.separa_crm no servidor: tira a sigla CRM, a UF escrita junto (vai para o campo UF), o -P da
+      // inscrição provisória, o 52- com que o RJ mostra os números e o prefixo de outras inscrições (300-EMFE-1234567)
+      function separaCrm(texto, uf) {
+        var t = String(texto || '').normalize('NFKC').toUpperCase().replace(/CRM/g, ' ');
+        uf = String(uf || '').trim().toUpperCase();
+        var m = UF_RE.exec(t), achou = !!m;
+        if (m) { uf = m[2]; t = t.slice(0, m.index + m[1].length) + ' ' + t.slice(m.index + m[0].length); }
+        t = t.replace(/-\s*P(?![A-Z])/g, ' ');
+        var x = /^\D*\d+\s*-\s*[A-Z]+\s*-\s*(\d[\d.]*)/.exec(t);
+        if (x) t = x[1];
+        if (uf === 'RJ') t = t.replace(/^\D*52\s*[-.]\s*(?=\d)/, '');
+        return { crm: digits(t), uf: uf, achou: achou };
+      }
+      function normCrm() {
+        var raw = rCrm.value;
+        // "52-1234" ainda sem UF: espera a UF (no RJ, o 52- sai)
+        if (!rUf.value && !UF_RE.test(raw.toUpperCase().replace(/CRM/g, ' ')) && /^\D*52\s*[-.]\s*\d/.test(raw)) return;
+        var s = separaCrm(raw, rUf.value);
+        if (s.achou) { rUf.value = s.uf; fieldErr(rUf, ''); }
+        if (rCrm.value !== s.crm) rCrm.value = s.crm;
+      }
+      rCrm.addEventListener('input', function (e) {
+        fieldErr(rCrm, ''); alertMsg('');
+        var raw = rCrm.value.replace(/[^0-9A-Za-z\s\/.\-]/g, '');
+        if (/^\d*$/.test(raw)) { rCrm.value = raw.slice(0, 7); return; }                  // só números: até 7
+        rCrm.value = raw;
+        // colou, ou terminou de escrever a UF junto ("123456/SP"): arruma na hora; senão, ao sair do campo
+        if (e.inputType === 'insertFromPaste' || e.inputType === 'insertReplacementText' || UF_RE.test(raw.toUpperCase().replace(/CRM/g, ' '))) normCrm();
+      });
+      rCrm.addEventListener('blur', normCrm);
+      rUf.addEventListener('input', function () {
+        var v = rUf.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 2);
+        if (v !== rUf.value) rUf.value = v;
+        fieldErr(rUf, ''); alertMsg('');
+        if (v.length === 2) normCrm();
+      });
+      rUf.addEventListener('blur', function () { if (rUf.value && UFS.indexOf(rUf.value) < 0) fieldErr(rUf, MSG.uf); });
+      rNome.addEventListener('input', function () { fieldErr(rNome, ''); alertMsg(''); });
+
+      var CONECT = { de: 1, da: 1, 'do': 1, dos: 1, das: 1, e: 1, d: 1 }, TIT = { dr: 1, dra: 1, doutor: 1, doutora: 1, prof: 1, profa: 1, professor: 1, professora: 1 };
+      function palavras(n) {
+        var w = n.normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z]+/g, ' ').trim().split(' ')
+          .filter(function (p) { return p && !CONECT[p]; });
+        while (w.length && TIT[w[0]]) w.shift();
+        return w;
+      }
+      function cpfOk(c) {
+        if (c.length !== 11 || /^(\d)\1{10}$/.test(c)) return false;
+        for (var n = 9; n <= 10; n++) {
+          var s = 0;
+          for (var i = 0; i < n; i++) s += +c[i] * (n + 1 - i);
+          if ((s * 10 % 11) % 10 !== +c[n]) return false;
+        }
+        return true;
+      }
+      function dataOk(v) {                // DD/MM/AAAA de uma data real e de quem tem entre 20 e 100 anos
+        var m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+        if (!m) return false;
+        var d = +m[1], mo = +m[2], y = +m[3], dt = new Date(y, mo - 1, d);
+        if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return false;
+        var h = new Date(), idade = h.getFullYear() - y - ((h.getMonth() + 1 < mo || (h.getMonth() + 1 === mo && h.getDate() < d)) ? 1 : 0);
+        return idade >= 20 && idade <= 100;
+      }
+      var MSG = { nome: 'Digite seu nome completo, com sobrenome.', cpf: 'Confira o CPF.', nascimento: 'Confira a data de nascimento.',
+                  crm: 'Confira o número do CRM.', uf: 'Confira a UF.',
+                  crm_nao_encontrado: 'Não encontramos este CRM no CFM. Confira o número e a UF.',
+                  crm_nome: 'O nome não confere com o do CRM. Digite como está no seu registro.' };
+      function checkReg() {               // as mesmas regras do servidor; devolve o primeiro campo com erro
+        var first = null, n = rNome.value.replace(/\s+/g, ' ').trim();
+        function bad(inp, msg) { fieldErr(inp, msg); first = first || inp; }
+        if (palavras(n).length < 2 || /[^\p{L}\s'’.\-]/u.test(n)) bad(rNome, MSG.nome);
+        if (!cpfOk(digits(rCpf.value))) bad(rCpf, rCpf.value ? MSG.cpf : 'Digite seu CPF.');
+        if (!dataOk(rNasc.value)) bad(rNasc, rNasc.value ? MSG.nascimento : 'Digite sua data de nascimento.');
+        var c = rCrm.value.replace(/^0+/, '');
+        if (!/^\d{1,7}$/.test(c)) bad(rCrm, rCrm.value ? MSG.crm : 'Digite o número do CRM.');
+        if (UFS.indexOf(rUf.value) < 0) bad(rUf, rUf.value ? MSG.uf : 'Digite a UF.');
+        return first;
+      }
+      function openRegistro() {
+        clearErrs($('regForm')); show('registro', true);
+        ([rNome, rCpf, rNasc, rCrm, rUf].filter(function (i) { return !i.value; })[0] || rNome).focus();
+      }
+      $('back').addEventListener('click', function () {
+        if (st.google) { st.google = false; show('email', true); $('email').focus(); return; }   // desiste do Google
+        if (history.state && history.state.step === 'registro') history.back(); else show('signup', true);
+      });
+      function regFail(j) {
+        var er = j.error;
+        if (MSG[er]) { var inp = { nome: rNome, cpf: rCpf, nascimento: rNasc, crm: rCrm, uf: rUf, crm_nao_encontrado: rCrm, crm_nome: rNome }[er];
+                       fieldErr(inp, MSG[er]); inp.focus(); return; }
+        if (er === 'crm_irregular') { alertMsg('O CFM não mostra este CRM como regular. O OpenDoctor é só para médicos com inscrição regular.'); return; }
+        if (er === 'crm_dados') { alertMsg('O CPF ou a data de nascimento não conferem com o registro deste CRM no CFM.'); rCpf.focus(); return; }
+        if (er === 'senha_fraca') { show('signup', true); paintRules('newPw'); fieldErr($('newPw'), 'Confira os requisitos da senha abaixo.'); $('newPw').focus(); return; }
+        if (er === 'conta_existe') { $('pw').value = ''; show('password', true); alertMsg('Este e-mail já tem uma conta. Digite sua senha.', true); $('pw').focus(); return; }
+        if (er === 'sessao_expirada' && st.google) { st.google = false; show('email', true); alertMsg('O tempo para concluir o cadastro com o Google acabou. Toque em Continuar com o Google de novo.'); return; }
+        if (er === 'email_invalido') { show('email', true); fieldErr(email, 'Confira o e-mail digitado.'); return; }
+        sendFail(er);
+      }
+      $('regForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        normCrm();
+        var first = checkReg();
         if (first) { first.focus(); return; }
-        var btn = $('signupGo'); busy(btn, true); alertMsg('');
-        post('/auth/signup/start', { email: st.email, name: n, password: pw }).then(function (res) {
+        var body = { nome: rNome.value.replace(/\s+/g, ' ').trim(), cpf: digits(rCpf.value), nascimento: rNasc.value,
+                     crm: rCrm.value, uf: rUf.value };
+        var btn = $('regGo'); busy(btn, true); alertMsg('');
+        var req = st.google ? post('/auth/google/registro', body)
+          : post('/auth/signup/start', { email: st.email, password: $('newPw').value, nome: body.nome, cpf: body.cpf,
+                                         nascimento: body.nascimento, crm: body.crm, uf: body.uf });
+        req.then(function (res) {
+          busy(btn, false);
+          var j = res.j;
+          if (res.ok && j.ticket) { st.ticket = j.ticket; openCode('signup', j.resend_in); return; }
+          if (res.ok && j.redirect) { done(j); return; }                                   // Google: conta criada
+          regFail(j);
+        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+      });
+
+      // ----- 9. conta aprovada à mão confirma CPF e nascimento no CFM -----
+      $('confForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var cpf = $('cCpf'), nasc = $('cNasc'), first = null;
+        if (!cpfOk(digits(cpf.value))) { fieldErr(cpf, cpf.value ? MSG.cpf : 'Digite seu CPF.'); first = cpf; }
+        if (!dataOk(nasc.value)) { fieldErr(nasc, nasc.value ? MSG.nascimento : 'Digite sua data de nascimento.'); first = first || nasc; }
+        if (first) { first.focus(); return; }
+        var btn = $('confGo'); busy(btn, true); alertMsg('');
+        post('/auth/crm/confirmar', { cpf: digits(cpf.value), nascimento: nasc.value, next: nextUrl }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
-          if (res.ok && j.ticket) { st.ticket = j.ticket; openCode('signup', j.resend_in); return; }
-          if (er === 'nome') { fieldErr(name, 'Digite seu nome completo.'); return; }
-          if (er === 'senha_fraca') { paintRules('newPw'); fieldErr($('newPw'), 'Confira os requisitos da senha abaixo.'); return; }
-          if (er === 'conta_existe') { $('pw').value = ''; show('password', true); alertMsg('Este e-mail já tem uma conta. Digite sua senha.', true); $('pw').focus(); return; }
-          sendFail(er);
+          if (res.ok && j.redirect) { go(j.redirect); return; }
+          if (er === 'cpf') { fieldErr(cpf, MSG.cpf); return; }
+          if (er === 'nascimento') { fieldErr(nasc, MSG.nascimento); return; }
+          if (er === 'crm_dados') { alertMsg('O CPF ou a data de nascimento não conferem com o seu registro no CFM. Confira e tente de novo.'); cpf.focus(); return; }
+          if (er === 'cfm_indisponivel') { alertMsg('O CFM não respondeu agora. Tente de novo em alguns minutos.'); return; }
+          if (res.status === 401) { show('email', true); alertMsg('Sua sessão expirou. Entre novamente.', true); return; }
+          alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
         }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
       });
 
@@ -550,12 +803,12 @@
         req.then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
-          if (res.ok && j.redirect) { go(j.redirect); return; }
+          if (res.ok && j.redirect) { done(j); return; }
           if (res.ok && j.ticket) {         // modo reset: código certo → escolher a senha
             st.resetTicket = j.ticket;
             var f = $('resetForm'); f.reset(); clearErrs(f); paintRules('rPw'); show('reset', true); $('rPw').focus(); return;
           }
-          if (er === 'sessao_expirada') { st.ticket = ''; show('signup', true); alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.'); return; }
+          if (er === 'sessao_expirada') { st.ticket = ''; show('registro', true); alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.'); return; }
           var m = codeErrMsg(er, j);
           if (m) {
             otpErr(m); boxes[5].focus();
@@ -575,7 +828,7 @@
             cooldown(res.j.resend_in); return;
           }
           cooldown(0);
-          if (res.j.error === 'sessao_expirada') { st.ticket = ''; show('signup', true); alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.'); return; }
+          if (res.j.error === 'sessao_expirada') { st.ticket = ''; show('registro', true); alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.'); return; }
           sendFail(res.j.error);
         }).catch(function () { cooldown(0); alertMsg(OFFLINE); });
       });
@@ -592,7 +845,7 @@
         post('/auth/password/reset', { ticket: st.resetTicket, password: pw, next: nextUrl }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
-          if (res.ok && j.redirect) { go(j.redirect); return; }
+          if (res.ok && j.redirect) { done(j); return; }
           if (er === 'senha_fraca') { paintRules('rPw'); fieldErr($('rPw'), 'Confira os requisitos da senha abaixo.'); return; }
           if (er === 'sessao_expirada') { st.resetTicket = ''; show('email', true); alertMsg('O tempo para criar a senha expirou. Toque em Continuar e peça um novo código.'); return; }
           alertMsg(GENERIC);
