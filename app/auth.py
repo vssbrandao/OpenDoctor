@@ -142,6 +142,10 @@ def _session_user(request):
     try:
         user = db.get_user(payload["uid"])
     except Exception:
+        # banco fora do ar: sem sessão (fechado), mas marcado no pedido — o /me não responde "saiu" a quem tem sessão
+        state = getattr(request, "state", None)
+        if state is not None:
+            state.od_user_erro = True
         return None
     if not user or int(payload.get("sv", 0)) != int(user.get("sv") or 0):
         return None                      # senha trocada depois deste login: sessão encerrada
@@ -152,8 +156,10 @@ def _session_user(request):
 
 def admin_emails():
     """Administradores (ADMIN_EMAILS no ambiente, separados por vírgula; comparação em minúsculas): aprovam os cadastros
-    de médicos e recebem o aviso de cada cadastro pendente. Nenhum e-mail fica no código."""
-    return sorted({e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()})
+    de médicos e recebem o aviso de cada cadastro pendente. Nenhum e-mail fica no código. Aspas em volta (da lista ou de
+    cada e-mail, comum ao colar no painel do Render) são ignoradas."""
+    limpo = (e.strip().strip("\"'").strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(","))
+    return sorted({e for e in limpo if e})
 
 
 def is_admin(user):

@@ -76,9 +76,10 @@ def separa_crm(texto, uf=""):
 def crm_numero(digitos):
     """O número que o CFM aceita (inteiro de 1 a 7 dígitos, sem zeros à esquerda) ou None."""
     d = str(digitos or "")
-    if not d.isdigit() or not 1 <= len(d.lstrip("0")) <= 7 or int(d) <= 0:
+    n = d.lstrip("0")                  # int() só no que sobra: milhares de zeros passariam do limite de dígitos do int
+    if not d.isdigit() or not 1 <= len(n) <= 7:
         return None
-    return str(int(d))
+    return str(int(n))
 
 
 # ----- nome digitado x nome no CFM -----

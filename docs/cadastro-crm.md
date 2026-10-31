@@ -122,6 +122,7 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
       - **Liberada** (`bloqueio` vazio): vai para o app, no mesmo destino que o login daria (o `redirect` da resposta
         do login, que passou por `auth.safe_next`; depois de recarregar, o `next` da URL pela mesma regra, ou a agenda).
       - **Recusada:** mostra a recusa e para de perguntar. **Sessão que acabou:** volta para entrar.
+      - **Banco fora do ar:** o `/me` responde `503` (não diz que a sessão acabou) e a tela confere de novo em 30 s.
       - No teste ponta a ponta, `window.OD_ESPERA_MS` encurta o intervalo (nenhum link consegue mudá-lo).
     - Recusado: uma mensagem curta.
   - **Rotas da API:** respondem `403 {"error": "crm_pendente" | "crm_recusado" | "crm_confirmar"}`.
@@ -133,7 +134,7 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 
 ## Aprovação à mão (administradores)
 - **Quem é administrador:** a variável **`ADMIN_EMAILS`** no Render.
-  - E-mails separados por vírgula, comparados em minúsculas.
+  - E-mails separados por vírgula, comparados em minúsculas. Aspas em volta (da lista ou de cada e-mail) são ignoradas.
   - Nenhum e-mail fica no código. Sem a variável, ninguém é administrador.
 - **A página `/opendoctor-cadastros.html`:**
   - Privada: exige login, e as rotas conferem se é administrador (403 para os outros).

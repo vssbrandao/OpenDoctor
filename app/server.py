@@ -446,8 +446,8 @@ def _rate_limited(request, bucket, key=None):
         if len(q) >= n:
             return True
         q.append(now)
-        if len(_RL) > 5000:   # limpeza de IPs inativos
-            for kk in [kk for kk, dq in _RL.items() if not dq or now - dq[-1] > win]:
+        if len(_RL) > 5000:   # limpeza de IPs inativos, cada um pela janela do seu balde (a do "cfm" é 1 h)
+            for kk in [kk for kk, dq in _RL.items() if not dq or now - dq[-1] > RATE_LIMITS.get(kk[0], (0, win))[1]]:
                 _RL.pop(kk, None)
     return False
 
@@ -1383,6 +1383,9 @@ def scribe_on(user):
 @app.get("/me")
 def me(request: Request):
     u = auth.current_user(request)
+    if getattr(request.state, "od_user_erro", False):
+        # a sessão não pôde ser lida (banco fora do ar): nem "logado" nem "saiu" — a tela de espera confere de novo
+        return JSONResponse({"error": "indisponivel"}, status_code=503)
     on = scribe_on(u)
     bloqueio = _crm_bloqueio(u)
     if u:
@@ -2466,7 +2469,7 @@ async def me_medico_muda(request: Request):
                                           ("consultorio_telefone", 40)) if k in b}
     if "crm" in b:
         crm = re.sub(r"\D", "", str(b.get("crm") or ""))[:10]
-        campos["crm"] = crm
+        campos["crm"] = cfm.crm_numero(crm) or crm      # sem zeros à esquerda, como no cadastro (o CRM repetido é achado)
     if "crm_uf" in b:
         uf = str(b.get("crm_uf") or "").strip().upper()
         if uf and uf not in _UFS:

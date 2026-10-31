@@ -2,6 +2,7 @@
 e pelo Google, a espera das contas pendentes, a página de cadastros dos administradores e a confirmação das contas
 aprovadas à mão. Nada aqui fala com o CFM, com o banco ou com o Resend (tests/conftest.py)."""
 import base64
+import collections
 import json
 
 import httpx
@@ -155,6 +156,7 @@ def test_separa_crm_e_uf():
     for (texto, uf), esperado in casos.items():
         assert cfm.separa_crm(texto, uf) == esperado, texto
     assert cfm.crm_numero("0012345") == "12345" and cfm.crm_numero("1234567") == "1234567"
+    assert cfm.crm_numero("0" * 5000 + "1") == "1"            # sem int() na string inteira (Python 3.11+: 400, não 500)
     for ruim in ("", "0", "12345678", "12a"):
         assert cfm.crm_numero(ruim) is None, ruim
 
@@ -1061,6 +1063,56 @@ def test_crm_conferido_nao_muda_em_configuracoes(monkeypatch):
     c = _logado(monkeypatch)                                                    # conta antiga: edita como sempre
     assert c.get("/me/medico").json()["crm_conferido"] is False
     assert c.patch("/me/medico", json={"crm": "777"}).status_code == 200 and medico["crm"] == "777"
+    # sem zeros à esquerda, como o cadastro grava: o alerta de CRM repetido compara os dois
+    assert c.patch("/me/medico", json={"crm": "0123456"}).status_code == 200 and medico["crm"] == "123456"
+    assert c.patch("/me/medico", json={"crm": ""}).status_code == 200 and medico["crm"] == ""
+
+
+def test_limpeza_do_limite_por_ip_usa_a_janela_de_cada_balde(monkeypatch):
+    """Com muitos IPs a limpeza roda, e cada balde sai pela própria janela: a de 10 min de outro balde não zera o
+    limite de 1 h das conferências no CFM."""
+    agora = [1000.0]
+    monkeypatch.setattr(server.time, "time", lambda: agora[0])
+    server._RL.clear()
+    try:
+        for _ in range(server.RATE_LIMITS["cfm"][0]):
+            assert not server._rate_limited(None, "cfm", key="ip-a")
+        assert server._rate_limited(None, "cfm", key="ip-a")
+        for i in range(5001):
+            server._RL[("login_check", f"ip-{i}")] = collections.deque([agora[0]])
+        agora[0] += 601
+        assert not server._rate_limited(None, "login_check", key="ip-b")      # passa de 5000 chaves: limpa
+        assert ("login_check", "ip-0") not in server._RL
+        assert server._rate_limited(None, "cfm", key="ip-a")                  # o do CFM continua valendo
+        agora[0] += 3000
+        assert not server._rate_limited(None, "cfm", key="ip-a")              # passou 1 h
+    finally:
+        server._RL.clear()
+
+
+def test_administradores_com_aspas_coladas_no_render(monkeypatch):
+    for valor in ('"dono@opendoctor.app"', "'dono@opendoctor.app'", ' "Dono@OpenDoctor.app , Bia@x.com.br" ',
+                  '"dono@opendoctor.app", "bia@x.com.br"'):
+        monkeypatch.setenv("ADMIN_EMAILS", valor)
+        assert auth.admin_emails()[-1] == "dono@opendoctor.app", valor
+        assert auth.is_admin({"email": "dono@opendoctor.app"}), valor
+    assert auth.admin_emails() == ["bia@x.com.br", "dono@opendoctor.app"]
+    monkeypatch.setenv("ADMIN_EMAILS", '""')
+    assert auth.admin_emails() == []
+
+
+def test_me_com_o_banco_fora_do_ar_nao_diz_que_a_sessao_acabou(monkeypatch):
+    """O banco falhou ao ler a sessão: o /me responde 503 (a tela de espera confere de novo), não "saiu"; sem sessão
+    continua 200 logged_in false. A rota que exige login continua fechada (fechado por padrão)."""
+    c = _logado(monkeypatch, crm_status="pendente")
+
+    def fora(uid):
+        raise RuntimeError("pooler fora do ar")
+    monkeypatch.setattr(db, "get_user", fora)
+    r = c.get("/me")
+    assert r.status_code == 503 and r.json() == {"error": "indisponivel"}
+    assert c.get("/cid10?q=diabetes").status_code == 401
+    assert TestClient(server.app).get("/me").json() == {"logged_in": False, "user": None, "scribe": False, "bloqueio": None}
 
 
 # ===================== nascimento sem preenchimento automático =====================
