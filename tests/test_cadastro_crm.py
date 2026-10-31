@@ -425,12 +425,14 @@ def test_nome_colado_com_o_acento_separado_no_cadastro(monkeypatch):
 
 # ===================== conta nova pelo Google =====================
 
-def _google(monkeypatch, fake, existe=False):
+def _google(monkeypatch, fake, existe=False, verificado=True):
+    """Volta do Google simulada. `verificado`: o Google confirmou o e-mail da conta (email_verified)."""
     from app import integrations
     monkeypatch.setattr(integrations, "configured", lambda p: True)
     monkeypatch.setattr(integrations, "_cid", lambda p: "cid")
     monkeypatch.setattr(auth, "exchange_login", lambda code: {"email": "Nova@Clinica.com.br", "name": "Nova Google",
-                                                             "picture": "https://foto", "sub": "g-1"})
+                                                             "picture": "https://foto", "sub": "g-1",
+                                                             "email_verified": verificado})
     if existe:
         fake.users.update(_user("nova@clinica.com.br", pw=None))
     criadas = []
@@ -514,6 +516,83 @@ def test_google_conta_que_ja_existe_entra_como_sempre(monkeypatch):
     r = _volta_do_google(c)
     assert r.headers["location"] == auth.HOME and auth.COOKIE_NAME in r.cookies
     assert not r.cookies.get(server.GREG_COOKIE) and criadas == [("nova@clinica.com.br", "Nova Google", {})]
+
+
+@pytest.mark.parametrize("existe", [True, False], ids=["conta que existe", "conta nova"])
+def test_google_com_email_nao_verificado_nao_entra_nem_cria_conta(monkeypatch, capsys, existe):
+    """Conta Google com um e-mail que o Google não confirmou (email_verified false): sem isso, bastaria abrir uma conta
+    Google com o e-mail de um médico para entrar na conta dele (ou abrir uma no nome dele). Volta para a tela de login
+    com o motivo; nada de sessão, de cookie do Registro nem de conta."""
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    criadas = _google(monkeypatch, fake, existe=existe, verificado=False)
+    r = _volta_do_google(c, "?next=/opendoctor-configuracoes.html")
+    assert r.status_code in (302, 307)
+    assert r.headers["location"] == "/opendoctor-login.html?erro=google_nao_verificado&next=%2Fopendoctor-configuracoes.html"
+    assert auth.COOKIE_NAME not in r.cookies and not r.cookies.get(server.GREG_COOKIE)
+    assert criadas == [] and fake.events == []                               # nem atualizou a conta, nem registrou entrada
+    assert c.post("/auth/google/registro", json=REG).json() == {"error": "sessao_expirada"}
+    assert c.get("/me").json()["logged_in"] is False
+    assert "nova@clinica.com.br" not in capsys.readouterr().out.lower()      # o e-mail não vai para o log
+    # o mesmo médico com o e-mail confirmado pelo Google: sem passo a mais (entra, ou vai direto ao Registro)
+    _google(monkeypatch, fake, existe=existe, verificado=True)
+    r = _volta_do_google(c)
+    assert r.headers["location"] == (auth.HOME if existe else "/opendoctor-login.html?registro=google")
+
+
+def test_registro_google_so_com_o_cookie_que_tem_a_marca_do_email_confirmado(monkeypatch):
+    """O cookie do Registro de antes da conferência do email_verified (sem a marca `ev`) não cria conta."""
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    criadas = _google(monkeypatch, fake)
+    velho = {"k": "greg", "email": "nova@clinica.com.br", "sub": "g-1", "nx": auth.HOME}
+    c.cookies.set(server.GREG_COOKIE, auth.sign(velho))
+    assert c.post("/auth/google/registro", json=REG).json() == {"error": "sessao_expirada"} and criadas == []
+    c.cookies.clear()
+    c.cookies.set(server.GREG_COOKIE, auth.sign(dict(velho, ev=1)))
+    assert c.post("/auth/google/registro", json=REG).json()["ok"] and len(criadas) == 1
+
+
+def test_email_verificado_pelo_google():
+    """userinfo v2 (verified_email) e OpenID (email_verified, no id_token): precisa de um "sim" e nenhum "não"."""
+    def jwt(claims):
+        return "e30." + base64.urlsafe_b64encode(json.dumps(claims).encode()).decode().rstrip("=") + ".assinatura"
+    em = "ana@clinica.com.br"
+    assert auth.email_verificado({"email": em, "verified_email": True})
+    assert not auth.email_verificado({"email": em, "verified_email": False})
+    assert not auth.email_verificado({"email": em})                                       # sem a informação: não
+    assert auth.email_verificado({"email": em}, jwt({"email": em, "email_verified": True}))
+    assert auth.email_verificado({"email": em}, jwt({"email": "Ana@Clinica.com.br", "email_verified": "true"}))
+    assert not auth.email_verificado({"email": em, "verified_email": True}, jwt({"email": em, "email_verified": False}))
+    assert not auth.email_verificado({"email": em, "email_verified": "false"})
+    assert not auth.email_verificado({"email": em}, jwt({"email": "outra@x.com", "email_verified": True}))   # de outro e-mail
+    assert not auth.email_verificado({"email": em}, "nao-e-jwt")
+    assert not auth.email_verificado({"email": em, "verified_email": 1})                  # só True ou "true"
+
+
+def test_exchange_login_le_a_confirmacao_do_email(monkeypatch):
+    """O perfil sai do userinfo v2 (verified_email) e do id_token da troca do code, sem rede."""
+    from app import integrations
+    monkeypatch.setattr(integrations, "_cid", lambda p: "cid")
+    monkeypatch.setattr(integrations, "_secret", lambda p: "segredo")
+    resp = {"userinfo": {"id": "g-1", "email": "ana@clinica.com.br", "verified_email": True, "name": "Ana"}, "id_token": None}
+
+    class R:
+        def __init__(self, j):
+            self.status_code, self._j, self.text = 200, j, ""
+
+        def json(self):
+            return self._j
+    monkeypatch.setattr(auth.httpx, "post", lambda url, **k: R({"access_token": "at", "id_token": resp["id_token"]}))
+    monkeypatch.setattr(auth.httpx, "get", lambda url, **k: R(resp["userinfo"]))
+    assert auth.exchange_login("code") == {"email": "ana@clinica.com.br", "name": "Ana", "picture": None, "sub": "g-1",
+                                           "email_verified": True}
+    resp["userinfo"]["verified_email"] = False
+    assert auth.exchange_login("code")["email_verified"] is False
+    del resp["userinfo"]["verified_email"]
+    resp["id_token"] = "e30." + base64.urlsafe_b64encode(json.dumps(
+        {"email": "ana@clinica.com.br", "email_verified": True}).encode()).decode().rstrip("=") + ".x"
+    assert auth.exchange_login("code")["email_verified"] is True
 
 
 # ===================== a espera das contas pendentes =====================

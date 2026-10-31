@@ -23,9 +23,19 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
    - **Pendente:** a tela mostra a espera.
 
 ### Conta nova pelo Google
+- **E-mail confirmado pelo Google:** quem entra pelo Google não confirma o e-mail de novo (nem código, nem passo a
+  mais): o Google já confirmou que o e-mail é dele.
+  - Vale só quando o próprio Google diz isso: `verified_email` do userinfo v2 ou `email_verified` do `id_token` da troca
+    do code (`auth.email_verificado`: precisa de um "sim" e nenhum "não"; sem a informação, é "não").
+  - **E-mail não verificado pelo Google** (conta Google aberta com um e-mail de fora, nunca confirmado): a volta do Google
+    não entra numa conta que já existe nem leva ao Registro. A tela de login mostra "Esse e-mail não foi verificado pelo
+    Google." (`?erro=google_nao_verificado`, com o `next`). Sem isso, bastaria abrir uma conta Google com o e-mail de
+    um médico para entrar na conta dele. O e-mail não vai para o log.
 - **Na volta do Google:** e-mail sem conta → `/opendoctor-login.html?registro=google` (com o `next` da página de
   origem, se houver), direto no Registro profissional.
   - O perfil do Google (e-mail, foto, id) espera num cookie assinado deste navegador: `od_greg`, 15 min, `path=/auth/`.
+    Ele leva a marca `ev` (e-mail confirmado pelo Google); o `/auth/google/registro` recusa o cookie sem ela (um de antes
+    desta conferência pede para entrar pelo Google de novo).
   - Nada do perfil vai na URL. O `registro=google` e o `next` ficam nela até a conta existir: recarregar a página volta
     ao Registro, e a seta tira só o `registro`.
 - **Criar conta:** `POST /auth/google/registro` confere o CRM e só então cria a conta.
@@ -33,7 +43,7 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - O cookie só cria conta. Se o e-mail ganhou uma conta no meio do caminho, a resposta é `sessao_expirada` e o médico
     entra de novo pelo Google: uma cópia do cookie não vale como login.
 - A seta volta para a tela inicial.
-- **Contas Google que já existem:** entram como sempre.
+- **Contas Google que já existem:** entram como sempre, desde que o Google tenha confirmado o e-mail.
 
 ### A decisão (`server._crm_decide`)
 - **Com `CFM_CHAVE`:**

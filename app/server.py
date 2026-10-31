@@ -1162,9 +1162,11 @@ GREG_MAX_AGE = 15 * 60
 
 
 def _google_registro(request):
-    """Perfil Google guardado no retorno do login de um e-mail sem conta (cookie assinado deste navegador, 15 min)."""
+    """Perfil Google guardado no retorno do login de um e-mail sem conta (cookie assinado deste navegador, 15 min).
+    Só vale o que leva a marca de e-mail confirmado pelo Google (`ev`): o retorno recusa os outros, e um cookie de antes
+    dessa conferência não cria conta (refaz-se o login pelo Google)."""
     t = auth.unsign(request.cookies.get(GREG_COOKIE) or "", GREG_MAX_AGE)
-    return t if t and t.get("k") == "greg" and t.get("email") else None
+    return t if t and t.get("k") == "greg" and t.get("email") and t.get("ev") == 1 else None
 
 
 @app.post("/auth/google/registro")
@@ -1420,6 +1422,14 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
         try:
             info = auth.exchange_login(code)
             email = str(info["email"]).strip().lower()
+            if info.get("email_verified") is not True:
+                # o Google não confirmou que o e-mail é do dono da conta Google (conta criada com um e-mail de fora que
+                # nunca foi confirmado): não entra numa conta com esse e-mail nem cria uma — senão bastaria abrir uma
+                # conta Google com o e-mail de um médico para entrar na conta dele. O e-mail não vai para o log
+                print("[auth] login Google recusado: e-mail não verificado pelo Google", flush=True)
+                resp = RedirectResponse(_login_page("google_nao_verificado", payload.get("nx", "")))
+                resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
+                return resp
             if db.user_by_email(email) is None:
                 # e-mail sem conta: antes de a conta existir, o Registro profissional (só médicos criam conta). O perfil
                 # do Google espera num cookie assinado deste navegador (15 min), fora da URL
@@ -1429,7 +1439,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
                     q["next"] = auth.safe_next(payload.get("nx"))
                 resp = RedirectResponse("/opendoctor-login.html?" + urllib.parse.urlencode(q))
                 resp.set_cookie(GREG_COOKIE, auth.sign({
-                    "k": "greg", "email": email, "pic": info.get("picture"),
+                    "k": "greg", "email": email, "ev": 1, "pic": info.get("picture"),
                     "sub": info.get("sub"), "nx": auth.safe_next(payload.get("nx"))}),
                     max_age=GREG_MAX_AGE, httponly=True, samesite="lax",
                     secure=integrations.REDIRECT_BASE.startswith("https://"), path="/auth/")

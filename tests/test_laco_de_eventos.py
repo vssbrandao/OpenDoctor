@@ -68,7 +68,7 @@ SIGNUP = {"k": "signup", "email": "nova@clinica.com.br", "name": "Ana Lima", "ph
           "crm": {"crm": "123456", "uf": "SP", "status": "verificado", "fonte": "cfm", "situacao": "A"}}
 REG = {"nome": "Ana Lima", "cpf": "529.982.247-25", "nascimento": "12/05/1985", "crm": "123456", "uf": "SP"}
 NOVA = dict(REG, email="nova@clinica.com.br", password=PW)
-GREG = {"cookie": "od_greg=" + auth.sign({"k": "greg", "email": "nova@clinica.com.br", "sub": "g1", "nx": "/"})}
+GREG = {"cookie": "od_greg=" + auth.sign({"k": "greg", "email": "nova@clinica.com.br", "ev": 1, "sub": "g1", "nx": "/"})}
 # aprovada à mão, numa sessão que nasceu pedindo a confirmação no CFM (marca "cc" no cookie)
 MANUAL = {"_user": {"crm_status": "verificado", "crm_fonte": "manual", "crm_cc": True}}
 CASOS = [   # (método, rota, pedido, (módulo, função lenta), troca no banco simulado)

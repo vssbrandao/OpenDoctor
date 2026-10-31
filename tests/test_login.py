@@ -430,7 +430,8 @@ def test_login_google_amarrado_ao_navegador(monkeypatch):
     import urllib.parse as up
     monkeypatch.setattr(integrations, "configured", lambda p: True)
     monkeypatch.setattr(integrations, "_cid", lambda p: "cid")
-    monkeypatch.setattr(auth, "exchange_login", lambda code: {"email": "ana@clinica.com.br", "name": "Ana", "sub": "1"})
+    monkeypatch.setattr(auth, "exchange_login", lambda code: {"email": "ana@clinica.com.br", "name": "Ana", "sub": "1",
+                                                             "email_verified": True})
     monkeypatch.setattr(db, "user_by_email", lambda e: {"id": "u1"})
     monkeypatch.setattr(db, "upsert_user", lambda *a, **k: {"id": "u1", "email": "ana@clinica.com.br", "sv": 0})
     fake = _Fake()

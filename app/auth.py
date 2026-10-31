@@ -292,8 +292,34 @@ def login_url(hint: str = "", nxt: str = "", nonce: str = "") -> str:
     return p["auth"] + "?" + urllib.parse.urlencode(params)
 
 
+def _jwt_claims(tok):
+    """Corpo de um JWT, sem conferir a assinatura: só para o id_token que veio direto do Google, na resposta do endpoint
+    de token por TLS (OpenID Connect Core 3.1.3.7). {} se não der para ler."""
+    try:
+        c = json.loads(_b64d(str(tok).split(".")[1]))
+        return c if isinstance(c, dict) else {}
+    except Exception:
+        return {}
+
+
+def _sim(v):
+    return v is True or (isinstance(v, str) and v.strip().lower() == "true")
+
+
+def email_verificado(info, id_token=None) -> bool:
+    """O Google confirmou que o e-mail é do dono da conta Google? userinfo v2: `verified_email`; OpenID (id_token,
+    userinfo v3): `email_verified`. Precisa de pelo menos um "sim" e nenhum "não"; sem a informação, não (fechado).
+    O id_token só conta se for do mesmo e-mail."""
+    vals = [info.get("verified_email"), info.get("email_verified")]
+    c = _jwt_claims(id_token) if id_token else {}
+    if str(c.get("email") or "").strip().lower() == str(info.get("email") or "").strip().lower():
+        vals.append(c.get("email_verified"))
+    vals = [v for v in vals if v is not None]
+    return bool(vals) and all(_sim(v) for v in vals)
+
+
 def exchange_login(code: str) -> dict:
-    """Troca o code pelo perfil do usuário (email/nome/foto/sub). Não guarda token
+    """Troca o code pelo perfil do usuário (email/nome/foto/sub e se o Google confirmou o e-mail). Não guarda token
     de calendário — o login básico não tem escopo de calendário."""
     p = integrations.PROVIDERS["google"]
     r = httpx.post(p["token"], timeout=30, data={
@@ -304,11 +330,13 @@ def exchange_login(code: str) -> dict:
         "grant_type": "authorization_code"})
     if r.status_code != 200:
         raise RuntimeError(f"token {r.status_code}: {r.text[:200]}")
-    access = r.json().get("access_token")
+    tok = r.json()
+    access = tok.get("access_token")
     info = httpx.get(p["userinfo"], headers={"Authorization": "Bearer " + access},
                      timeout=20).json()
     email = info.get("email")
     if not email:
         raise RuntimeError("Google não retornou email")
     return {"email": email, "name": info.get("name"),
-            "picture": info.get("picture"), "sub": info.get("id")}
+            "picture": info.get("picture"), "sub": info.get("id"),
+            "email_verified": email_verificado(info, tok.get("id_token"))}
