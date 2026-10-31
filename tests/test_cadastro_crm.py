@@ -873,8 +873,8 @@ UID = "8f14e45f-ceea-467a-9575-1a2b3c4d5e6f"
 def test_cadastros_so_para_administradores(monkeypatch):
     monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
     c = _logado(monkeypatch)
-    monkeypatch.setattr(db, "pending_doctors", lambda: pytest.fail("não-administrador leu a lista"))
-    monkeypatch.setattr(db, "manual_doctors", lambda janela_s: pytest.fail("não-administrador leu a lista"))
+    monkeypatch.setattr(db, "pending_doctors", lambda limit=200: pytest.fail("não-administrador leu a lista"))
+    monkeypatch.setattr(db, "manual_doctors", lambda janela_s, limit=200: pytest.fail("não-administrador leu a lista"))
     monkeypatch.setattr(db, "decide_crm", lambda uid, ap: pytest.fail("não-administrador decidiu"))
     monkeypatch.setattr(db, "crm_dispensa", lambda uid: pytest.fail("não-administrador liberou"))
     assert c.get("/admin/cadastros").status_code == 403
@@ -896,9 +896,9 @@ def test_administrador_aprova_e_recusa(monkeypatch):
     c = _logado(monkeypatch, email="dono@opendoctor.app")
     lista = [{"id": UID, "name": "Ana Lima", "email": "ana@clinica.com.br", "crm": "123456", "crm_uf": "SP",
               "pedido_em": "2026-10-30T12:00:00+00:00", "situacao": None, "outras_contas": 0}]
-    monkeypatch.setattr(db, "pending_doctors", lambda: lista)
+    monkeypatch.setattr(db, "pending_doctors", lambda limit=200: lista)
     janelas = []
-    monkeypatch.setattr(db, "manual_doctors", lambda janela_s: (janelas.append(janela_s), ([], True))[1])
+    monkeypatch.setattr(db, "manual_doctors", lambda janela_s, limit=200: (janelas.append(janela_s), ([], True))[1])
     pendentes, decisoes, enviados = {UID: {"id": UID, "email": "ana@clinica.com.br", "name": "Ana Lima"}}, [], []
 
     def decide(uid, aprovado):
@@ -908,7 +908,8 @@ def test_administrador_aprova_e_recusa(monkeypatch):
     monkeypatch.setattr(mailer, "configured", lambda: True)
     monkeypatch.setattr(mailer, "send_crm_decision", lambda to, name="", aprovado=True: enviados.append((to, aprovado)))
     j = c.get("/admin/cadastros").json()
-    assert j == {"pendentes": lista, "manuais": [], "dispensa": True, "cfm": False, "limite_falhas": server.CONF_FALHAS[0]}
+    assert j == {"pendentes": lista, "pendentes_mais": False, "manuais": [], "manuais_mais": False, "dispensa": True,
+                 "cfm": False, "limite_falhas": server.CONF_FALHAS[0]}
     assert janelas == [server.CONF_FALHAS[1]]                    # as falhas da confirmação na mesma janela do limite
     assert c.post("/admin/cadastros/aprovar", json={"id": "x"}).json()["error"] == "id_invalido"
     assert c.post("/admin/cadastros/aprovar", content=json.dumps({"id": UID}), headers={"content-type": "text/plain"}).json()["error"] == "id_invalido"
@@ -920,6 +921,23 @@ def test_administrador_aprova_e_recusa(monkeypatch):
     pendentes[UID] = {"id": UID, "email": "ana@clinica.com.br", "name": "Ana Lima"}
     assert c.post("/admin/cadastros/recusar", json={"id": UID}).json()["ok"]
     assert enviados[-1] == ("ana@clinica.com.br", False)
+
+
+def test_lista_de_cadastros_cortada_avisa_que_ha_mais(monkeypatch):
+    """Mais contas do que a página mostra: a resposta diz, e a página não afirma "nenhum outro" ao esvaziar a lista."""
+    monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
+    monkeypatch.setattr(server, "ADMIN_LISTA", 2)
+    c = _logado(monkeypatch, email="dono@opendoctor.app")
+    conta = {"id": UID, "name": "Ana Lima", "email": "ana@clinica.com.br", "crm": "1", "crm_uf": "SP"}
+    pedidos = []
+    monkeypatch.setattr(db, "pending_doctors", lambda limit=200: (pedidos.append(limit), [dict(conta)] * min(limit, 3))[1])
+    monkeypatch.setattr(db, "manual_doctors", lambda janela_s, limit=200: ([dict(conta)] * min(limit, 2), True))
+    j = c.get("/admin/cadastros").json()
+    assert pedidos == [3] and len(j["pendentes"]) == 2 and j["pendentes_mais"] is True
+    assert len(j["manuais"]) == 2 and j["manuais_mais"] is False
+    import os
+    pagina = open(os.path.join(server.WEB_DIR, "opendoctor-cadastros.html"), encoding="utf-8").read()
+    assert "res.j.pendentes_mais" in pagina and "res.j.manuais_mais" in pagina and "recarregue a página" in pagina
 
 
 def test_email_da_decisao_que_falha_nao_desfaz(monkeypatch):
@@ -946,7 +964,7 @@ def _contas_liberaveis(monkeypatch, contas):
         u.setdefault("crm_dispensado", True)
         return {"id": uid, "email": u["email"], "name": u["name"]}
     monkeypatch.setattr(db, "crm_dispensa", dispensa)
-    monkeypatch.setattr(db, "manual_doctors", lambda janela_s: ([
+    monkeypatch.setattr(db, "manual_doctors", lambda janela_s, limit=200: ([
         {"id": k, "name": u["name"], "email": u["email"], "crm": "123456", "crm_uf": "SP",
          "aprovado_em": "2026-10-30T12:00:00+00:00", "falhas": 5}
         for k, u in contas.items() if u.get("crm_fonte") == "manual" and not u.get("crm_dispensado")], True))
@@ -963,7 +981,7 @@ def test_administrador_libera_aprovada_a_mao_presa_na_confirmacao(monkeypatch):
     contas = {UID: medica, "9a14e45f-ceea-467a-9575-1a2b3c4d5e70": {"email": "bia@x.com", "name": "Bia", "crm_status": "verificado",
                                                                     "crm_fonte": "cfm"}}
     feitas = _contas_liberaveis(monkeypatch, contas)
-    monkeypatch.setattr(db, "pending_doctors", lambda: [])
+    monkeypatch.setattr(db, "pending_doctors", lambda limit=200: [])
     _cfm_simulado(monkeypatch, valido=False)
     # a sessão da médica, que nasceu pedindo a confirmação, e a do administrador
     monkeypatch.setattr(db, "get_user", lambda uid: dict(medica) if uid == UID else (

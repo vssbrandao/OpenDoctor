@@ -141,6 +141,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - **Lista os pendentes:** nome, e-mail, CRM/UF, data do pedido e alerta de CRM repetido.
   - **Lista "Aprovados à mão, sem confirmação no CFM"** (veja abaixo): nome, e-mail, CRM/UF, data da aprovação e as
     confirmações que não bateram nas últimas 24 h (com o aviso de limite do dia).
+  - Cada lista mostra até 200 contas, as mais antigas primeiro (`server.ADMIN_LISTA`). Com mais, a página avisa
+    ("Mostrando os 200…") e, ao esvaziar a lista, pede para recarregar em vez de dizer que não há outro.
   - Nome e e-mail entram como texto (`textContent`), nunca como HTML.
   - **Link** para a busca pública do CFM (https://portal.cfm.org.br/busca-medicos/), para conferir à mão.
 - **Aprovar / Recusar:**

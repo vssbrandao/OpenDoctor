@@ -2514,10 +2514,16 @@ async def admin_cadastros(request: Request):
     return await run_in_threadpool(_admin_lista)
 
 
+ADMIN_LISTA = 200          # contas por lista na página de cadastros (as mais antigas primeiro)
+
+
 def _admin_lista():
-    manuais, dispensa = db.manual_doctors(CONF_FALHAS[1])
-    return {"pendentes": db.pending_doctors(), "manuais": manuais, "dispensa": dispensa, "cfm": cfm.configured(),
-            "limite_falhas": CONF_FALHAS[0]}
+    """As duas listas da página de cadastros; `*_mais`: há mais contas do que as ADMIN_LISTA mostradas."""
+    pend = db.pending_doctors(limit=ADMIN_LISTA + 1)
+    manuais, dispensa = db.manual_doctors(CONF_FALHAS[1], limit=ADMIN_LISTA + 1)
+    return {"pendentes": pend[:ADMIN_LISTA], "pendentes_mais": len(pend) > ADMIN_LISTA,
+            "manuais": manuais[:ADMIN_LISTA], "manuais_mais": len(manuais) > ADMIN_LISTA, "dispensa": dispensa,
+            "cfm": cfm.configured(), "limite_falhas": CONF_FALHAS[0]}
 
 
 @app.post("/admin/cadastros/aprovar")

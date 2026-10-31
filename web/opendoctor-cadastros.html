@@ -74,6 +74,7 @@
     (function () {
       var list = document.getElementById('list'), msg = document.getElementById('msg');
       var manuais = document.getElementById('manuais'), msg2 = document.getElementById('msg2');
+      var mais = { p: false, m: false };              // a lista veio cortada (servidor: ADMIN_LISTA, as mais antigas)
       function say(t, err) { msg.textContent = t || ''; msg.hidden = !t; msg.classList.toggle('err', !!err); }
       function say2(t, err) { msg2.textContent = t || ''; msg2.hidden = !t; msg2.classList.toggle('err', !!err); }
       function data(iso) {
@@ -100,7 +101,8 @@
             if (res.ok || res.j.error === 'nao_pendente') {
               c.remove();
               say((res.ok ? (aprovar ? 'Aprovado.' : 'Recusado.') + (res.j.email_enviado ? ' O médico recebeu um e-mail.' : ' O e-mail ao médico não foi enviado.')
-                          : 'Este cadastro já tinha sido decidido.') + (list.children.length ? '' : ' Nenhum outro cadastro esperando.'));
+                          : 'Este cadastro já tinha sido decidido.')
+                  + (list.children.length ? '' : mais.p ? ' Há mais cadastros esperando: recarregue a página.' : ' Nenhum outro cadastro esperando.'));
               return;
             }
             sim.disabled = nao.disabled = false; say('Não foi possível salvar. Tente de novo.', true);
@@ -129,7 +131,7 @@
             if (res.ok || res.j.error === 'nao_manual') {
               c.remove();
               say2((res.ok ? 'Liberado. A conta não será mais pedida a confirmar no CFM.' : 'Esta conta não está mais esperando a confirmação.')
-                   + (manuais.children.length ? '' : ' Nenhuma outra conta esperando.'));
+                   + (manuais.children.length ? '' : mais.m ? ' Há mais contas esperando: recarregue a página.' : ' Nenhuma outra conta esperando.'));
               return;
             }
             lib.disabled = false;
@@ -146,12 +148,14 @@
           if (res.status === 403) { say('Esta página é só para os administradores do OpenDoctor.'); return; }
           if (!res.ok) { say('Não foi possível carregar os cadastros.', true); return; }
           var ps = res.j.pendentes || [], ms = res.j.manuais || [];
-          say(ps.length ? '' : 'Nenhum cadastro esperando.');
+          mais.p = !!res.j.pendentes_mais; mais.m = !!res.j.manuais_mais;
+          say(!ps.length ? 'Nenhum cadastro esperando.' : mais.p ? 'Mostrando os ' + ps.length + ' cadastros mais antigos.' : '');
           ps.forEach(function (p) { list.appendChild(card(p)); });
           document.getElementById('manuaisSec').hidden = false;
           document.getElementById('semChave').hidden = !!res.j.cfm;
           say2(!ms.length ? 'Nenhuma conta aprovada à mão esperando a confirmação.'
-               : res.j.dispensa === false ? 'Falta aplicar a migração 0019 no banco: por enquanto não dá para liberar.' : '', ms.length && res.j.dispensa === false);
+               : res.j.dispensa === false ? 'Falta aplicar a migração 0019 no banco: por enquanto não dá para liberar.'
+               : mais.m ? 'Mostrando as ' + ms.length + ' contas aprovadas há mais tempo.' : '', ms.length && res.j.dispensa === false);
           ms.forEach(function (p) { manuais.appendChild(cardManual(p, res.j.dispensa !== false, res.j.limite_falhas)); });
         })
         .catch(function () { say('Sem conexão. Tente de novo.', true); });
