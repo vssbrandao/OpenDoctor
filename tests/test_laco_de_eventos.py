@@ -33,10 +33,10 @@ def fake(monkeypatch):
         "touch_patient": lambda *a: None, "record_login": lambda *a: False, "login_succeeded": lambda uid: None,
         "password_login_info": lambda e: {"id": "u1", "hash": "h", "sv": 0, "locked_s": 0}, "account": lambda e: None,
         "new_login_code": lambda e, h: ("ok", 0), "discard_login_code": lambda e: None, "check_login_code": lambda e, h: ("ok", 0),
-        "user_by_email": lambda e: dict(USER), "create_email_user": lambda *a, **k: dict(USER), "get_user": lambda uid: dict(USER),
+        "user_by_email": lambda e: dict(USER), "user_by_google_sub": lambda sub: None, "create_email_user": lambda *a, **k: dict(USER), "get_user": lambda uid: dict(USER),
         "set_password": lambda uid, ph, sv=None: dict(USER),
-        "crm_in_use": lambda crm, uf: False, "pending_doctors": lambda: [], "decide_crm": lambda uid, ap: dict(USER),
-        "manual_doctors": lambda janela_s: ([], True), "crm_dispensa": lambda uid: dict(USER),
+        "crm_in_use": lambda crm, uf: False, "pending_doctors": lambda limit=200: [], "decide_crm": lambda uid, ap: dict(USER),
+        "manual_doctors": lambda janela_s, limit=200: ([], True), "crm_dispensa": lambda uid: dict(USER),
         "crm_confirmed": lambda uid: True, "get_medico": lambda uid: {"name": "Ana Lima", "crm": "123456", "crm_uf": "SP"},
         "upsert_user": lambda *a, **k: dict(USER), "cfm_tentativa_usa": lambda *a: True, "cfm_tentativas": lambda *a: 0,
         "cfm_tentativa_registra": lambda *a: None,
@@ -84,6 +84,7 @@ CASOS = [   # (método, rota, pedido, (módulo, função lenta), troca no banco 
     ("post", "/auth/signup/start", {"json": NOVA}, (db, "cfm_tentativa_usa"), {}),
     ("post", "/auth/google/registro", {"json": REG, "headers": GREG}, (cfm, "consultar"), {"user_by_email": None}),
     ("post", "/auth/google/registro", {"json": REG, "headers": GREG}, (db, "upsert_user"), {"user_by_email": None}),
+    ("post", "/auth/google/registro", {"json": REG, "headers": GREG}, (db, "user_by_google_sub"), {"user_by_email": None}),
     ("post", "/auth/crm/confirmar", {"json": {"cpf": "52998224725", "nascimento": "12/05/1985"}}, (cfm, "validar"), MANUAL),
     ("post", "/auth/crm/confirmar", {"json": {"cpf": "52998224725", "nascimento": "12/05/1985"}}, (db, "crm_confirmed"), MANUAL),
     ("post", "/auth/crm/confirmar", {"json": {"cpf": "52998224725", "nascimento": "12/05/1985"}}, (db, "cfm_tentativas"), MANUAL),
@@ -153,7 +154,8 @@ def test_chamada_lenta_nao_trava_os_outros_medicos(fake, metodo, rota, pedido, l
 
 
 BLOQUEIA = ("db", "integrations", "mailer", "exemplo", "llm", "cfm")   # banco, Google/Microsoft, Resend, exemplo, OpenAI, CFM
-NAO_BLOQUEIA = {"integrations.configured", "mailer.configured", "db.patient_key", "cfm.configured"}   # só leem o ambiente / o texto
+NAO_BLOQUEIA = {"integrations.configured", "mailer.configured", "db.patient_key", "cfm.configured",   # só leem o ambiente
+                "cfm.crm_numero"}                                                                       # / o texto
 
 
 def test_rota_async_so_chama_banco_e_rede_pelo_threadpool():
