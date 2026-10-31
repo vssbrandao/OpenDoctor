@@ -307,10 +307,19 @@ _DOSE = re.compile(r"(?<![\d.,])\d+(?:[.,]\d+)*(?:\s*/\s*\d+(?:[.,]\d+)*)?\s*(?:
 
 def _marcas(nome):
     """O que separa remédios da mesma família: letra ou número da vitamina ("A", "E", "D3", "B 12"), do ômega ("3",
-    "6"), da marca ("Humulin N"/"R") e o tipo da insulina ("NPH", "regular"). Só no nome: o que vem entre parênteses, a
-    dose e a posologia ("D3 7.000", "NPH 10-0-8", "50 mil") não contam — o primeiro número que não é do ômega encerra."""
-    n = _DOSE.sub(" ", scribe.norm(nome).split("(")[0])
-    n = re.sub(r"\b([bdk])\s+(\d{1,2})\b(?![.,]\d|\s*mil\b)", r"\1\2", n)               # "b 12" → "b12"
+    "6"), da marca ("Humulin N"/"R") e o tipo da insulina ("NPH", "regular"), lidos fora e dentro dos parênteses
+    ("Insulina humana (NPH)"). A dose e a posologia ("D3 7.000", "NPH 10-0-8", "50 mil") não contam: em cada pedaço, o
+    primeiro número que não é do ômega encerra."""
+    out = set()
+    for parte in re.split(r"[()]", scribe.norm(nome)):
+        out |= _marcas_parte(parte)
+    return out
+
+
+def _marcas_parte(n):
+    n = _DOSE.sub(" ", n)
+    n = re.sub(r"\b([bdkt])\s+(\d{1,2})\b(?![.,]\d|\s*mil\b)", r"\1\2", n)              # "b 12" → "b12", "t 4" → "t4"
+    n = re.sub(r"\bq\s+10\b(?![.,]\d|\s*mil\b)", "q10", n)                              # coenzima Q 10 (não "q 8 h")
     toks = re.findall(r"[a-z0-9]+", n)
     out, omega = set(), False
     for i, t in enumerate(toks):

@@ -3077,7 +3077,8 @@
       }
       function loadPatients(force) {
         if (!force && patients && Date.now() - patientsAt < 60e3) return Promise.resolve(patients);
-        return fetch('/patients').then(function (r) { return r.ok ? r.json() : { patients: [] }; })
+        // servidor com erro: fica a lista que já estava (sem ela, os pacientes sumiriam do campo por 60 s)
+        return fetch('/patients').then(function (r) { if (r.status >= 500) throw r; return r.ok ? r.json() : { patients: [] }; })
           .then(function (j) { patients = j.patients || []; patientsMore = !!j.more; patientsAt = Date.now(); return patients; })
           .catch(function () { return patients || []; });
       }
@@ -3181,6 +3182,7 @@
       function novoComNome(name, antes) { return sameName(name).filter(function (p) { return antes.indexOf(p.id) < 0; })[0] || null; }
       function ligaCriado(my, name, p) {
         if (my !== seq || pop.hidden) return;
+        if (elMsg.textContent === AGUARDE) elMsg.hidden = true;
         if (pnorm(elPatient.value) === pnorm(name)) { setPatient(p); elMsg.hidden = true; }
         else if (document.activeElement === elPatient) showList();
       }
@@ -3190,7 +3192,7 @@
         name = name.split(/\s+/).filter(Boolean).join(' ');
         var k = pnorm(name);
         if (semResposta[k]) {
-          var antes0 = semResposta[k];
+          var antes0 = semResposta[k].concat(sameName(name).map(function (p) { return p.id; }));   // quem o médico já via na lista não é o da tentativa
           recarregada().then(function () {
             var p = novoComNome(name, antes0);
             if (!p) { enviar(antes0); return; }
