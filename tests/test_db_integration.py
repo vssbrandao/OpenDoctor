@@ -289,6 +289,16 @@ def test_login_google_nao_troca_o_nome_da_receita(novo_usuario):
     assert db.upsert_user(vazio["email"].upper(), "Beto Google", None, "sub-" + uuid.uuid4().hex)["name"] == "Beto Google"
 
 
+def test_conta_pela_conta_google(novo_usuario):
+    """O `sub` do Google acha a conta mesmo depois de o e-mail mudar no Google; vazio não acha nenhuma."""
+    u = novo_usuario("Ana")
+    sub = "sub-" + uuid.uuid4().hex
+    db.upsert_user(u["email"], None, None, sub)
+    assert db.user_by_google_sub(sub)["id"] == u["id"]
+    assert db.user_by_google_sub("sub-" + uuid.uuid4().hex) is None
+    assert db.user_by_google_sub("") is None and db.user_by_google_sub(None) is None
+
+
 def test_exemplo_vem_com_as_receitas(novo_usuario):
     from app import exemplo
     uid = novo_usuario()["id"]

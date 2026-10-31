@@ -40,10 +40,14 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
     ao Registro, e a seta tira só o `registro`.
 - **Criar conta:** `POST /auth/google/registro` confere o CRM e só então cria a conta.
   - Não há código: o Google já confirmou o e-mail.
-  - O cookie só cria conta. Se o e-mail ganhou uma conta no meio do caminho, a resposta é `sessao_expirada` e o médico
-    entra de novo pelo Google: uma cópia do cookie não vale como login.
+  - O cookie só cria conta. Se o e-mail (ou a conta Google, pelo `sub`) ganhou uma conta no meio do caminho, a resposta
+    é `sessao_expirada` e o médico entra de novo pelo Google: uma cópia do cookie não vale como login.
 - A seta volta para a tela inicial.
 - **Contas Google que já existem:** entram como sempre, desde que o Google tenha confirmado o e-mail.
+- **Conta Google cujo e-mail mudou no Google** (o `sub` já é de uma conta do OpenDoctor com o e-mail antigo): nem o
+  Registro de uma conta nova (o CPF iria ao CFM e a conta não seria criada: `google_sub` é único), nem entrar sozinho na
+  outra conta. A tela diz "Esta conta Google está ligada a outro e-mail no OpenDoctor. Entre com o e-mail da sua conta."
+  (`?erro=google_outro_email`).
 
 ### A decisão (`server._crm_decide`)
 - **Com `CFM_CHAVE`:**
@@ -151,16 +155,24 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 - **O problema:** o CPF não foi guardado. Quando `CFM_CHAVE` passar a existir, quem tem `crm_fonte = 'manual'` precisa
   confirmar no CFM.
 - **Quando:** **no login** seguinte à chegada da chave, a tela pede **uma vez** o CPF e o nascimento (passo "Confirme
-  seu registro"). O pedido fica marcado na sessão (`cc` no cookie assinado, `_logged`): a sessão que já estava aberta
-  quando a chave chegou continua (o médico no meio do atendimento não perde a agenda nem o prontuário).
+  seu registro"). O pedido fica marcado na sessão (`cc` no cookie assinado, `server._cc_ao_entrar`): a sessão que já
+  estava aberta quando a chave chegou continua (o médico no meio do atendimento não perde a agenda nem o prontuário).
+  - **Pendente aprovado com a chave no ar:** a sessão que nasce numa conta pendente, com a chave já configurada, também
+    leva a marca. Se um administrador aprova a conta com essa sessão aberta (na espera), a tela passa para "Confirme seu
+    registro" antes de abrir o app: a aprovação confere o nome e o CRM, não o CPF (o cadastro pode ter ficado pendente
+    justamente pelo limite de CPFs que não bateram).
 - **Como:** `POST /auth/crm/confirmar` roda o Validar.
   - **`true`:** `crm_fonte = 'cfm'`, a sessão perde a marca e o app abre.
-  - **`false`:** a mensagem aparece e o pedido continua até dar certo. Limite **por conta** (não por IP: os colegas da
-    mesma clínica não gastam o dela): 5 que não bateram a cada 24 h (`server.CONF_FALHAS`, no banco); passou, a tela
-    pede para tentar no dia seguinte.
+  - **`false`:** pelo manual, o Validar responde `false` também com a chave errada ou vencida (sem código). Por isso o
+    `false` é conferido com o **Consultar**, com a mesma chave:
+    - **o Consultar respondeu** (o médico, ou "CRM não encontrado"): a chave é boa, então não bateu. A mensagem
+      aparece e o pedido continua até dar certo. Limite **por conta** (não por IP: os colegas da mesma clínica não gastam
+      o dela): 5 que não bateram a cada 24 h (`server.CONF_FALHAS`, no banco); passou, a tela pede para tentar no dia
+      seguinte;
+    - **o Consultar não respondeu** (3010 e os outros abaixo): como o CFM sem responder.
   - **O CFM não respondeu** (fora do ar, erro passageiro repetido, chave inválida ou vencida — 3010): a conta já foi
     aprovada por um administrador, então **esta sessão segue** (resposta `adiado`); o pedido volta no próximo login.
-    O 3010 avisa os administradores. Só o Validar `false` mantém o bloqueio.
+    O 3010 avisa os administradores e não gasta o limite da conta.
 - **A saída para quem ficou preso:** se o Validar insiste em `false` (aprovada com o CRM digitado errado, cadastro do
   CFM divergente), o administrador usa **"Liberar sem confirmar"** na página de cadastros, depois de conferir o médico por
   outro meio.

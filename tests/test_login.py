@@ -180,6 +180,8 @@ def _client(monkeypatch, fake, configured=True):
     monkeypatch.setattr(db, "check_login_code", check)
     monkeypatch.setattr(db, "account", lambda e: None if e not in fake.users else {"password": bool(fake.users[e].get("hash"))})
     monkeypatch.setattr(db, "user_by_email", lambda e: fake.users.get(e))
+    monkeypatch.setattr(db, "user_by_google_sub",
+                        lambda s: next((u for u in fake.users.values() if s and u.get("google_sub") == s), None))
 
     def info(e):
         u = fake.users.get(e)

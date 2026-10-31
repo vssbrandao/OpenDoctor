@@ -269,7 +269,17 @@ def user_by_email(email):
             return _row_to_user(cur.fetchone())
 
 
-LOCK_AFTER = 5                # senhas erradas seguidas até bloquear
+def user_by_google_sub(sub):
+    """A conta ligada a esta conta Google (o `sub` não muda quando o e-mail do Google muda) ou None."""
+    if not sub:
+        return None
+    with connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(f"select {_user_cols(conn)} from users where google_sub = %s", (str(sub),))
+            return _row_to_user(cur.fetchone())
+
+
+LOCK_AFTER = 5               # senhas erradas seguidas até bloquear
 LOCK_MINUTES = 15
 
 

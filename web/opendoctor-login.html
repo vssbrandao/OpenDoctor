@@ -488,9 +488,12 @@
       var erro = params.get('erro');
       if (erro) {
         // google_nao_verificado: o Google não confirmou que o e-mail é do dono da conta (o servidor não entrou nem criou conta)
-        var simples = erro === 'cancelado' || erro === 'access_denied' || erro === 'sessao' || erro === 'google_nao_verificado';
+        // google_outro_email: esta conta Google é de uma conta do OpenDoctor com outro e-mail (o e-mail mudou no Google)
+        var simples = erro === 'cancelado' || erro === 'access_denied' || erro === 'sessao' || erro === 'google_nao_verificado'
+          || erro === 'google_outro_email';
         if (erro === 'sessao') alertMsg('Sua sessão expirou. Entre novamente — o que você estava escrevendo continua salvo neste navegador.', true);
         else if (erro === 'google_nao_verificado') alertMsg('Esse e-mail não foi verificado pelo Google.');
+        else if (erro === 'google_outro_email') alertMsg('Esta conta Google está ligada a outro e-mail no OpenDoctor. Entre com o e-mail da sua conta.');
         else if (simples) alertMsg('Login cancelado. Tente de novo quando quiser.', true);
         else show('erro');
         params.delete('erro');

@@ -796,7 +796,7 @@ def _logged(request, user, nxt, method, welcome=False):
     """Resposta de login concluído: cookie de sessão + para onde ir. Registra a entrada."""
     dest = auth.safe_next(nxt)
     out = {"ok": True, "redirect": auth.with_welcome(dest) if welcome else dest}
-    cc = _crm_a_confirmar(user)                     # aprovada à mão e já há a chave do CFM: esta sessão confirma antes
+    cc = _cc_ao_entrar(user)
     bloqueio = _crm_bloqueio(dict(user, crm_cc=cc))
     if bloqueio:
         out["bloqueio"] = bloqueio                  # a tela de login mostra a espera em vez de abrir o app
@@ -922,6 +922,13 @@ def _crm_a_confirmar(user):
     (crm_dispensado, página de cadastros) nunca é pedida, e a marca das sessões abertas dela deixa de valer."""
     return (bool(user) and user.get("crm_status") == "verificado" and user.get("crm_fonte") == "manual"
             and not user.get("crm_dispensado") and cfm.configured())
+
+
+def _cc_ao_entrar(user):
+    """A sessão que nasce agora leva a marca de confirmar ("cc")? A da conta aprovada à mão, se já há a chave do CFM; e a
+    da conta pendente com a chave no ar: aprovada à mão no meio desta sessão, ela confirma o CPF e o nascimento antes de
+    abrir o app (senão o cadastro que não passou no Validar e ficou pendente entraria só com a aprovação do nome e do CRM)."""
+    return _crm_a_confirmar(user) or (bool(user) and user.get("crm_status") == "pendente" and cfm.configured())
 
 
 def _crm_bloqueio(user):
@@ -1193,9 +1200,10 @@ def _google_registro_cria(request, b):
         with _na_vez(email) as vez:
             if not vez:
                 return _err("limite_ip", 429)
-            if db.user_by_email(email) is not None:
-                # a conta passou a existir no meio do caminho: o tíquete só cria conta, nunca entra numa que já existe
-                # (uma cópia dele valeria como login por 15 min). Entra-se de novo pelo Google, como conta existente
+            if db.user_by_email(email) is not None or db.user_by_google_sub(t.get("sub")) is not None:
+                # a conta passou a existir no meio do caminho (o e-mail, ou esta conta Google com outro e-mail): o tíquete
+                # só cria conta, nunca entra numa que já existe (uma cópia dele valeria como login por 15 min). Entra-se
+                # de novo pelo Google, como conta existente
                 resp = _err("sessao_expirada")
                 resp.delete_cookie(GREG_COOKIE, path="/auth/")
                 return resp
@@ -1244,14 +1252,19 @@ def _crm_confirmar(request, b):
             m = db.get_medico(u["id"]) or {}
             v = cfm.validar(m.get("crm") or "", m.get("crm_uf") or "", cpf, nasc)
             if v["status"] == "ok" and not v["valido"]:
-                db.cfm_tentativa_registra(falhas)
-                return _err("crm_dados")                  # não bateu: a confirmação continua pedida
+                # o "false" vem também com a chave errada ou vencida (sem código, manual do CFM): o Consultar, com a mesma
+                # chave, separa. Respondeu (médico achado ou CRM que não existe): é "não bateu"; senão, o CFM não respondeu
+                c = cfm.consultar(m.get("crm") or "", m.get("crm_uf") or "")
+                if c["status"] != "indisponivel":
+                    db.cfm_tentativa_registra(falhas)
+                    return _err("crm_dados")              # não bateu: a confirmação continua pedida
+                v = c
             if v["status"] == "ok":
                 db.crm_confirmed(u["id"])
                 out = {"ok": True, "redirect": auth.safe_next(b.get("next"))}
             else:
-                # o CFM não respondeu (fora do ar, erro passageiro repetido, chave vencida): a conta já foi aprovada por
-                # um administrador, então esta sessão segue; a confirmação volta a ser pedida no próximo login
+                # o CFM não respondeu (fora do ar, erro passageiro repetido, chave errada ou vencida): a conta já foi
+                # aprovada por um administrador, então esta sessão segue; a confirmação volta a ser pedida no próximo login
                 _cfm_alerta(v)
                 print("[cadastro] confirmação adiada: CFM", v.get("codigo"), flush=True)
                 out = {"ok": True, "redirect": auth.safe_next(b.get("next")), "adiado": True}
@@ -1433,7 +1446,15 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
                 resp = RedirectResponse(_login_page("google_nao_verificado", payload.get("nx", "")))
                 resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
                 return resp
-            if db.user_by_email(email) is None:
+            sem_conta = db.user_by_email(email) is None
+            if sem_conta and db.user_by_google_sub(info.get("sub")) is not None:
+                # esta conta Google já é de uma conta do OpenDoctor, com o e-mail de antes (o e-mail mudou no Google): nem
+                # o Registro de uma conta nova (o CPF iria ao CFM e a conta não seria criada: google_sub é único), nem
+                # entrar sozinho na outra — entra-se com o e-mail da conta
+                resp = RedirectResponse(_login_page("google_outro_email", payload.get("nx", "")))
+                resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
+                return resp
+            if sem_conta:
                 # e-mail sem conta: antes de a conta existir, o Registro profissional (só médicos criam conta). O perfil
                 # do Google espera num cookie assinado deste navegador (15 min), fora da URL
                 # registro=google e a página de origem ficam na URL até a conta existir (recarregar não perde a etapa)
@@ -1451,7 +1472,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             user = db.upsert_user(email, info.get("name"), info.get("picture"), info.get("sub"))
             dest = auth.safe_next(payload.get("nx"))
             resp = RedirectResponse(dest)
-            auth.set_session(resp, user["id"], user.get("sv", 0), cc=_crm_a_confirmar(user))
+            auth.set_session(resp, user["id"], user.get("sv", 0), cc=_cc_ao_entrar(user))
             _audit(request, user["id"], "entrou", "google", _device(request, resp))
             resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
             return resp
