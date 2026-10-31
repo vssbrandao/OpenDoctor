@@ -407,6 +407,7 @@
         $('wantPw').hidden = !st.emailOk;
         if (push) history.pushState({ step: step }, '');
       }
+      function etapa() { var a = document.querySelector('[data-step]:not([hidden])'); return a && a.getAttribute('data-step'); }
       // st.wait: a conta já existe e espera (conferência do CRM, recusada, a confirmar) — o Voltar não reabre o cadastro
       var REACH = { password: function () { return !!st.email; }, signup: function () { return !!st.email; },
                     registro: function () { return st.google || (!!st.email && !!$('newPw').value); },
@@ -480,9 +481,10 @@
       window.addEventListener('pageshow', function (e) {
         if (!e.persisted) return;
         ['cCpf', 'cNasc', 'pw', 'rPw', 'rPw2'].forEach(function (id) { $(id).value = ''; });
-        var aberta = document.querySelector('[data-step]:not([hidden])');
-        if (!st.saiu && !st.wait && aberta && EM_ANDAMENTO.indexOf(aberta.getAttribute('data-step')) >= 0) return;
+        paintRules('rPw');
+        if (!st.saiu && !st.wait && EM_ANDAMENTO.indexOf(etapa()) >= 0) return;
         st.saiu = false; limpaCadastro(); confereSessao(true);
+        ['rNome', 'rCrm', 'rUf'].forEach(function (id) { $(id).value = ''; }); clearErrs($('regForm'));
       });
 
       // link do Google leva junto a página de origem
@@ -866,7 +868,8 @@
       // seta segue para a senha — vencer de novo não empilha nada
       function expirou() {
         st.ticket = ''; st.alerta = 'A confirmação expirou. Confira os dados e toque em Criar conta de novo.';
-        history.back();
+        if (etapa() === 'code' && history.state && history.state.step === 'code') { history.back(); return; }
+        show('registro'); history.replaceState({ step: 'registro' }, ''); alertMsg(st.alerta); st.alerta = '';
       }
       function regFail(j) {
         var er = j.error;
@@ -895,7 +898,7 @@
         req.then(function (res) {
           busy(btn, false);
           var j = res.j;
-          if (res.ok && j.ticket) { st.ticket = j.ticket; openCode('signup', j.resend_in); return; }
+          if (res.ok && j.ticket) { if (etapa() === 'registro') { st.ticket = j.ticket; openCode('signup', j.resend_in); } return; }
           if (res.ok && j.redirect) { done(j); return; }                                   // Google: conta criada
           regFail(j);
         }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });

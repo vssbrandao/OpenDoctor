@@ -134,8 +134,12 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 - **Voltar pelo cache do navegador:** as senhas e o CPF/nascimento da confirmação saem sempre.
   - **Cadastro em andamento** (a tela estava na senha, no Registro, no código ou na nova senha): quem saiu para ler os
     Termos ou a Política encontra a tela como deixou (o tíquete, o Google e o que já digitou).
-  - **O resto** (foi para o app, saiu da espera pelo "Sair", largou o cadastro na tela inicial): o cadastro sai da página
-    e o `/me` é conferido de novo; sem sessão, a tela inicial (o Voltar seguinte não reabre a espera).
+  - **O resto** (foi para o app, saiu da espera pelo "Sair", largou o cadastro na tela inicial): o cadastro inteiro sai da
+    página (nome, CPF, nascimento, CRM, UF e senha) e o `/me` é conferido de novo; sem sessão, a tela inicial (o Voltar
+    seguinte não reabre a espera).
+- **Resposta que chega depois de a pessoa sair da etapa:** tocou a seta enquanto o Criar conta esperava o CFM, o código
+  não abre por cima da senha; voltou ao Registro enquanto o código era conferido e o tíquete venceu, o aviso aparece no
+  Registro.
 - **Contas anteriores a esta regra** (`crm_status` vazio; as 3 que existiam): seguem exatamente como antes.
 
 ## Aprovação à mão (administradores)

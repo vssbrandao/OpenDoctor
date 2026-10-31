@@ -60,6 +60,7 @@ let START = null;                 // resposta do /auth/signup/start (null = ok c
 let VERIFY = null;                // resposta do /auth/signup/verify (null = código 123456 certo, conta pendente)
 let CHECK = null;                 // resposta do /auth/email/check (null = e-mail sem conta)
 let MAIS = false;                 // a lista de pendentes veio cortada (pendentes_mais)
+let ATRASO = {};                  // rota → ms até responder (a pessoa mexe na tela enquanto o servidor pensa)
 let REG_GOOGLE = null;            // resposta do /auth/google/registro
 let PENDENTES = [{ id: '8f14e45f-ceea-467a-9575-1a2b3c4d5e6f', name: 'Ana Lima', email: 'ana@clinica.com.br', crm: '123456', crm_uf: 'SP', pedido_em: '2026-10-30T12:00:00+00:00', outras_contas: 0 },
   { id: '9a14e45f-ceea-467a-9575-1a2b3c4d5e70', name: 'Bia Souza', email: '<img src=x>bia@clinica.com.br', crm: '4321', crm_uf: 'RJ', pedido_em: '2026-10-30T13:00:00+00:00', outras_contas: 1 }];
@@ -112,6 +113,7 @@ async function responde(p) {
   else if (arq.startsWith(WEB) && extname(arq) && existsSync(arq)) { dado = readFileSync(arq); tipo = TIPOS[extname(arq)] || 'application/octet-stream'; }
   else {
     pedidos.push({ method, path: u.pathname, url: p.request.url, body });
+    if (ATRASO[u.pathname]) await sleep(ATRASO[u.pathname]);
     const r = rota(method, u.pathname, body || {});
     if (r === null) status = 404; else status = r[0];
     dado = Buffer.from(JSON.stringify(r ? r[1] : {}));
@@ -741,10 +743,68 @@ const cenarios = [
     await ate(`!window.__marca && document.readyState === 'complete'`, 5000, 'saiu para o Google');
     await sleep(300);
     await ev(`history.back(); 1`); await sleep(1000);
-    const r3 = { cache: await ev(`window.__marca === 1`), passo: await passo(), cpf: await val('#rCpf'), senha: await val('#newPw') };
-    certo(r3.cpf === '' && r3.senha === '' && r3.passo === 'email', 'cadastro largado: ' + JSON.stringify(r3));
+    const r3 = { cache: await ev(`window.__marca === 1`), passo: await passo(), cpf: await val('#rCpf'), senha: await val('#newPw'),
+      resto: await ev(`['rNome', 'rCrm', 'rUf', 'rNasc'].map((i) => document.getElementById(i).value).join('')`) };
+    certo(r3.cpf === '' && r3.senha === '' && r3.resto === '' && r3.passo === 'email', 'cadastro largado: ' + JSON.stringify(r3));
     return `Sair e Voltar sem o CPF (cache ${r1.cache}); sem sessão a tela inicial, e o Voltar não reabre a confirmação (cache ${r2.cache}); `
       + `o cadastro largado sai da página (cache ${r3.cache})`;
+  }],
+  ['a resposta que chega depois de a pessoa sair da etapa', async () => {
+    // tocou a seta enquanto o Criar conta esperava o CFM: o código não abre por cima da senha
+    await ateRegistro(); await preenche();
+    ATRASO = { '/auth/signup/start': 700 };
+    await clica('#regGo'); await sleep(100);
+    await clica('#back');
+    await ate(`document.getElementById('title').textContent === 'Crie sua conta'`, 2000, 'a seta durante o pedido');
+    await sleep(900);
+    certo(await titulo() === 'Crie sua conta', 'o código abriu por cima da senha: ' + await titulo());
+    // de volta ao Registro e ao código; o tíquete vence: a seta continua chegando à senha
+    ATRASO = {};
+    await clica('#signupGo');
+    await ate(`!document.getElementById('regForm').hidden`, 2000, 'Registro de novo');
+    await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código');
+    VERIFY = [400, { error: 'sessao_expirada' }];
+    await cola('#otp input', '123456');
+    await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro depois de vencer');
+    await clica('#back');
+    await ate(`document.getElementById('title').textContent === 'Crie sua conta'`, 2000, 'a seta depois de vencer: ' + await titulo());
+    // voltou ao Registro enquanto o código era conferido e o tíquete venceu: o aviso aparece no Registro
+    await clica('#signupGo');
+    await ate(`!document.getElementById('regForm').hidden`, 2000, 'Registro');
+    VERIFY = null;
+    await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código');
+    VERIFY = [400, { error: 'sessao_expirada' }]; ATRASO = { '/auth/signup/verify': 600 };
+    await cola('#otp input', '123456'); await sleep(100);
+    await ev(`history.back(); 1`);
+    await ate(`!document.getElementById('regForm').hidden`, 2000, 'Voltar durante a conferência do código');
+    await sleep(900);
+    certo(await titulo() === 'Registro profissional' && await txt('#alertText') === 'A confirmação expirou. Confira os dados e toque em Criar conta de novo.',
+      'depois de vencer com a pessoa já no Registro: ' + await titulo() + ' / ' + await txt('#alertText'));
+    return 'a seta durante o Criar conta fica na senha; vencido com a pessoa já no Registro, o aviso fica no Registro';
+  }],
+  ['nova senha: ler a Política e voltar deixa os requisitos como o campo vazio', async () => {
+    CHECK = [200, { exists: true, password: true, email_ok: true }];
+    await abre();
+    await digita('#email', 'ana@clinica.com.br'); await clica('#go');
+    await ate(`!document.getElementById('forgotBtn').closest('[data-step]').hidden`, 3000, 'etapa da senha');
+    await clica('#forgotBtn');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código da nova senha');
+    await cola('#otp input', '123456');
+    await ate(`!document.getElementById('resetForm').hidden`, 3000, 'nova senha');
+    await digita('#rPw', 'Novaa12!x');
+    const ok = () => ev(`[...document.querySelectorAll('[data-rules="rPw"] li')].map((l) => l.classList.contains('ok')).join()`);
+    certo(await ok() === 'true,true,true', 'regras com a senha boa: ' + await ok());
+    await ev(`window.__marca = 1; document.querySelector('.legal a[href="privacy.html"]').click(); 1`);
+    await ate(`location.pathname === '/privacy.html' && document.readyState === 'complete'`, 4000, 'Política');
+    await ev(`history.back(); 1`);
+    await ate(`location.pathname === '/opendoctor-login.html' && document.readyState === 'complete'`, 4000, 'voltou');
+    await sleep(400);
+    const cache = await ev(`window.__marca === 1`);
+    certo(await val('#rPw') === '' && await ok() === 'false,false,false', 'depois do Voltar: senha ' + JSON.stringify(await val('#rPw')) + ', regras ' + await ok());
+    certo(!cache || await titulo() === 'Crie uma nova senha', 'saiu da nova senha: ' + await titulo());
+    return `a senha sai e os requisitos voltam a não cumpridos (cache ${cache})`;
   }],
   ['nova senha de uma conta pendente: a espera não guarda a senha', async () => {
     CHECK = [200, { exists: true, password: true, email_ok: true }];
@@ -810,7 +870,7 @@ async function main() {
   let falhas = 0;
   for (const [nome, fn] of cenarios) {
     const t0 = Date.now();
-    START = null; REG_GOOGLE = null; VERIFY = null; CHECK = null; MAIS = false;            // um cenário não herda o outro
+    START = null; REG_GOOGLE = null; VERIFY = null; CHECK = null; MAIS = false; ATRASO = {};   // um cenário não herda o outro
     ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
     try { const r = await fn(); log(`✓ ${nome} (${Math.round((Date.now() - t0) / 1000)} s): ${r}`); }
     catch (e) { falhas++; log(`✗ ${nome}: ${e.message}`); }
