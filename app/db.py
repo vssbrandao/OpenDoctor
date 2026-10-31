@@ -156,16 +156,38 @@ def counts(conn):
 # ===== usuários + tokens de calendário (Fase B, multiusuário) =====
 
 _USER_COLS = "id, email, name, picture, session_version, crm_status, crm_fonte"
+_DISPENSA = {"ok": None, "t": 0.0}
+DISPENSA_RECHECA_S = 60
+
+
+def tem_dispensa(conn):
+    """A migração 0019 (users.crm_dispensado_em) já foi aplicada? Sem ela o servidor segue como antes: ninguém está
+    liberado sem a confirmação no CFM, e a página de cadastros avisa que falta a migração (a publicação não derruba o
+    login). Guardado: "sim" para sempre; "não" é conferido de novo a cada DISPENSA_RECHECA_S (o dono pode aplicar a
+    migração com o app no ar). Usa a conexão de quem chama (não pega outra do pool)."""
+    if _DISPENSA["ok"] or (_DISPENSA["ok"] is False and time.monotonic() - _DISPENSA["t"] < DISPENSA_RECHECA_S):
+        return _DISPENSA["ok"]
+    ok = bool(conn.execute("""select exists(select 1 from pg_attribute where attrelid = to_regclass('users')
+                                            and attname = 'crm_dispensado_em' and not attisdropped)""").fetchone()[0])
+    _DISPENSA.update(ok=ok, t=time.monotonic())
+    return ok
+
+
+def _user_cols(conn):
+    """As colunas do usuário; com a 0019, também se a conta foi liberada sem a confirmação no CFM."""
+    return _USER_COLS + (", crm_dispensado_em is not null" if tem_dispensa(conn) else "")
 
 
 def _row_to_user(row):
     """sv = versão da sessão (muda ao trocar a senha; o cookie guarda a versão com que foi criado).
-    crm_status/crm_fonte: a conferência do CRM no cadastro (NULL = conta anterior a ela; veja 0017_crm.sql)."""
+    crm_status/crm_fonte: a conferência do CRM no cadastro (NULL = conta anterior a ela; veja 0017_crm.sql).
+    crm_dispensado: aprovada à mão e liberada por um administrador sem a confirmação no CFM (0019)."""
     if not row:
         return None
     return {"id": str(row[0]), "email": row[1], "name": row[2], "picture": row[3],
             "sv": row[4] if len(row) > 4 else 0,
-            "crm_status": row[5] if len(row) > 5 else None, "crm_fonte": row[6] if len(row) > 6 else None}
+            "crm_status": row[5] if len(row) > 5 else None, "crm_fonte": row[6] if len(row) > 6 else None,
+            "crm_dispensado": bool(row[7]) if len(row) > 7 else False}
 
 
 def _crm_params(email, crm):
@@ -203,6 +225,7 @@ def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
     `crm`: a decisão do Registro profissional (conta nova); numa conta que já existe, o CRM dela não muda."""
     email = (email or "").strip().lower()
     with connection() as conn:
+        cols = _user_cols(conn)
         with conn.cursor() as cur:
             _crm_trava(cur, crm)
             cur.execute(
@@ -215,7 +238,7 @@ def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
                   picture = coalesce(excluded.picture, users.picture),
                   google_sub = coalesce(excluded.google_sub, users.google_sub),
                   last_login = now()
-                returning {_USER_COLS}
+                returning {cols}
                 """,
                 dict(_crm_params(email, crm), name=name, pic=picture, sub=google_sub),
             )
@@ -227,7 +250,7 @@ def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
 def get_user(user_id):
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"select {_USER_COLS} from users where id = %s", (user_id,))
+            cur.execute(f"select {_user_cols(conn)} from users where id = %s", (user_id,))
             return _row_to_user(cur.fetchone())
 
 
@@ -242,7 +265,7 @@ CODE_MAX_PER_HOUR = 5         # envios por e-mail por hora
 def user_by_email(email):
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"select {_USER_COLS} from users where lower(email) = lower(%s)", (email,))
+            cur.execute(f"select {_user_cols(conn)} from users where lower(email) = lower(%s)", (email,))
             return _row_to_user(cur.fetchone())
 
 
@@ -257,6 +280,7 @@ def create_email_user(email, name, password_hash, crm=None):
     prová-lo com o código: só define a senha se a conta ainda não tinha uma (o CRM dela não muda).
     CRM/UF que outra conta já tem: a conta nasce pendente mesmo que o tíquete diga 'verificado' (_CRM_DECISAO)."""
     with connection() as conn:
+        cols = _user_cols(conn)
         with conn.cursor() as cur:
             _crm_trava(cur, crm)
             cur.execute(
@@ -269,7 +293,7 @@ def create_email_user(email, name, password_hash, crm=None):
                   password_hash = coalesce(users.password_hash, excluded.password_hash),
                   terms_accepted_at = coalesce(users.terms_accepted_at, excluded.terms_accepted_at),
                   last_login = now()
-                returning {_USER_COLS}
+                returning {cols}
                 """,
                 dict(_crm_params(email, crm), email=email, name=name, ph=password_hash),
             )
@@ -289,18 +313,19 @@ def account(email):
 
 def password_login_info(email):
     """Dados para conferir a senha: dict com id, hash, sv, segundos restantes de bloqueio e a conferência do CRM
-    (crm_status/crm_fonte, para a tela saber se a conta ainda espera) — ou None."""
+    (crm_status/crm_fonte/crm_dispensado, para a tela saber se a conta ainda espera) — ou None."""
     with connection() as conn:
+        disp = ", crm_dispensado_em is not null" if tem_dispensa(conn) else ""
         with conn.cursor() as cur:
             cur.execute(
-                """select id, password_hash, session_version,
-                          greatest(0, ceil(extract(epoch from locked_until - now())))::int, crm_status, crm_fonte
-                   from users where lower(email) = lower(%s)""", (email,))
+                f"""select id, password_hash, session_version,
+                           greatest(0, ceil(extract(epoch from locked_until - now())))::int, crm_status, crm_fonte{disp}
+                    from users where lower(email) = lower(%s)""", (email,))
             row = cur.fetchone()
     if not row:
         return None
     return {"id": str(row[0]), "hash": row[1], "sv": row[2], "locked_s": row[3] or 0,
-            "crm_status": row[4], "crm_fonte": row[5]}
+            "crm_status": row[4], "crm_fonte": row[5], "crm_dispensado": bool(row[6]) if len(row) > 6 else False}
 
 
 def login_failed(user_id):
@@ -374,7 +399,7 @@ def set_password(user_id, password_hash, sv=None):
             cur.execute(
                 f"""update users set password_hash = %s, session_version = session_version + 1,
                                      failed_logins = 0, locked_until = null, last_login = now()
-                    where id = %s and (%s::int is null or session_version = %s) returning {_USER_COLS}""",
+                    where id = %s and (%s::int is null or session_version = %s) returning {_user_cols(conn)}""",
                 (password_hash, user_id, sv, sv))
             row = cur.fetchone()
         conn.commit()
@@ -1242,17 +1267,57 @@ def crm_in_use(crm, uf):
 
 
 def pending_doctors(limit=200):
-    """Cadastros esperando a aprovação à mão, os mais antigos primeiro: id, nome, CRM/UF, quando pediu e quantas outras
-    contas têm o mesmo CRM/UF (sinal de alerta)."""
+    """Cadastros esperando a aprovação à mão, os mais antigos primeiro: id, nome, e-mail, CRM/UF, quando pediu e quantas
+    outras contas têm o mesmo CRM/UF (sinal de alerta)."""
     with connection() as conn:
         rows = conn.execute(
             """select u.id, u.name, u.crm, u.crm_uf, coalesce(u.crm_pedido_em, u.created_at), u.crm_situacao,
                       (select count(*) from users o where o.id <> u.id and o.crm = u.crm and o.crm_uf = u.crm_uf
-                                                    and coalesce(o.crm_status, '') <> 'recusado')
+                                                    and coalesce(o.crm_status, '') <> 'recusado'), u.email
                from users u where u.crm_status = 'pendente'
                order by coalesce(u.crm_pedido_em, u.created_at) limit %s""", (limit,)).fetchall()
-    return [{"id": str(r[0]), "name": r[1], "crm": r[2], "crm_uf": r[3], "pedido_em": r[4].isoformat() if r[4] else None,
-             "situacao": r[5], "outras_contas": int(r[6] or 0)} for r in rows]
+    return [{"id": str(r[0]), "name": r[1], "email": r[7], "crm": r[2], "crm_uf": r[3],
+             "pedido_em": r[4].isoformat() if r[4] else None, "situacao": r[5], "outras_contas": int(r[6] or 0)}
+            for r in rows]
+
+
+def manual_doctors(janela_s, limit=200):
+    """Contas aprovadas à mão que ainda não confirmaram o CPF e o nascimento no CFM (nem foram liberadas sem confirmar),
+    as aprovadas há mais tempo primeiro: id, nome, e-mail, CRM/UF, quando foi aprovada e quantas confirmações não
+    bateram nos últimos `janela_s` segundos (o contador `conf:<id>` de cfm_tentativas, limpo depois de 2 dias).
+    Devolve (lista, a migração 0019 já foi aplicada?): sem ela a lista sai igual, mas ninguém pode ser liberado."""
+    with connection() as conn:
+        disp = tem_dispensa(conn)
+        rows = conn.execute(
+            f"""select u.id, u.name, u.email, u.crm, u.crm_uf, u.crm_verificado_em,
+                       (select count(*) from cfm_tentativas t where t.chave = 'conf:' || u.id::text
+                                                             and t.created_at > now() - %s * interval '1 second')
+                from users u where u.crm_status = 'verificado' and u.crm_fonte = 'manual'
+                {"and u.crm_dispensado_em is null" if disp else ""}
+                order by u.crm_verificado_em nulls first limit %s""", (float(janela_s), limit)).fetchall()
+    return [{"id": str(r[0]), "name": r[1], "email": r[2], "crm": r[3], "crm_uf": r[4],
+             "aprovado_em": r[5].isoformat() if r[5] else None, "falhas": int(r[6] or 0)} for r in rows], disp
+
+
+class MigracaoPendente(RuntimeError):
+    """A coluna que a operação precisa ainda não existe no banco (migração não aplicada)."""
+
+
+def crm_dispensa(user_id):
+    """Libera uma conta aprovada à mão sem a confirmação no CFM (o Validar insiste em "false" e o médico ficou preso):
+    ela nunca mais é pedida a confirmar, e as sessões abertas deixam de ser barradas. Só muda conta aprovada à mão
+    (verificado + manual); de novo na mesma conta não muda nada (fica a data da primeira liberação). Devolve
+    {id, email, name} ou None (não é conta aprovada à mão: pendente, recusada, conferida no CFM, antiga ou inexistente).
+    Sem a migração 0019: MigracaoPendente."""
+    with connection() as conn:
+        if not tem_dispensa(conn):
+            raise MigracaoPendente("0019_crm_dispensado.sql")
+        r = conn.execute(
+            """update users set crm_dispensado_em = coalesce(crm_dispensado_em, now())
+               where id = %s and crm_status = 'verificado' and crm_fonte = 'manual' returning id, email, name""",
+            (user_id,)).fetchone()
+        conn.commit()
+    return {"id": str(r[0]), "email": r[1], "name": r[2]} if r else None
 
 
 def decide_crm(user_id, aprovado):

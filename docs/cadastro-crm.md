@@ -125,7 +125,10 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - Nenhum e-mail fica no código. Sem a variável, ninguém é administrador.
 - **A página `/opendoctor-cadastros.html`:**
   - Privada: exige login, e as rotas conferem se é administrador (403 para os outros).
-  - **Lista os pendentes:** nome, CRM/UF, data do pedido e alerta de CRM repetido.
+  - **Lista os pendentes:** nome, e-mail, CRM/UF, data do pedido e alerta de CRM repetido.
+  - **Lista "Aprovados à mão, sem confirmação no CFM"** (veja abaixo): nome, e-mail, CRM/UF, data da aprovação e as
+    confirmações que não bateram nas últimas 24 h (com o aviso de limite do dia).
+  - Nome e e-mail entram como texto (`textContent`), nunca como HTML.
   - **Link** para a busca pública do CFM (https://portal.cfm.org.br/busca-medicos/), para conferir à mão.
 - **Aprovar / Recusar:**
   - `POST /admin/cadastros/aprovar | recusar` com `{"id"}` (JSON).
@@ -150,6 +153,16 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - **O CFM não respondeu** (fora do ar, erro passageiro repetido, chave inválida ou vencida — 3010): a conta já foi
     aprovada por um administrador, então **esta sessão segue** (resposta `adiado`); o pedido volta no próximo login.
     O 3010 avisa os administradores. Só o Validar `false` mantém o bloqueio.
+- **A saída para quem ficou preso:** se o Validar insiste em `false` (aprovada com o CRM digitado errado, cadastro do
+  CFM divergente), o administrador usa **"Liberar sem confirmar"** na página de cadastros, depois de conferir o médico por
+  outro meio.
+  - `POST /admin/cadastros/liberar` com `{"id"}` (JSON), só administrador (403 para os outros).
+  - Grava `users.crm_dispensado_em` (migração `0019_crm_dispensado.sql`). A conta nunca mais é pedida a confirmar
+    (`server._crm_a_confirmar`), e as sessões abertas dela, que nasceram com a marca `cc`, deixam de ser barradas.
+  - Só conta aprovada à mão (`verificado` + `manual`); as outras respondem `409 nao_manual`. Liberar de novo não muda
+    nada (fica a data da primeira).
+  - A conta liberada sai da lista. Não há e-mail ao médico: o administrador avisa.
+  - A lista aparece também sem a chave do CFM (com o aviso de que, por enquanto, ninguém é pedido a confirmar).
 
 ## O que é guardado (e o que não é)
 - **Guardado em `users` (migração `0017_crm.sql`):**
@@ -157,6 +170,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - `crm_status`: NULL = conta antiga; `pendente` | `verificado` | `recusado`;
   - `crm_fonte`: `cfm` | `manual`;
   - `crm_situacao` (a letra do CFM), `crm_verificado_em`, `crm_pedido_em`.
+- **`users.crm_dispensado_em` (migração `0019_crm_dispensado.sql`):** quando um administrador liberou a conta aprovada à
+  mão sem a confirmação no CFM (NULL = não liberada). Não sai em `/me`.
 - **Contador `cfm_tentativas` (migração `0018_cfm_tentativas.sql`, RLS ligado):** só a chave (`crm:UF:NUMERO` ou
   `conf:<id da conta>`) e a hora. Limpo depois de 2 dias (`db.RETENTION`).
 - **Não guardado:** CPF e data de nascimento. Vão só ao CFM, no corpo do SOAP. Não entram em banco, log, tíquete
@@ -203,6 +218,13 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   código.
   - `get_user` já lê as colunas novas: sem elas, ninguém entra. O cadastro com a chave usa `cfm_tentativas`.
   - As migrações são aditivas (`add column if not exists`, `create table if not exists`).
+- **`0019_crm_dispensado.sql` (o dono aplica em produção ANTES de subir o código desta versão):**
+  - SQL: `alter table users add column if not exists crm_dispensado_em timestamptz;` (aditiva, sem dado, sem tabela
+    nova).
+  - Se o código subir antes, nada quebra: o servidor confere se a coluna existe (`db.tem_dispensa`; "não" é conferido
+    de novo a cada minuto) e, sem ela, lê o usuário como antes. Ninguém fica liberado, e "Liberar sem confirmar"
+    responde `503 migracao_pendente` (a página avisa e deixa o botão desligado). Aplicada a migração, passa a valer
+    sozinho, sem reiniciar.
 - **Ordem:** primeiro no banco de testes, depois em produção.
 - **Depois de publicar:** definir `ADMIN_EMAILS` no Render, para receber os avisos e abrir a página de cadastros.
 

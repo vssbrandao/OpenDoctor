@@ -762,10 +762,14 @@ def test_cadastros_so_para_administradores(monkeypatch):
     monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
     c = _logado(monkeypatch)
     monkeypatch.setattr(db, "pending_doctors", lambda: pytest.fail("não-administrador leu a lista"))
+    monkeypatch.setattr(db, "manual_doctors", lambda janela_s: pytest.fail("não-administrador leu a lista"))
     monkeypatch.setattr(db, "decide_crm", lambda uid, ap: pytest.fail("não-administrador decidiu"))
+    monkeypatch.setattr(db, "crm_dispensa", lambda uid: pytest.fail("não-administrador liberou"))
     assert c.get("/admin/cadastros").status_code == 403
     assert c.post("/admin/cadastros/aprovar", json={"id": UID}).status_code == 403
     assert c.post("/admin/cadastros/recusar", json={"id": UID}).status_code == 403
+    assert c.post("/admin/cadastros/liberar", json={"id": UID}).status_code == 403
+    assert TestClient(server.app).post("/admin/cadastros/liberar", json={"id": UID}).status_code == 401
     assert c.get("/opendoctor-cadastros.html", follow_redirects=False).status_code == 200   # a página não tem dado nenhum
     anonimo = TestClient(server.app)
     assert anonimo.get("/admin/cadastros").status_code == 401
@@ -778,9 +782,11 @@ def test_cadastros_so_para_administradores(monkeypatch):
 def test_administrador_aprova_e_recusa(monkeypatch):
     monkeypatch.setenv("ADMIN_EMAILS", "outro@x.com, Dono@OpenDoctor.app")
     c = _logado(monkeypatch, email="dono@opendoctor.app")
-    lista = [{"id": UID, "name": "Ana Lima", "crm": "123456", "crm_uf": "SP", "pedido_em": "2026-10-30T12:00:00+00:00",
-              "situacao": None, "outras_contas": 0}]
+    lista = [{"id": UID, "name": "Ana Lima", "email": "ana@clinica.com.br", "crm": "123456", "crm_uf": "SP",
+              "pedido_em": "2026-10-30T12:00:00+00:00", "situacao": None, "outras_contas": 0}]
     monkeypatch.setattr(db, "pending_doctors", lambda: lista)
+    janelas = []
+    monkeypatch.setattr(db, "manual_doctors", lambda janela_s: (janelas.append(janela_s), ([], True))[1])
     pendentes, decisoes, enviados = {UID: {"id": UID, "email": "ana@clinica.com.br", "name": "Ana Lima"}}, [], []
 
     def decide(uid, aprovado):
@@ -790,7 +796,8 @@ def test_administrador_aprova_e_recusa(monkeypatch):
     monkeypatch.setattr(mailer, "configured", lambda: True)
     monkeypatch.setattr(mailer, "send_crm_decision", lambda to, name="", aprovado=True: enviados.append((to, aprovado)))
     j = c.get("/admin/cadastros").json()
-    assert j == {"pendentes": lista, "cfm": False}
+    assert j == {"pendentes": lista, "manuais": [], "dispensa": True, "cfm": False, "limite_falhas": server.CONF_FALHAS[0]}
+    assert janelas == [server.CONF_FALHAS[1]]                    # as falhas da confirmação na mesma janela do limite
     assert c.post("/admin/cadastros/aprovar", json={"id": "x"}).json()["error"] == "id_invalido"
     assert c.post("/admin/cadastros/aprovar", content=json.dumps({"id": UID}), headers={"content-type": "text/plain"}).json()["error"] == "id_invalido"
     r = c.post("/admin/cadastros/aprovar", json={"id": UID.upper()})
@@ -813,6 +820,158 @@ def test_email_da_decisao_que_falha_nao_desfaz(monkeypatch):
         raise RuntimeError("resend 500")
     monkeypatch.setattr(mailer, "send_crm_decision", falha)
     assert c.post("/admin/cadastros/aprovar", json={"id": UID}).json() == {"ok": True, "email_enviado": False}
+
+
+def _contas_liberaveis(monkeypatch, contas):
+    """db.crm_dispensa / manual_doctors em memória, como no banco: só conta aprovada à mão; de novo, não muda nada."""
+    feitas = []
+
+    def dispensa(uid):
+        u = contas.get(uid)
+        feitas.append(uid)
+        if not u or u.get("crm_status") != "verificado" or u.get("crm_fonte") != "manual":
+            return None
+        u.setdefault("crm_dispensado", True)
+        return {"id": uid, "email": u["email"], "name": u["name"]}
+    monkeypatch.setattr(db, "crm_dispensa", dispensa)
+    monkeypatch.setattr(db, "manual_doctors", lambda janela_s: ([
+        {"id": k, "name": u["name"], "email": u["email"], "crm": "123456", "crm_uf": "SP",
+         "aprovado_em": "2026-10-30T12:00:00+00:00", "falhas": 5}
+        for k, u in contas.items() if u.get("crm_fonte") == "manual" and not u.get("crm_dispensado")], True))
+    return feitas
+
+
+def test_administrador_libera_aprovada_a_mao_presa_na_confirmacao(monkeypatch):
+    """O Validar insiste em "false" (aprovada com o CRM errado, cadastro do CFM divergente) e o médico ficou preso no
+    "Confirme seu registro": o administrador libera sem confirmar. A sessão que estava barrada passa a usar o app, o
+    próximo login não pede mais a confirmação, e liberar de novo não muda nada."""
+    monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
+    medica = {"id": UID, "email": "ana@clinica.com.br", "name": "Ana Lima", "sv": 0, "crm_status": "verificado",
+              "crm_fonte": "manual"}
+    contas = {UID: medica, "9a14e45f-ceea-467a-9575-1a2b3c4d5e70": {"email": "bia@x.com", "name": "Bia", "crm_status": "verificado",
+                                                                    "crm_fonte": "cfm"}}
+    feitas = _contas_liberaveis(monkeypatch, contas)
+    monkeypatch.setattr(db, "pending_doctors", lambda: [])
+    _cfm_simulado(monkeypatch, valido=False)
+    # a sessão da médica, que nasceu pedindo a confirmação, e a do administrador
+    monkeypatch.setattr(db, "get_user", lambda uid: dict(medica) if uid == UID else (
+        {"id": "adm", "email": "dono@opendoctor.app", "name": "Dono", "sv": 0, "crm_status": None} if uid == "adm" else None))
+    doc, adm = TestClient(server.app), TestClient(server.app)
+    doc.cookies.set(auth.COOKIE_NAME, auth.sign({"k": "sess", "uid": UID, "sv": 0, "cc": 1}))
+    adm.cookies.set(auth.COOKIE_NAME, auth.sign({"k": "sess", "uid": "adm", "sv": 0}))
+    assert doc.get("/cid10?q=diabetes").json() == {"error": "crm_confirmar"}
+    j = adm.get("/admin/cadastros").json()
+    assert [(m["id"], m["email"], m["falhas"]) for m in j["manuais"]] == [(UID, "ana@clinica.com.br", 5)] and j["dispensa"]
+    assert doc.post("/admin/cadastros/liberar", json={"id": UID}).status_code == 403          # o médico não se libera
+    assert adm.post("/admin/cadastros/liberar", json={"id": "x"}).json()["error"] == "id_invalido"
+    assert adm.post("/admin/cadastros/liberar", content=json.dumps({"id": UID}),
+                    headers={"content-type": "text/plain"}).json()["error"] == "id_invalido"      # só JSON
+    assert feitas == []
+    r = adm.post("/admin/cadastros/liberar", json={"id": UID.upper()})
+    assert r.status_code == 200 and r.json() == {"ok": True} and medica["crm_dispensado"] is True
+    assert adm.post("/admin/cadastros/liberar", json={"id": UID}).json() == {"ok": True}     # de novo: nada muda
+    assert adm.get("/admin/cadastros").json()["manuais"] == []
+    # a sessão barrada passa a usar o app, sem a confirmação e sem chamar o CFM
+    assert doc.get("/cid10?q=diabetes").status_code == 200
+    assert doc.get("/me").json()["bloqueio"] is None and "crm_dispensado" not in doc.get("/me").json()["user"]
+    r = doc.post("/auth/crm/confirmar", json={"cpf": CPF, "nascimento": "12/05/1985"})
+    assert r.json() == {"ok": True, "redirect": auth.HOME}
+    # só conta aprovada à mão: conferida no CFM, pendente, recusada ou inexistente → 409, sem mudar nada
+    r = adm.post("/admin/cadastros/liberar", json={"id": "9a14e45f-ceea-467a-9575-1a2b3c4d5e70"})
+    assert r.status_code == 409 and r.json()["error"] == "nao_manual" and "crm_dispensado" not in contas["9a14e45f-ceea-467a-9575-1a2b3c4d5e70"]
+    assert adm.post("/admin/cadastros/liberar", json={"id": "1a14e45f-ceea-467a-9575-1a2b3c4d5e70"}).status_code == 409
+
+
+def test_liberada_sem_confirmar_entra_sem_o_pedido(monkeypatch):
+    """Com a chave do CFM, a aprovada à mão liberada pelo administrador entra pela senha ou pelo Google sem a marca de
+    confirmar (o pedido nunca mais aparece); a que não foi liberada continua sendo pedida."""
+    fake = _Fake(_user("ana@clinica.com.br", crm_status="verificado", crm_fonte="manual", crm_dispensado=True))
+    c = _client(monkeypatch, fake)
+    info = db.password_login_info
+
+    def com_dispensa(e):
+        i = info(e)
+        return i and dict(i, crm_dispensado=fake.users[e].get("crm_dispensado", False))
+    monkeypatch.setattr(db, "password_login_info", com_dispensa)
+    _cfm_simulado(monkeypatch)
+    r = c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": PW})
+    assert r.json() == {"ok": True, "redirect": auth.HOME} and "cc" not in _sessao(r)
+    fake.users["ana@clinica.com.br"]["crm_dispensado"] = False
+    r = c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": PW})
+    assert r.json()["bloqueio"] == "crm_confirmar" and _sessao(r)["cc"] == 1
+    # pelo Google (conta que já existe): a mesma regra
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    _google(monkeypatch, fake, existe=True)
+    fake.users["nova@clinica.com.br"].update(crm_status="verificado", crm_fonte="manual", crm_dispensado=True)
+    assert "cc" not in _sessao(_volta_do_google(c))
+    fake.users["nova@clinica.com.br"]["crm_dispensado"] = False
+    assert _sessao(_volta_do_google(c))["cc"] == 1
+
+
+def test_liberar_sem_a_migracao_0019_avisa_e_nao_muda_nada(monkeypatch):
+    monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
+    c = _logado(monkeypatch, email="dono@opendoctor.app")
+
+    def sem_coluna(uid):
+        raise db.MigracaoPendente("0019_crm_dispensado.sql")
+    monkeypatch.setattr(db, "crm_dispensa", sem_coluna)
+    r = c.post("/admin/cadastros/liberar", json={"id": UID})
+    assert r.status_code == 503 and r.json() == {"error": "migracao_pendente"}
+
+
+class _Conn:
+    """Conexão falsa: responde à sondagem da coluna crm_dispensado_em (0019) e guarda o SQL de cada consulta."""
+    def __init__(self, tem):
+        self.tem, self.sql = tem, []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+    def cursor(self):
+        return self
+
+    def commit(self):
+        pass
+
+    def execute(self, sql, params=None):
+        self.sql.append(sql)
+        extra = (True,) if "crm_dispensado_em" in sql else ()
+        if "pg_attribute" in sql:
+            self._row = (self.tem,)
+        elif "password_hash" in sql:                                     # db.password_login_info
+            self._row = ("u1", "hash", 0, 0, "verificado", "manual") + extra
+        else:                                                            # as colunas do usuário (_USER_COLS)
+            self._row = ("u1", "a@b.com", "Ana", None, 0, "verificado", "manual") + extra
+        return self
+
+    def fetchone(self):
+        return self._row
+
+
+def test_sem_a_migracao_0019_o_login_segue_como_antes(monkeypatch):
+    """Publicado antes da migração 0019: as consultas do usuário não pedem a coluna nova (ninguém fica sem entrar) e
+    ninguém está liberado; depois de aplicada, o servidor vê a coluna sozinho (confere de novo a cada minuto)."""
+    conn = _Conn(False)
+    monkeypatch.setattr(db, "connection", lambda: conn)
+    monkeypatch.setattr(db, "_DISPENSA", {"ok": None, "t": 0.0})
+    u = db.get_user("u1")
+    assert u["crm_dispensado"] is False and not any("crm_dispensado_em" in s for s in conn.sql if "pg_attribute" not in s)
+    assert db.password_login_info("a@b.com")["crm_dispensado"] is False
+    with pytest.raises(db.MigracaoPendente):
+        db.crm_dispensa(UID)
+    sondagens = sum("pg_attribute" in s for s in conn.sql)
+    db.get_user("u1")
+    assert sum("pg_attribute" in s for s in conn.sql) == sondagens         # dentro do minuto: não pergunta de novo
+    conn.tem = True                                                          # o dono aplicou a 0019
+    db._DISPENSA["t"] -= db.DISPENSA_RECHECA_S + 1
+    assert db.get_user("u1")["crm_dispensado"] is True and "crm_dispensado_em" in conn.sql[-1]
+    n = len(conn.sql)
+    db.get_user("u1")
+    assert len(conn.sql) == n + 1                                            # "sim" fica guardado: sem sondagem
 
 
 # ===================== CRM conferido não muda em Configurações =====================

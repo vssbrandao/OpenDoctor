@@ -52,9 +52,14 @@ const CPF = '52998224725';
 let ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
 let START = null;                 // resposta do /auth/signup/start (null = ok com tíquete)
 let REG_GOOGLE = null;            // resposta do /auth/google/registro
-let PENDENTES = [{ id: '8f14e45f-ceea-467a-9575-1a2b3c4d5e6f', name: 'Ana Lima', crm: '123456', crm_uf: 'SP', pedido_em: '2026-10-30T12:00:00+00:00', outras_contas: 0 },
-  { id: '9a14e45f-ceea-467a-9575-1a2b3c4d5e70', name: 'Bia Souza', crm: '4321', crm_uf: 'RJ', pedido_em: '2026-10-30T13:00:00+00:00', outras_contas: 1 }];
+let PENDENTES = [{ id: '8f14e45f-ceea-467a-9575-1a2b3c4d5e6f', name: 'Ana Lima', email: 'ana@clinica.com.br', crm: '123456', crm_uf: 'SP', pedido_em: '2026-10-30T12:00:00+00:00', outras_contas: 0 },
+  { id: '9a14e45f-ceea-467a-9575-1a2b3c4d5e70', name: 'Bia Souza', email: '<img src=x>bia@clinica.com.br', crm: '4321', crm_uf: 'RJ', pedido_em: '2026-10-30T13:00:00+00:00', outras_contas: 1 }];
+// aprovadas à mão sem a confirmação no CFM (a 2ª com o limite de confirmações do dia esgotado)
+let MANUAIS = [{ id: '7b14e45f-ceea-467a-9575-1a2b3c4d5e71', name: 'Caio Rocha', email: 'caio@clinica.com.br', crm: '777', crm_uf: 'MG', aprovado_em: '2026-10-29T12:00:00+00:00', falhas: 0 },
+  { id: '6c14e45f-ceea-467a-9575-1a2b3c4d5e72', name: 'Dora Reis', email: 'dora@clinica.com.br', crm: '888', crm_uf: 'BA', aprovado_em: '2026-10-29T13:00:00+00:00', falhas: 5 }];
+let DISPENSA = true;              // a migração 0019 já está no banco
 let DIALOGOS = 0;                 // confirm() aceitos na página de cadastros (fora dela, diálogo é erro)
+let RECUSAS = 0;                  // confirm() respondidos com "Cancelar"
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.json': 'application/json', '.ico': 'image/x-icon' };
 function rota(method, path, body) {
@@ -66,7 +71,12 @@ function rota(method, path, body) {
     : [400, { error: 'codigo_incorreto', left: 4 }];
   if (path === '/auth/google/registro') return REG_GOOGLE || [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1' }];
   if (path === '/auth/crm/confirmar') return [200, { ok: true, redirect: '/opendoctor-agenda.html' }];
-  if (path === '/admin/cadastros') return [200, { pendentes: PENDENTES, cfm: false }];
+  if (path === '/admin/cadastros') return [200, { pendentes: PENDENTES, manuais: MANUAIS, dispensa: DISPENSA, cfm: true, limite_falhas: 5 }];
+  if (path === '/admin/cadastros/liberar') {
+    if (!DISPENSA) return [503, { error: 'migracao_pendente' }];
+    const antes = MANUAIS.length; MANUAIS = MANUAIS.filter((p) => p.id !== body.id);
+    return MANUAIS.length < antes ? [200, { ok: true }] : [409, { error: 'nao_manual' }];
+  }
   if (path === '/admin/cadastros/aprovar' || path === '/admin/cadastros/recusar') {
     const antes = PENDENTES.length; PENDENTES = PENDENTES.filter((p) => p.id !== body.id);
     return PENDENTES.length < antes ? [200, { ok: true, email_enviado: true }] : [409, { error: 'nao_pendente' }];
@@ -327,21 +337,53 @@ const cenarios = [
   }],
   ['página de cadastros: lista, aprova e recusa', async () => {
     await send('Page.navigate', { url: ORIG + '/opendoctor-cadastros.html' });
-    await ate(`document.querySelectorAll('.card').length === 2`, 5000, 'lista de pendentes');
-    const linhas = await ev(`[...document.querySelectorAll('.card .meta')].map((e) => e.textContent.split(' · ')[0])`);
+    await ate(`document.querySelectorAll('#list .card').length === 2`, 5000, 'lista de pendentes');
+    const linhas = await ev(`[...document.querySelectorAll('#list .card .meta:not(.email)')].map((e) => e.textContent.split(' · ')[0])`);
     certo(linhas.join('|') === 'CRM 123456/SP|CRM 4321/RJ', 'linhas: ' + linhas.join('|'));
-    certo((await txt('.card:nth-child(2) .warn')).includes('outra conta'), 'sem o alerta de CRM repetido');
+    const emails = await ev(`[...document.querySelectorAll('#list .card .email')].map((e) => e.textContent)`);
+    certo(emails.join('|') === 'ana@clinica.com.br|<img src=x>bia@clinica.com.br', 'e-mails: ' + emails.join('|'));
+    certo(await ev(`document.querySelectorAll('.card img').length`) === 0, 'o e-mail virou HTML');          // texto, nunca HTML
+    certo((await txt('#list .card:nth-child(2) .warn')).includes('outra conta'), 'sem o alerta de CRM repetido');
     certo(await ev(`document.querySelector('.sub a').href`) === 'https://portal.cfm.org.br/busca-medicos/', 'link do CFM');
-    await clica('.card .btn-dark');
-    await ate(`document.querySelectorAll('.card').length === 1`, 3000, 'aprovado saiu da lista');
+    await clica('#list .card .btn-dark');
+    await ate(`document.querySelectorAll('#list .card').length === 1`, 3000, 'aprovado saiu da lista');
     const ap = posts('/admin/cadastros/aprovar');
     certo(ap.length === 1 && ap[0].body.id === '8f14e45f-ceea-467a-9575-1a2b3c4d5e6f', 'aprovar: ' + JSON.stringify(ap.map((x) => x.body)));
     DIALOGOS = 1;
-    await clica('.card .btn-line');
-    await ate(`document.querySelectorAll('.card').length === 0`, 3000, 'recusado saiu da lista');
+    await clica('#list .card .btn-line');
+    await ate(`document.querySelectorAll('#list .card').length === 0`, 3000, 'recusado saiu da lista');
     certo(posts('/admin/cadastros/recusar').length === 1 && DIALOGOS === 0, 'recusar sem confirmar');
     certo((await txt('#msg')).includes('Nenhum outro cadastro esperando'), 'mensagem: ' + await txt('#msg'));
-    return 'aprovou Ana (POST com o id), recusou Bia depois do confirm; lista vazia';
+    certo(await ev(`document.querySelectorAll('#manuais .card').length`) === 2, 'as aprovadas à mão sumiram junto');
+    return 'aprovou Ana (POST com o id), recusou Bia depois do confirm; e-mails como texto; lista vazia';
+  }],
+  ['página de cadastros: aprovados à mão sem confirmação no CFM e "Liberar sem confirmar"', async () => {
+    await send('Page.navigate', { url: ORIG + '/opendoctor-cadastros.html' });
+    await ate(`document.querySelectorAll('#manuais .card').length === 2`, 5000, 'lista dos aprovados à mão');
+    certo(await txt('#manuaisSec h2') === 'Aprovados à mão, sem confirmação no CFM', 'título: ' + await txt('#manuaisSec h2'));
+    const m = await ev(`[...document.querySelectorAll('#manuais .card')].map((c) => [...c.querySelectorAll('.nome, .meta, .warn')].map((e) => e.textContent).join(' / '))`);
+    certo(m[0].startsWith('Caio Rocha / caio@clinica.com.br / CRM 777/MG · aprovado em ') && !m[0].includes('confirma'), 'Caio: ' + m[0]);
+    certo(m[1].includes('dora@clinica.com.br') && m[1].includes('5 confirmações não bateram no CFM nas últimas 24 h: chegou ao limite do dia.'), 'Dora: ' + m[1]);
+    certo(!(await vis('#semChave')), 'aviso de "sem chave" com a chave configurada');
+    const n0 = posts('/admin/cadastros/liberar').length;
+    RECUSAS = 1;
+    await clica('#manuais .card:nth-child(2) .btn-line');                 // confirm() com "Cancelar": nada vai ao servidor
+    await sleep(300);
+    certo(RECUSAS === 0 && posts('/admin/cadastros/liberar').length === n0, 'liberou sem o confirm');
+    DIALOGOS = 1;
+    await clica('#manuais .card:nth-child(2) .btn-line');
+    await ate(`document.querySelectorAll('#manuais .card').length === 1`, 3000, 'liberada saiu da lista');
+    const lb = posts('/admin/cadastros/liberar');
+    certo(lb.length === n0 + 1 && lb[lb.length - 1].body.id === '6c14e45f-ceea-467a-9575-1a2b3c4d5e72' && DIALOGOS === 0, 'liberar: ' + JSON.stringify(lb.map((x) => x.body)));
+    certo((await txt('#msg2')).startsWith('Liberado.'), 'mensagem: ' + await txt('#msg2'));
+    // sem a migração 0019: os botões ficam desligados e a página diz o que falta
+    DISPENSA = false;
+    await send('Page.navigate', { url: ORIG + '/opendoctor-cadastros.html' });
+    await ate(`document.querySelectorAll('#manuais .card').length === 1`, 5000, 'lista sem a 0019');
+    certo(await ev(`document.querySelector('#manuais .btn-line').disabled`), 'botão ligado sem a migração');
+    certo((await txt('#msg2')).includes('migração 0019'), 'sem o aviso da migração: ' + await txt('#msg2'));
+    DISPENSA = true;
+    return 'nome, e-mail, CRM/UF, aprovação e falhas; confirm antes de liberar; sem a 0019 o botão fica desligado';
   }],
   ['o erro de um envio anterior não fica na tela junto com o novo', async () => {
     await ateRegistro();
@@ -518,6 +560,7 @@ async function main() {
     if (j.id && espera.has(j.id)) { const w = espera.get(j.id); espera.delete(j.id); j.error ? w.no(new Error(j.error.message)) : w.ok(j.result); return; }
     if (j.method === 'Fetch.requestPaused') responde(j.params).catch((e) => erros.push('interceptação: ' + e.message));
     if (j.method === 'Page.javascriptDialogOpening') {
+      if (RECUSAS > 0) { RECUSAS--; send('Page.handleJavaScriptDialog', { accept: false }); return; }
       if (DIALOGOS > 0) DIALOGOS--; else erros.push('diálogo: ' + j.params.message);
       send('Page.handleJavaScriptDialog', { accept: true });
     }

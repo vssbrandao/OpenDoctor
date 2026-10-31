@@ -906,7 +906,8 @@ def _password_login(request, b):
         print("[login] senha falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
     return _logged(request, {"id": info["id"], "sv": info["sv"], "crm_status": info.get("crm_status"),
-                             "crm_fonte": info.get("crm_fonte")}, b.get("next"), "senha")
+                             "crm_fonte": info.get("crm_fonte"), "crm_dispensado": info.get("crm_dispensado")},
+                   b.get("next"), "senha")
 
 
 # ----- Registro profissional: só médicos criam conta (docs/cadastro-crm.md) -----
@@ -917,8 +918,10 @@ def _password_login(request, b):
 
 def _crm_a_confirmar(user):
     """Conta aprovada à mão (crm_fonte 'manual') que confirma o CPF e o nascimento no CFM agora que há a chave. É pedido
-    ao entrar (marca na sessão, _logged), não no meio de uma sessão aberta."""
-    return bool(user) and user.get("crm_status") == "verificado" and user.get("crm_fonte") == "manual" and cfm.configured()
+    ao entrar (marca na sessão, _logged), não no meio de uma sessão aberta. A que um administrador liberou sem confirmar
+    (crm_dispensado, página de cadastros) nunca é pedida, e a marca das sessões abertas dela deixa de valer."""
+    return (bool(user) and user.get("crm_status") == "verificado" and user.get("crm_fonte") == "manual"
+            and not user.get("crm_dispensado") and cfm.configured())
 
 
 def _crm_bloqueio(user):
@@ -1370,7 +1373,7 @@ def me(request: Request):
     on = scribe_on(u)
     bloqueio = _crm_bloqueio(u)
     if u:
-        u = {k: v for k, v in u.items() if k not in ("sv", "crm_cc")}
+        u = {k: v for k, v in u.items() if k not in ("sv", "crm_cc", "crm_dispensado")}
     return {"logged_in": bool(u), "user": u, "scribe": on, "bloqueio": bloqueio}
 
 
@@ -2475,12 +2478,20 @@ def _admin_or_err(request):
 
 @app.get("/admin/cadastros")
 async def admin_cadastros(request: Request):
-    """Cadastros pendentes (nome, CRM/UF, quando pediu, se outra conta tem o mesmo CRM): o administrador confere na busca
-    pública do CFM e aprova ou recusa."""
+    """Cadastros pendentes (nome, e-mail, CRM/UF, quando pediu, se outra conta tem o mesmo CRM): o administrador confere
+    na busca pública do CFM e aprova ou recusa. E as contas aprovadas à mão que ainda não confirmaram no CFM (nome,
+    e-mail, CRM/UF, quando foi aprovada, confirmações que não bateram nas últimas 24 h), para liberar a que ficou presa.
+    `dispensa`: a migração 0019 já foi aplicada (sem ela, nenhuma conta pode ser liberada sem confirmar)."""
     u, err = _admin_or_err(request)
     if err:
         return err
-    return {"pendentes": await run_in_threadpool(db.pending_doctors), "cfm": cfm.configured()}
+    return await run_in_threadpool(_admin_lista)
+
+
+def _admin_lista():
+    manuais, dispensa = db.manual_doctors(CONF_FALHAS[1])
+    return {"pendentes": db.pending_doctors(), "manuais": manuais, "dispensa": dispensa, "cfm": cfm.configured(),
+            "limite_falhas": CONF_FALHAS[0]}
 
 
 @app.post("/admin/cadastros/aprovar")
@@ -2524,6 +2535,35 @@ def _admin_decide_now(b, aprovado):
         except Exception as e:
             print("[cadastro] e-mail da decisão falhou:", str(e)[:200], flush=True)
     return {"ok": True, "email_enviado": enviado}
+
+
+@app.post("/admin/cadastros/liberar")
+async def admin_cadastro_libera(request: Request):
+    """Conta aprovada à mão presa na confirmação do CPF e do nascimento (o Validar do CFM insiste em "false": dado
+    digitado errado na aprovação, cadastro do CFM divergente): o administrador libera sem confirmar. A conta nunca mais é
+    pedida a confirmar e as sessões abertas dela deixam de ser barradas. {"id"} em JSON; liberar de novo não muda nada."""
+    u, err = _admin_or_err(request)
+    if err:
+        return err
+    return await run_in_threadpool(_admin_libera, await _body(request))
+
+
+def _admin_libera(b):
+    uid = str(b.get("id") or "").strip().lower()
+    if not _UUID.fullmatch(uid):
+        return _err("id_invalido")
+    try:
+        r = db.crm_dispensa(uid)
+    except db.MigracaoPendente:
+        print("[cadastro] liberar sem confirmar: falta a migração 0019 no banco", flush=True)
+        return _err("migracao_pendente", 503)
+    except Exception as e:
+        print("[cadastro] liberação falhou:", type(e).__name__, flush=True)
+        return _err("erro", 500)
+    if not r:
+        return _err("nao_manual", 409)               # não é (mais) conta aprovada à mão: confirmou no CFM, recusada…
+    print("[cadastro] liberado sem a confirmação no CFM", flush=True)
+    return {"ok": True}
 
 
 @app.post("/prontuario/access")

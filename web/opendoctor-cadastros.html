@@ -36,6 +36,11 @@
     .btn:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
     .msg{margin-top:24px;font-size:14px;line-height:1.4;color:#3C3C40}
     .msg.err{color:#D93025}
+    .sec{margin-top:72px;display:flex;flex-direction:column}
+    .sec .head{margin-top:0}
+    .title2{font-size:20px;line-height:1.2;color:#0C0C0D}
+    .sec .list{margin-top:32px}
+    .email{color:#3C3C40;overflow-wrap:anywhere}
     [hidden]{display:none!important}
     @media (max-width:640px){.card{flex-direction:column;align-items:stretch}.acts{justify-content:flex-end}}
   </style>
@@ -51,11 +56,26 @@
     </div>
     <p class="msg" id="msg" role="status">Carregando…</p>
     <div class="list" id="list"></div>
+
+    <!-- contas aprovadas à mão que ainda não confirmaram o CPF e o nascimento no CFM: a que ficou presa pode ser liberada -->
+    <section class="sec" id="manuaisSec" hidden>
+      <div class="head">
+        <h2 class="title2">Aprovados à mão, sem confirmação no CFM</h2>
+        <p class="sub">Com a chave do CFM, estas contas confirmam o CPF e a data de nascimento no próximo login. Se os dados
+          não batem no CFM (por exemplo, aprovada com o CRM errado), o médico fica preso nesse passo. Libere sem confirmar
+          só depois de conferir o médico por outro meio.</p>
+        <p class="sub" id="semChave" hidden>A chave do CFM ainda não está configurada: por enquanto ninguém é pedido a confirmar.</p>
+      </div>
+      <p class="msg" id="msg2" role="status" hidden></p>
+      <div class="list" id="manuais"></div>
+    </section>
   </main>
   <script>
     (function () {
       var list = document.getElementById('list'), msg = document.getElementById('msg');
+      var manuais = document.getElementById('manuais'), msg2 = document.getElementById('msg2');
       function say(t, err) { msg.textContent = t || ''; msg.hidden = !t; msg.classList.toggle('err', !!err); }
+      function say2(t, err) { msg2.textContent = t || ''; msg2.hidden = !t; msg2.classList.toggle('err', !!err); }
       function data(iso) {
         var d = iso ? new Date(iso) : null;
         return d && !isNaN(d) ? d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -68,6 +88,7 @@
       function card(p) {
         var c = el('div', 'card'), info = el('div', 'info');
         info.appendChild(el('div', 'nome', p.name || '(sem nome)'));
+        info.appendChild(el('div', 'meta email', p.email || ''));                  // texto, nunca HTML
         info.appendChild(el('div', 'meta', 'CRM ' + (p.crm || '?') + '/' + (p.crm_uf || '?') + ' · pediu em ' + data(p.pedido_em)));
         if (p.outras_contas) info.appendChild(el('div', 'warn', 'Atenção: ' + (p.outras_contas === 1 ? 'outra conta já usa' : p.outras_contas + ' outras contas já usam') + ' este CRM.'));
         var acts = el('div', 'acts'), sim = el('button', 'btn btn-dark', 'Aprovar'), nao = el('button', 'btn btn-line', 'Recusar');
@@ -91,14 +112,47 @@
         c.appendChild(info); c.appendChild(acts);
         return c;
       }
+      // aprovada à mão que ainda não confirmou no CFM: "Liberar sem confirmar" (a conta não é mais pedida a confirmar)
+      function cardManual(p, dispensa, limite) {
+        var c = el('div', 'card'), info = el('div', 'info');
+        info.appendChild(el('div', 'nome', p.name || '(sem nome)'));
+        info.appendChild(el('div', 'meta email', p.email || ''));
+        info.appendChild(el('div', 'meta', 'CRM ' + (p.crm || '?') + '/' + (p.crm_uf || '?') + ' · aprovado em ' + (data(p.aprovado_em) || '?')));
+        if (p.falhas) info.appendChild(el('div', 'warn', (p.falhas === 1 ? '1 confirmação não bateu' : p.falhas + ' confirmações não bateram')
+          + ' no CFM nas últimas 24 h' + (limite && p.falhas >= limite ? ': chegou ao limite do dia.' : '.')));
+        var acts = el('div', 'acts'), lib = el('button', 'btn btn-line', 'Liberar sem confirmar');
+        lib.type = 'button'; lib.disabled = !dispensa;
+        lib.addEventListener('click', function () {
+          if (!window.confirm('Liberar ' + (p.name || 'esta conta') + ' sem a confirmação no CFM? A conta não será mais pedida a confirmar o CPF e a data de nascimento.')) return;
+          lib.disabled = true; say2('');
+          post('/admin/cadastros/liberar', { id: p.id }).then(function (res) {
+            if (res.ok || res.j.error === 'nao_manual') {
+              c.remove();
+              say2((res.ok ? 'Liberado. A conta não será mais pedida a confirmar no CFM.' : 'Esta conta não está mais esperando a confirmação.')
+                   + (manuais.children.length ? '' : ' Nenhuma outra conta esperando.'));
+              return;
+            }
+            lib.disabled = false;
+            say2(res.j.error === 'migracao_pendente' ? 'Falta aplicar a migração 0019 no banco. Nada foi mudado.' : 'Não foi possível salvar. Tente de novo.', true);
+          }).catch(function () { lib.disabled = false; say2('Sem conexão. Tente de novo.', true); });
+        });
+        acts.appendChild(lib);
+        c.appendChild(info); c.appendChild(acts);
+        return c;
+      }
       fetch('/admin/cadastros', { credentials: 'same-origin' })
         .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
         .then(function (res) {
           if (res.status === 403) { say('Esta página é só para os administradores do OpenDoctor.'); return; }
           if (!res.ok) { say('Não foi possível carregar os cadastros.', true); return; }
-          var ps = res.j.pendentes || [];
+          var ps = res.j.pendentes || [], ms = res.j.manuais || [];
           say(ps.length ? '' : 'Nenhum cadastro esperando.');
           ps.forEach(function (p) { list.appendChild(card(p)); });
+          document.getElementById('manuaisSec').hidden = false;
+          document.getElementById('semChave').hidden = !!res.j.cfm;
+          say2(!ms.length ? 'Nenhuma conta aprovada à mão esperando a confirmação.'
+               : res.j.dispensa === false ? 'Falta aplicar a migração 0019 no banco: por enquanto não dá para liberar.' : '', ms.length && res.j.dispensa === false);
+          ms.forEach(function (p) { manuais.appendChild(cardManual(p, res.j.dispensa !== false, res.j.limite_falhas)); });
         })
         .catch(function () { say('Sem conexão. Tente de novo.', true); });
     })();

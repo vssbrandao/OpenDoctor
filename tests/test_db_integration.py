@@ -719,3 +719,55 @@ def test_limite_de_conferencias_no_cfm_no_banco(test_db):
         with db.connection() as c:
             c.execute("delete from cfm_tentativas where chave in (%s, %s)", (k1, k2))
             c.commit()
+
+
+# ----- aprovada à mão liberada sem a confirmação no CFM (0019_crm_dispensado.sql) -----
+
+def _dispensado_em(uid):
+    with db.connection() as c:
+        return c.execute("select crm_dispensado_em from users where id = %s", (uid,)).fetchone()[0]
+
+
+def test_liberar_aprovada_a_mao_sem_confirmar(novo_usuario):
+    """A lista dos aprovados à mão (com o e-mail e as confirmações que não bateram), a liberação só de conta aprovada à
+    mão, uma vez só (a data da primeira fica), e o usuário/login que passam a dizer que está liberada."""
+    with db.connection() as c:
+        assert db.tem_dispensa(c), "falta a 0019 no banco de testes"
+    n = _crm_novo()
+    u = novo_usuario("Ana Lima", crm={"crm": n, "uf": "SP", "status": "pendente"})
+    assert [p["email"] for p in db.pending_doctors() if p["id"] == u["id"]] == [u["email"]]      # o e-mail na lista
+    assert db.crm_dispensa(u["id"]) is None and _dispensado_em(u["id"]) is None              # pendente: não libera
+    db.decide_crm(u["id"], True)
+    falhas = "conf:" + u["id"]
+    try:
+        db.cfm_tentativa_registra(falhas)
+        db.cfm_tentativa_registra(falhas)
+        manuais, disp = db.manual_doctors(24 * 3600)
+        meu = [m for m in manuais if m["id"] == u["id"]]
+        assert disp is True and len(meu) == 1
+        assert (meu[0]["email"], meu[0]["crm"], meu[0]["crm_uf"], meu[0]["falhas"]) == (u["email"], n, "SP", 2)
+        assert meu[0]["aprovado_em"]
+        assert db.get_user(u["id"])["crm_dispensado"] is False
+        assert db.crm_dispensa(u["id"]) == {"id": u["id"], "email": u["email"], "name": "Ana Lima"}
+        primeira = _dispensado_em(u["id"])
+        assert primeira is not None
+        assert db.crm_dispensa(u["id"])["id"] == u["id"] and _dispensado_em(u["id"]) == primeira   # de novo: nada muda
+        assert all(m["id"] != u["id"] for m in db.manual_doctors(24 * 3600)[0])                      # saiu da lista
+        assert db.get_user(u["id"])["crm_dispensado"] is True
+        assert db.user_by_email(u["email"])["crm_dispensado"] is True
+        assert db.password_login_info(u["email"])["crm_dispensado"] is True
+        assert db.set_password(u["id"], "outro-hash")["crm_dispensado"] is True
+    finally:
+        with db.connection() as c:
+            c.execute("delete from cfm_tentativas where chave = %s", (falhas,))
+            c.commit()
+    # conferida no CFM, recusada, antiga (sem CRM) ou inexistente: não libera
+    cfm_ok = novo_usuario("Bia Souza", crm={"crm": _crm_novo(), "uf": "RJ", "status": "verificado", "fonte": "cfm", "situacao": "A"})
+    recusada = novo_usuario("Caio Lima", crm={"crm": _crm_novo(), "uf": "MG", "status": "pendente"})
+    db.decide_crm(recusada["id"], False)
+    antiga = novo_usuario("Dora")
+    for outra in (cfm_ok, recusada, antiga):
+        assert db.crm_dispensa(outra["id"]) is None and _dispensado_em(outra["id"]) is None
+        assert db.get_user(outra["id"])["crm_dispensado"] is False
+    assert db.crm_dispensa(str(uuid.uuid4())) is None
+    assert all(m["id"] not in (cfm_ok["id"], recusada["id"], antiga["id"]) for m in db.manual_doctors(24 * 3600)[0])
