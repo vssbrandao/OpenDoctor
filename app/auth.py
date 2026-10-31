@@ -144,6 +144,16 @@ def _session_user(request):
     return user
 
 
+def admin_emails():
+    """Administradores (ADMIN_EMAILS no ambiente, separados por vírgula; comparação em minúsculas): aprovam os cadastros
+    de médicos e recebem o aviso de cada cadastro pendente. Nenhum e-mail fica no código."""
+    return sorted({e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()})
+
+
+def is_admin(user):
+    return bool(user) and str(user.get("email") or "").strip().lower() in admin_emails()
+
+
 # ----- login com Google (escopos básicos) -----
 
 LOGIN_SCOPE = "openid email profile"

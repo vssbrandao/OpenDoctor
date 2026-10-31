@@ -13,8 +13,8 @@ from app import db
 def novo_usuario(test_db):
     criados = []
 
-    def criar(nome="Teste"):
-        u = db.create_email_user(f"teste-{uuid.uuid4().hex[:12]}@example.invalid", nome, "x")
+    def criar(nome="Teste", crm=None):
+        u = db.create_email_user(f"teste-{uuid.uuid4().hex[:12]}@example.invalid", nome, "x", crm=crm)
         criados.append(u["id"])
         return u
     yield criar
@@ -591,3 +591,61 @@ def test_trava_do_banco_vale_entre_conexoes(test_db):
     with db.trava("teste:trava", espera=5) as ok:
         assert ok and time.monotonic() - t0 >= 0.4                       # esperou a primeira soltar
     t.join(5)
+
+
+# ----- conferência do CRM no cadastro (0017_crm.sql) -----
+
+def _crm_novo():
+    return str(1000000 + uuid.uuid4().int % 8999999)          # 7 dígitos que nenhuma outra conta de teste usa
+
+
+def _crm_cols(uid):
+    with db.connection() as c:
+        return c.execute("""select crm, crm_uf, crm_status, crm_fonte, crm_situacao, crm_verificado_em is not null,
+                                   crm_pedido_em is not null from users where id = %s""", (uid,)).fetchone()
+
+
+def test_conta_antiga_segue_sem_conferencia(novo_usuario):
+    u = novo_usuario()
+    assert (u["crm_status"], u["crm_fonte"]) == (None, None)
+    assert _crm_cols(u["id"])[2:] == (None, None, None, False, False)
+
+
+def test_cadastro_pendente_aprovado_a_mao_e_confirmado(novo_usuario):
+    n = _crm_novo()
+    u = novo_usuario("Ana Lima", crm={"crm": n, "uf": "SP", "status": "pendente"})
+    assert (u["crm_status"], u["crm_fonte"]) == ("pendente", None)
+    assert _crm_cols(u["id"]) == (n, "SP", "pendente", None, None, False, True)
+    assert db.password_login_info(u["email"])["crm_status"] == "pendente"
+    assert db.crm_in_use(n, "SP") and not db.crm_in_use(n, "RJ")
+    outro = novo_usuario("Ana Lima", crm={"crm": n, "uf": "SP", "status": "pendente"})
+    meus = {p["id"]: p for p in db.pending_doctors() if p["id"] in (u["id"], outro["id"])}
+    assert meus[u["id"]]["crm"] == n and meus[u["id"]]["outras_contas"] == 1 and meus[u["id"]]["name"] == "Ana Lima"
+    assert db.decide_crm(outro["id"], False)["email"] == outro["email"]
+    assert db.get_user(outro["id"])["crm_status"] == "recusado"
+    assert [p for p in db.pending_doctors() if p["id"] == u["id"]][0]["outras_contas"] == 0   # recusada não conta
+    assert db.decide_crm(u["id"], True)["id"] == u["id"]
+    assert db.decide_crm(u["id"], False) is None                                       # já decidido: não muda
+    assert _crm_cols(u["id"])[2:] == ("verificado", "manual", None, True, True)
+    assert all(p["id"] != u["id"] for p in db.pending_doctors())
+    assert db.crm_confirmed(u["id"]) is True and db.get_user(u["id"])["crm_fonte"] == "cfm"
+    assert db.crm_confirmed(u["id"]) is False                                          # uma vez só
+
+
+def test_cadastro_verificado_no_cfm_e_google_sem_trocar_o_crm(novo_usuario):
+    n = _crm_novo()
+    u = novo_usuario("Ana Lima", crm={"crm": n, "uf": "MG", "status": "verificado", "fonte": "cfm", "situacao": "A"})
+    assert _crm_cols(u["id"]) == (n, "MG", "verificado", "cfm", "A", True, False)
+    # entrar depois pelo Google (conta que já existe) não mexe no CRM
+    assert db.upsert_user(u["email"], "Outro Nome", None, None, crm={"crm": "1", "uf": "SP", "status": "pendente"})["crm_status"] == "verificado"
+    assert _crm_cols(u["id"])[:3] == (n, "MG", "verificado")
+    # conta nova pelo Google, com o Registro profissional
+    email = f"teste-{uuid.uuid4().hex[:12]}@example.invalid"
+    g = db.upsert_user(email, "Bia Souza", None, "sub-" + uuid.uuid4().hex, crm={"crm": _crm_novo(), "uf": "RJ", "status": "pendente"})
+    try:
+        assert (g["crm_status"], g["name"]) == ("pendente", "Bia Souza")
+        assert db.get_user(g["id"])["crm_status"] == "pendente"
+    finally:
+        with db.connection() as c:
+            c.execute("delete from users where id = %s", (g["id"],))
+            c.commit()

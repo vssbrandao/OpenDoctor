@@ -127,6 +127,12 @@ def test_sessao_derrubada_ao_trocar_senha(monkeypatch):
 
 
 PW = "Abcdef12!"
+# Registro profissional (CPF de exemplo com dígitos válidos; sem a chave do CFM a conta nasce pendente)
+REG = {"nome": "Ana Lima", "cpf": "529.982.247-25", "nascimento": "12/05/1985", "crm": "123456", "uf": "SP"}
+
+
+def _novo(email="novo@clinica.com.br", **kw):
+    return dict(REG, email=email, password=PW, **kw)
 
 
 class _Fake:
@@ -177,7 +183,8 @@ def _client(monkeypatch, fake, configured=True):
 
     def info(e):
         u = fake.users.get(e)
-        return None if not u else {"id": u["id"], "hash": u.get("hash"), "sv": u.get("sv", 0), "locked_s": u.get("locked_s", 0)}
+        return None if not u else {"id": u["id"], "hash": u.get("hash"), "sv": u.get("sv", 0), "locked_s": u.get("locked_s", 0),
+                                   "crm_status": u.get("crm_status"), "crm_fonte": u.get("crm_fonte")}
     monkeypatch.setattr(db, "password_login_info", info)
 
     def failed(uid):
@@ -186,8 +193,10 @@ def _client(monkeypatch, fake, configured=True):
     monkeypatch.setattr(db, "login_failed", failed)
     monkeypatch.setattr(db, "login_succeeded", lambda uid: fake.failed.pop(uid, None))
 
-    def create(e, n, ph):
-        fake.users.setdefault(e, {"id": "u-" + e, "email": e, "name": n, "hash": ph, "sv": 0})
+    def create(e, n, ph, crm=None):
+        crm = crm or {}
+        fake.users.setdefault(e, {"id": "u-" + e, "email": e, "name": n, "hash": ph, "sv": 0, "crm": crm.get("crm"),
+                                  "crm_uf": crm.get("uf"), "crm_status": crm.get("status"), "crm_fonte": crm.get("fonte")})
         return fake.users[e]
     monkeypatch.setattr(db, "create_email_user", create)
 
@@ -240,11 +249,11 @@ def test_bloqueio_apos_5_erros(monkeypatch):
 def test_cadastro_exige_codigo(monkeypatch):
     fake = _Fake(_user("ana@clinica.com.br"))
     c = _client(monkeypatch, fake)
-    assert c.post("/auth/signup/start", json={"email": "novo@clinica.com.br", "name": "Dra. Nova", "password": "fraca"}).json() == \
+    assert c.post("/auth/signup/start", json=dict(_novo(), password="fraca")).json() == \
         {"error": "senha_fraca", "rules": ["tamanho", "letras", "especial"]}
-    assert c.post("/auth/signup/start", json={"email": "novo@clinica.com.br", "name": " ", "password": PW}).json()["error"] == "nome"
-    assert c.post("/auth/signup/start", json={"email": "ana@clinica.com.br", "name": "Ana", "password": PW}).status_code == 409
-    r = c.post("/auth/signup/start", json={"email": "novo@clinica.com.br", "name": "  Dra.  Nova ", "password": PW})
+    assert c.post("/auth/signup/start", json=dict(_novo(), nome=" ")).json()["error"] == "nome"
+    assert c.post("/auth/signup/start", json=_novo("ana@clinica.com.br")).status_code == 409
+    r = c.post("/auth/signup/start", json=dict(_novo(), nome="  Dra.  Nova  Lima "))
     ticket = r.json()["ticket"]
     to, code, purpose = fake.sent[-1]
     assert (to, purpose) == ("novo@clinica.com.br", "signup") and "novo@clinica.com.br" not in fake.users   # ainda não criou
@@ -254,7 +263,7 @@ def test_cadastro_exige_codigo(monkeypatch):
     r = c.post("/auth/signup/verify", json={"ticket": ticket, "code": code})
     assert r.json()["redirect"] == auth.HOME + "?bemvindo=1" and auth.COOKIE_NAME in r.cookies
     u = fake.users["novo@clinica.com.br"]
-    assert u["name"] == "Dra. Nova" and auth.check_password(PW, u["hash"])
+    assert u["name"] == "Dra. Nova Lima" and auth.check_password(PW, u["hash"])
     # o código de cadastro não serve para redefinir senha
     c.post("/auth/signup/resend", json={"ticket": ticket})
     code2 = fake.sent[-1][1]
@@ -289,7 +298,7 @@ def test_esqueci_a_senha(monkeypatch):
 def test_sem_provedor_de_email(monkeypatch):
     c = _client(monkeypatch, _Fake(_user("ana@clinica.com.br")), configured=False)
     assert c.post("/auth/email/check", json={"email": "novo@b.com"}).json()["email_ok"] is False
-    assert c.post("/auth/signup/start", json={"email": "novo@b.com", "name": "Nova", "password": PW}).status_code == 503
+    assert c.post("/auth/signup/start", json=_novo("novo@b.com")).status_code == 503
     assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}).status_code == 503
     assert c.post("/auth/password/login", json={"email": "ana@clinica.com.br", "password": PW}).json()["ok"]   # senha funciona
 
@@ -302,7 +311,7 @@ def test_envio_falhou_descarta_codigo(monkeypatch):
     def falha(to, code, purpose, name=""):
         raise RuntimeError("resend 500")
     monkeypatch.setattr(mailer, "send_code", falha)
-    r = c.post("/auth/signup/start", json={"email": "novo@clinica.com.br", "name": "Nova", "password": PW})
+    r = c.post("/auth/signup/start", json=_novo())
     assert r.status_code == 502 and r.json()["error"] == "envio_falhou" and fake.codes == {}
 
 
@@ -345,7 +354,7 @@ def test_reenvio_dentro_de_30s_nao_finge_envio(monkeypatch):
     monkeypatch.setattr(db, "new_login_code", lambda e, h: ("aguarde", 12))
     n = len(fake.sent)
     assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}).json() == {"ok": True, "resend_in": 12, "sent": False}
-    r = c.post("/auth/signup/start", json={"email": "novo@clinica.com.br", "name": "Nova", "password": PW}).json()
+    r = c.post("/auth/signup/start", json=_novo()).json()
     assert r["ticket"] and r["sent"] is False and r["resend_in"] == 12 and len(fake.sent) == n   # segue com o código anterior
 
 
@@ -465,7 +474,7 @@ def test_registro_de_acessos_e_aviso_de_aparelho_novo(monkeypatch):
 def test_cadastro_registra_sem_aviso(monkeypatch):
     fake = _Fake()
     c = _client(monkeypatch, fake)
-    t = c.post("/auth/signup/start", json={"email": "novo@clinica.com.br", "name": "Nova", "password": PW}).json()["ticket"]
+    t = c.post("/auth/signup/start", json=_novo()).json()["ticket"]
     r = c.post("/auth/signup/verify", json={"ticket": t, "code": fake.sent[-1][1]})
     assert r.json()["ok"] and [e[1:3] for e in fake.events] == [("entrou", "cadastro")]
     assert [s[2] for s in fake.sent] == ["signup"]

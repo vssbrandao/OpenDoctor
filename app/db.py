@@ -155,36 +155,52 @@ def counts(conn):
 
 # ===== usuários + tokens de calendário (Fase B, multiusuário) =====
 
-_USER_COLS = "id, email, name, picture, session_version"
+_USER_COLS = "id, email, name, picture, session_version, crm_status, crm_fonte"
 
 
 def _row_to_user(row):
-    """sv = versão da sessão (muda ao trocar a senha; o cookie guarda a versão com que foi criado)."""
+    """sv = versão da sessão (muda ao trocar a senha; o cookie guarda a versão com que foi criado).
+    crm_status/crm_fonte: a conferência do CRM no cadastro (NULL = conta anterior a ela; veja 0017_crm.sql)."""
     if not row:
         return None
     return {"id": str(row[0]), "email": row[1], "name": row[2], "picture": row[3],
-            "sv": row[4] if len(row) > 4 else 0}
+            "sv": row[4] if len(row) > 4 else 0,
+            "crm_status": row[5] if len(row) > 5 else None, "crm_fonte": row[6] if len(row) > 6 else None}
 
 
-def upsert_user(email, name=None, picture=None, google_sub=None):
+def _crm_valores(crm):
+    """Colunas do CRM de uma conta nova, a partir da decisão do cadastro: {crm, uf, status, fonte, situacao}.
+    Sem decisão (None), a conta nasce como as anteriores (só nos testes e scripts)."""
+    crm = crm or {}
+    status = crm.get("status")
+    return (crm.get("crm") or None, crm.get("uf") or None, status, crm.get("fonte") or None,
+            crm.get("situacao") or None, status == "verificado", status == "pendente")
+
+
+_CRM_INSERT = ("crm, crm_uf, crm_status, crm_fonte, crm_situacao, crm_verificado_em, crm_pedido_em",
+               "%s, %s, %s, %s, %s, case when %s then now() end, case when %s then now() end")
+
+
+def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
     """Cria ou atualiza o usuário pela conta Google; devolve o dict do usuário.
     E-mail sempre em minúsculas — o mesmo do login por código, para não duplicar a conta.
-    O nome do Google só preenche um nome vazio: o que o médico corrigiu em Configurações (vai na receita) fica."""
+    O nome do Google só preenche um nome vazio: o que o médico corrigiu em Configurações (vai na receita) fica.
+    `crm`: a decisão do Registro profissional (conta nova); numa conta que já existe, o CRM dela não muda."""
     email = (email or "").strip().lower()
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                insert into users (email, name, picture, google_sub, terms_accepted_at, last_login)
-                values (%s,%s,%s,%s, now(), now())
+                f"""
+                insert into users (email, name, picture, google_sub, terms_accepted_at, last_login, {_CRM_INSERT[0]})
+                values (%s,%s,%s,%s, now(), now(), {_CRM_INSERT[1]})
                 on conflict (email) do update set
                   name = coalesce(nullif(users.name, ''), excluded.name),
                   picture = coalesce(excluded.picture, users.picture),
                   google_sub = coalesce(excluded.google_sub, users.google_sub),
                   last_login = now()
-                returning id, email, name, picture, session_version
+                returning {_USER_COLS}
                 """,
-                (email, name, picture, google_sub),
+                (email, name, picture, google_sub, *_crm_valores(crm)),
             )
             row = cur.fetchone()
         conn.commit()
@@ -217,16 +233,17 @@ LOCK_AFTER = 5                # senhas erradas seguidas até bloquear
 LOCK_MINUTES = 15
 
 
-def create_email_user(email, name, password_hash):
-    """Cadastro por e-mail, depois de confirmar o código: grava a senha e o aceite dos termos.
+def create_email_user(email, name, password_hash, crm=None):
+    """Cadastro por e-mail, depois de confirmar o código: grava a senha, o aceite dos termos e o CRM com a decisão
+    do cadastro (`crm`: {crm, uf, status, fonte, situacao}).
     Se o e-mail passou a existir no meio do caminho (entrou pelo Google), o dono do e-mail acabou de
-    prová-lo com o código: só define a senha se a conta ainda não tinha uma."""
+    prová-lo com o código: só define a senha se a conta ainda não tinha uma (o CRM dela não muda)."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 f"""
-                insert into users (email, name, password_hash, terms_accepted_at, last_login)
-                values (%s, %s, %s, now(), now())
+                insert into users (email, name, password_hash, terms_accepted_at, last_login, {_CRM_INSERT[0]})
+                values (%s, %s, %s, now(), now(), {_CRM_INSERT[1]})
                 on conflict (email) do update set
                   name = coalesce(users.name, excluded.name),
                   password_hash = coalesce(users.password_hash, excluded.password_hash),
@@ -234,7 +251,7 @@ def create_email_user(email, name, password_hash):
                   last_login = now()
                 returning {_USER_COLS}
                 """,
-                (email, name, password_hash),
+                (email, name, password_hash, *_crm_valores(crm)),
             )
             row = cur.fetchone()
         conn.commit()
@@ -251,17 +268,19 @@ def account(email):
 
 
 def password_login_info(email):
-    """Dados para conferir a senha: dict com id, hash, sv e segundos restantes de bloqueio (ou None)."""
+    """Dados para conferir a senha: dict com id, hash, sv, segundos restantes de bloqueio e a conferência do CRM
+    (crm_status/crm_fonte, para a tela saber se a conta ainda espera) — ou None."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """select id, password_hash, session_version,
-                          greatest(0, ceil(extract(epoch from locked_until - now())))::int
+                          greatest(0, ceil(extract(epoch from locked_until - now())))::int, crm_status, crm_fonte
                    from users where lower(email) = lower(%s)""", (email,))
             row = cur.fetchone()
     if not row:
         return None
-    return {"id": str(row[0]), "hash": row[1], "sv": row[2], "locked_s": row[3] or 0}
+    return {"id": str(row[0]), "hash": row[1], "sv": row[2], "locked_s": row[3] or 0,
+            "crm_status": row[4], "crm_fonte": row[5]}
 
 
 def login_failed(user_id):
@@ -1190,6 +1209,53 @@ def update_medico(user_id, campos):
         conn.execute(f"update users set {sets} where id = %s", (*campos.values(), user_id))
         conn.commit()
     return get_medico(user_id)
+
+
+# --- conferência do CRM (cadastro de médicos; página de cadastros dos administradores) ---
+
+def crm_in_use(crm, uf):
+    """Outra conta (que não foi recusada) já tem este CRM/UF? Inclui as contas antigas, que o puseram em Configurações."""
+    with connection() as conn:
+        r = conn.execute("""select exists(select 1 from users where crm = %s and crm_uf = %s
+                                          and coalesce(crm_status, '') <> 'recusado')""", (crm, uf)).fetchone()
+    return bool(r[0])
+
+
+def pending_doctors(limit=200):
+    """Cadastros esperando a aprovação à mão, os mais antigos primeiro: id, nome, CRM/UF, quando pediu e quantas outras
+    contas têm o mesmo CRM/UF (sinal de alerta)."""
+    with connection() as conn:
+        rows = conn.execute(
+            """select u.id, u.name, u.crm, u.crm_uf, coalesce(u.crm_pedido_em, u.created_at), u.crm_situacao,
+                      (select count(*) from users o where o.id <> u.id and o.crm = u.crm and o.crm_uf = u.crm_uf
+                                                    and coalesce(o.crm_status, '') <> 'recusado')
+               from users u where u.crm_status = 'pendente'
+               order by coalesce(u.crm_pedido_em, u.created_at) limit %s""", (limit,)).fetchall()
+    return [{"id": str(r[0]), "name": r[1], "crm": r[2], "crm_uf": r[3], "pedido_em": r[4].isoformat() if r[4] else None,
+             "situacao": r[5], "outras_contas": int(r[6] or 0)} for r in rows]
+
+
+def decide_crm(user_id, aprovado):
+    """Aprovação (ou recusa) à mão de um cadastro pendente: só muda se a conta ainda está pendente (dois cliques ou dois
+    administradores juntos não decidem duas vezes). Devolve {id, email, name} ou None."""
+    with connection() as conn:
+        r = conn.execute(
+            """update users set crm_status = %s, crm_fonte = 'manual',
+                                crm_verificado_em = case when %s then now() else crm_verificado_em end
+               where id = %s and crm_status = 'pendente' returning id, email, name""",
+            ("verificado" if aprovado else "recusado", bool(aprovado), user_id)).fetchone()
+        conn.commit()
+    return {"id": str(r[0]), "email": r[1], "name": r[2]} if r else None
+
+
+def crm_confirmed(user_id):
+    """Conta aprovada à mão confirmou o CPF e a data de nascimento no CFM (Validar): a fonte passa a ser o CFM."""
+    with connection() as conn:
+        r = conn.execute(
+            """update users set crm_fonte = 'cfm', crm_verificado_em = now()
+               where id = %s and crm_status = 'verificado' and crm_fonte = 'manual' returning id""", (user_id,)).fetchone()
+        conn.commit()
+    return bool(r)
 
 
 def delete_file(user_id, file_id):

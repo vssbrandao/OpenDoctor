@@ -5,6 +5,9 @@ logo · "Nome," + título 40px · texto · bloco (código em 6 caixas ou botão)
   reset    código para criar uma nova senha (esqueci a senha / conta Google criando senha)
   changed  aviso de que a senha foi alterada (sem código)
   device   aviso de entrada por um aparelho novo (sem código)
+  crm_pendente  aos administradores (ADMIN_EMAILS): cadastro novo esperando a conferência do CRM (só nome e CRM/UF)
+  crm_aprovado  ao médico: CRM conferido à mão, conta liberada
+  crm_recusado  ao médico: não deu para confirmar o CRM, conta não liberada
 
 Configuração (variáveis de ambiente no Render):
   RESEND_API_KEY   chave da API do Resend
@@ -94,6 +97,32 @@ _TEXTS = {
                   "encerra as sessões abertas em outros aparelhos — e confira a segurança do seu e-mail "
                   "e da sua conta Google."],
     },
+    "crm_pendente": {
+        "subject": "Cadastro para conferir: CRM {crm}",
+        "title": "Um cadastro espera a conferência do CRM",
+        "lead": "{nome}, CRM {crm}, criou uma conta no OpenDoctor. Confira o registro no CFM e aprove ou recuse "
+                "o cadastro.",
+        "button": "Conferir cadastros",
+        "link": "/opendoctor-cadastros.html",
+        "notes": ["A conta entra, mas só usa o app depois da aprovação."],
+    },
+    "crm_aprovado": {
+        "subject": "Sua conta no OpenDoctor foi liberada",
+        "title": "Seu CRM foi conferido",
+        "lead": "Conferimos seu registro no CFM e sua conta no OpenDoctor está liberada. Já pode entrar e usar a "
+                "agenda e o prontuário.",
+        "button": "Entrar no OpenDoctor",
+        "notes": ["Se você não criou uma conta no OpenDoctor, ignore este e-mail."],
+    },
+    "crm_recusado": {
+        "subject": "Não conseguimos confirmar seu CRM",
+        "title": "Não conseguimos confirmar seu CRM",
+        "lead": "Não conseguimos confirmar seu registro no CFM com os dados do cadastro, e por isso sua conta no "
+                "OpenDoctor não foi liberada. O OpenDoctor é só para médicos com inscrição regular no CRM.",
+        "button": "Abrir o OpenDoctor",
+        "notes": ["Se você acha que houve um engano, entre em contato com a equipe do OpenDoctor.",
+                  "Se você não criou uma conta no OpenDoctor, ignore este e-mail."],
+    },
 }
 
 
@@ -124,16 +153,17 @@ def _spacer(h):
     return f'<tr><td height="{h}" style="height:{h}px;font-size:0;line-height:0">&nbsp;</td></tr>'
 
 
-def render(purpose, name="", code="", when="", device="", via=""):
-    """(assunto, html, texto) do e-mail."""
+def render(purpose, name="", code="", when="", device="", via="", nome="", crm=""):
+    """(assunto, html, texto) do e-mail. `nome` e `crm`: o médico do cadastro (aviso aos administradores)."""
     t = _TEXTS[purpose]
     base = _app_url()
     logo = (f'<img src="{base}/assets/email/logo.png" width="24" height="24" alt="OpenDoctor" '
             'style="display:block;width:24px;height:24px;border:0">')
     first = first_name(name)
     greet = f"{first}," if first else "Olá,"
-    lead = t["lead"].format(when=when, device=device, via=via)
-    block = _code_boxes(code) if code else _button(t["button"], f"{base}/opendoctor-login.html")
+    lead = t["lead"].format(when=when, device=device, via=via, nome=nome, crm=crm)
+    link = base + t.get("link", "/opendoctor-login.html")
+    block = _code_boxes(code) if code else _button(t["button"], link)
     preheader = f"Seu código: {code} · vale 10 minutos" if code else lead
     notes = "<br><br>".join(html.escape(n) for n in t["notes"])
     body = f"""<!doctype html>
@@ -172,9 +202,9 @@ def render(purpose, name="", code="", when="", device="", via=""):
     if code:
         text_parts += [f"Código: {code}", ""]
     else:
-        text_parts += [f"{t['button']}: {base}/opendoctor-login.html", ""]
+        text_parts += [f"{t['button']}: {link}", ""]
     text_parts += t["notes"]
-    return t["subject"].format(code=code), body, "\n".join(text_parts)
+    return t["subject"].format(code=code, crm=crm), body, "\n".join(text_parts)
 
 
 def _send(to, subject, body_html, body_text):
@@ -223,3 +253,23 @@ def send_new_device(to, name="", device="", method=""):
         print(f"[login-mail:device] {to}: {device} ({via})", flush=True)
         return
     _send(to, *render("device", name=name, when=_now_brasilia(), device=device, via=via))
+
+
+def send_crm_pending(admins, nome, crm, uf):
+    """Avisa os administradores (auth.admin_emails) de um cadastro pendente. Vai só o nome e o CRM/UF do médico
+    (nada de e-mail, CPF ou nascimento)."""
+    numero = f"{crm}/{uf}"
+    for to in admins:
+        if debug_codes():
+            print(f"[login-mail:crm_pendente] {to}", flush=True)
+            continue
+        _send(to, *render("crm_pendente", nome=nome, crm=numero))
+
+
+def send_crm_decision(to, name="", aprovado=True):
+    """Ao médico: cadastro aprovado (conta liberada) ou recusado."""
+    purpose = "crm_aprovado" if aprovado else "crm_recusado"
+    if debug_codes():
+        print(f"[login-mail:{purpose}] {to}", flush=True)
+        return
+    _send(to, *render(purpose, name=name))

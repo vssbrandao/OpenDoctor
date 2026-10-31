@@ -34,6 +34,12 @@ as contas em `SCRIBE_EMAILS` / `SCRIBE_ALL` (`SCRIBE_OFF=1` desliga). Como funci
 decisões: [`docs/gravacao.md`](docs/gravacao.md). Privacidade: [`docs/ripd-gravacao.md`](docs/ripd-gravacao.md).
 Histórico da avaliação: [`docs/eval-gravacao.md`](docs/eval-gravacao.md).
 
+### Cadastro: só médicos criam conta
+Toda conta nova passa pelo Registro profissional (nome, CPF, nascimento, CRM e UF), conferido no web service do CFM
+(`CFM_CHAVE`); sem a chave, a conta fica pendente e um administrador (`ADMIN_EMAILS`) aprova em
+`/opendoctor-cadastros.html`. O CPF e o nascimento não ficam guardados. Como funciona e o contrato com o CFM:
+[`docs/cadastro-crm.md`](docs/cadastro-crm.md).
+
 ### Secrets do CI (para o gate de eval rodar)
 Em GitHub → Settings → Secrets and variables → Actions, adicione:
 - `OPENAI_API_KEY`

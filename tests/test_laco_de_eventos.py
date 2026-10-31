@@ -10,7 +10,7 @@ import time
 import httpx
 import pytest
 
-from app import auth, db, exemplo, integrations, llm, mailer, prescricao, server
+from app import auth, cfm, db, exemplo, integrations, llm, mailer, prescricao, server
 
 USER = {"id": "u1", "email": "ana@clinica.com.br", "name": "Ana", "sv": 0}
 PAT = {"id": 7, "name": "Paciente Teste", "key": "paciente teste", "example": False}
@@ -33,13 +33,21 @@ def fake(monkeypatch):
         "touch_patient": lambda *a: None, "record_login": lambda *a: False, "login_succeeded": lambda uid: None,
         "password_login_info": lambda e: {"id": "u1", "hash": "h", "sv": 0, "locked_s": 0}, "account": lambda e: None,
         "new_login_code": lambda e, h: ("ok", 0), "discard_login_code": lambda e: None, "check_login_code": lambda e, h: ("ok", 0),
-        "user_by_email": lambda e: dict(USER), "create_email_user": lambda *a: dict(USER), "get_user": lambda uid: dict(USER),
+        "user_by_email": lambda e: dict(USER), "create_email_user": lambda *a, **k: dict(USER), "get_user": lambda uid: dict(USER),
         "set_password": lambda uid, ph, sv=None: dict(USER),
+        "crm_in_use": lambda crm, uf: False, "pending_doctors": lambda: [], "decide_crm": lambda uid, ap: dict(USER),
+        "crm_confirmed": lambda uid: True, "get_medico": lambda uid: {"name": "Ana Lima", "crm": "123456", "crm_uf": "SP"},
+        "upsert_user": lambda *a, **k: dict(USER),
     }.items():
         monkeypatch.setattr(db, nome, v)
     monkeypatch.setattr(mailer, "configured", lambda: True)
-    for nome in ("send_code", "send_password_changed", "send_new_device"):
+    for nome in ("send_code", "send_password_changed", "send_new_device", "send_crm_pending", "send_crm_decision"):
         monkeypatch.setattr(mailer, nome, lambda *a, **k: None)
+    # CFM com chave, que confere o médico (cada caso pode deixar a consulta lenta); USER é administrador
+    monkeypatch.setattr(cfm, "configured", lambda: True)
+    monkeypatch.setattr(cfm, "consultar", lambda crm, uf: {"status": "ok", "medico": {"nome": "ANA MARIA LIMA", "situacao": "A"}})
+    monkeypatch.setattr(cfm, "validar", lambda crm, uf, cpf, nasc: {"status": "ok", "valido": True})
+    monkeypatch.setenv("ADMIN_EMAILS", USER["email"])
     monkeypatch.setattr(exemplo, "seed_safe", lambda uid: None)
     monkeypatch.setattr(integrations, "create_event", lambda *a, **k: {"id": "e1"})
     monkeypatch.setattr(integrations, "update_event", lambda *a, **k: {"id": "e1"})
@@ -54,13 +62,28 @@ def _tk(**d):
 
 
 EV = {"title": "Consulta", "start": "2026-10-30T10:00:00-03:00", "end": "2026-10-30T10:30:00-03:00"}
-SIGNUP = {"k": "signup", "email": "nova@clinica.com.br", "name": "Nova", "ph": "h"}
+SIGNUP = {"k": "signup", "email": "nova@clinica.com.br", "name": "Ana Lima", "ph": "h",
+          "crm": {"crm": "123456", "uf": "SP", "status": "verificado", "fonte": "cfm", "situacao": "A"}}
+REG = {"nome": "Ana Lima", "cpf": "529.982.247-25", "nascimento": "12/05/1985", "crm": "123456", "uf": "SP"}
+NOVA = dict(REG, email="nova@clinica.com.br", password=PW)
+GREG = {"cookie": "od_greg=" + auth.sign({"k": "greg", "email": "nova@clinica.com.br", "sub": "g1", "nx": "/"})}
+MANUAL = {"_user": {"crm_status": "verificado", "crm_fonte": "manual"}}      # aprovada à mão: confirma no CFM
 CASOS = [   # (método, rota, pedido, (módulo, função lenta), troca no banco simulado)
     ("post", "/auth/password/login", {"json": {"email": "ana@clinica.com.br", "password": PW}}, (auth, "check_password"), {}),
     ("post", "/auth/password/login", {"json": {"email": "ana@clinica.com.br", "password": PW}}, (db, "password_login_info"), {}),
     ("post", "/auth/email/check", {"json": {"email": "ana@clinica.com.br"}}, (db, "account"), {}),
-    ("post", "/auth/signup/start", {"json": {"email": "nova@clinica.com.br", "name": "Nova", "password": PW}}, (auth, "hash_password"), {}),
-    ("post", "/auth/signup/start", {"json": {"email": "nova@clinica.com.br", "name": "Nova", "password": PW}}, (mailer, "send_code"), {}),
+    ("post", "/auth/signup/start", {"json": NOVA}, (auth, "hash_password"), {}),
+    ("post", "/auth/signup/start", {"json": NOVA}, (mailer, "send_code"), {}),
+    ("post", "/auth/signup/start", {"json": NOVA}, (cfm, "consultar"), {}),
+    ("post", "/auth/signup/start", {"json": NOVA}, (cfm, "validar"), {}),
+    ("post", "/auth/signup/start", {"json": NOVA}, (db, "crm_in_use"), {}),
+    ("post", "/auth/google/registro", {"json": REG, "headers": GREG}, (cfm, "consultar"), {"user_by_email": None}),
+    ("post", "/auth/google/registro", {"json": REG, "headers": GREG}, (db, "upsert_user"), {"user_by_email": None}),
+    ("post", "/auth/crm/confirmar", {"json": {"cpf": "52998224725", "nascimento": "12/05/1985"}}, (cfm, "validar"), MANUAL),
+    ("post", "/auth/crm/confirmar", {"json": {"cpf": "52998224725", "nascimento": "12/05/1985"}}, (db, "crm_confirmed"), MANUAL),
+    ("get", "/admin/cadastros", {}, (db, "pending_doctors"), {}),
+    ("post", "/admin/cadastros/aprovar", {"json": {"id": "8f14e45f-ceea-467a-9575-1a2b3c4d5e6f"}}, (db, "decide_crm"), {}),
+    ("post", "/admin/cadastros/recusar", {"json": {"id": "8f14e45f-ceea-467a-9575-1a2b3c4d5e6f"}}, (mailer, "send_crm_decision"), {}),
     ("post", "/auth/signup/resend", {"json": {"ticket": SIGNUP}}, (mailer, "send_code"), {}),
     ("post", "/auth/signup/verify", {"json": {"ticket": SIGNUP, "code": "123456"}}, (exemplo, "seed_safe"), {"user_by_email": None}),
     ("post", "/auth/password/forgot", {"json": {"email": "ana@clinica.com.br"}}, (mailer, "send_code"), {}),
@@ -91,7 +114,10 @@ CASOS = [   # (método, rota, pedido, (módulo, função lenta), troca no banco 
                          ids=[f"{c[0]} {c[1]} {c[3][1]}" for c in CASOS])
 def test_chamada_lenta_nao_trava_os_outros_medicos(fake, metodo, rota, pedido, lenta, troca):
     for nome, v in troca.items():
-        fake.setattr(db, nome, lambda *a, _v=v: _v)
+        if nome == "_user":                               # a conta logada deste caso
+            fake.setattr(auth, "current_user", lambda request, _v=v: dict(USER, **_v))
+        else:
+            fake.setattr(db, nome, lambda *a, _v=v, **k: _v)
     alvo, nome = lenta
     rapida = getattr(alvo, nome)
     comecou, livre, travou = threading.Event(), threading.Event(), []
@@ -118,8 +144,8 @@ def test_chamada_lenta_nao_trava_os_outros_medicos(fake, metodo, rota, pedido, l
     assert outro.status_code == 200 and travou == [False]
 
 
-BLOQUEIA = ("db", "integrations", "mailer", "exemplo", "llm")       # banco, Google/Microsoft, Resend, paciente de exemplo, OpenAI
-NAO_BLOQUEIA = {"integrations.configured", "mailer.configured", "db.patient_key"}     # só leem o ambiente / o texto
+BLOQUEIA = ("db", "integrations", "mailer", "exemplo", "llm", "cfm")   # banco, Google/Microsoft, Resend, exemplo, OpenAI, CFM
+NAO_BLOQUEIA = {"integrations.configured", "mailer.configured", "db.patient_key", "cfm.configured"}   # só leem o ambiente / o texto
 
 
 def test_rota_async_so_chama_banco_e_rede_pelo_threadpool():

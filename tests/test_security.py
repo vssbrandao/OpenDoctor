@@ -24,6 +24,9 @@ ROTAS_AUTH = {
     ("POST", "/auth/password/login"), ("POST", "/auth/signup/start"), ("POST", "/auth/signup/resend"),
     ("POST", "/auth/signup/verify"), ("POST", "/auth/password/forgot"), ("POST", "/auth/password/reset/verify"),
     ("POST", "/auth/password/reset"), ("GET", "/auth/logout"), ("GET", "/auth/{provider}/callback"),
+    # Registro profissional da conta nova pelo Google (lê o perfil do cookie assinado deste navegador, não do corpo) e a
+    # confirmação do CPF/nascimento da conta aprovada à mão (exige a sessão): as duas só devolvem ok/erro e o destino
+    ("POST", "/auth/google/registro"), ("POST", "/auth/crm/confirmar"),
 }
 
 

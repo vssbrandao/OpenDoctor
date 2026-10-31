@@ -30,7 +30,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer, exemplo
-from . import medicamentos, prescricao, scribe, stt
+from . import medicamentos, prescricao, scribe, stt, cfm
 
 mimetypes.add_type("text/javascript", ".mjs")   # pdf.js (web/vendor) é módulo: o navegador exige esse tipo
 
@@ -165,11 +165,17 @@ async def _no_cache_html(request: Request, call_next):
     path = request.url.path
     private = not is_public(path)
     page = _norm(path).lower().endswith(".html")
-    if private and not await run_in_threadpool(auth.current_user, request):
+    user = await run_in_threadpool(auth.current_user, request) if private else None
+    # conta que ainda não pode usar o app (CRM pendente, recusado ou a confirmar): entra, mas só chega ao que é público
+    # (/me, /auth/*, a tela de login, sair e /assets/); o resto volta para a tela de login, que mostra a espera
+    bloqueio = _crm_bloqueio(user)
+    if private and (not user or bloqueio):
         navegando = request.method == "GET" and "text/html" in (request.headers.get("accept") or "")
         if page or navegando:   # página ou link clicado: vai para o login e volta depois
             resp = RedirectResponse("/opendoctor-login.html?next=" + urllib.parse.quote(_norm(path), safe=""),
                                     status_code=302)
+        elif bloqueio:
+            resp = JSONResponse({"error": bloqueio}, status_code=403)
         else:
             resp = JSONResponse({"error": "não autenticado"}, status_code=401)
     elif path.lower().endswith(".md"):
@@ -393,7 +399,8 @@ def _clean_history(raw):
 # ===== limite de uso por IP (além do login) =====
 RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em s)
                "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600),
-               "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600)}      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
+               "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600),      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
+               "cfm": (10, 3600)}     # conferências do CRM no CFM (cadastro): o Validar responde se um CPF é de um CRM
 MAX_QUERY_CHARS = 2000
 _RL = {}
 _RL_LOCK = threading.Lock()
@@ -771,7 +778,10 @@ def _device(request, resp):
 def _logged(request, user, nxt, method, welcome=False):
     """Resposta de login concluído: cookie de sessão + para onde ir. Registra a entrada."""
     dest = auth.safe_next(nxt)
-    resp = JSONResponse({"ok": True, "redirect": auth.with_welcome(dest) if welcome else dest})
+    out = {"ok": True, "redirect": auth.with_welcome(dest) if welcome else dest}
+    if _crm_bloqueio(user):
+        out["bloqueio"] = _crm_bloqueio(user)      # a tela de login mostra a espera em vez de abrir o app
+    resp = JSONResponse(out)
     auth.set_session(resp, user["id"], user.get("sv", 0))
     _audit(request, user["id"], "entrou", method, _device(request, resp))
     return resp
@@ -876,7 +886,27 @@ def _password_login(request, b):
     except Exception as e:
         print("[login] senha falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
-    return _logged(request, {"id": info["id"], "sv": info["sv"]}, b.get("next"), "senha")
+    return _logged(request, {"id": info["id"], "sv": info["sv"], "crm_status": info.get("crm_status"),
+                             "crm_fonte": info.get("crm_fonte")}, b.get("next"), "senha")
+
+
+# ----- Registro profissional: só médicos criam conta (docs/cadastro-crm.md) -----
+# O cadastro (e-mail e senha, ou Google com conta nova) pede nome completo, CPF, nascimento, CRM e UF. Com a chave do
+# CFM (CFM_CHAVE), o web service oficial confere tudo ANTES de a conta existir: Consultar (situação regular e o nome) e
+# Validar (CPF + nascimento são do médico daquele CRM). Sem a chave, ou com o CFM fora do ar, a conta nasce pendente e um
+# administrador aprova à mão. O CPF e a data de nascimento vão só ao CFM: não entram em banco, log, tíquete nem e-mail.
+
+def _crm_bloqueio(user):
+    """Por que esta conta ainda não usa o app (None = liberada). Conta sem crm_status é anterior a esta regra e segue
+    como sempre. Aprovada à mão (crm_fonte 'manual') confirma o CPF e o nascimento no CFM quando a chave existir."""
+    if not user:
+        return None
+    st = user.get("crm_status")
+    if st is None:
+        return None
+    if st == "verificado":
+        return "crm_confirmar" if user.get("crm_fonte") == "manual" and cfm.configured() else None
+    return "crm_recusado" if st == "recusado" else "crm_pendente"     # pendente (ou qualquer outro valor): fechado
 
 
 def _valid_name(raw):
@@ -884,20 +914,106 @@ def _valid_name(raw):
     return name if 2 <= len(name) <= 120 else None
 
 
+def _nome_completo(raw):
+    """Nome completo (pelo menos 2 palavras, sem contar 'de', 'da'… nem 'Dr.'), só com letras, espaço, ' . e -."""
+    name = _valid_name(raw)
+    if not name or not all(c.isalpha() or c in " '’.-" for c in name) or len(cfm.palavras(name)) < 2:
+        return None
+    return name
+
+
+def _nascimento(raw):
+    """'DD/MM/AAAA' (ou AAAA-MM-DD) de uma data real e de quem tem entre 20 e 100 anos → 'DD/MM/AAAA', senão None."""
+    v = str(raw or "").strip()
+    m = re.fullmatch(r"(\d{2})/(\d{2})/(\d{4})", v) or re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", v)
+    if not m:
+        return None
+    d, mo, y = (m.group(1), m.group(2), m.group(3)) if "/" in v else (m.group(3), m.group(2), m.group(1))
+    try:
+        dt = datetime.date(int(y), int(mo), int(d))
+    except ValueError:
+        return None
+    hoje = datetime.date.today()
+    idade = hoje.year - dt.year - ((hoje.month, hoje.day) < (dt.month, dt.day))
+    return dt.strftime("%d/%m/%Y") if 20 <= idade <= 100 else None
+
+
+def _registro(b):
+    """Campos do Registro profissional: ({nome, cpf, nascimento, crm, uf}, None) ou (None, resposta de erro do campo)."""
+    nome = _nome_completo(b.get("nome") or b.get("name"))
+    if not nome:
+        return None, _err("nome")
+    cpf = re.sub(r"\D", "", str(b.get("cpf") or ""))
+    if not _cpf_ok(cpf):
+        return None, _err("cpf")
+    nasc = _nascimento(b.get("nascimento"))
+    if not nasc:
+        return None, _err("nascimento")
+    digitos, uf = cfm.separa_crm(b.get("crm"), b.get("uf"))
+    crm = cfm.crm_numero(digitos)
+    if not crm:
+        return None, _err("crm")
+    if uf not in cfm.UFS:
+        return None, _err("uf")
+    return {"nome": nome, "cpf": cpf, "nascimento": nasc, "crm": crm, "uf": uf}, None
+
+
+def _crm_decide(r):
+    """Confere o registro no CFM. Devolve ({crm, uf, status, fonte, situacao}, None) para criar a conta, ou
+    (None, resposta) para recusar o cadastro com o motivo. Recusa só o que é claro (CRM não encontrado, situação
+    irregular, nome diferente, CPF/nascimento que não batem); CFM sem chave, fora do ar ou com erro passageiro → pendente.
+    CRM que outra conta já usa também fica pendente: alguém com os dados de um médico não abre uma 2ª conta sozinho."""
+    dec = {"crm": r["crm"], "uf": r["uf"], "status": "pendente", "fonte": None, "situacao": None}
+    if cfm.configured():
+        c = cfm.consultar(r["crm"], r["uf"])
+        if c["status"] == "nao_encontrado":
+            return None, _err("crm_nao_encontrado")
+        if c["status"] == "ok":
+            med = c["medico"]
+            dec["situacao"] = med["situacao"]
+            if med["situacao"] != cfm.REGULAR:
+                return None, _err("crm_irregular")
+            if not cfm.nome_confere(r["nome"], med["nome"]):
+                return None, _err("crm_nome")
+            v = cfm.validar(r["crm"], r["uf"], r["cpf"], r["nascimento"])
+            if v["status"] == "ok" and not v["valido"]:
+                return None, _err("crm_dados")
+            if v["status"] == "ok":
+                dec.update(status="verificado", fonte="cfm")
+    if dec["status"] == "verificado" and db.crm_in_use(r["crm"], r["uf"]):
+        dec.update(status="pendente", fonte=None)
+    return dec, None
+
+
+def _avisa_pendente(dec, nome):
+    """Cadastro pendente: avisa os administradores por e-mail (em segundo plano; falha só vai para o log)."""
+    admins = auth.admin_emails()
+    if (dec or {}).get("status") != "pendente" or not mailer.configured() or not admins:
+        return
+
+    def run():
+        try:
+            mailer.send_crm_pending(admins, nome, dec.get("crm"), dec.get("uf"))
+        except Exception as e:
+            print("[cadastro] aviso de pendente falhou:", str(e)[:200], flush=True)
+    _AUDIT.submit(run)
+
+
 @app.post("/auth/signup/start")
 async def signup_start(request: Request):
-    """Dados do cadastro → envia o código de confirmação. A conta só é criada no /verify."""
+    """Senha + Registro profissional → confere o CRM e envia o código de confirmação. A conta só é criada no /verify."""
     return await run_in_threadpool(_signup_start, request, await _body(request))
 
 
 def _signup_start(request, b):
-    email, name, pw = _email_of(b), _valid_name(b.get("name")), b.get("password")
+    email, pw = _email_of(b), b.get("password")
     if not email:
         return _err("email_invalido")
-    if not name:
-        return _err("nome")
     if auth.password_problems(pw):
         return _err("senha_fraca", rules=auth.password_problems(pw))
+    reg, bad = _registro(b)
+    if bad:
+        return bad
     if not mailer.configured():
         return _err("email_indisponivel", 503)
     if _rate_limited(request, "login_code"):
@@ -908,11 +1024,20 @@ def _signup_start(request, b):
     except Exception as e:
         print("[login] cadastro falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
-    fail, wait = _send_code(email, "signup", name)
+    if _rate_limited(request, "cfm"):
+        return _err("limite_ip", 429)
+    try:
+        dec, recusa = _crm_decide(reg)
+    except Exception as e:
+        print("[cadastro] conferência do CRM falhou:", type(e).__name__, flush=True)
+        return _err("erro", 500)
+    if recusa:
+        return recusa
+    fail, wait = _send_code(email, "signup", reg["nome"])
     if fail:
         return fail
-    # os dados esperam a confirmação num tíquete assinado (30 min), não no banco
-    ticket = auth.sign({"k": "signup", "email": email, "name": name, "ph": auth.hash_password(pw)})
+    # os dados esperam a confirmação num tíquete assinado (30 min), não no banco; o CPF e o nascimento não vão nele
+    ticket = auth.sign({"k": "signup", "email": email, "name": reg["nome"], "ph": auth.hash_password(pw), "crm": dec})
     return {"ok": True, "ticket": ticket, "resend_in": abs(wait), "sent": wait > 0}
 
 
@@ -943,8 +1068,9 @@ async def signup_verify(request: Request):
 
 def _signup_verify(request, b):
     t = _signup_ticket(b)
-    if not t:
-        return _err("sessao_expirada")
+    dec = (t or {}).get("crm")
+    if not t or not isinstance(dec, dict) or dec.get("status") not in ("pendente", "verificado"):
+        return _err("sessao_expirada")         # tíquete de antes do Registro profissional: refaz o cadastro
     if _rate_limited(request, "login_verify"):
         return _err("limite_ip", 429)
     try:
@@ -955,13 +1081,102 @@ def _signup_verify(request, b):
             if bad:
                 return bad
             novo = db.user_by_email(t["email"]) is None
-            user = db.create_email_user(t["email"], t.get("name"), t["ph"])
+            user = db.create_email_user(t["email"], t.get("name"), t["ph"], crm=dec if novo else None)
     except Exception as e:
         print("[login] confirmação falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
     if novo:
         exemplo.seed_safe(user["id"])                   # conta nova: paciente de exemplo (fictícia)
+        _avisa_pendente(dec, t.get("name"))
     return _logged(request, user, b.get("next"), "cadastro", welcome=True)
+
+
+# ----- conta nova pelo Google: o Registro profissional antes de a conta existir -----
+GREG_COOKIE = "od_greg"
+GREG_MAX_AGE = 15 * 60
+
+
+def _google_registro(request):
+    """Perfil Google guardado no retorno do login de um e-mail sem conta (cookie assinado deste navegador, 15 min)."""
+    t = auth.unsign(request.cookies.get(GREG_COOKIE) or "", GREG_MAX_AGE)
+    return t if t and t.get("k") == "greg" and t.get("email") else None
+
+
+@app.post("/auth/google/registro")
+async def google_registro(request: Request):
+    """Registro profissional de quem entrou pelo Google sem conta: confere o CRM e só então cria a conta. O e-mail já foi
+    confirmado pelo Google (sem código). Devolve só ok/erro e para onde ir."""
+    return await run_in_threadpool(_google_registro_cria, request, await _body(request))
+
+
+def _google_registro_cria(request, b):
+    t = _google_registro(request)
+    if not t:
+        return _err("sessao_expirada")
+    reg, bad = _registro(b)
+    if bad:
+        return bad
+    if _rate_limited(request, "cfm"):
+        return _err("limite_ip", 429)
+    email = str(t["email"]).strip().lower()
+    try:
+        with _na_vez(email) as vez:
+            if not vez:
+                return _err("limite_ip", 429)
+            if db.user_by_email(email) is not None:
+                # a conta passou a existir no meio do caminho: o tíquete só cria conta, nunca entra numa que já existe
+                # (uma cópia dele valeria como login por 15 min). Entra-se de novo pelo Google, como conta existente
+                resp = _err("sessao_expirada")
+                resp.delete_cookie(GREG_COOKIE, path="/auth/")
+                return resp
+            dec, recusa = _crm_decide(reg)
+            if recusa:
+                return recusa
+            user = db.upsert_user(email, reg["nome"], t.get("pic"), t.get("sub"), crm=dec)
+    except Exception as e:
+        print("[auth] registro Google falhou:", type(e).__name__, flush=True)
+        return _err("erro", 500)
+    exemplo.seed_safe(user["id"])                        # conta nova: paciente de exemplo (fictícia)
+    _avisa_pendente(dec, reg["nome"])
+    resp = _logged(request, user, t.get("nx"), "cadastro", welcome=True)
+    resp.delete_cookie(GREG_COOKIE, path="/auth/")
+    return resp
+
+
+# ----- conta aprovada à mão: confirma o CPF e o nascimento no CFM quando a chave existir -----
+@app.post("/auth/crm/confirmar")
+async def crm_confirmar(request: Request):
+    """Uma vez só, para a conta aprovada à mão (crm_fonte 'manual') quando há a chave do CFM: Validar com o CPF e o
+    nascimento. Exige a sessão; devolve só ok/erro e para onde ir."""
+    return await run_in_threadpool(_crm_confirmar, request, await _body(request))
+
+
+def _crm_confirmar(request, b):
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    if _crm_bloqueio(u) != "crm_confirmar":
+        return {"ok": True, "redirect": auth.safe_next(b.get("next"))}        # nada a confirmar
+    cpf = re.sub(r"\D", "", str(b.get("cpf") or ""))
+    if not _cpf_ok(cpf):
+        return _err("cpf")
+    nasc = _nascimento(b.get("nascimento"))
+    if not nasc:
+        return _err("nascimento")
+    if _rate_limited(request, "cfm"):
+        return _err("limite_ip", 429)
+    try:
+        m = db.get_medico(u["id"]) or {}
+        v = cfm.validar(m.get("crm") or "", m.get("crm_uf") or "", cpf, nasc)
+        if v["status"] != "ok":
+            return _err("cfm_indisponivel", 503)
+        if not v["valido"]:
+            return _err("crm_dados")
+        db.crm_confirmed(u["id"])
+    except Exception as e:
+        print("[cadastro] confirmação do CRM falhou:", type(e).__name__, flush=True)
+        return _err("erro", 500)
+    return {"ok": True, "redirect": auth.safe_next(b.get("next"))}
 
 
 @app.post("/auth/password/forgot")
@@ -1072,9 +1287,10 @@ def scribe_on(user):
 def me(request: Request):
     u = auth.current_user(request)
     on = scribe_on(u)
+    bloqueio = _crm_bloqueio(u)
     if u:
         u = {k: v for k, v in u.items() if k != "sv"}
-    return {"logged_in": bool(u), "user": u, "scribe": on}
+    return {"logged_in": bool(u), "user": u, "scribe": on, "bloqueio": bloqueio}
 
 
 # ===== integrações de calendário (OAuth, por usuário) =====
@@ -1124,13 +1340,21 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             return resp
         try:
             info = auth.exchange_login(code)
-            novo = db.user_by_email(info["email"]) is None
-            user = db.upsert_user(info["email"], info.get("name"),
-                                  info.get("picture"), info.get("sub"))
-            if novo:
-                exemplo.seed_safe(user["id"])           # conta nova: paciente de exemplo (fictícia)
+            email = str(info["email"]).strip().lower()
+            if db.user_by_email(email) is None:
+                # e-mail sem conta: antes de a conta existir, o Registro profissional (só médicos criam conta). O perfil
+                # do Google espera num cookie assinado deste navegador (15 min), fora da URL
+                resp = RedirectResponse("/opendoctor-login.html?registro=google")
+                resp.set_cookie(GREG_COOKIE, auth.sign({
+                    "k": "greg", "email": email, "pic": info.get("picture"),
+                    "sub": info.get("sub"), "nx": auth.safe_next(payload.get("nx"))}),
+                    max_age=GREG_MAX_AGE, httponly=True, samesite="lax",
+                    secure=integrations.REDIRECT_BASE.startswith("https://"), path="/auth/")
+                resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
+                return resp
+            user = db.upsert_user(email, info.get("name"), info.get("picture"), info.get("sub"))
             dest = auth.safe_next(payload.get("nx"))
-            resp = RedirectResponse(auth.with_welcome(dest) if novo else dest)
+            resp = RedirectResponse(dest)
             auth.set_session(resp, user["id"], user.get("sv", 0))
             _audit(request, user["id"], "entrou", "google", _device(request, resp))
             resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
@@ -2104,7 +2328,13 @@ async def me_medico(request: Request):
     if err:
         return err
     m = await run_in_threadpool(db.get_medico, u["id"])
-    return {"medico": m, "faltam": _faltam_medico(m)}
+    return {"medico": m, "faltam": _faltam_medico(m), "crm_conferido": _crm_travado(u)}
+
+
+def _crm_travado(u):
+    """O CRM/UF desta conta foi conferido no cadastro (CFM ou à mão): não muda em Configurações (vai na receita).
+    Contas anteriores à conferência (crm_status vazio) seguem editando."""
+    return (u or {}).get("crm_status") == "verificado"
 
 
 @app.patch("/me/medico")
@@ -2125,6 +2355,10 @@ async def me_medico_muda(request: Request):
         if uf and uf not in _UFS:
             return JSONResponse({"error": "UF inválida"}, status_code=400)
         campos["crm_uf"] = uf
+    if _crm_travado(u) and ("crm" in campos or "crm_uf" in campos):
+        atual = await run_in_threadpool(db.get_medico, u["id"]) or {}
+        if any(k in campos and campos[k] != (atual.get(k) or "") for k in ("crm", "crm_uf")):
+            return JSONResponse({"error": "O CRM foi conferido no cadastro e não pode ser trocado aqui."}, status_code=400)
     if "receita_papel" in b:
         papel = str(b.get("receita_papel") or "").strip().upper()
         if papel and papel not in ("A4", "A5"):
@@ -2134,6 +2368,69 @@ async def me_medico_muda(request: Request):
         return JSONResponse({"error": "o nome não pode ficar vazio"}, status_code=400)
     m = await run_in_threadpool(db.update_medico, u["id"], campos)
     return {"medico": m, "faltam": _faltam_medico(m)}
+
+
+# ===== cadastros de médicos à espera da conferência do CRM (só administradores: ADMIN_EMAILS) =====
+def _admin_or_err(request):
+    u, err = _auth_or_401(request)
+    if err:
+        return None, err
+    if not auth.is_admin(u):
+        return None, JSONResponse({"error": "sem_permissao"}, status_code=403)
+    return u, None
+
+
+@app.get("/admin/cadastros")
+async def admin_cadastros(request: Request):
+    """Cadastros pendentes (nome, CRM/UF, quando pediu, se outra conta tem o mesmo CRM): o administrador confere na busca
+    pública do CFM e aprova ou recusa."""
+    u, err = _admin_or_err(request)
+    if err:
+        return err
+    return {"pendentes": await run_in_threadpool(db.pending_doctors), "cfm": cfm.configured()}
+
+
+@app.post("/admin/cadastros/aprovar")
+async def admin_cadastro_aprova(request: Request):
+    return await _admin_decide(request, True)
+
+
+@app.post("/admin/cadastros/recusar")
+async def admin_cadastro_recusa(request: Request):
+    return await _admin_decide(request, False)
+
+
+async def _admin_decide(request, aprovado):
+    u, err = _admin_or_err(request)
+    if err:
+        return err
+    return await run_in_threadpool(_admin_decide_now, await _body(request), aprovado)
+
+
+_UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+def _admin_decide_now(b, aprovado):
+    """Aprova (conta liberada) ou recusa um cadastro pendente e avisa o médico por e-mail (a falha do e-mail não desfaz)."""
+    uid = str(b.get("id") or "").strip().lower()
+    if not _UUID.fullmatch(uid):
+        return _err("id_invalido")
+    try:
+        r = db.decide_crm(uid, aprovado)
+    except Exception as e:
+        print("[cadastro] decisão falhou:", type(e).__name__, flush=True)
+        return _err("erro", 500)
+    if not r:
+        return _err("nao_pendente", 409)                  # já decidido (outro clique, outro administrador)
+    print("[cadastro] aprovado" if aprovado else "[cadastro] recusado", flush=True)
+    enviado = False
+    if mailer.configured():
+        try:
+            mailer.send_crm_decision(r["email"], r.get("name") or "", aprovado)
+            enviado = True
+        except Exception as e:
+            print("[cadastro] e-mail da decisão falhou:", str(e)[:200], flush=True)
+    return {"ok": True, "email_enviado": enviado}
 
 
 @app.post("/prontuario/access")

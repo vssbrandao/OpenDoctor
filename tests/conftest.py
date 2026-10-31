@@ -1,6 +1,6 @@
-"""Os testes nunca falam com o banco de produção, com a OpenAI nem com o Resend.
+"""Os testes nunca falam com o banco de produção, com a OpenAI, com o Resend nem com o CFM.
 
-Isto roda antes de qualquer import do app: DATABASE_URL, OPENAI_API_KEY e RESEND_API_KEY ficam vazios
+Isto roda antes de qualquer import do app: DATABASE_URL, OPENAI_API_KEY, RESEND_API_KEY e CFM_CHAVE ficam vazios
 (o .env não sobrescreve um valor já definido). Um acesso esquecido dá erro em vez de mexer em
 prontuário real, gastar crédito ou mandar e-mail.
 
@@ -13,6 +13,8 @@ import os
 os.environ["DATABASE_URL"] = ""
 os.environ["OPENAI_API_KEY"] = ""
 os.environ["RESEND_API_KEY"] = ""
+os.environ["CFM_CHAVE"] = ""          # nem o web service do CFM: os testes usam respostas prontas
+os.environ["ADMIN_EMAILS"] = ""
 
 import pytest  # noqa: E402
 
