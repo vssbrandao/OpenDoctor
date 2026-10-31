@@ -12,8 +12,9 @@
 // Google com e-mail não verificado e o da conta Google ligada a outro e-mail; o nascimento sem preenchimento automático; a
 // página de cadastros dos administradores lista (com o e-mail), aprova e recusa (com confirmação), libera sem confirmar as
 // aprovadas à mão presas no CFM e avisa quando a lista veio cortada; o tíquete que venceu na tela do código (a seta volta
-// para a senha); a nova senha de uma conta pendente não fica na espera; CPF e nascimento em nenhuma URL (pedidos, páginas
-// abertas e trocas de URL da própria página).
+// para a senha, mesmo vencendo duas vezes); a nova senha de uma conta pendente não fica na espera; o Voltar do navegador
+// (cache) depois de Sair na confirmação, de confirmar e perder a sessão e de largar o cadastro; CPF e nascimento em
+// nenhuma URL (pedidos, páginas abertas e trocas de URL da própria página).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -102,6 +103,11 @@ async function responde(p) {
   let body = null; try { body = p.request.postData ? JSON.parse(p.request.postData) : null; } catch (_) {}
   const arq = normalize(join(WEB, decodeURIComponent(u.pathname)));
   let status = 200, tipo = 'application/json', dado;
+  if (u.pathname === '/auth/logout') {             // como o servidor: apaga a sessão e volta para o login
+    ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
+    return send('Fetch.fulfillRequest', { requestId: p.requestId, responseCode: 302, body: '',
+      responseHeaders: [{ name: 'Location', value: '/opendoctor-login.html' }, { name: 'Clear-Site-Data', value: '"storage"' }] });
+  }
   if (u.pathname === '/opendoctor-agenda.html') { dado = Buffer.from('<!doctype html><title>agenda</title><p id="agenda">agenda</p>'); tipo = 'text/html'; }
   else if (arq.startsWith(WEB) && extname(arq) && existsSync(arq)) { dado = readFileSync(arq); tipo = TIPOS[extname(arq)] || 'application/octet-stream'; }
   else {
@@ -650,6 +656,95 @@ const cenarios = [
     await ate(`document.getElementById('title').textContent === 'Crie sua conta'`, 2000, 'a seta foi para: ' + await titulo());
     certo(await val('#newPw') === 'Abcdef12!', 'a senha se perdeu');
     return '"A confirmação expirou" no Registro; a seta volta para a senha, com a senha guardada';
+  }],
+  ['ler a Política no meio do cadastro e voltar não perde nada', async () => {
+    const politicaEVolta = async () => {
+      await ev(`window.__marca = 1; document.querySelector('.legal a[href="privacy.html"]').click(); 1`);
+      await ate(`location.pathname === '/privacy.html' && document.readyState === 'complete'`, 4000, 'Política');
+      await ev(`history.back(); 1`);
+      await ate(`location.pathname === '/opendoctor-login.html' && document.readyState === 'complete'`, 4000, 'voltou');
+      await sleep(400);
+      return ev(`window.__marca === 1`);
+    };
+    // Google: o Registro preenchido continua, e Criar conta vai para o registro do Google (não para o cadastro por e-mail)
+    await abre('?registro=google');
+    await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google');
+    await preenche();
+    const c1 = await politicaEVolta();
+    certo(await titulo() === 'Registro profissional' && await val('#rCpf') === '529.982.247-25', 'Google: ' + await titulo() + ' ' + await val('#rCpf'));
+    const g0 = posts('/auth/google/registro').length, s0 = posts('/auth/signup/start').length;
+    await clica('#regGo');
+    await ate(`location.pathname === '/opendoctor-agenda.html'`, 4000, 'conta do Google criada');
+    certo(posts('/auth/google/registro').length === g0 + 1 && posts('/auth/signup/start').length === s0, 'foi para a rota errada');
+    // e-mail: na tela do código, o código vai com o tíquete
+    await ateRegistro(); await preenche(); await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código');
+    const c2 = await politicaEVolta();
+    certo(await titulo() === 'Confirme seu e-mail', 'e-mail: ' + await titulo());
+    await cola('#otp input', '123456');
+    await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera');
+    certo(posts('/auth/signup/verify').slice(-1)[0].body.ticket === 'tk.sig', 'o código foi sem o tíquete');
+    return `Google: o Registro e a rota do Google continuam (cache ${c1}); e-mail: o código vai com o tíquete (cache ${c2})`;
+  }],
+  ['o tíquete que vence duas vezes: a seta volta para a senha no 1º toque', async () => {
+    await ateRegistro(); await preenche(); await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código');
+    VERIFY = [400, { error: 'sessao_expirada' }];
+    await cola('#otp input', '123456');
+    await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro 1');
+    VERIFY = null;
+    await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código 2');
+    VERIFY = [400, { error: 'sessao_expirada' }];
+    await cola('#otp input', '123456');
+    await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro 2');
+    certo(await txt('#alertText') === 'A confirmação expirou. Confira os dados e toque em Criar conta de novo.', 'aviso: ' + await txt('#alertText'));
+    await clica('#back');
+    await ate(`document.getElementById('title').textContent === 'Crie sua conta'`, 2000, 'o 1º toque na seta foi para: ' + await titulo());
+    return 'dois vencimentos seguidos; a seta chega à senha no 1º toque';
+  }],
+  ['Voltar do navegador: Sair na confirmação, confirmar e perder a sessão, cadastro largado', async () => {
+    const passo = () => ev(`[...document.querySelectorAll('[data-step]')].filter((s) => !s.hidden).map((s) => s.getAttribute('data-step')).join()`);
+    // 1) "Confirme seu registro" com o CPF digitado → Sair → Voltar: nada do CPF, e a tela inicial (sem sessão)
+    ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_confirmar' };
+    await abre('?next=%2Fopendoctor-prontuario.html');
+    await ate(`!document.getElementById('confForm').hidden`, 3000, 'confirmar');
+    await digita('#cCpf', CPF); await digita('#cNasc', '12051985');
+    await ev(`window.__marca = 1; document.querySelector('#confForm a[href="/auth/logout"]').click(); 1`);
+    await ate(`!window.__marca && document.readyState === 'complete' && !!document.getElementById('email')`, 5000, 'login depois de sair');
+    await sleep(300);
+    await ev(`history.back(); 1`); await sleep(900);
+    const r1 = { cache: await ev(`window.__marca === 1`), passo: await passo(), cpf: await val('#cCpf'), nasc: await val('#cNasc') };
+    certo(r1.cpf === '' && r1.nasc === '' && r1.passo === 'email', 'depois de Sair e Voltar: ' + JSON.stringify(r1));
+    // 2) confirmou, foi para o app, a sessão acabou → Voltar → e-mail → senha → Voltar: a tela inicial, não a confirmação
+    ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_confirmar' };
+    await abre();
+    await ate(`!document.getElementById('confForm').hidden`, 3000, 'confirmar');
+    await digita('#cCpf', CPF); await digita('#cNasc', '12051985');
+    await ev(`window.__marca = 1; 1`);
+    await clica('#confGo');
+    await ate(`location.pathname === '/opendoctor-agenda.html'`, 4000, 'agenda');
+    ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
+    await ev(`history.back(); 1`); await sleep(1000);
+    const r2 = { cache: await ev(`window.__marca === 1`), passo: await passo() };
+    certo(r2.passo === 'email', 'volta sem sessão: ' + JSON.stringify(r2));
+    CHECK = [200, { exists: true, password: true, email_ok: true }];
+    await digita('#email', 'ana@clinica.com.br'); await clica('#go');
+    await ate(`!document.getElementById('forgotBtn').closest('[data-step]').hidden`, 3000, 'senha');
+    await ev(`history.back(); 1`); await sleep(500);
+    certo(await passo() === 'email', 'o Voltar reabriu: ' + await passo());
+    // 3) cadastro largado na tela inicial → Google → Voltar: o CPF não fica escondido na página
+    CHECK = null;
+    await ateRegistro(); await preenche();
+    await ev(`history.go(-2); 1`); await sleep(400);
+    await ev(`window.__marca = 1; document.getElementById('google').click(); 1`);
+    await ate(`!window.__marca && document.readyState === 'complete'`, 5000, 'saiu para o Google');
+    await sleep(300);
+    await ev(`history.back(); 1`); await sleep(1000);
+    const r3 = { cache: await ev(`window.__marca === 1`), passo: await passo(), cpf: await val('#rCpf'), senha: await val('#newPw') };
+    certo(r3.cpf === '' && r3.senha === '' && r3.passo === 'email', 'cadastro largado: ' + JSON.stringify(r3));
+    return `Sair e Voltar sem o CPF (cache ${r1.cache}); sem sessão a tela inicial, e o Voltar não reabre a confirmação (cache ${r2.cache}); `
+      + `o cadastro largado sai da página (cache ${r3.cache})`;
   }],
   ['nova senha de uma conta pendente: a espera não guarda a senha', async () => {
     CHECK = [200, { exists: true, password: true, email_ok: true }];

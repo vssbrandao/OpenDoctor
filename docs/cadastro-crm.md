@@ -10,7 +10,7 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 1. E-mail sem conta → tela **Crie sua conta**: só a senha. O botão **Continuar** não vai ao servidor.
 2. **Registro profissional**:
    - Campos: Nome; CPF | Nascimento; CRM | UF. A seta no alto volta para a senha (também quando o tíquete venceu na tela
-     do código e ela voltou ao Registro com "A confirmação expirou").
+     do código: ela volta à entrada do Registro, com "A confirmação expirou", sem empilhar outra).
    - **Criar conta** manda, uma vez só, ao `POST /auth/signup/start`: e-mail, senha, nome, CPF, nascimento, CRM e UF.
 3. O servidor confere os formatos, depois o CRM no CFM (ou decide pendente), e **só então** manda o código por e-mail:
    - **Nome:** completo, com pelo menos 2 palavras (sem contar "de", "da"… nem "Dr.").
@@ -130,10 +130,12 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 - **`/me`:** devolve `bloqueio` com o motivo.
 - **Login com senha e outros logins:** a resposta traz `bloqueio`, e a tela mostra a espera em vez de abrir o app.
 - **Conta criada:** a página apaga o CPF, o nascimento, a senha (e a confirmação da nova senha) e o tíquete. O Voltar do
-  navegador continua na espera (não reabre o Registro com o CPF à vista); o que volta do cache do navegador depois de ir
-  para o app confere o `/me` de novo.
-- **Cadastro em andamento:** quem sai para ler os Termos ou a Política e volta pelo Voltar encontra a tela como deixou
-  (o tíquete, o Google e o que já digitou).
+  navegador continua na espera (não reabre o Registro com o CPF à vista).
+- **Voltar pelo cache do navegador:** as senhas e o CPF/nascimento da confirmação saem sempre.
+  - **Cadastro em andamento** (a tela estava na senha, no Registro, no código ou na nova senha): quem saiu para ler os
+    Termos ou a Política encontra a tela como deixou (o tíquete, o Google e o que já digitou).
+  - **O resto** (foi para o app, saiu da espera pelo "Sair", largou o cadastro na tela inicial): o cadastro sai da página
+    e o `/me` é conferido de novo; sem sessão, a tela inicial (o Voltar seguinte não reabre a espera).
 - **Contas anteriores a esta regra** (`crm_status` vazio; as 3 que existiam): seguem exatamente como antes.
 
 ## Aprovação à mão (administradores)

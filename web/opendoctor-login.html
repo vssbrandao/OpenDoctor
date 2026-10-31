@@ -417,6 +417,7 @@
         if (st.wait) { show(st.wait); return; }
         var s = e.state && e.state.step;
         show(REACH[s] && REACH[s]() ? s : 'email');
+        if (st.alerta) { alertMsg(st.alerta); st.alerta = ''; }      // o aviso que esperava a volta (expirou)
       });
       // a URL sem o registro=google (desistiu do Google, o tempo acabou ou a conta já existe); o next fica
       function semRegistro() {
@@ -472,10 +473,15 @@
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'hidden') esperaPara(); else esperaAgenda();
       });
-      // volta pelo cache do navegador depois de ir para o app (já limpa por done): confere a sessão, como ao abrir. O
-      // cadastro em andamento (foi ler a Política e voltou) fica como estava: o tíquete, o Google e o que já digitou
+      // volta pelo cache do navegador: as senhas e a confirmação do CPF saem sempre. Parada numa etapa em andamento (foi
+      // ler a Política e voltou), fica como estava: o tíquete, o Google e o que já digitou. Senão (foi para o app, saiu da
+      // espera pelo "Sair", largou o cadastro na tela inicial), o cadastro sai da página e a sessão é conferida, como ao abrir
+      var EM_ANDAMENTO = ['password', 'signup', 'registro', 'code', 'reset', 'google'];
       window.addEventListener('pageshow', function (e) {
-        if (!e.persisted || !st.saiu) return;
+        if (!e.persisted) return;
+        ['cCpf', 'cNasc', 'pw', 'rPw', 'rPw2'].forEach(function (id) { $(id).value = ''; });
+        var aberta = document.querySelector('[data-step]:not([hidden])');
+        if (!st.saiu && !st.wait && aberta && EM_ANDAMENTO.indexOf(aberta.getAttribute('data-step')) >= 0) return;
         st.saiu = false; limpaCadastro(); confereSessao(true);
       });
 
@@ -487,7 +493,10 @@
       function confereSessao(volta) {
         fetch('/me', { credentials: 'same-origin', cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; })
           .then(function (j) {
-            if (j && !j.logged_in && volta) { show('email'); history.replaceState({ step: 'email' }, '', semRegistro()); return; }
+            if (j && !j.logged_in && volta) {
+              st.wait = ''; esperaPara();          // sem sessão, a espera acabou: o Voltar não a reabre
+              show('email'); history.replaceState({ step: 'email' }, '', semRegistro()); return;
+            }
             if (!j || !j.logged_in) return;
             if (j.bloqueio) waitFor(j.bloqueio); else location.replace(nextUrl || HOME);
           }).catch(function () {});
@@ -851,13 +860,13 @@
       }
       $('back').addEventListener('click', function () {
         if (st.google) { desisteGoogle(); $('email').focus(); return; }
-        if (history.state && history.state.expirou) history.go(-2);          // o Registro que tomou o lugar do código
-        else if (history.state && history.state.step === 'registro') history.back(); else show('signup', true);
+        if (history.state && history.state.step === 'registro') history.back(); else show('signup', true);
       });
-      // o tíquete do cadastro venceu na tela do código: ela vira o Registro (sem empilhar outro), e a seta volta para a senha
+      // o tíquete do cadastro venceu na tela do código: volta à entrada do Registro, logo abaixo (o aviso aparece lá), e a
+      // seta segue para a senha — vencer de novo não empilha nada
       function expirou() {
-        st.ticket = ''; show('registro'); history.replaceState({ step: 'registro', expirou: true }, '');
-        alertMsg('A confirmação expirou. Confira os dados e toque em Criar conta de novo.');
+        st.ticket = ''; st.alerta = 'A confirmação expirou. Confira os dados e toque em Criar conta de novo.';
+        history.back();
       }
       function regFail(j) {
         var er = j.error;
