@@ -835,6 +835,37 @@ const cenarios = [
     certo(await txt('#alertText') === '', 'aviso no Registro: ' + await txt('#alertText'));
     return 'senha trocada durante o CFM: o código não abre e o novo Criar conta vai com a nova; Esqueci, Google e Reenviar não mexem na etapa para onde a pessoa voltou';
   }],
+  ['a resposta do código anterior não cai na tela de código nova; a senha sem o subtítulo do código', async () => {
+    await ateRegistro(); await preenche(); await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código 1');
+    ATRASO = { '/auth/signup/verify': 1500 }; VERIFY = [400, { error: 'codigo_incorreto', left: 4 }];
+    await cola('#otp input', '654321'); await sleep(100);
+    await ev(`history.back(); 1`);                                              // volta ao Registro e corrige o CRM
+    await ate(`!document.getElementById('regForm').hidden`, 2000, 'Registro');
+    await digita('#rCrm', '654321');
+    START = [200, { ok: true, ticket: 'tk2.sig', resend_in: 30, sent: true }];
+    await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código 2');
+    certo(!(await ev(`document.getElementById('codeGo').disabled`)), 'o Continuar herdou o pedido antigo');
+    await sleep(1700);                                                          // chega a resposta do código antigo
+    certo(await txt('#otpErr') === '' && await titulo() === 'Confirme seu e-mail', 'a resposta antiga apareceu: ' + await txt('#otpErr'));
+    ATRASO = {}; VERIFY = null;
+    await cola('#otp input', '123456');
+    await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'código 2 confirmado');
+    certo(posts('/auth/signup/verify').slice(-1)[0].body.ticket === 'tk2.sig', 'o código 2 foi com o tíquete antigo');
+    // a senha não fica com a frase do código ao voltar
+    ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
+    CHECK = [200, { exists: true, password: true, email_ok: true }];
+    await abre();
+    await digita('#email', 'ana@clinica.com.br'); await clica('#go');
+    await ate(`!document.getElementById('forgotBtn').closest('[data-step]').hidden`, 3000, 'senha');
+    await clica('#forgotBtn');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código da nova senha');
+    await ev(`history.back(); 1`);
+    await ate(`document.getElementById('title').textContent === 'Digite sua senha'`, 2000, 'de volta à senha');
+    certo(!(await vis('#sub')), 'a senha ficou com o subtítulo: ' + await txt('#sub'));
+    return 'a resposta do código antigo não aparece na tela nova (e o Continuar fica livre); a senha volta sem a frase do código';
+  }],
   ['nova senha: ler a Política e voltar deixa os requisitos como o campo vazio', async () => {
     CHECK = [200, { exists: true, password: true, email_ok: true }];
     await abre();

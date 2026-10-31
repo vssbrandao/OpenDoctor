@@ -394,13 +394,12 @@
         alertMsg('');
         [].forEach.call(document.querySelectorAll('[data-user]'), function (u) { u.value = st.email; });
         var e = st.email;
-        if (step === 'email') sub(null);
+        sub(null);
         if (step === 'signup') sub(['Não encontramos uma conta com ', e, '. Crie a sua.', true]);
         if (step === 'code') sub(['Enviamos um código para seu e-mail ', e]);
         if (step === 'reset') sub(['Para a conta ', e, '.']);
         if (step === 'google') sub(['A conta ', e, ' foi criada com o Google.', true]);
         if (step === 'erro') sub(['Houve um problema ao conectar sua conta do Google. Tente entrar novamente.']);
-        if (step === 'registro') sub(null);
         if (step === 'aguardando') sub(['Assim que confirmarmos seu registro no CFM, avisamos por e-mail e sua conta fica liberada.']);
         if (step === 'recusado') sub(['Não conseguimos confirmar seu CRM no CFM. Se você acha que houve um engano, fale com a equipe do OpenDoctor.']);
         if (step === 'confirmar') sub(['Para continuar, confirme seu CPF e sua data de nascimento. Eles são conferidos no CFM e não ficam guardados.']);
@@ -617,7 +616,7 @@
         tick(); timer = setInterval(tick, 1000);
       }
       function openCode(mode, wait) {
-        st.codeMode = mode; resetBoxes();
+        st.codeMode = mode; resetBoxes(); busy($('codeGo'), false);
         show('code', true); cooldown(wait); boxes[0].focus();
       }
 
@@ -960,14 +959,16 @@
         e.preventDefault();
         var v = codeValue();
         if (v.length !== 6) { otpErr('Digite os 6 dígitos do código.'); (boxes.filter(function (b) { return !b.value; })[0] || boxes[0]).focus(); return; }
-        var btn = $('codeGo'), ainda = aqui(); busy(btn, true); alertMsg('');
+        var tk = st.ticket, btn = $('codeGo'), ainda = aqui(function () { return st.codeMode + '|' + st.ticket; });
+        busy(btn, true); alertMsg('');
         var req = st.codeMode === 'signup'
           ? post('/auth/signup/verify', { ticket: st.ticket, code: v, next: nextUrl })
           : post('/auth/password/reset/verify', { email: st.email, code: v });
         req.then(function (res) {
-          busy(btn, false);
           var j = res.j, er = j.error;
-          if (res.ok && j.redirect) { done(j); return; }
+          if (res.ok && j.redirect) { busy(btn, false); done(j); return; }
+          if (st.ticket !== tk) return;            // de um tíquete velho: a tela (e o botão) já são de outro pedido
+          busy(btn, false);
           if (er === 'sessao_expirada' && st.codeMode === 'signup') { expirou(); return; }   // confere a etapa sozinho
           if (!ainda()) return;
           if (res.ok && j.ticket) {         // modo reset: código certo → escolher a senha
@@ -981,14 +982,15 @@
             return;
           }
           alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
-        }).catch(function () { busy(btn, false); if (ainda()) alertMsg(OFFLINE); });
+        }).catch(function () { if (st.ticket !== tk) return; busy(btn, false); if (ainda()) alertMsg(OFFLINE); });
       });
       $('resend').addEventListener('click', function () {
         var link = this;
         if (st.codeMode === 'reset') { forgot(link); return; }
-        var ainda = aqui();
+        var tk = st.ticket, ainda = aqui(function () { return st.codeMode + '|' + st.ticket; });
         busy(link, true); otpErr('');
         post('/auth/signup/resend', { ticket: st.ticket }).then(function (res) {
+          if (st.ticket !== tk) return;            // de um tíquete velho: a tela já é de outro pedido
           if (res.ok && !res.j.error && !ainda()) { cooldown(res.j.resend_in); return; }    // voltou: só a contagem
           if (res.j.error === 'sessao_expirada') { cooldown(0); expirou(); return; }
           if (!ainda()) { cooldown(0); return; }
@@ -998,7 +1000,7 @@
           }
           cooldown(0);
           sendFail(res.j.error);
-        }).catch(function () { cooldown(0); if (ainda()) alertMsg(OFFLINE); });
+        }).catch(function () { if (st.ticket !== tk) return; cooldown(0); if (ainda()) alertMsg(OFFLINE); });
       });
 
       // ----- 5. nova senha -----

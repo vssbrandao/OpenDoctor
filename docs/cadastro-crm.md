@@ -138,7 +138,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
     página (nome, CPF, nascimento, CRM, UF e senha) e o `/me` é conferido de novo; sem sessão, a tela inicial (o Voltar
     seguinte não reabre a espera).
 - **Resposta que chega depois de a pessoa mudar algo** (`aqui()` na página): toda resposta só mexe na tela se ela
-  continua na mesma etapa, com o mesmo e-mail (e, no Criar conta, com a mesma senha e os mesmos campos). Ex.: tocou a
+  continua na mesma etapa, com o mesmo e-mail (no Criar conta, com a mesma senha e os mesmos campos; no código, com o
+  mesmo tíquete). Ex.: tocou a
   seta enquanto o CFM conferia e trocou a senha: o código não abre com a senha antiga, e a tela pede "Criar conta" de
   novo. Login concluído vale sempre (a sessão já existe). O tíquete que vence com a pessoa já no Registro mostra o aviso
   ali; em outra etapa, só é descartado. A seta que desiste do Google apaga o Registro (ele não volta).
