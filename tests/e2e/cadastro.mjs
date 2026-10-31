@@ -496,9 +496,9 @@ const cenarios = [
       await ev(`history.back(); 1`); await sleep(300);
       certo(await titulo() === 'Estamos conferindo seu CRM', `Voltar ${i + 1}: ${await titulo()}`);
     }
-    const vazios = await ev(`['rCpf', 'rNasc', 'newPw'].map((i) => document.getElementById(i).value).join('|')`);
-    certo(vazios === '||', 'CPF/nascimento/senha ficaram na página: ' + vazios);
-    return 'Voltar 3× continua na espera; CPF, nascimento e senha limpos';
+    const vazios = await ev(`['rNome', 'rCpf', 'rNasc', 'rCrm', 'rUf', 'newPw'].map((i) => document.getElementById(i).value).join('|')`);
+    certo(vazios === '|||||', 'o cadastro ficou na página: ' + vazios);
+    return 'Voltar 3× continua na espera; nome, CPF, nascimento, CRM, UF e senha limpos';
   }],
   ['Google: recarregar e voltar não perdem a etapa nem a página de origem', async () => {
     await abre('?registro=google&next=%2Fopendoctor-configuracoes.html');
@@ -746,6 +746,8 @@ const cenarios = [
     const r3 = { cache: await ev(`window.__marca === 1`), passo: await passo(), cpf: await val('#rCpf'), senha: await val('#newPw'),
       resto: await ev(`['rNome', 'rCrm', 'rUf', 'rNasc'].map((i) => document.getElementById(i).value).join('')`) };
     certo(r3.cpf === '' && r3.senha === '' && r3.resto === '' && r3.passo === 'email', 'cadastro largado: ' + JSON.stringify(r3));
+    const regras = await ev(`[...document.querySelectorAll('[data-rules="newPw"] li')].map((l) => l.classList.contains('ok')).join()`);
+    certo(regras === 'false,false,false', 'os requisitos da senha apagada continuam cumpridos: ' + regras);
     return `Sair e Voltar sem o CPF (cache ${r1.cache}); sem sessão a tela inicial, e o Voltar não reabre a confirmação (cache ${r2.cache}); `
       + `o cadastro largado sai da página (cache ${r3.cache})`;
   }],
@@ -783,6 +785,55 @@ const cenarios = [
     certo(await titulo() === 'Registro profissional' && await txt('#alertText') === 'A confirmação expirou. Confira os dados e toque em Criar conta de novo.',
       'depois de vencer com a pessoa já no Registro: ' + await titulo() + ' / ' + await txt('#alertText'));
     return 'a seta durante o Criar conta fica na senha; vencido com a pessoa já no Registro, o aviso fica no Registro';
+  }],
+  ['respostas atrasadas: o que a pessoa mudou enquanto o servidor respondia vale', async () => {
+    // trocou a senha (seta → senha → Continuar) enquanto o CFM conferia: o código não abre com a senha antiga
+    await ateRegistro(); await preenche();
+    ATRASO = { '/auth/signup/start': 700 };
+    await clica('#regGo'); await sleep(100);
+    await clica('#back');
+    await ate(`document.getElementById('title').textContent === 'Crie sua conta'`, 2000, 'senha');
+    await digita('#newPw', 'Outra34!xy'); await clica('#signupGo');
+    await ate(`!document.getElementById('regForm').hidden`, 2000, 'Registro');
+    await sleep(900);
+    certo(await titulo() === 'Registro profissional', 'abriu o código com a senha antiga: ' + await titulo());
+    certo(await txt('#alertText') === 'Os dados mudaram enquanto conferíamos. Confira e toque em Criar conta de novo.', 'aviso: ' + await txt('#alertText'));
+    ATRASO = {};
+    await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código com os dados novos');
+    certo(posts('/auth/signup/start').slice(-1)[0].body.password === 'Outra34!xy', 'o novo Criar conta foi com a senha antiga');
+    // Esqueci minha senha e Voltar antes da resposta: o código não abre por cima da tela inicial
+    CHECK = [200, { exists: true, password: true, email_ok: true }];
+    await abre();
+    await digita('#email', 'ana@clinica.com.br'); await clica('#go');
+    await ate(`!document.getElementById('forgotBtn').closest('[data-step]').hidden`, 3000, 'senha');
+    ATRASO = { '/auth/password/forgot': 600 };
+    await clica('#forgotBtn'); await sleep(100);
+    await ev(`history.back(); 1`);
+    await ate(`document.getElementById('title').textContent === 'Bem-vindo à OpenDoctor'`, 2000, 'tela inicial');
+    await sleep(800);
+    certo(await titulo() === 'Bem-vindo à OpenDoctor', 'o código abriu por cima da tela inicial: ' + await titulo());
+    // Google: a seta enquanto o CFM conferia; a recusa não aparece na tela inicial e o CPF sai da página
+    CHECK = null; ATRASO = { '/auth/google/registro': 600 }; REG_GOOGLE = [400, { error: 'crm_dados' }];
+    await abre('?registro=google');
+    await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google');
+    await preenche(); await clica('#regGo'); await sleep(100);
+    await clica('#back');
+    await ate(`!document.getElementById('emailForm').closest('[data-step]').hidden`, 2000, 'tela inicial');
+    await sleep(800);
+    certo(await txt('#alertText') === '' && await val('#rCpf') === '', 'Google: aviso ' + JSON.stringify(await txt('#alertText')) + ', CPF ' + await val('#rCpf'));
+    // Reenviar o código e Voltar ao Registro antes da resposta: o "Enviamos um novo código" não aparece no Registro
+    REG_GOOGLE = null; ATRASO = {};
+    await ateRegistro(); await preenche(); await clica('#regGo');
+    await ate(`!document.getElementById('codeForm').hidden`, 3000, 'código');
+    await ev(`document.getElementById('resend').disabled = false; 1`);          // sem esperar a contagem
+    ATRASO = { '/auth/signup/resend': 600 };
+    await clica('#resend'); await sleep(100);
+    await ev(`history.back(); 1`);
+    await ate(`!document.getElementById('regForm').hidden`, 2000, 'Registro');
+    await sleep(800);
+    certo(await txt('#alertText') === '', 'aviso no Registro: ' + await txt('#alertText'));
+    return 'senha trocada durante o CFM: o código não abre e o novo Criar conta vai com a nova; Esqueci, Google e Reenviar não mexem na etapa para onde a pessoa voltou';
   }],
   ['nova senha: ler a Política e voltar deixa os requisitos como o campo vazio', async () => {
     CHECK = [200, { exists: true, password: true, email_ok: true }];

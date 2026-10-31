@@ -137,9 +137,11 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - **O resto** (foi para o app, saiu da espera pelo "Sair", largou o cadastro na tela inicial): o cadastro inteiro sai da
     página (nome, CPF, nascimento, CRM, UF e senha) e o `/me` é conferido de novo; sem sessão, a tela inicial (o Voltar
     seguinte não reabre a espera).
-- **Resposta que chega depois de a pessoa sair da etapa:** tocou a seta enquanto o Criar conta esperava o CFM, o código
-  não abre por cima da senha; voltou ao Registro enquanto o código era conferido e o tíquete venceu, o aviso aparece no
-  Registro.
+- **Resposta que chega depois de a pessoa mudar algo** (`aqui()` na página): toda resposta só mexe na tela se ela
+  continua na mesma etapa, com o mesmo e-mail (e, no Criar conta, com a mesma senha e os mesmos campos). Ex.: tocou a
+  seta enquanto o CFM conferia e trocou a senha: o código não abre com a senha antiga, e a tela pede "Criar conta" de
+  novo. Login concluído vale sempre (a sessão já existe). O tíquete que vence com a pessoa já no Registro mostra o aviso
+  ali; em outra etapa, só é descartado. A seta que desiste do Google apaga o Registro (ele não volta).
 - **Contas anteriores a esta regra** (`crm_status` vazio; as 3 que existiam): seguem exatamente como antes.
 
 ## Aprovação à mão (administradores)

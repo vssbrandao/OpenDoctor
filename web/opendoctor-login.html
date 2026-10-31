@@ -408,6 +408,13 @@
         if (push) history.pushState({ step: step }, '');
       }
       function etapa() { var a = document.querySelector('[data-step]:not([hidden])'); return a && a.getAttribute('data-step'); }
+      // a resposta de um pedido só mexe na tela se ela continua onde o pedido saiu: a mesma etapa, o mesmo e-mail e o que
+      // `extra` devolve (os dados enviados). A pessoa pode ter voltado, trocado o e-mail ou mudado um campo enquanto o
+      // servidor respondia (o Criar conta espera o CFM). Login concluído (redirect) vale sempre: a sessão já existe
+      function aqui(extra) {
+        var de = etapa(), mail = st.email, antes = extra ? extra() : '';
+        return function () { return etapa() === de && st.email === mail && (!extra || extra() === antes); };
+      }
       // st.wait: a conta já existe e espera (conferência do CRM, recusada, a confirmar) — o Voltar não reabre o cadastro
       var REACH = { password: function () { return !!st.email; }, signup: function () { return !!st.email; },
                     registro: function () { return st.google || (!!st.email && !!$('newPw').value); },
@@ -427,7 +434,8 @@
       }
       // conta criada (ou login concluído): o CPF, o nascimento, a senha e o tíquete saem da página
       function limpaCadastro() {
-        ['rCpf', 'rNasc', 'newPw', 'cCpf', 'cNasc', 'pw', 'rPw', 'rPw2'].forEach(function (id) { $(id).value = ''; });
+        ['rNome', 'rCpf', 'rNasc', 'rCrm', 'rUf', 'newPw', 'cCpf', 'cNasc', 'pw', 'rPw', 'rPw2'].forEach(function (id) { $(id).value = ''; });
+        clearErrs($('regForm')); paintRules('newPw'); paintRules('rPw');
         st.ticket = ''; st.resetTicket = ''; st.google = false;
       }
       history.replaceState({ step: 'email' }, '');
@@ -484,7 +492,6 @@
         paintRules('rPw');
         if (!st.saiu && !st.wait && EM_ANDAMENTO.indexOf(etapa()) >= 0) return;
         st.saiu = false; limpaCadastro(); confereSessao(true);
-        ['rNome', 'rCrm', 'rUf'].forEach(function (id) { $(id).value = ''; }); clearErrs($('regForm'));
       });
 
       // link do Google leva junto a página de origem
@@ -629,9 +636,10 @@
         if (!addr) { fieldErr(email, 'Digite seu e-mail.'); email.focus(); return; }
         if (!RE.test(addr)) { fieldErr(email, 'Confira o e-mail digitado.'); email.focus(); return; }
         fieldErr(email, ''); alertMsg('');
-        var btn = $('go'); busy(btn, true);
+        var btn = $('go'), ainda = aqui(function () { return email.value.trim().toLowerCase(); }); busy(btn, true);
         post('/auth/email/check', { email: addr }).then(function (res) {
           busy(btn, false);
+          if (!ainda()) return;
           var j = res.j;
           if (!res.ok) {
             if (j.error === 'email_invalido') { fieldErr(email, 'Confira o e-mail digitado.'); return; }
@@ -644,7 +652,7 @@
           if (j.exists) { show('google', true); return; }
           if (!st.emailOk) { alertMsg('Ainda não é possível criar conta com e-mail. Use Continuar com o Google.', true); return; }
           st.google = false; clearErrs($('signupForm')); paintRules('newPw'); show('signup', true); $('newPw').focus();
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+        }).catch(function () { busy(btn, false); if (ainda()) alertMsg(OFFLINE); });
       });
 
       // ----- 2. senha -----
@@ -653,11 +661,12 @@
         e.preventDefault();
         var pw = $('pw').value;
         if (!pw) { fieldErr($('pw'), 'Digite sua senha.'); $('pw').focus(); return; }
-        var btn = $('pwGo'); busy(btn, true); alertMsg('');
+        var btn = $('pwGo'), ainda = aqui(); busy(btn, true); alertMsg('');
         post('/auth/password/login', { email: st.email, password: pw, next: nextUrl }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
           if (res.ok && j.redirect) { done(j); return; }
+          if (!ainda()) return;
           if (er === 'senha_incorreta') {
             fieldErr($('pw'), 'Senha incorreta.' + (j.left <= 2 ? (j.left === 1 ? ' Resta 1 tentativa' : ' Restam ' + j.left + ' tentativas') + ' antes de um bloqueio de 15 minutos.' : ''));
             $('pw').select(); return;
@@ -667,20 +676,22 @@
           if (er === 'sem_conta') { clearErrs($('signupForm')); paintRules('newPw'); show('signup', true); return; }
           if (er === 'senha_vazia') { fieldErr($('pw'), 'Digite sua senha.'); return; }
           alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+        }).catch(function () { busy(btn, false); if (ainda()) alertMsg(OFFLINE); });
       });
 
       // ----- esqueci a senha / conta Google criar senha → código (modo reset) -----
       function forgot(btn) {
         if (!st.emailOk) { alertMsg('A redefinição de senha por e-mail ainda não está disponível. Use Continuar com o Google.'); return; }
+        var ainda = aqui();
         busy(btn, true); alertMsg('');
         post('/auth/password/forgot', { email: st.email }).then(function (res) {
           busy(btn, false);
+          if (!ainda()) return;               // voltou ou trocou o e-mail: o código não abre por cima de outra etapa
           if (!res.ok) { sendFail(res.j.error); cooldown(0); return; }
           if ($('codeForm').hidden || st.codeMode !== 'reset') { openCode('reset', res.j.resend_in); return; }
           if (res.j.sent) { alertMsg('Enviamos um novo código.', true); resetBoxes(); boxes[0].focus(); }
           cooldown(res.j.resend_in);
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); cooldown(0); });
+        }).catch(function () { busy(btn, false); if (ainda()) { alertMsg(OFFLINE); cooldown(0); } });
       }
       $('forgotBtn').addEventListener('click', function () { st.firstPw = false; forgot($('forgotBtn')); });
       $('wantPw').addEventListener('click', function () { st.firstPw = true; forgot($('wantPw')); });
@@ -859,6 +870,7 @@
       }
       function desisteGoogle() {           // a seta (ou o tempo do Google acabou): volta ao início, sem o registro=google
         st.google = false; show('email'); history.pushState({ step: 'email' }, '', semRegistro());
+        ['rNome', 'rCpf', 'rNasc', 'rCrm', 'rUf'].forEach(function (id) { $(id).value = ''; });   // esse Registro não volta
       }
       $('back').addEventListener('click', function () {
         if (st.google) { desisteGoogle(); $('email').focus(); return; }
@@ -867,9 +879,11 @@
       // o tíquete do cadastro venceu na tela do código: volta à entrada do Registro, logo abaixo (o aviso aparece lá), e a
       // seta segue para a senha — vencer de novo não empilha nada
       function expirou() {
-        st.ticket = ''; st.alerta = 'A confirmação expirou. Confira os dados e toque em Criar conta de novo.';
-        if (etapa() === 'code' && history.state && history.state.step === 'code') { history.back(); return; }
-        show('registro'); history.replaceState({ step: 'registro' }, ''); alertMsg(st.alerta); st.alerta = '';
+        var msg = 'A confirmação expirou. Confira os dados e toque em Criar conta de novo.';
+        st.ticket = '';
+        if (etapa() === 'code' && history.state && history.state.step === 'code') { st.alerta = msg; history.back(); return; }
+        if (etapa() === 'code') { show('registro'); history.replaceState({ step: 'registro' }, ''); }
+        if (etapa() === 'registro') alertMsg(msg);       // a pessoa já tinha voltado ao Registro: o aviso aparece ali
       }
       function regFail(j) {
         var er = j.error;
@@ -892,16 +906,23 @@
         if (first) { first.focus(); return; }
         var body = { nome: nomeLimpo(), cpf: digits(rCpf.value), nascimento: rNasc.value, crm: rCrm.value, uf: rUf.value };
         var btn = $('regGo'); busy(btn, true); alertMsg('');
+        var ainda = aqui(function () {
+          return JSON.stringify([st.google, $('newPw').value, nomeLimpo(), digits(rCpf.value), rNasc.value, rCrm.value, rUf.value]);
+        });
         var req = st.google ? post('/auth/google/registro', body)
           : post('/auth/signup/start', { email: st.email, password: $('newPw').value, nome: body.nome, cpf: body.cpf,
                                          nascimento: body.nascimento, crm: body.crm, uf: body.uf });
         req.then(function (res) {
           busy(btn, false);
           var j = res.j;
-          if (res.ok && j.ticket) { if (etapa() === 'registro') { st.ticket = j.ticket; openCode('signup', j.resend_in); } return; }
           if (res.ok && j.redirect) { done(j); return; }                                   // Google: conta criada
+          if (!ainda()) {                // voltou, ou mudou a senha ou um campo, enquanto o CFM respondia: este pedido não vale
+            if (etapa() === 'registro') alertMsg('Os dados mudaram enquanto conferíamos. Confira e toque em Criar conta de novo.');
+            return;
+          }
+          if (res.ok && j.ticket) { st.ticket = j.ticket; openCode('signup', j.resend_in); return; }
           regFail(j);
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+        }).catch(function () { busy(btn, false); if (ainda()) alertMsg(OFFLINE); });
       });
 
       // ----- 9. conta aprovada à mão confirma CPF e nascimento no CFM -----
@@ -912,19 +933,20 @@
         if (!cpfOk(digits(cpf.value))) { fieldErr(cpf, cpf.value ? MSG.cpf : VAZIO.cpf); first = cpf; }
         if (!dataOk(nasc.value)) { fieldErr(nasc, nasc.value ? MSG.nascimento : VAZIO.nascimento); first = first || nasc; }
         if (first) { first.focus(); return; }
-        var btn = $('confGo'); busy(btn, true); alertMsg('');
+        var btn = $('confGo'), ainda = aqui(); busy(btn, true); alertMsg('');
         post('/auth/crm/confirmar', { cpf: digits(cpf.value), nascimento: nasc.value, next: nextUrl }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
           // confirmou — ou o CFM não respondeu (adiado): a conta já foi aprovada, a confirmação volta no próximo login
           if (res.ok && j.redirect) { limpaCadastro(); go(j.redirect); return; }
+          if (!ainda()) return;
           if (er === 'cpf') { fieldErr(cpf, MSG.cpf); return; }
           if (er === 'nascimento') { fieldErr(nasc, MSG.nascimento); return; }
           if (er === 'crm_dados') { alertMsg('O CPF ou a data de nascimento não conferem com o seu registro no CFM. Confira e tente de novo.'); cpf.focus(); return; }
           if (er === 'limite_conta') { alertMsg('Muitas tentativas com dados que não conferem. Tente de novo amanhã ou fale com a equipe do OpenDoctor.'); return; }
           if (res.status === 401) { st.wait = ''; show('email', true); alertMsg('Sua sessão expirou. Entre novamente.', true); return; }
           alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+        }).catch(function () { busy(btn, false); if (ainda()) alertMsg(OFFLINE); });
       });
 
       // ----- 4. código -----
@@ -938,7 +960,7 @@
         e.preventDefault();
         var v = codeValue();
         if (v.length !== 6) { otpErr('Digite os 6 dígitos do código.'); (boxes.filter(function (b) { return !b.value; })[0] || boxes[0]).focus(); return; }
-        var btn = $('codeGo'); busy(btn, true); alertMsg('');
+        var btn = $('codeGo'), ainda = aqui(); busy(btn, true); alertMsg('');
         var req = st.codeMode === 'signup'
           ? post('/auth/signup/verify', { ticket: st.ticket, code: v, next: nextUrl })
           : post('/auth/password/reset/verify', { email: st.email, code: v });
@@ -946,11 +968,12 @@
           busy(btn, false);
           var j = res.j, er = j.error;
           if (res.ok && j.redirect) { done(j); return; }
+          if (er === 'sessao_expirada' && st.codeMode === 'signup') { expirou(); return; }   // confere a etapa sozinho
+          if (!ainda()) return;
           if (res.ok && j.ticket) {         // modo reset: código certo → escolher a senha
             st.resetTicket = j.ticket;
             var f = $('resetForm'); f.reset(); clearErrs(f); paintRules('rPw'); show('reset', true); $('rPw').focus(); return;
           }
-          if (er === 'sessao_expirada') { expirou(); return; }
           var m = codeErrMsg(er, j);
           if (m) {
             otpErr(m); boxes[5].focus();
@@ -958,21 +981,24 @@
             return;
           }
           alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+        }).catch(function () { busy(btn, false); if (ainda()) alertMsg(OFFLINE); });
       });
       $('resend').addEventListener('click', function () {
         var link = this;
         if (st.codeMode === 'reset') { forgot(link); return; }
+        var ainda = aqui();
         busy(link, true); otpErr('');
         post('/auth/signup/resend', { ticket: st.ticket }).then(function (res) {
+          if (res.ok && !res.j.error && !ainda()) { cooldown(res.j.resend_in); return; }    // voltou: só a contagem
+          if (res.j.error === 'sessao_expirada') { cooldown(0); expirou(); return; }
+          if (!ainda()) { cooldown(0); return; }
           if (res.ok) {
             if (res.j.sent) { alertMsg('Enviamos um novo código.', true); resetBoxes(); boxes[0].focus(); }
             cooldown(res.j.resend_in); return;
           }
           cooldown(0);
-          if (res.j.error === 'sessao_expirada') { expirou(); return; }
           sendFail(res.j.error);
-        }).catch(function () { cooldown(0); alertMsg(OFFLINE); });
+        }).catch(function () { cooldown(0); if (ainda()) alertMsg(OFFLINE); });
       });
 
       // ----- 5. nova senha -----
@@ -983,15 +1009,16 @@
         if (paintRules('rPw').length) { fieldErr($('rPw'), pw ? 'Confira os requisitos da senha abaixo.' : 'Crie uma nova senha.'); first = $('rPw'); }
         else if (pw2 !== pw) { fieldErr($('rPw2'), pw2 ? 'As senhas não conferem. Digite de novo.' : 'Confirme a nova senha.'); first = $('rPw2'); }
         if (first) { first.focus(); return; }
-        var btn = $('resetGo'); busy(btn, true); alertMsg('');
+        var btn = $('resetGo'), ainda = aqui(); busy(btn, true); alertMsg('');
         post('/auth/password/reset', { ticket: st.resetTicket, password: pw, next: nextUrl }).then(function (res) {
           busy(btn, false);
           var j = res.j, er = j.error;
           if (res.ok && j.redirect) { done(j); return; }
+          if (!ainda()) return;
           if (er === 'senha_fraca') { paintRules('rPw'); fieldErr($('rPw'), 'Confira os requisitos da senha abaixo.'); return; }
           if (er === 'sessao_expirada') { st.resetTicket = ''; show('email', true); alertMsg('O tempo para criar a senha expirou. Toque em Continuar e peça um novo código.'); return; }
           alertMsg(GENERIC);
-        }).catch(function () { busy(btn, false); alertMsg(OFFLINE); });
+        }).catch(function () { busy(btn, false); if (ainda()) alertMsg(OFFLINE); });
       });
     })();
   </script>
