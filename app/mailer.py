@@ -171,9 +171,9 @@ def render(purpose, name="", code="", when="", device="", via="", nome="", crm="
     base = _app_url()
     logo = (f'<img src="{base}/assets/email/logo.png" width="24" height="24" alt="OpenDoctor" '
             'style="display:block;width:24px;height:24px;border:0">')
-    first = first_name(name)
+    first = _sem_link(first_name(name))           # o nome é o que a pessoa digitou: não vira link no e-mail
     greet = f"{first}," if first else "Olá,"
-    lead = t["lead"].format(when=when, device=device, via=via, nome=nome, crm=crm)
+    lead = t["lead"].format(when=when, device=device, via=via, nome=_sem_link(nome), crm=crm)
     link = base + t.get("link", "/opendoctor-login.html")
     block = _code_boxes(code) if code else _button(t["button"], link)
     preheader = f"Seu código: {code} · vale 10 minutos" if code else lead
@@ -288,14 +288,14 @@ def _send_all(admins, purpose, **kw):
 
 def _sem_link(texto):
     """O nome digitado no cadastro não vira link no e-mail ("aprove em site.com": o Gmail liga o domínio sozinho): um
-    espaço de largura zero depois de cada ponto, invisível na leitura."""
+    espaço de largura zero depois de cada ponto, invisível na leitura. Vale para todo e-mail (render)."""
     return str(texto or "").replace(".", ".\u200b")
 
 
 def send_crm_pending(admins, nome, crm, uf):
     """Avisa os administradores (auth.admin_emails) de um cadastro pendente. Vai só o nome e o CRM/UF do médico
     (nada de e-mail, CPF ou nascimento)."""
-    _send_all(admins, "crm_pendente", nome=_sem_link(nome), crm=f"{crm}/{uf}")
+    _send_all(admins, "crm_pendente", nome=nome, crm=f"{crm}/{uf}")
 
 
 def send_crm_decision(to, name="", aprovado=True):

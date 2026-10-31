@@ -308,6 +308,10 @@ def test_aviso_aos_administradores_chega_a_todos_e_o_nome_nao_vira_link(monkeypa
     assert [e[0] for e in enviados] == ["dono@opendoctor.app"]
     with pytest.raises(RuntimeError, match="validation_error"):
         mailer.send_cfm_alerta(["antigo@x.com.br"])
+    # o código do cadastro vai para o endereço que a pessoa digitou: o primeiro nome dela também não vira link
+    subj, body, text = mailer.render("signup", name="golpe.com Silva", code="123456")
+    assert "golpe.com" not in body and "golpe.com" not in text and "golpe" in body
+    assert mailer.render("signup", name="Dra. Ana Lima", code="123456")[1].count("Ana,") == 1     # "Dra." continua pulado
 
 
 def test_aviso_da_chave_que_ninguem_recebeu_tenta_de_novo(monkeypatch):

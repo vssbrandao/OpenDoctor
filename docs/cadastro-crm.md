@@ -157,7 +157,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - Grava `crm_fonte = 'manual'`.
 - **E-mails (Resend):**
   - **Aos administradores**, a cada cadastro pendente: só o nome e o CRM/UF do médico. Um a um: o endereço que o
-    Resend recusa não impede os outros. O nome digitado não vira link (um espaço de largura zero depois de cada ponto).
+    Resend recusa não impede os outros. O nome digitado não vira link, neste e em todo e-mail (a saudação do código
+    também): um espaço de largura zero depois de cada ponto.
   - **Ao médico**, quando é aprovado (conta liberada) ou recusado.
   - A falha do e-mail não desfaz a decisão.
 
