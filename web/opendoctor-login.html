@@ -24,7 +24,7 @@
     .col{width:447px;max-width:100%;min-height:calc(100vh - 118px);min-height:calc(100svh - 118px);display:flex;flex-direction:column}
     .logo{display:block}
     /* título sempre no mesmo lugar em todas as etapas (Figma 1043-11354: 82px abaixo do logo); rodapé colado embaixo */
-    .main{display:flex;flex-direction:column;gap:56px;margin-top:82px}
+    .main{display:flex;flex-direction:column;gap:56px;margin-top:77px}         /* logo de 34px (Figma 1043-11354: título em y=171) */
     .title{font-weight:500;font-size:24px;line-height:1.15;min-height:32px;display:flex;align-items:center;color:#0C0C0D}
     .forms{display:flex;flex-direction:column;gap:42px}
     .email-form{display:flex;flex-direction:column;gap:16px}
@@ -76,10 +76,10 @@
     /* tela de código (Figma 1046-44660): título → texto 8px; texto → caixas 64px;
        6 caixas 84px com 8px entre elas; botão 16px abaixo; "Reenviar código" 34px abaixo */
     /* posição do bloco medida no Figma (frame 1440×780) e fixa: não pula quando aparece um erro */
-    .col.at-code .main{margin-top:123.5px;gap:64px}             /* código (1046-44660): título em y=207.5 */
+    .col.at-code .main{margin-top:113.5px;gap:64px}             /* código (1046-44660): título em y=207.5 */
     .col.at-code .head{gap:8px}
     .col.at-code .sub{line-height:19px}
-    .col.at-password .main{margin-top:166px;gap:56px}           /* senha (1047-44780): título em y=250 */
+    .col.at-password .main{margin-top:156px;gap:56px}           /* senha (1047-44780): título em y=250 */
     .col.at-password .fl-label{color:#666}
     .pw-form{position:relative}
     .forgot-link{position:absolute;left:0;top:calc(100% + 34px)}
@@ -134,7 +134,7 @@
     </div>
     <div class="side">
       <div class="col">
-        <img class="logo" src="assets/login/logo.svg" width="24" height="24" alt="OpenDoctor">
+        <img class="logo" src="assets/login/logo-circulo.svg" width="34" height="34" alt="OpenDoctor">
         <div class="main">
           <div class="head">
             <h1 class="title" id="title" tabindex="-1">Bem-vindo ao OpenDoctor</h1>
