@@ -1056,6 +1056,8 @@ def _cfm_alerta(r):
             mailer.send_cfm_alerta(admins)
         except Exception as e:
             print("[cfm] aviso da chave falhou:", str(e)[:200], flush=True)
+            with _CFM_ALERTA_LOCK:
+                _CFM_ALERTA["t"] = 0.0          # nenhum administrador recebeu: o próximo 3010 tenta de novo
     _AUDIT.submit(run)
 
 

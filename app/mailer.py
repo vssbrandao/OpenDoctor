@@ -267,15 +267,35 @@ def send_new_device(to, name="", device="", method=""):
     _send(to, *render("device", name=name, when=_now_brasilia(), device=device, via=via))
 
 
+def _send_all(admins, purpose, **kw):
+    """O mesmo e-mail a cada administrador: o que falha não impede os outros. Só levanta (com os motivos, sem os
+    endereços) se nenhum recebeu."""
+    ok, erros = 0, []
+    for to in admins:
+        if debug_codes():
+            print(f"[login-mail:{purpose}] {to}", flush=True)
+            continue
+        try:
+            _send(to, *render(purpose, **kw))
+            ok += 1
+        except Exception as e:
+            erros.append(str(e)[:80])
+    if erros and not ok:
+        raise RuntimeError("; ".join(erros))
+    if erros:
+        print(f"[mail:{purpose}] {len(erros)} de {len(erros) + ok} administradores sem o e-mail:", "; ".join(erros), flush=True)
+
+
+def _sem_link(texto):
+    """O nome digitado no cadastro não vira link no e-mail ("aprove em site.com": o Gmail liga o domínio sozinho): um
+    espaço de largura zero depois de cada ponto, invisível na leitura."""
+    return str(texto or "").replace(".", ".\u200b")
+
+
 def send_crm_pending(admins, nome, crm, uf):
     """Avisa os administradores (auth.admin_emails) de um cadastro pendente. Vai só o nome e o CRM/UF do médico
     (nada de e-mail, CPF ou nascimento)."""
-    numero = f"{crm}/{uf}"
-    for to in admins:
-        if debug_codes():
-            print(f"[login-mail:crm_pendente] {to}", flush=True)
-            continue
-        _send(to, *render("crm_pendente", nome=nome, crm=numero))
+    _send_all(admins, "crm_pendente", nome=_sem_link(nome), crm=f"{crm}/{uf}")
 
 
 def send_crm_decision(to, name="", aprovado=True):
@@ -289,8 +309,4 @@ def send_crm_decision(to, name="", aprovado=True):
 
 def send_cfm_alerta(admins):
     """Avisa os administradores de que o CFM recusou a chave (3010). Nada do médico vai junto."""
-    for to in admins:
-        if debug_codes():
-            print(f"[login-mail:cfm_chave] {to}", flush=True)
-            continue
-        _send(to, *render("cfm_chave"))
+    _send_all(admins, "cfm_chave")

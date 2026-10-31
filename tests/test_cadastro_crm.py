@@ -287,6 +287,46 @@ def test_aviso_ao_administrador_so_leva_nome_e_crm():
     assert "Não conseguimos confirmar seu CRM" in body
 
 
+def test_aviso_aos_administradores_chega_a_todos_e_o_nome_nao_vira_link(monkeypatch):
+    """O endereço que o Resend recusa não impede os outros administradores; só é erro se ninguém recebeu. O nome
+    digitado no cadastro ("aprove em site.com") não vira link: o domínio não aparece inteiro no e-mail."""
+    monkeypatch.setattr(mailer, "debug_codes", lambda: False)
+    enviados = []
+
+    def send(to, subject, body, text):
+        if to == "antigo@x.com.br":
+            raise RuntimeError("resend 422 validation_error")
+        enviados.append((to, subject, body, text))
+    monkeypatch.setattr(mailer, "_send", send)
+    mailer.send_crm_pending(["antigo@x.com.br", "dono@opendoctor.app"], "Ana Lima em golpe.com", "123456", "SP")
+    assert [e[0] for e in enviados] == ["dono@opendoctor.app"]
+    _, subj, body, text = enviados[0]
+    assert "golpe.com" not in body and "golpe.com" not in text and "golpe" in body and "123456/SP" in subj
+    enviados.clear()
+    mailer.send_cfm_alerta(["antigo@x.com.br", "dono@opendoctor.app"])
+    assert [e[0] for e in enviados] == ["dono@opendoctor.app"]
+    with pytest.raises(RuntimeError, match="validation_error"):
+        mailer.send_cfm_alerta(["antigo@x.com.br"])
+
+
+def test_aviso_da_chave_que_ninguem_recebeu_tenta_de_novo(monkeypatch):
+    from tests.test_login import _NaHora
+    monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
+    monkeypatch.setattr(server, "_AUDIT", _NaHora())
+    monkeypatch.setattr(server, "_CFM_ALERTA", {"t": 0.0})
+    monkeypatch.setattr(mailer, "configured", lambda: True)
+    tentativas = []
+
+    def envia(admins):
+        tentativas.append(tuple(admins))
+        if len(tentativas) == 1:
+            raise RuntimeError("resend 500")
+    monkeypatch.setattr(mailer, "send_cfm_alerta", envia)
+    for _ in range(3):        # o 1º não chegou: o 2º tenta de novo; o 2º chegou: o 3º espera as 12 h
+        server._cfm_alerta({"status": "indisponivel", "codigo": "3010"})
+    assert tentativas == [("dono@opendoctor.app",)] * 2
+
+
 @pytest.mark.parametrize("consulta,valido,erro", [
     ({"status": "nao_encontrado"}, True, "crm_nao_encontrado"),
     ({"status": "ok", "medico": {"nome": "ANA MARIA DE LIMA", "situacao": "C"}}, True, "crm_irregular"),
