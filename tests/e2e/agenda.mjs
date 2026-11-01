@@ -61,6 +61,7 @@ let RECONECTAR = null;                                     // 'permissao' ou 'ex
 let SEM_AGENDA = false;                                    // a conta não tem agenda conectada
 let BOAS_VINDAS = false;                                   // a sessão é da conta que acabou de nascer (/me boas_vindas)
 let UID = 'u-teste';                                       // a conta logada (outra conta no mesmo navegador: troca)
+let ME_FORA = false;                                       // o /me não responde (a agenda não sabe de quem é a sessão)
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
 const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
@@ -70,6 +71,7 @@ let LENTO_PAC = 0;                                         // ms de espera do ca
 const ANTIGOS = [{ id: 900, name: 'Otávio Antigo', notes: 3, last: '2025-01-10T12:00:00+00:00' }];
 const sem = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 function rota(method, path, q, body) {
+  if (path === '/me' && ME_FORA) return null;      // 404: a agenda não sabe a conta
   if (path === '/me') return { logged_in: true, scribe: false, user: { id: UID }, boas_vindas: BOAS_VINDAS };
   if (path === '/me/boas-vindas' && method === 'POST') { BOAS_VINDAS = false; return { ok: true }; }
   if (path === '/patients' && method === 'GET') return { patients: PACS, more: MAIS };
@@ -612,6 +614,15 @@ const cenarios = [
                           hist: document.body.innerText.indexOf('Pergunta de antes') >= 0 })`);
     certo(!v.conv && !v.hist && v.dr === 'rascunho de antes', 'o guardado antes desta versão: ' + JSON.stringify(v));
     await ev(`localStorage.removeItem('od_draft_7_new'); 1`);
+    // o /me não respondeu: sem saber de quem é a sessão, as conversas guardadas não aparecem
+    await ev(`localStorage.setItem('od_conversas_v1', JSON.stringify([{ id: 'c8', title: 'Pergunta guardada', turns: [] }])); 1`);
+    ME_FORA = true;
+    try {
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?mefora=1' });
+      await ate(`document.readyState === 'complete' && window.__odUid === ''`, 8000, 'agenda sem o /me');
+      await sleep(400);
+      certo(!(await ev(`document.body.innerText.indexOf('Pergunta guardada') >= 0`)), 'sem o /me, mostrou as conversas guardadas');
+    } finally { ME_FORA = false; await ev(`localStorage.removeItem('od_conversas_v1'); 1`); }
     return 'a conta 2 não reabre o prontuário nem vê as conversas e os rascunhos da 1; a própria conta mantém os dela; as conversas sem dono saem';
   }],
 ];

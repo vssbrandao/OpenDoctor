@@ -1444,6 +1444,8 @@ def test_registro_do_google_de_outra_aba_nao_cria_a_conta_de_outro_email(monkeyp
     assert r.json() == {"ok": True} and not any(h.startswith(server.GREG_COOKIE + "=") for h in r.headers.get_list("set-cookie"))
     r = c.post("/auth/google/registro/cancelar", content="r=x", headers={"content-type": "application/x-www-form-urlencoded"})
     assert not any(h.startswith(server.GREG_COOKIE + "=") for h in r.headers.get_list("set-cookie"))   # formulário de fora
+    r = TestClient(server.app).post("/auth/google/registro/cancelar", json={})          # de outro site o cookie nem vai
+    assert r.json() == {"ok": True} and not r.headers.get_list("set-cookie")
     assert c.post("/auth/google/registro", json=_rg(c)).json()["ok"] and criadas[0][0] == "outra@clinica.com.br"
 
 

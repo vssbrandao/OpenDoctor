@@ -407,7 +407,8 @@ RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em
                "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600),
                "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600),      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
                "cfm": (10, 3600),     # conferências do CRM no CFM (cadastro): o Validar responde se um CPF é de um CRM
-               "codigo_email": (5, 3600)}   # códigos (nova senha e cadastro) para um e-mail, por IP; o teto do e-mail é db
+               "codigo_email": (5, 3600),
+               "login_dev": (5, 900)}      # senhas do aparelho conhecido durante o bloqueio (as erradas não contam na conta)   # códigos (nova senha e cadastro) para um e-mail, por IP; o teto do e-mail é db
 MAX_QUERY_CHARS = 2000
 _RL = {}
 _RL_LOCK = threading.Lock()
@@ -853,14 +854,15 @@ def _agenda_volta(payload, u):
     return RedirectResponse(dest)
 
 
-def _send_code(email, purpose, name="", teto=True):
+def _send_code(email, purpose, name="", teto=True, modelo=None):
     """Cria e envia um código. Devolve (resposta de erro ou None, segundos até poder reenviar —
-    negativo quando não enviou agora porque o código de menos de 30s atrás continua valendo). `teto`: db.new_login_code."""
+    negativo quando não enviou agora porque o código de menos de 30s atrás continua valendo). `teto`: db.new_login_code.
+    `modelo`: o texto do e-mail, quando não é o do `purpose` (a conta só Google que cria a 1ª senha)."""
     with _na_vez(email) as vez:                    # dois pedidos juntos não passam ambos pelos 30 s nem pelo limite
-        return _send_code_now(email, purpose, name, teto) if vez else (_err("limite_ip", 429), 0)
+        return _send_code_now(email, purpose, name, teto, modelo) if vez else (_err("limite_ip", 429), 0)
 
 
-def _send_code_now(email, purpose, name, teto=True):
+def _send_code_now(email, purpose, name, teto=True, modelo=None):
     code = auth.new_code()
     try:
         status, wait = db.new_login_code(email, auth.code_hash(email, code, purpose), teto=teto)
@@ -872,7 +874,7 @@ def _send_code_now(email, purpose, name, teto=True):
     if status == "limite":
         return _err("limite", 429), 0
     try:
-        mailer.send_code(email, code, purpose, name)
+        mailer.send_code(email, code, modelo or purpose, name)
     except Exception as e:
         print("[login] envio falhou:", str(e)[:200], flush=True)
         try:
@@ -883,15 +885,16 @@ def _send_code_now(email, purpose, name, teto=True):
     return None, db.CODE_RESEND_S
 
 
-def _check_code(email, code, purpose):
-    """None se o código confere; senão a resposta de erro (incorreto / expirado / tentativas)."""
+def _check_code(email, code, purpose, soma=True):
+    """None se o código confere; senão a resposta de erro (incorreto / expirado / tentativas). `soma=False`: o aparelho
+    conhecido da conta não esbarra no teto de erradas do e-mail (as de outra pessoa não trancam a nova senha do dono)."""
     code = re.sub(r"\D", "", str(code or ""))
     if len(code) != 6:
         return _err("codigo_invalido")
     with _na_vez(email) as vez:                    # as tentativas contam uma de cada vez
         if not vez:
             return _err("limite_ip", 429)
-        status, left = db.check_login_code(email, auth.code_hash(email, code, purpose))
+        status, left = db.check_login_code(email, auth.code_hash(email, code, purpose), soma=soma)
     if status == "ok":
         return None
     if status == "bloqueado_email":                # erradas demais somando os códigos do e-mail: um código novo não ajuda
@@ -943,6 +946,7 @@ def _password_login(request, b):
                 return _err("sem_senha")                    # conta criada pelo Google
             dev = auth.device_id(request)
             if info["locked_s"] > 0 and not (dev and db.device_known(info["id"], auth.device_hash(dev))
+                                             and not _rate_limited(request, "login_dev", key=(info["id"], auth.device_hash(dev)))
                                              and auth.check_password(pw, info["hash"])):
                 # bloqueada pelos erros: só o aparelho de onde esta conta já entrou passa, com a senha certa (quem sabe só
                 # o e-mail não tranca o médico); de outro aparelho, ou com a senha errada, a mesma resposta de sempre
@@ -954,7 +958,8 @@ def _password_login(request, b):
                 if locked:
                     return _err("bloqueado", 429, minutes=locked // 60)
                 return _err("senha_incorreta", 401, left=left)
-            db.login_succeeded(info["id"])
+            if info["locked_s"] <= 0:
+                db.login_succeeded(info["id"])          # o aparelho conhecido entra, mas o bloqueio dos outros continua
     except Exception as e:
         print("[login] senha falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
@@ -1261,7 +1266,7 @@ async def google_registro_cancelar(request: Request):
     b = await _body(request)                             # só JSON, como os outros POST de /auth/
     t = _google_registro(request)
     resp = JSONResponse({"ok": True})
-    if t is None or _mesmo_r(b.get("r"), t.get("r")):   # o perfil de outra aba (outra volta do Google) fica
+    if t is not None and _mesmo_r(b.get("r"), t.get("r")):   # o perfil de outra aba (ou de um pedido sem ele) fica
         resp.delete_cookie(GREG_COOKIE, path="/auth/")
     return resp
 
@@ -1393,7 +1398,12 @@ def _password_forgot(request, b):
         chave = None if conhecido else _codigo_email(request, email)
         if not conhecido and chave is None:
             return _err("limite", 429)
-        fail, wait = _send_code(email, "reset", acc.get("name") or "", teto=not conhecido)
+        try:
+            tem_senha = bool((db.account(email) or {}).get("password"))
+        except Exception:
+            tem_senha = True                              # na dúvida, o texto de sempre
+        fail, wait = _send_code(email, "reset", acc.get("name") or "", teto=not conhecido,
+                                modelo=None if tem_senha else "reset_criar")
         if chave and (fail or wait <= 0):
             _rl_undo("codigo_email", chave)           # não enviou: não conta
         if fail:
@@ -1414,10 +1424,12 @@ def _password_reset_verify(request, b):
     if _rate_limited(request, "login_verify"):
         return _err("limite_ip", 429)
     try:
-        bad = _check_code(email, b.get("code"), "reset")
+        acc = db.user_by_email(email)
+        dev = auth.device_id(request)
+        conhecido = bool(acc and dev) and db.device_known(acc["id"], auth.device_hash(dev))
+        bad = _check_code(email, b.get("code"), "reset", soma=not conhecido)
         if bad:
             return bad
-        acc = db.user_by_email(email)
         tinha = bool((db.account(email) or {}).get("password")) if acc else False
     except Exception as e:
         print("[login] código de redefinição falhou:", str(e)[:200], flush=True)

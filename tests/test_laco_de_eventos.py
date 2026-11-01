@@ -32,7 +32,7 @@ def fake(monkeypatch):
         "find_by_cpf": lambda *a, **k: None, "create_patient": lambda *a: dict(PAT), "update_patient": lambda *a: dict(PAT),
         "touch_patient": lambda *a: None, "record_login": lambda *a: False, "login_succeeded": lambda uid: None,
         "password_login_info": lambda e: {"id": "u1", "hash": "h", "sv": 0, "locked_s": 0}, "account": lambda e: None,
-        "new_login_code": lambda e, h, teto=True: ("ok", 0), "discard_login_code": lambda e: None, "check_login_code": lambda e, h: ("ok", 0),
+        "new_login_code": lambda e, h, teto=True: ("ok", 0), "discard_login_code": lambda e: None, "check_login_code": lambda e, h, soma=True: ("ok", 0), "device_known": lambda u, d: False,
         "user_by_email": lambda e: dict(USER), "user_by_google_sub": lambda sub: None, "create_email_user": lambda *a, **k: dict(USER), "get_user": lambda uid: dict(USER),
         "set_password": lambda uid, ph, sv=None: dict(USER),
         "crm_in_use": lambda crm, uf: False, "pending_doctors": lambda limit=200: [], "decide_crm": lambda uid, ap: dict(USER),

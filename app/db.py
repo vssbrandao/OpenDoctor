@@ -444,6 +444,14 @@ def new_login_code(email, code_hash, teto=True):
             if teto and n >= CODE_MAX_PER_HOUR:
                 conn.commit()
                 return "limite", 0
+            if teto:
+                hora, dia = cur.execute(
+                    """select coalesce(sum(attempts) filter (where created_at > now() - interval '1 hour'), 0),
+                              coalesce(sum(attempts), 0)
+                       from login_codes where email = %s and created_at > now() - interval '1 day'""", (email,)).fetchone()
+                if hora >= CODE_MAX_WRONG_PER_HOUR or dia >= CODE_MAX_WRONG_PER_DAY:
+                    conn.commit()
+                    return "limite", 0                # o código não valeria: erradas demais neste e-mail
             cur.execute("update login_codes set used_at = now() where email = %s and used_at is null", (email,))
             cur.execute(
                 "insert into login_codes (email, code_hash, expires_at) values (%s, %s, now() + %s * interval '1 second')",
@@ -462,7 +470,7 @@ def discard_login_code(email):
         conn.commit()
 
 
-def check_login_code(email, code_hash):
+def check_login_code(email, code_hash, soma=True):
     """Confere o código mais recente do e-mail. Devolve ("ok", 0), ("errado", tentativas restantes),
     ("expirado", 0) ou ("bloqueado", 0). O código só serve uma vez."""
     import hmac
@@ -485,7 +493,7 @@ def check_login_code(email, code_hash):
                 """select coalesce(sum(attempts) filter (where created_at > now() - interval '1 hour'), 0),
                           coalesce(sum(attempts), 0)
                    from login_codes where email = %s and created_at > now() - interval '1 day'""", (email,)).fetchone()
-            if hora >= CODE_MAX_WRONG_PER_HOUR or dia >= CODE_MAX_WRONG_PER_DAY:
+            if soma and (hora >= CODE_MAX_WRONG_PER_HOUR or dia >= CODE_MAX_WRONG_PER_DAY):
                 conn.commit()
                 return "bloqueado_email", 0
             if hmac.compare_digest(h, code_hash):

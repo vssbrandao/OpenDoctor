@@ -43,8 +43,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
     cookie e na URL do Registro, e o Criar conta manda o `r` da aba; o de outra aba recebe `google_outra_aba` ("Você
     começou outro cadastro com o Google em outra aba…") e não cria a conta do outro e-mail com os dados digitados nesta.
   - **A seta apaga o perfil guardado** (`POST /auth/google/registro/cancelar`, só JSON, com o `r` da aba: o perfil de
-    outra aba fica, e um formulário de outro site não apaga nada); o Sair também apaga (e o `od_oauth`, o
-    `od_oauth_cal`). Num F5 da entrada antiga do histórico, ninguém cria a conta deste e-mail.
+    outra aba fica; sem o cookie no pedido, como num formulário de outro site, não apaga nada); o Sair também apaga (e o
+    `od_oauth`, o `od_oauth_cal`). Num F5 da entrada antiga do histórico, ninguém cria a conta deste e-mail.
 - **Criar conta:** `POST /auth/google/registro` confere o CRM e só então cria a conta.
   - Não há código: o Google já confirmou o e-mail.
   - O cookie só cria conta. Se o e-mail (ou a conta Google, pelo `sub`) ganhou uma conta no meio do caminho, a resposta
@@ -253,14 +253,19 @@ O `scripts/preview_login.py` roda o servidor de verdade contra o banco de testes
 - **Bloqueio por senhas erradas** (5 → 15 min, por conta): o aparelho de onde a conta já entrou (cookie `od_dev`,
   `db.device_known`) entra com a senha certa durante o bloqueio. Quem sabe só o e-mail não tranca o médico; de outro
   aparelho, ou com a senha errada, a mesma resposta "bloqueado", sem contar mais erro. O aparelho é conferido antes da
-  senha: de um aparelho desconhecido o hash nem é calculado, e o tempo da resposta não diz se a senha confere.
+  senha: de um aparelho desconhecido o hash nem é calculado, e o tempo da resposta não diz se a senha confere. O
+  aparelho conhecido tem 5 senhas a cada 15 min durante o bloqueio (`login_dev`), e a entrada dele não tira o bloqueio
+  dos outros aparelhos.
 - **Códigos por e-mail** (nova senha e cadastro): de um IP só, 5 por hora para o mesmo e-mail (`codigo_email`, que só
   conta o pedido que enviou); o teto do e-mail é 10 por hora (`db.CODE_MAX_PER_HOUR`). Na nova senha, o aparelho
   conhecido da conta fica fora dos dois (os 30 s continuam). Os 30 s entre envios contam do último código que ainda dá
   para usar: o usado e o que acabou nas tentativas não seguram o novo. A mensagem do limite não acusa a pessoa.
 - **Chutes no código:** além das 5 por código, as erradas somadas de todos os códigos do e-mail: 25 por hora e 50 por
   dia (`db.CODE_MAX_WRONG_PER_*`); passou disso, nem o código certo vale ("Muitas tentativas erradas para este
-  e-mail…", `tentativas_email`). Mais códigos não dão mais chutes.
+  e-mail…", `tentativas_email`), e nem sai código novo. Mais códigos não dão mais chutes. Na nova senha, o aparelho
+  conhecido da conta fica fora desse teto (recebe o código e ele vale): os chutes de outra pessoa não trancam o dono.
+- **"Prefiro criar uma senha"** (conta só Google): o e-mail do código é o de criar senha (`reset_criar`), não o de nova
+  senha.
 - **Tela do código:** o código errado esvazia as 6 caixas (redigitar não manda códigos misturados); "Editar" corrige o
   e-mail; o Reenviar que o servidor segurou diz quanto falta.
 - **Regras da senha** iguais na tela e no servidor (emoji conta 1; "²" não é número; "ª" não é minúscula), e o
@@ -273,7 +278,9 @@ O `scripts/preview_login.py` roda o servidor de verdade contra o banco de testes
 - **Computador compartilhado:** o que a agenda guarda no aparelho (o prontuário aberto, as conversas do assistente, os
   rascunhos) é da conta que guardou (`localStorage.od_uid`); outra conta que entra no navegador não o vê (sai do
   aparelho antes de as telas lerem). O que foi guardado antes desta versão não tem dono: as conversas e o prontuário
-  aberto saem na 1ª abertura; os rascunhos ficam (só abrem no paciente deles, que é de uma conta só). E o servidor não cria pelo nome o paciente cujo id é de outro médico
+  aberto saem na 1ª abertura; os rascunhos ficam (só abrem no paciente deles, que é de uma conta só). Sem saber a conta
+  (o `/me` falhou), as conversas não aparecem nem são gravadas; a aba de uma conta que outra substituiu no navegador não
+  grava conversas nem rascunhos por cima da nova. E o servidor não cria pelo nome o paciente cujo id é de outro médico
   (`db.patient_id_exists`): só o id que não é de ninguém (excluído) cai no nome.
 - **CSP:** de fora, só o arquivo exato do mermaid (nunca o host inteiro do CDN). Todas as páginas declaram o ícone
   (`/assets/login/logo-simbolo.svg`), e o navegador não pede o `/favicon.ico`, que é privado.

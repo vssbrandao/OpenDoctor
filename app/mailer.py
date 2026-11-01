@@ -79,6 +79,13 @@ _TEXTS = {
         "notes": ["Se você não pediu para trocar a senha, ignore este e-mail — sua senha atual continua valendo.",
                   _CODE_NOTE],
     },
+    "reset_criar": {
+        "subject": "{code} — Código para criar uma senha no OpenDoctor",
+        "title": "Seu código para criar uma senha",
+        "lead": "Para criar uma senha para sua conta no OpenDoctor (você entra hoje com o Google), digite o código abaixo "
+                "na tela de login.",
+        "notes": ["Se você não pediu para criar uma senha, ignore este e-mail — nada muda na sua conta.", _CODE_NOTE],
+    },
     "changed": {
         "subject": "Sua senha do OpenDoctor foi alterada",
         "title": "Sua senha foi alterada",

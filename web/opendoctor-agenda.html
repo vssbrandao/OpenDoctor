@@ -2724,8 +2724,10 @@
             Object.keys(localStorage).forEach(function (k) {
               if (k === 'od_conversas_v1' || (antes && k.indexOf('od_draft_') === 0)) localStorage.removeItem(k);
             });
+            var ctx0 = null; try { ctx0 = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {}
+            var meu = !!(ctx0 && ctx0.uid === uid);          // o prontuário aberto que já é desta conta fica
             Object.keys(sessionStorage).forEach(function (k) {
-              if (k === 'od_prontuario_ctx' || k.indexOf('od_tm_') === 0) sessionStorage.removeItem(k);
+              if ((k === 'od_prontuario_ctx' || k.indexOf('od_tm_') === 0) && !meu) sessionStorage.removeItem(k);
             });
           }
           if (antes !== uid) localStorage.setItem('od_uid', uid);
@@ -3694,8 +3696,11 @@
 
       // ===== histórico de conversas (salvo só neste navegador) =====
       var STORE = 'od_conversas_v1', MAX_CONVS = 50, conv = null;
-      function loadConvs() { try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch (_) { return []; } }
-      function saveConvs(list) { try { localStorage.setItem(STORE, JSON.stringify(list.slice(0, MAX_CONVS))); } catch (_) {} }
+      // as conversas guardadas são da conta deste navegador (window.__odConta): sem saber de quem é a sessão (o /me
+      // falhou), nem aparecem; e a aba de uma conta que outra substituiu neste navegador não grava por cima dela
+      function minhaConta() { try { return !!window.__odUid && localStorage.getItem('od_uid') === window.__odUid; } catch (_) { return false; } }
+      function loadConvs() { if (!minhaConta()) return []; try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch (_) { return []; } }
+      function saveConvs(list) { if (!minhaConta()) return; try { localStorage.setItem(STORE, JSON.stringify(list.slice(0, MAX_CONVS))); } catch (_) {} }
       function saveTurn(turn) {
         if (!conv) conv = { id: 'c' + Date.now(), title: turn.q.slice(0, 80), turns: [] };
         conv.turns.push(turn);
@@ -4747,6 +4752,9 @@
       // base = versão salva sobre a qual o texto foi escrito (decide a restauração sem depender de relógio)
       function draftWrite(s) {
         if (!ctx || !ctx.patient_id) return;
+        // outra conta tomou este navegador (a aba é da anterior): não grava sob o dono novo. Sem saber a conta (o /me
+        // falhou), grava mesmo assim: o rascunho é o que salva o texto quando a internet cai
+        try { var dono = localStorage.getItem('od_uid'); if (window.__odUid && dono && dono !== window.__odUid) return; } catch (_) {}
         try { if (s === saved) localStorage.removeItem(dkey()); else localStorage.setItem(dkey(), JSON.stringify({ s: s, base: saved, at: Date.now() })); } catch (_) {}
       }
       // dados de saúde não ficam no navegador indefinidamente: rascunho com mais de 7 dias é apagado

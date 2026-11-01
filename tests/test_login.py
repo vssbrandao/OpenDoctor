@@ -177,8 +177,9 @@ def _client(monkeypatch, fake, configured=True):
                         lambda to, name="", criada=False: fake.sent.append((to, "", "created" if criada else "changed")))
     monkeypatch.setattr(db, "new_login_code", lambda e, h, teto=True: (fake.codes.__setitem__(e, h), ("ok", 0))[1])
     monkeypatch.setattr(db, "discard_login_code", lambda e: fake.codes.pop(e, None))
+    monkeypatch.setattr(db, "device_known", lambda uid, dev: False)          # nenhum aparelho conhecido (o teste que quer, troca)
 
-    def check(e, h):
+    def check(e, h, soma=True):
         if fake.codes.get(e) == h:
             fake.codes.pop(e)
             return "ok", 0
@@ -726,8 +727,56 @@ def test_erradas_demais_no_email_dizem_que_um_codigo_novo_nao_ajuda(monkeypatch)
     from app import db
     fake = _Fake(_user("ana@clinica.com.br"))
     c = _client(monkeypatch, fake)
-    monkeypatch.setattr(db, "check_login_code", lambda e, h: ("bloqueado_email", 0))
+    monkeypatch.setattr(db, "check_login_code", lambda e, h, soma=True: ("bloqueado_email", 0))
     r = c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": "123456"})
     assert r.status_code == 429 and r.json()["error"] == "tentativas_email"
     html = open(os.path.join(os.path.dirname(__file__), "..", "web", "opendoctor-login.html"), encoding="utf-8").read()
     assert "e === 'tentativas_email' ? 'Muitas tentativas erradas para este e-mail." in html
+
+
+def test_aparelho_conhecido_no_bloqueio_tem_poucas_senhas_e_nao_destranca_os_outros(monkeypatch):
+    """Durante o bloqueio, o aparelho conhecido tem 5 senhas a cada 15 min (as erradas dele não contam na conta); a
+    entrada dele não tira o bloqueio dos outros aparelhos."""
+    from app import db, server
+    fake = _Fake(_user("ana@clinica.com.br", locked_s=600))
+    c = _client(monkeypatch, fake)
+    conhecido = auth.device_hash("aparelho-da-ana-0123456789")
+    monkeypatch.setattr(db, "device_known", lambda uid, dev: dev == conhecido)
+    zerou = []
+    monkeypatch.setattr(db, "login_succeeded", lambda uid: zerou.append(uid))
+    c.cookies.set(auth.DEVICE_COOKIE, "aparelho-da-ana-0123456789")
+    corpo = {"email": "ana@clinica.com.br", "password": PW}
+    assert c.post("/auth/password/login", json=corpo).json()["ok"] and zerou == []     # entra, o bloqueio fica
+    for _ in range(4):
+        assert c.post("/auth/password/login", json=dict(corpo, password="errada")).json()["error"] == "bloqueado"
+    assert c.post("/auth/password/login", json=corpo).json()["error"] == "bloqueado"   # 5 por 15 min, até a certa
+    server._RL.clear()
+
+
+def test_nova_senha_do_aparelho_conhecido_nao_esbarra_nos_chutes_de_outros(monkeypatch):
+    from app import db
+    fake = _Fake(_user("ana@clinica.com.br"))
+    c = _client(monkeypatch, fake)
+    somas = []
+    monkeypatch.setattr(db, "check_login_code", lambda e, h, soma=True: somas.append(soma) or ("errado", 3))
+    c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": "123456"})
+    monkeypatch.setattr(db, "device_known", lambda uid, dev: dev == auth.device_hash("aparelho-da-ana-0123456789"))
+    c.cookies.set(auth.DEVICE_COOKIE, "aparelho-da-ana-0123456789")
+    c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": "123456"})
+    assert somas == [True, False]
+
+
+def test_criar_a_primeira_senha_tem_o_e_mail_do_codigo_proprio(monkeypatch):
+    """A conta só Google que pede "Prefiro criar uma senha" recebe o código de criar (não "nova senha", nem "sua senha
+    atual continua valendo")."""
+    from app import mailer
+    fake = _Fake(_user("gabi@clinica.com.br", pw=None))
+    c = _client(monkeypatch, fake)
+    c.post("/auth/password/forgot", json={"email": "gabi@clinica.com.br"})
+    assert fake.sent[-1][2] == "reset_criar"
+    assunto, _, texto = mailer.render("reset_criar", code="123456")
+    assert "criar uma senha" in assunto and "continua valendo" not in texto
+    fake = _Fake(_user("ana@clinica.com.br"))
+    c = _client(monkeypatch, fake)
+    c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"})
+    assert fake.sent[-1][2] == "reset"

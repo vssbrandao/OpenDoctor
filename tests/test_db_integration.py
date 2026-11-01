@@ -829,8 +829,10 @@ def test_erradas_somadas_por_email_e_o_teto_do_aparelho_conhecido(test_db):
             assert db.new_login_code(email, f"h{i}")[0] == "ok"
             for _ in range(db.CODE_MAX_ATTEMPTS):
                 db.check_login_code(email, "errado")
-        assert db.new_login_code(email, "certo")[0] == "ok"
+        assert db.new_login_code(email, "certo")[0] == "limite"                 # passado o teto, nem manda código
+        assert db.new_login_code(email, "certo", teto=False)[0] == "ok"        # o aparelho conhecido recebe
         assert db.check_login_code(email, "certo")[0] == "bloqueado_email"
+        assert db.check_login_code(email, "certo", soma=False)[0] == "ok"      # e, dele, o código vale
         with db.connection() as c:
             c.execute("update login_codes set attempts = 0, used_at = now() where email = %s", (email,))   # recomeça sem chutes
             c.commit()
