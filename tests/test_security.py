@@ -27,6 +27,8 @@ ROTAS_AUTH = {
     # Registro profissional da conta nova pelo Google (lê o perfil do cookie assinado deste navegador, não do corpo) e a
     # confirmação do CPF/nascimento da conta aprovada à mão (exige a sessão): as duas só devolvem ok/erro e o destino
     ("POST", "/auth/google/registro"), ("POST", "/auth/crm/confirmar"),
+    # a seta que desiste do cadastro pelo Google: só apaga o cookie do perfil guardado, não lê nem devolve dado
+    ("POST", "/auth/google/registro/cancelar"),
 }
 
 
@@ -128,14 +130,17 @@ def test_nenhum_segredo_no_codigo():
 def test_scripts_externos_fixos_e_permitidos_na_csp():
     """Script de fora do site: versão exata + hash de integridade + domínio liberado na CSP."""
     script_src = next(d for d in server._CSP.split("; ") if d.startswith("script-src"))
+    fontes = script_src.split()[1:]
+    # de fora, só o arquivo exato: um host inteiro deixaria rodar qualquer arquivo dele num <script> injetado
+    assert all(x == "'self'" or x.startswith("'sha256-") or re.match(r"https://[^/]+/.+\.js$", x) for x in fontes), script_src
     for f in os.listdir(WEB):
         if not f.endswith(".html"):
             continue
         html = open(os.path.join(WEB, f), encoding="utf-8").read()
         for tag in re.findall(r"<script[^>]+src=[\"']https?://[^>]+>", html):
-            src = re.search(r"src=[\"'](https?://[^/\"']+)", tag).group(1)
+            src = re.search(r"src=[\"'](https?://[^\"']+)", tag).group(1)
             assert 'integrity="sha384-' in tag and 'crossorigin="anonymous"' in tag, f"{f}: {tag}"
-            assert src in script_src, f"{f}: {src} fora da CSP"
+            assert src in fontes, f"{f}: {src} fora da CSP"
             assert not re.search(r"@\d+/", tag), f"{f}: versão não fixa em {tag}"
 
 

@@ -78,12 +78,12 @@ function rota(method, path, body) {
   if (path === '/auth/email/check') return CHECK || [200, { exists: false, password: false, email_ok: true }];
   if (path === '/auth/signup/start') return START || [200, { ok: true, ticket: 'tk.sig', resend_in: 30, sent: true }];
   if (path === '/auth/signup/verify') return VERIFY || (body.code === '123456'
-    ? [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1', bloqueio: 'crm_pendente' }]
+    ? [200, { ok: true, redirect: '/opendoctor-agenda.html?de=cadastro', bloqueio: 'crm_pendente' }]
     : [400, { error: 'codigo_incorreto', left: 4 }]);
   if (path === '/auth/password/forgot') return [200, { ok: true, resend_in: 30, sent: true }];
   if (path === '/auth/password/reset/verify') return [200, { ok: true, ticket: 'rt.sig' }];
   if (path === '/auth/password/reset') return [200, { ok: true, redirect: '/opendoctor-agenda.html', bloqueio: 'crm_pendente' }];
-  if (path === '/auth/google/registro') return REG_GOOGLE || [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1', agenda: AGENDA }];
+  if (path === '/auth/google/registro') return REG_GOOGLE || [200, { ok: true, redirect: '/opendoctor-agenda.html?de=cadastro', agenda: AGENDA }];
   if (path === '/auth/crm/confirmar') return [200, { ok: true, redirect: '/opendoctor-agenda.html' }];
   if (path === '/admin/cadastros') return [200, { pendentes: PENDENTES, pendentes_mais: MAIS, manuais: MANUAIS, manuais_mais: false,
                                                   dispensa: DISPENSA, cfm: true, limite_falhas: 5 }];
@@ -336,7 +336,7 @@ const cenarios = [
     await ate(`location.pathname === '/google-agenda'`, 4000, 'foi para a permissão da agenda');
     // a entrada anterior do histórico é o que vale quando o Voltar recarrega a página (fora do cache do navegador)
     const anterior = async () => { const h = await send('Page.getNavigationHistory'); return h.entries[h.currentIndex - 1].url; };
-    const VOLTA = ORIG + '/opendoctor-login.html?next=%2Fopendoctor-agenda.html%3Fbemvindo%3D1';
+    const VOLTA = ORIG + '/opendoctor-login.html?next=%2Fopendoctor-agenda.html%3Fde%3Dcadastro';
     certo(await anterior() === VOLTA, 'entrada anterior: ' + await anterior());
     const g = posts('/auth/google/registro');
     certo(g.length === 1 && !('email' in g[0].body) && !('password' in g[0].body) && g[0].body.cpf === CPF, 'corpo: ' + JSON.stringify(g[0] && g[0].body));
@@ -344,14 +344,14 @@ const cenarios = [
     ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: null };
     await ev(`history.back(); 1`);
     await ate(`location.pathname === '/opendoctor-agenda.html'`, 5000, 'o Voltar da agenda do Google não foi para o app: ' + await ev(`location.pathname`));
-    certo(await ev(`location.search`) === '?bemvindo=1', 'o Voltar perdeu as boas-vindas: ' + await ev(`location.search`));
+    certo(await ev(`location.search`) === '?de=cadastro', 'o Voltar perdeu o destino: ' + await ev(`location.search`));
     await send('Page.navigate', { url: VOLTA });                                // a mesma entrada, carregada de novo
     await ate(`location.pathname === '/opendoctor-agenda.html'`, 5000, 'a carga nova da volta não foi para o app');
-    certo(await ev(`location.search`) === '?bemvindo=1', 'a carga nova perdeu as boas-vindas: ' + await ev(`location.search`));
+    certo(await ev(`location.search`) === '?de=cadastro', 'a carga nova perdeu o destino: ' + await ev(`location.search`));
     // conta pendente: o Voltar mostra a espera, e liberada, o destino com as boas-vindas
     const { identifier } = await send('Page.addScriptToEvaluateOnNewDocument', { source: 'window.OD_ESPERA_MS = 250;' });
     try {
-      REG_GOOGLE = [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1', bloqueio: 'crm_pendente', agenda: AGENDA }];
+      REG_GOOGLE = [200, { ok: true, redirect: '/opendoctor-agenda.html?de=cadastro', bloqueio: 'crm_pendente', agenda: AGENDA }];
       ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
       await abre('?registro=google');
       await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google (pendente)');
@@ -367,7 +367,7 @@ const cenarios = [
       certo(await ev(`location.href`) === VOLTA, 'o F5 na espera perdeu o destino: ' + await ev(`location.href`));
       ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: null };
       await ate(`location.pathname === '/opendoctor-agenda.html'`, 3000, 'liberada e não abriu o app');
-      certo(await ev(`location.search`) === '?bemvindo=1', 'liberada sem as boas-vindas: ' + await ev(`location.search`));
+      certo(await ev(`location.search`) === '?de=cadastro', 'liberada sem o destino: ' + await ev(`location.search`));
     } finally { await send('Page.removeScriptToEvaluateOnNewDocument', { identifier }); REG_GOOGLE = null; }
     ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
     await abre('?registro=google');
@@ -547,13 +547,13 @@ const cenarios = [
     await ate(`!document.getElementById('emailForm').closest('[data-step]').hidden`, 2000, 'a seta voltou para o início');
     certo(await ev(`location.search`) === '?next=%2Fopendoctor-configuracoes.html', 'URL depois da seta: ' + await ev(`location.search`));
     certo((await ev(`document.getElementById('google').getAttribute('href')`)).includes('next=%2Fopendoctor-configuracoes.html'), 'o next se perdeu na seta');
-    REG_GOOGLE = [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1', bloqueio: 'crm_pendente' }];   // sem a agenda
+    REG_GOOGLE = [200, { ok: true, redirect: '/opendoctor-agenda.html?de=cadastro', bloqueio: 'crm_pendente' }];   // sem a agenda
     await abre('?registro=google');
     await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google');
     await preenche(); await clica('#regGo');
     await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera do Google');
     certo(await ev(`location.search`) === '', 'conta criada e o registro=google ficou na URL: ' + await ev(`location.search`));
-    REG_GOOGLE = [200, { ok: true, redirect: '/opendoctor-agenda.html?bemvindo=1', bloqueio: 'crm_pendente', agenda: AGENDA }];
+    REG_GOOGLE = [200, { ok: true, redirect: '/opendoctor-agenda.html?de=cadastro', bloqueio: 'crm_pendente', agenda: AGENDA }];
     await abre('?registro=google');
     await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google');
     await preenche(); await clica('#regGo');
@@ -616,7 +616,7 @@ const cenarios = [
         window.__aba = (esc) => { h = esc; document.dispatchEvent(new Event('visibilitychange')); }; })();` });
     const mes = () => pedidos.filter((r) => r.method === 'GET' && r.path === '/me').length;
     try {
-      // cadastro novo pendente: o destino do login (bemvindo=1) fica guardado para quando liberar
+      // cadastro novo pendente: o destino do login fica guardado para quando liberar
       await ateRegistro();
       await preenche();
       await clica('#regGo');
@@ -638,14 +638,14 @@ const cenarios = [
       certo(mes() >= m1 + 1, `não voltou a conferir com a aba à vista: ${mes() - m1}`);
       ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: null };   // o administrador aprovou
       await ate(`location.pathname === '/opendoctor-agenda.html'`, 3000, 'liberada e não abriu o app');
-      certo(await ev(`location.search`) === '?bemvindo=1', 'destino diferente do login: ' + await ev(`location.search`));
+      certo(await ev(`location.search`) === '?de=cadastro', 'destino diferente do login: ' + await ev(`location.search`));
       // conta pendente que voltou da permissão da agenda (o servidor manda para a espera com o destino): liberada, vai a ele
       ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_pendente' };
-      await abre('?next=' + encodeURIComponent('/opendoctor-agenda.html?bemvindo=agenda'));
+      await abre('?next=' + encodeURIComponent('/opendoctor-agenda.html?de=agenda'));
       await ate(`document.getElementById('title').textContent === 'Estamos conferindo seu CRM'`, 3000, 'espera depois da agenda');
       ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: null };
       await ate(`location.pathname === '/opendoctor-agenda.html'`, 3000, 'liberada depois da agenda e não abriu o app');
-      certo(await ev(`location.search`) === '?bemvindo=agenda', 'destino depois da agenda: ' + await ev(`location.search`));
+      certo(await ev(`location.search`) === '?de=agenda', 'destino depois da agenda: ' + await ev(`location.search`));
       // recarregou a espera (sem o destino do login) e foi recusada: mostra a recusa e para de conferir
       ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_pendente' };
       await abre('?next=%2F%2Fmal.example%2Fx');

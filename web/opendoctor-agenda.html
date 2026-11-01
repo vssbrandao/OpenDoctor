@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="/assets/login/logo-simbolo.svg">
   <title>OpenDoctor | Agenda (Figma 946-31168)</title>
   <style>
     /* Figma frame "Analysis" (node 946:31168) — home day-agenda view. */
@@ -2706,6 +2707,31 @@
 
   <div class="rx-print" id="rxPrint" aria-hidden="true"></div>   <!-- folhas montadas por rxFolha ao emitir / 2ª via -->
   <script>
+    // ===== conta deste navegador: o que a agenda guarda no aparelho (o prontuário aberto, as conversas do assistente, os
+    // rascunhos) é da conta que o guardou. Outra conta que entra neste navegador (computador compartilhado, sessão que
+    // acabou sem o Sair) não vê nada disso: sai do aparelho antes de as telas lerem (elas esperam window.__odConta)
+    window.__odConta = fetch('/me', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var uid = (j && j.user && j.user.id) || '';
+        window.__odUid = uid;
+        if (!uid) return uid;
+        try {
+          var antes = localStorage.getItem('od_uid');
+          if (antes !== uid) {
+            // de outra conta, ou de antes desta versão (sem dono): as conversas e o prontuário aberto saem. Os rascunhos
+            // de antes ficam (só abrem no paciente deles, de uma conta só), os de outra conta saem
+            Object.keys(localStorage).forEach(function (k) {
+              if (k === 'od_conversas_v1' || (antes && k.indexOf('od_draft_') === 0)) localStorage.removeItem(k);
+            });
+            Object.keys(sessionStorage).forEach(function (k) {
+              if (k === 'od_prontuario_ctx' || k.indexOf('od_tm_') === 0) sessionStorage.removeItem(k);
+            });
+          }
+          if (antes !== uid) localStorage.setItem('od_uid', uid);
+        } catch (_) {}
+        return uid;
+      }).catch(function () { return ''; });
     // itens do menu que levam a outra tela (data-href: a política de segurança não aceita onclick no HTML)
     document.querySelectorAll('[data-href]').forEach(function (el) {
       el.addEventListener('click', function () { location.href = el.getAttribute('data-href'); });
@@ -3979,7 +4005,7 @@
         run();
       }
 
-      renderHist();
+      window.__odConta.then(function () { renderHist(); });   // depois de conferir de quem são as conversas guardadas
       sendBtn.addEventListener('click', function () { ask(input.value); });
       input.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); }
@@ -4199,7 +4225,11 @@
         return fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined })
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); });
       }
-      function persistCtx() { try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx)); } catch (_) {} }
+      // com a conta: o prontuário reaberto ao recarregar é só o desta conta (window.__odConta)
+      function persistCtx() {
+        try { sessionStorage.setItem('od_prontuario_ctx', JSON.stringify(ctx && Object.assign({}, ctx, { uid: window.__odUid || '' }))); }
+        catch (_) {}
+      }
       function isOpen() { return stage.classList.contains('prontuario'); }
       function locked() { return !!(cur && cur.signed_at); }
 
@@ -8673,15 +8703,22 @@
       }
       $('prBack').addEventListener('click', function () { closePr(false); });
       window.addEventListener('popstate', function () {
-        if (location.hash === '#prontuario') { var c = null; try { c = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {} open(c); }
+        if (location.hash === '#prontuario') {
+          var c = null; try { c = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {}
+          if (c && c.uid && c.uid === window.__odUid) open(c); else closePr(true);   // de outra conta: não reabre
+        }
         else closePr(true);
       });
       window.__openProntuario = open;
       window.__closeProntuario = function () { closePr(true); };
       // recarregou a página no prontuário (ou veio do link antigo): reabre com o contexto salvo
       if (location.hash === '#prontuario') {
-        var c0 = null; try { c0 = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {}
-        direct = true; open(c0);
+        window.__odConta.then(function (uid) {             // só o desta conta (outra conta neste navegador não o vê)
+          if (location.hash !== '#prontuario') return;
+          var c0 = null; try { c0 = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {}
+          if (c0 && uid && c0.uid === uid) { direct = true; open(c0); }
+          else history.replaceState(null, '', location.pathname + location.search);
+        });
       }
     })();
   </script>
@@ -9115,7 +9152,7 @@
       // sessão: só avisa quem ESTAVA logado e passou a receber 401 (cookie venceu ou foi revogado)
       var nativeFetch = window.fetch, logged = false, shown = false, modal = document.getElementById('odSession');
       nativeFetch('/me', { credentials: 'same-origin' }).then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { logged = !!(j && j.logged_in); }).catch(function () {});
+        .then(function (j) { logged = !!(j && j.logged_in); if (j && j.boas_vindas) boasVindas(); }).catch(function () {});
       function sameOrigin(u) {
         try { return new URL(typeof u === 'string' ? u : u.url, location.href).origin === location.origin; } catch (_) { return false; }
       }
@@ -9136,23 +9173,31 @@
         if (a) a.href = '/opendoctor-login.html?next=' + encodeURIComponent(location.pathname + location.hash);
       }, true);
 
-      // boas-vindas no primeiro acesso (?bemvindo=1, vindo do cadastro; =agenda: o Google Agenda já ficou conectado nele)
-      var q = new URLSearchParams(location.search), bv = q.get('bemvindo');
-      if (bv === '1' || bv === 'agenda') {
+      // boas-vindas: a sessão da conta que acabou de nascer traz a marca, e o /me diz (uma vez: ao mostrar, a marca sai da
+      // sessão). Na sessão e não no endereço: outra conta neste navegador não as recebe. O texto segue a agenda de verdade:
+      // a 1ª resposta do /calendar/events diz se ela está conectada nesta conta
+      var q = new URLSearchParams(location.search);
+      if (q.has('bemvindo')) {                           // endereço antigo (as boas-vindas iam na URL): só sai dela
         q.delete('bemvindo');
         history.replaceState(history.state, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash);
+      }
+      function boasVindas() {
+        nativeFetch('/me/boas-vindas', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                                         body: '{}' }).catch(function () {});
         var t = document.getElementById('odWelcome'), stg = document.querySelector('.center');
-        var tx = t.querySelector('span'), link = t.querySelector('a'), CONVITE = tx.textContent;
-        // a URL só dá o palpite; a 1ª resposta da agenda (/calendar/events) diz se ela está mesmo conectada nesta conta
-        var conectada = function (on) {
+        var tx = t.querySelector('span'), link = t.querySelector('a'), CONVITE = tx.textContent, mostrou = false;
+        function mostra(d) {
+          if (mostrou) return;
+          mostrou = true; window.__calBoasVindas = null;
+          var on = !!(d && d.connected && !d.needs_reconnect);
           tx.textContent = on ? 'Bem-vindo à OpenDoctor! Sua agenda do Google já está conectada.' : CONVITE;
           link.hidden = on;
-        };
-        conectada(bv === 'agenda');
-        window.__calBoasVindas = function (d) { window.__calBoasVindas = null; conectada(!!(d && d.connected && !d.needs_reconnect)); };
-        if (window.__calUltima) window.__calBoasVindas(window.__calUltima);   // a resposta chegou antes deste trecho
-        if (stg) stg.appendChild(t);
-        t.hidden = false;
+          if (stg) stg.appendChild(t);
+          t.hidden = false;
+        }
+        window.__calBoasVindas = mostra;
+        if (window.__calUltima) mostra(window.__calUltima);   // a agenda já respondeu
+        setTimeout(function () { mostra(null); }, 3000);        // a agenda não respondeu: o convite
         document.getElementById('odWelcomeX').addEventListener('click', function () { t.hidden = true; });
       }
     })();

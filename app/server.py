@@ -17,6 +17,7 @@ import posixpath
 import datetime
 import threading
 import collections
+import hmac
 import secrets
 import concurrent.futures
 import contextlib
@@ -109,7 +110,10 @@ def _inline_script_hashes():
 # cabeçalhos de segurança em todas as respostas
 _CSP = "; ".join((
     "default-src 'self'",
-    " ".join(["script-src 'self' https://cdn.jsdelivr.net"] + _inline_script_hashes()),   # jsdelivr: mermaid
+    # de fora, só o arquivo exato (o mermaid da agenda), nunca o host inteiro: um <script> injetado apontando para outro
+    # arquivo do mesmo CDN não roda
+    " ".join(["script-src 'self' https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js"]
+             + _inline_script_hashes()),
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
@@ -402,7 +406,8 @@ def _clean_history(raw):
 RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em s)
                "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600),
                "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600),      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
-               "cfm": (10, 3600)}     # conferências do CRM no CFM (cadastro): o Validar responde se um CPF é de um CRM
+               "cfm": (10, 3600),     # conferências do CRM no CFM (cadastro): o Validar responde se um CPF é de um CRM
+               "codigo_email": (5, 3600)}   # códigos (nova senha e cadastro) para um e-mail, por IP; o teto do e-mail é db
 MAX_QUERY_CHARS = 2000
 _RL = {}
 _RL_LOCK = threading.Lock()
@@ -450,6 +455,20 @@ def _rate_limited(request, bucket, key=None):
             for kk in [kk for kk, dq in _RL.items() if not dq or now - dq[-1] > RATE_LIMITS.get(kk[0], (0, win))[1]]:
                 _RL.pop(kk, None)
     return False
+
+
+def _rl_undo(bucket, key):
+    """O pedido que o limite contou não enviou nada (o código anterior ainda vale, a conferência recusou): não conta."""
+    with _RL_LOCK:
+        q = _RL.get((bucket, key))
+        if q:
+            q.pop()
+
+
+def _codigo_email(request, email):
+    """Balde dos códigos para um e-mail a partir deste IP (nova senha e cadastro). Devolve a chave, ou None se passou."""
+    chave = (email, _rl_ip(_client_ip(request)))
+    return None if _rate_limited(request, "codigo_email", key=chave) else chave
 
 
 def _too_many():
@@ -793,10 +812,11 @@ def _device(request, resp):
 
 
 def _logged(request, user, nxt, method, welcome=False, agenda=False):
-    """Resposta de login concluído: cookie de sessão + para onde ir. Registra a entrada. `agenda`: conta nova pelo Google,
-    que segue direto para a permissão do Google Agenda (`agenda` na resposta: a tela de login vai para lá)."""
+    """Resposta de login concluído: cookie de sessão + para onde ir. Registra a entrada. `welcome`: conta que acabou de
+    nascer — a sessão leva a marca das boas-vindas (auth.set_session bv), que a agenda mostra quando a conta já usa o app.
+    `agenda`: conta nova pelo Google, que segue direto para a permissão do Google Agenda (`agenda` na resposta)."""
     dest = auth.safe_next(nxt)
-    out = {"ok": True, "redirect": auth.with_welcome(dest) if welcome else dest}
+    out = {"ok": True, "redirect": dest}
     cc = _cc_ao_entrar(user)
     bloqueio = _crm_bloqueio(dict(user, crm_cc=cc))
     if bloqueio:
@@ -805,7 +825,7 @@ def _logged(request, user, nxt, method, welcome=False, agenda=False):
     if agenda and integrations.configured("google"):
         out["agenda"], nonce = _agenda_pede(user, dest)
     resp = JSONResponse(out)
-    auth.set_session(resp, user["id"], user.get("sv", 0), cc=cc)
+    auth.set_session(resp, user["id"], user.get("sv", 0), cc=cc, bv=welcome)
     if nonce:
         auth.set_oauth_cookie(resp, nonce, auth.CAL_COOKIE)
     _audit(request, user["id"], "entrou", method, _device(request, resp))
@@ -822,29 +842,28 @@ def _agenda_pede(user, dest):
     return integrations.connect_url("google", state, str(user.get("email") or "")), nonce
 
 
-def _agenda_volta(payload, u, conectada=False):
+def _agenda_volta(payload, u):
     """Fim da permissão da agenda pedida no cadastro: conectada ou não (desmarcou a caixa, cancelou, deu erro), a conta já
-    existe e segue para onde o cadastro ia, com as boas-vindas. Conta que ainda não usa o app vai à espera do CRM, que leva
-    o destino junto para quando liberar. Sem dizer o motivo: a agenda se conecta depois em Integrações."""
+    existe e segue para onde o cadastro ia (as boas-vindas vão na sessão e dizem se a agenda está conectada). Conta que
+    ainda não usa o app vai à espera do CRM, que leva o destino junto para quando liberar. Sem dizer o motivo: a agenda
+    se conecta depois em Integrações."""
     dest = auth.safe_next(payload.get("nx"))
-    if u and u.get("id") == payload.get("uid"):          # as boas-vindas só para a conta que acabou de nascer
-        dest = auth.with_welcome(dest, agenda=conectada)
     if u and _crm_bloqueio(u):
         dest = "/opendoctor-login.html?next=" + urllib.parse.quote(dest, safe="")
     return RedirectResponse(dest)
 
 
-def _send_code(email, purpose, name=""):
+def _send_code(email, purpose, name="", teto=True):
     """Cria e envia um código. Devolve (resposta de erro ou None, segundos até poder reenviar —
-    negativo quando não enviou agora porque o código de menos de 30s atrás continua valendo)."""
+    negativo quando não enviou agora porque o código de menos de 30s atrás continua valendo). `teto`: db.new_login_code."""
     with _na_vez(email) as vez:                    # dois pedidos juntos não passam ambos pelos 30 s nem pelo limite
-        return _send_code_now(email, purpose, name) if vez else (_err("limite_ip", 429), 0)
+        return _send_code_now(email, purpose, name, teto) if vez else (_err("limite_ip", 429), 0)
 
 
-def _send_code_now(email, purpose, name):
+def _send_code_now(email, purpose, name, teto=True):
     code = auth.new_code()
     try:
-        status, wait = db.new_login_code(email, auth.code_hash(email, code, purpose))
+        status, wait = db.new_login_code(email, auth.code_hash(email, code, purpose), teto=teto)
     except Exception as e:
         print("[login] código falhou:", str(e)[:200], flush=True)
         return _err("erro", 500), 0
@@ -875,6 +894,8 @@ def _check_code(email, code, purpose):
         status, left = db.check_login_code(email, auth.code_hash(email, code, purpose))
     if status == "ok":
         return None
+    if status == "bloqueado_email":                # erradas demais somando os códigos do e-mail: um código novo não ajuda
+        return _err("tentativas_email", 429)
     return _err({"errado": "codigo_incorreto", "expirado": "codigo_expirado", "bloqueado": "muitas_tentativas"}[status],
                 429 if status == "bloqueado" else 400, left=left)
 
@@ -920,10 +941,14 @@ def _password_login(request, b):
                 return _err("sem_conta", 404)
             if not info["hash"]:
                 return _err("sem_senha")                    # conta criada pelo Google
-            if info["locked_s"] > 0:
+            dev = auth.device_id(request)
+            if info["locked_s"] > 0 and not (dev and db.device_known(info["id"], auth.device_hash(dev))
+                                             and auth.check_password(pw, info["hash"])):
+                # bloqueada pelos erros: só o aparelho de onde esta conta já entrou passa, com a senha certa (quem sabe só
+                # o e-mail não tranca o médico); de outro aparelho, ou com a senha errada, a mesma resposta de sempre
                 _audit(request, info["id"], "bloqueado", "senha")
                 return _err("bloqueado", 429, minutes=-(-info["locked_s"] // 60))
-            if not auth.check_password(pw, info["hash"]):
+            if info["locked_s"] <= 0 and not auth.check_password(pw, info["hash"]):
                 left, locked = db.login_failed(info["id"])
                 _audit(request, info["id"], "bloqueado" if locked else "senha_incorreta", "senha")
                 if locked:
@@ -1129,16 +1154,24 @@ def _signup_start(request, b):
     except Exception as e:
         print("[login] cadastro falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
+    chave = _codigo_email(request, email)
+    if chave is None:
+        return _err("limite", 429)
     if _rate_limited(request, "cfm"):
+        _rl_undo("codigo_email", chave)
         return _err("limite_ip", 429)
     try:
         dec, recusa = _crm_decide(reg)
     except Exception as e:
         print("[cadastro] conferência do CRM falhou:", type(e).__name__, flush=True)
+        _rl_undo("codigo_email", chave)
         return _err("erro", 500)
     if recusa:
+        _rl_undo("codigo_email", chave)
         return recusa
     fail, wait = _send_code(email, "signup", reg["nome"])
+    if fail or wait <= 0:
+        _rl_undo("codigo_email", chave)               # não enviou (o código de agora há pouco ainda vale)
     if fail:
         return fail
     # os dados esperam a confirmação num tíquete assinado (30 min), não no banco; o CPF e o nascimento não vão nele
@@ -1162,7 +1195,12 @@ def _signup_resend(request, b):
         return _err("sessao_expirada")
     if _rate_limited(request, "login_code"):
         return _err("limite_ip", 429)
+    chave = _codigo_email(request, t["email"])
+    if chave is None:
+        return _err("limite", 429)
     fail, wait = _send_code(t["email"], "signup", t.get("name", ""))
+    if fail or wait <= 0:
+        _rl_undo("codigo_email", chave)
     return fail or {"ok": True, "resend_in": abs(wait), "sent": wait > 0}
 
 
@@ -1216,10 +1254,28 @@ async def google_registro(request: Request):
     return await run_in_threadpool(_google_registro_cria, request, await _body(request))
 
 
+@app.post("/auth/google/registro/cancelar")
+async def google_registro_cancelar(request: Request):
+    """A seta que desiste do cadastro pelo Google: o perfil guardado sai do navegador (ninguém cria a conta deste e-mail
+    depois, nem num F5 da entrada antiga do histórico). Não lê nem devolve dado."""
+    b = await _body(request)                             # só JSON, como os outros POST de /auth/
+    t = _google_registro(request)
+    resp = JSONResponse({"ok": True})
+    if t is None or _mesmo_r(b.get("r"), t.get("r")):   # o perfil de outra aba (outra volta do Google) fica
+        resp.delete_cookie(GREG_COOKIE, path="/auth/")
+    return resp
+
+
+def _mesmo_r(a, b):
+    return hmac.compare_digest(str(a or "").encode(), str(b or "").encode())
+
+
 def _google_registro_cria(request, b):
     t = _google_registro(request)
     if not t:
         return _err("sessao_expirada")
+    if not _mesmo_r(b.get("r"), t.get("r")):
+        return _err("google_outra_aba")                  # o Registro desta aba é de outra volta do Google (outra aba)
     reg, bad = _registro(b)
     if bad:
         return bad
@@ -1302,7 +1358,7 @@ def _crm_confirmar(request, b):
         print("[cadastro] confirmação do CRM falhou:", type(e).__name__, flush=True)
         return _err("erro", 500)
     resp = JSONResponse(out)
-    auth.set_session(resp, u["id"], u.get("sv", 0))          # a mesma sessão, sem a marca de confirmar
+    auth.set_session(resp, u["id"], u.get("sv", 0), bv=bool(u.get("boas_vindas")))   # a mesma sessão, sem a marca de confirmar
     return resp
 
 
@@ -1327,7 +1383,19 @@ def _password_forgot(request, b):
         return _err("erro", 500)
     wait = db.CODE_RESEND_S
     if acc:
-        fail, wait = _send_code(email, "reset", acc.get("name") or "")
+        # o aparelho de onde a conta já entrou fica fora dos limites do e-mail: quem sabe só o e-mail não gasta os códigos
+        # do dono. Os outros: 5 por hora deste IP para este e-mail, e o teto do e-mail (db)
+        dev = auth.device_id(request)
+        try:
+            conhecido = bool(dev) and db.device_known(acc["id"], auth.device_hash(dev))
+        except Exception:
+            conhecido = False
+        chave = None if conhecido else _codigo_email(request, email)
+        if not conhecido and chave is None:
+            return _err("limite", 429)
+        fail, wait = _send_code(email, "reset", acc.get("name") or "", teto=not conhecido)
+        if chave and (fail or wait <= 0):
+            _rl_undo("codigo_email", chave)           # não enviou: não conta
         if fail:
             return fail
     return {"ok": True, "resend_in": abs(wait), "sent": wait > 0}
@@ -1350,13 +1418,15 @@ def _password_reset_verify(request, b):
         if bad:
             return bad
         acc = db.user_by_email(email)
+        tinha = bool((db.account(email) or {}).get("password")) if acc else False
     except Exception as e:
         print("[login] código de redefinição falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
     if not acc:
         return _err("codigo_expirado")
-    # a versão da sessão vai no tíquete: depois que a senha muda, ele não serve mais (uso único)
-    return {"ok": True, "ticket": auth.sign({"k": "reset", "uid": acc["id"], "sv": acc.get("sv", 0)})}
+    # a versão da sessão vai no tíquete: depois que a senha muda, ele não serve mais (uso único). `pw`: a conta já tinha
+    # senha (o aviso diz "alterada"; a conta só Google que cria a primeira ganha o "criada")
+    return {"ok": True, "ticket": auth.sign({"k": "reset", "uid": acc["id"], "sv": acc.get("sv", 0), "pw": int(tinha)})}
 
 
 @app.post("/auth/password/reset")
@@ -1388,16 +1458,23 @@ def _password_reset(request, b):
         print("[login] redefinição falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
     try:
-        mailer.send_password_changed(user["email"], user.get("name") or "")   # aviso; falha não desfaz a troca
+        mailer.send_password_changed(user["email"], user.get("name") or "",
+                                     criada=t.get("pw") == 0)            # aviso; falha não desfaz a troca
     except Exception as e:
         print("[login] aviso de senha alterada falhou:", str(e)[:200], flush=True)
     return _logged(request, user, b.get("next"), "nova_senha")
 
 
 @app.get("/auth/logout")
-def logout():
+def logout(request: Request):
     resp = RedirectResponse("/opendoctor-login.html")
+    if (request.headers.get("sec-fetch-site") or "same-origin") not in ("same-origin", "none"):
+        # link, imagem ou redirecionamento vindo de outro site: não desloga nem apaga os rascunhos deste navegador
+        return resp
     auth.clear_session(resp)
+    # o cadastro pelo Google que ficou no meio e as conexões começadas não servem a quem entrar depois neste navegador
+    for c in (GREG_COOKIE, auth.OAUTH_COOKIE, auth.CAL_COOKIE):
+        resp.delete_cookie(c, path="/auth/")
     # apaga o que o app guardou neste navegador (rascunhos do prontuário, conversas) — LGPD
     resp.headers["Clear-Site-Data"] = '"storage"'
     return resp
@@ -1418,9 +1495,22 @@ def me(request: Request):
         return JSONResponse({"error": "indisponivel"}, status_code=503)
     on = scribe_on(u)
     bloqueio = _crm_bloqueio(u)
+    bv = bool(u and u.get("boas_vindas")) and not bloqueio     # conta nova que já usa o app e ainda não viu as boas-vindas
     if u:
-        u = {k: v for k, v in u.items() if k not in ("sv", "crm_cc", "crm_dispensado")}
-    return {"logged_in": bool(u), "user": u, "scribe": on, "bloqueio": bloqueio}
+        u = {k: v for k, v in u.items() if k not in ("sv", "crm_cc", "crm_dispensado", "boas_vindas")}
+    return {"logged_in": bool(u), "user": u, "scribe": on, "bloqueio": bloqueio, "boas_vindas": bv}
+
+
+@app.post("/me/boas-vindas")
+def me_boas_vindas(request: Request):
+    """A agenda mostrou as boas-vindas: a mesma sessão, sem a marca (elas não voltam ao recarregar). Sem dado nenhum."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    resp = JSONResponse({"ok": True})
+    if u.get("boas_vindas"):
+        auth.set_session(resp, u["id"], u.get("sv", 0), cc=bool(u.get("crm_cc")))
+    return resp
 
 
 # ===== integrações de calendário (OAuth, por usuário) =====
@@ -1490,11 +1580,14 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
                 resp = RedirectResponse(_login_page("google_nao_verificado", payload.get("nx", "")))
                 resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
                 return resp
-            sem_conta = db.user_by_email(email) is None
-            if sem_conta and db.user_by_google_sub(info.get("sub")) is not None:
+            conta = db.user_by_email(email)
+            sem_conta = conta is None
+            pelo_sub = db.user_by_google_sub(info.get("sub"))
+            if pelo_sub is not None and (sem_conta or pelo_sub["id"] != conta["id"]):
                 # esta conta Google já é de uma conta do OpenDoctor, com o e-mail de antes (o e-mail mudou no Google): nem
                 # o Registro de uma conta nova (o CPF iria ao CFM e a conta não seria criada: google_sub é único), nem
-                # entrar sozinho na outra — entra-se com o e-mail da conta
+                # entrar sozinho na outra — entra-se com o e-mail da conta. Também quando o e-mail novo já tem conta
+                # própria: pôr nela um sub que é de outra daria erro (único) a cada tentativa
                 resp = RedirectResponse(_login_page("google_outro_email", payload.get("nx", "")))
                 resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
                 return resp
@@ -1502,12 +1595,15 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
                 # e-mail sem conta: antes de a conta existir, o Registro profissional (só médicos criam conta). O perfil
                 # do Google espera num cookie assinado deste navegador (15 min), fora da URL
                 # registro=google e a página de origem ficam na URL até a conta existir (recarregar não perde a etapa)
-                q = {"registro": "google"}
+                # `r` liga o Registro à aba que voltou do Google: o cookie é um por navegador (a última volta vale), e o
+                # Registro de outra aba não cria a conta deste e-mail com os dados digitados lá
+                rid = secrets.token_urlsafe(9)
+                q = {"registro": "google", "r": rid}
                 if auth.safe_next(payload.get("nx")) != auth.HOME:
                     q["next"] = auth.safe_next(payload.get("nx"))
                 resp = RedirectResponse("/opendoctor-login.html?" + urllib.parse.urlencode(q))
                 resp.set_cookie(GREG_COOKIE, auth.sign({
-                    "k": "greg", "email": email, "ev": 1, "pic": info.get("picture"),
+                    "k": "greg", "email": email, "ev": 1, "pic": info.get("picture"), "r": rid,
                     "sub": info.get("sub"), "nx": auth.safe_next(payload.get("nx"))}),
                     max_age=GREG_MAX_AGE, httponly=True, samesite="lax",
                     secure=integrations.REDIRECT_BASE.startswith("https://"), path="/auth/")
@@ -1521,7 +1617,8 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
             resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
             return resp
         except Exception as e:
-            print("[auth] login falhou:", str(e)[:200])
+            # o erro do banco traz o valor (o id da conta Google): no log só o tipo; o texto só nos erros da troca com o Google
+            print("[auth] login falhou:", type(e).__name__, str(e)[:200] if isinstance(e, RuntimeError) else "", flush=True)
             return RedirectResponse(_login_page("conexao", payload.get("nx", "")))
 
     # --- conexão de calendário ---
@@ -1545,7 +1642,7 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
                 integrations.disconnect(u["id"], provider)
                 resp = _agenda_volta(payload, u) if ap else RedirectResponse(dest + "?erro=sessao")
             else:
-                resp = _agenda_volta(payload, u, conectada=True) if ap else RedirectResponse(dest + "?conectado=" + provider)
+                resp = _agenda_volta(payload, u) if ap else RedirectResponse(dest + "?conectado=" + provider)
         except integrations.MissingScope:              # desmarcou a caixa da agenda no Google: nada foi gravado
             print(f"[oauth] conexão sem a permissão da agenda: {provider}", flush=True)
             resp = _agenda_volta(payload, u) if ap else RedirectResponse(dest + "?erro=permissao")
@@ -1860,6 +1957,10 @@ def _note_patient(u, payload):
         p = db.get_patient(u["id"], int(pid))
         if p:
             return p
+        if db.patient_id_exists(int(pid)):
+            # o id é de outro médico (um prontuário que ficou aberto no navegador de outra conta): nem o nome serve,
+            # senão o paciente do outro nasceria nesta conta
+            return None
     name = " ".join((payload.get("patient") or "").split())[:200]
     if not db.patient_key(name):
         return None
@@ -2525,10 +2626,13 @@ async def me_medico_muda(request: Request):
         if uf and uf not in _UFS:
             return JSONResponse({"error": "UF inválida"}, status_code=400)
         campos["crm_uf"] = uf
-    if _crm_travado(u) and ("crm" in campos or "crm_uf" in campos):
+    if _crm_travado(u) and ("crm" in campos or "crm_uf" in campos or "name" in campos):
         atual = await run_in_threadpool(db.get_medico, u["id"]) or {}
         if any(k in campos and campos[k] != (atual.get(k) or "") for k in ("crm", "crm_uf")):
             return JSONResponse({"error": "O CRM foi conferido no cadastro e não pode ser trocado aqui."}, status_code=400)
+        if "name" in campos and campos["name"] != " ".join(str(atual.get("name") or "").split()):
+            # o nome foi conferido junto com o CRM (vai com ele na receita): trocá-lo aqui poria o de outra pessoa
+            return JSONResponse({"error": "O nome foi conferido no cadastro e não pode ser trocado aqui."}, status_code=400)
     if "receita_papel" in b:
         papel = str(b.get("receita_papel") or "").strip().upper()
         if papel and papel not in ("A4", "A5"):
@@ -2614,7 +2718,7 @@ def _admin_decide_now(b, aprovado):
     enviado = False
     if mailer.configured():
         try:
-            mailer.send_crm_decision(r["email"], r.get("name") or "", aprovado)
+            mailer.send_crm_decision(r["email"], r.get("name") or "", aprovado, confirmar=aprovado and cfm.configured())
             enviado = True
         except Exception as e:
             print("[cadastro] e-mail da decisão falhou:", str(e)[:200], flush=True)

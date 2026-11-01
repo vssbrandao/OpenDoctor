@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="/assets/login/logo-simbolo.svg">
   <title>OpenDoctor | Configurações</title>
   <style>
     @font-face{font-family:"Helvetica Now Display";font-weight:400;font-style:normal;font-display:swap;
@@ -276,7 +277,8 @@
             [].forEach.call(p.querySelectorAll('input'), function (r) { r.checked = r.value === papel; });
             ultFaltam = res.j.faltam || []; carregado = true; campos(true);
             if (res.j.crm_conferido) {           // CRM conferido no cadastro (CFM ou à mão): vai na receita, não se troca aqui
-              f.crm.disabled = f.crm_uf.disabled = true;
+              f.crm.disabled = f.crm_uf.disabled = f.name.disabled = true;   // o nome foi conferido junto com o CRM
+              f.name.title = 'Conferido no cadastro, com o CRM';
               document.getElementById('cfCrmH').textContent = 'Conferido no cadastro';
             }
             sync();

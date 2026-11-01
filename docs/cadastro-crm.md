@@ -39,6 +39,12 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
     desta conferência pede para entrar pelo Google de novo).
   - Nada do perfil vai na URL. O `registro=google` e o `next` ficam nela até a conta existir: recarregar a página volta
     ao Registro, e a seta tira só o `registro`.
+  - **Uma aba, uma volta do Google:** o cookie é um por navegador (a última volta vale). A volta põe `r` (aleatório) no
+    cookie e na URL do Registro, e o Criar conta manda o `r` da aba; o de outra aba recebe `google_outra_aba` ("Você
+    começou outro cadastro com o Google em outra aba…") e não cria a conta do outro e-mail com os dados digitados nesta.
+  - **A seta apaga o perfil guardado** (`POST /auth/google/registro/cancelar`, só JSON, com o `r` da aba: o perfil de
+    outra aba fica, e um formulário de outro site não apaga nada); o Sair também apaga (e o `od_oauth`, o
+    `od_oauth_cal`). Num F5 da entrada antiga do histórico, ninguém cria a conta deste e-mail.
 - **Criar conta:** `POST /auth/google/registro` confere o CRM e só então cria a conta.
   - Não há código: o Google já confirmou o e-mail.
   - O cookie só cria conta. Se o e-mail (ou a conta Google, pelo `sub`) ganhou uma conta no meio do caminho, a resposta
@@ -53,22 +59,22 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - **O state** é o da conexão de Integrações (`k=cal`, a conta, o nonce deste navegador), com `ap=1` e o destino do
     cadastro (`nx`). A volta grava a agenda com a mesma conferência: nonce neste navegador, a conta logada nele, o mesmo
     provedor.
-  - **Volta (`_agenda_volta`):** com a agenda, o destino com `?bemvindo=agenda`; a agenda diz "Sua agenda do Google já
-    está conectada", sem o link. Sem ela (cancelou, desmarcou a caixa da agenda, o Google falhou, outro navegador, mais
-    de 15 min na tela do Google), o destino com `?bemvindo=1`, que convida a conectar, sem mensagem de erro: a conta já
-    existe e a agenda se conecta depois em Integrações. Conta que ainda não usa o app vai para a espera com esse destino
-    no `next`, que abre quando liberar.
+  - **Volta (`_agenda_volta`):** o destino do cadastro, com a agenda ou sem ela (cancelou, desmarcou a caixa da agenda,
+    o Google falhou, outro navegador, mais de 15 min na tela do Google), sem mensagem de erro: a conta já existe e a
+    agenda se conecta depois em Integrações. Conta que ainda não usa o app vai para a espera com esse destino no `next`,
+    que abre quando liberar.
     - **Prazo:** o state vencido não grava nada, mas o da agenda do cadastro (`ap=1`, assinatura conferida) ainda escolhe
       o destino; os outros vencidos continuam em "Erro de conexão".
     - **O Voltar** da tela do Google não passa pelo servidor: antes de sair, a tela de login troca o `registro=google` da
       URL pelo `next` com o destino do cadastro, e o Voltar (com ou sem o cache do navegador) vai a ele, ou à espera, que
       mantém o `next` (inclusive num F5).
-    - **Só a conta do state** recebe as boas-vindas: outra conta logada naquele navegador (ou nenhuma) volta ao destino
-      sem elas.
-    - **As boas-vindas seguem a agenda de verdade:** o `bemvindo` é só o palpite; a 1ª resposta do `/calendar/events`
-      decide o texto (conectada e sem reconectar: "já está conectada", sem o link; senão, o convite).
-    - **O `bemvindo` não viaja no `next`:** o `auth.safe_next` o tira (só o servidor o põe, na conta que acabou de
-      nascer). Um `next` velho no histórico da aba não leva as boas-vindas a outra conta que entre ali.
+  - **As boas-vindas vão na sessão** (não no endereço): a sessão da conta que acabou de nascer (cadastro por e-mail ou
+    pelo Google) leva a marca `bv` (`auth.set_session`). O `/me` devolve `boas_vindas: true` quando a conta já usa o app;
+    a agenda mostra o aviso e chama `POST /me/boas-vindas`, que tira a marca (não volta ao recarregar). Assim elas
+    chegam depois da aprovação (mesmo com a aba da espera fechada, no mesmo navegador) e da confirmação do CPF, e nunca
+    a outra conta que entre no mesmo navegador. Um `?bemvindo` antigo na URL só é apagado.
+    - **O texto segue a agenda de verdade:** a 1ª resposta do `/calendar/events` decide ("Sua agenda do Google já está
+      conectada", sem o link; senão, o convite "Conectar agenda"; sem resposta em 3 s, o convite).
   - **Conta pendente:** a agenda já fica conectada, pronta para a aprovação. Se o cadastro for **recusado**, a conexão é
     apagada (todos os provedores); a aprovação não mexe nela.
     - **Recusa com o médico ainda na tela do Google:** a volta não grava na conta recusada; a troca que já estava em
@@ -77,6 +83,9 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
     - **Limpeza diária** (`db.cleanup_old_records`): apaga a agenda de toda conta recusada, para a falha da recusa (o 2º
       clique dá 409 e não apaga de novo) e o que escapar.
   - O cadastro por e-mail e senha não muda: a agenda continua em Integrações (e no convite das boas-vindas).
+- **Contas Google cujo `sub` é de outra conta**, mesmo quando o e-mail novo tem conta própria: o aviso de conta ligada a
+  outro e-mail (abaixo), em vez de "Erro de conexão" a cada tentativa. No log do login que falha, só o tipo do erro (o
+  do banco traria o `sub`).
 - A seta volta para a tela inicial.
 - **Contas Google que já existem:** entram como sempre, desde que o Google tenha confirmado o e-mail.
 - **Conta Google cujo e-mail mudou no Google** (o `sub` já é de uma conta do OpenDoctor com o e-mail antigo): nem o
@@ -201,7 +210,8 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - **Aos administradores**, a cada cadastro pendente: só o nome e o CRM/UF do médico. Um a um: o endereço que o
     Resend recusa não impede os outros. O nome digitado não vira link, neste e em todo e-mail (a saudação do código
     também): um espaço de largura zero depois de cada ponto.
-  - **Ao médico**, quando é aprovado (conta liberada) ou recusado.
+  - **Ao médico**, quando é aprovado (conta liberada) ou recusado. Com a chave do CFM, a aprovação diz que o 1º acesso
+    confirma o CPF e o nascimento (`crm_aprovado_confirmar`), em vez de "já pode usar".
   - A falha do e-mail não desfaz a decisão.
 
 ## Contas aprovadas à mão, quando a chave chegar
@@ -237,6 +247,37 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
   - A conta liberada sai da lista. Não há e-mail ao médico: o administrador avisa.
   - A lista aparece também sem a chave do CFM (com o aviso de que, por enquanto, ninguém é pedido a confirmar).
 
+## Entrar e sair (revisto contra o servidor de verdade, 31/10)
+O `scripts/preview_login.py` roda o servidor de verdade contra o banco de testes, com o Google, o CFM e o e-mail simulados
+(veja o docstring); foi com ele que o login e o cadastro foram testados de ponta a ponta. O que mudou:
+- **Bloqueio por senhas erradas** (5 → 15 min, por conta): o aparelho de onde a conta já entrou (cookie `od_dev`,
+  `db.device_known`) entra com a senha certa durante o bloqueio. Quem sabe só o e-mail não tranca o médico; de outro
+  aparelho, ou com a senha errada, a mesma resposta "bloqueado", sem contar mais erro. O aparelho é conferido antes da
+  senha: de um aparelho desconhecido o hash nem é calculado, e o tempo da resposta não diz se a senha confere.
+- **Códigos por e-mail** (nova senha e cadastro): de um IP só, 5 por hora para o mesmo e-mail (`codigo_email`, que só
+  conta o pedido que enviou); o teto do e-mail é 10 por hora (`db.CODE_MAX_PER_HOUR`). Na nova senha, o aparelho
+  conhecido da conta fica fora dos dois (os 30 s continuam). Os 30 s entre envios contam do último código que ainda dá
+  para usar: o usado e o que acabou nas tentativas não seguram o novo. A mensagem do limite não acusa a pessoa.
+- **Chutes no código:** além das 5 por código, as erradas somadas de todos os códigos do e-mail: 25 por hora e 50 por
+  dia (`db.CODE_MAX_WRONG_PER_*`); passou disso, nem o código certo vale ("Muitas tentativas erradas para este
+  e-mail…", `tentativas_email`). Mais códigos não dão mais chutes.
+- **Tela do código:** o código errado esvazia as 6 caixas (redigitar não manda códigos misturados); "Editar" corrige o
+  e-mail; o Reenviar que o servidor segurou diz quanto falta.
+- **Regras da senha** iguais na tela e no servidor (emoji conta 1; "²" não é número; "ª" não é minúscula), e o
+  `senha_fraca` pinta a lista com o que o servidor recusou.
+- **Conta só Google que cria a 1ª senha:** o aviso é "Uma senha foi criada…" (`created`), não "alterada".
+- **Sair** (`GET /auth/logout`): vindo de outro site (`Sec-Fetch-Site` cross-site/same-site) não desloga nem apaga os
+  rascunhos (Clear-Site-Data). O do próprio site apaga a sessão, o `od_greg`, o `od_oauth` e o `od_oauth_cal`.
+- **Destino depois de entrar** (`auth.safe_next` e o `safeNext` da página): o caminho decodificado, sem "." nem "..",
+  sem controle, nunca `/auth/` (o navegador resolve `/./auth/logout` para o `/auth/logout`).
+- **Computador compartilhado:** o que a agenda guarda no aparelho (o prontuário aberto, as conversas do assistente, os
+  rascunhos) é da conta que guardou (`localStorage.od_uid`); outra conta que entra no navegador não o vê (sai do
+  aparelho antes de as telas lerem). O que foi guardado antes desta versão não tem dono: as conversas e o prontuário
+  aberto saem na 1ª abertura; os rascunhos ficam (só abrem no paciente deles, que é de uma conta só). E o servidor não cria pelo nome o paciente cujo id é de outro médico
+  (`db.patient_id_exists`): só o id que não é de ninguém (excluído) cai no nome.
+- **CSP:** de fora, só o arquivo exato do mermaid (nunca o host inteiro do CDN). Todas as páginas declaram o ícone
+  (`/assets/login/logo-simbolo.svg`), e o navegador não pede o `/favicon.ico`, que é privado.
+
 ## O que é guardado (e o que não é)
 - **Guardado em `users` (migração `0017_crm.sql`):**
   - `name`, `crm`, `crm_uf`;
@@ -250,7 +291,7 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
 - **Não guardado:** CPF e data de nascimento. Vão só ao CFM, no corpo do SOAP. Não entram em banco, log, tíquete
   assinado, cookie nem e-mail.
 - **Log do CFM (`app/cfm.py`):** só a operação, o código de erro e o tempo. Nunca a chave, o CPF ou o nascimento.
-- **CRM conferido** (`crm_status = 'verificado'`): não muda em Configurações, porque vai na receita. Contas antigas
+- **CRM conferido** (`crm_status = 'verificado'`): não muda em Configurações, porque vai na receita. Contas antigas O nome também não muda (foi conferido junto, e vai com o CRM na receita).
   editam como sempre.
 - **Especialidade:** não é pedida no cadastro. O médico preenche depois em Configurações.
 

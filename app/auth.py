@@ -8,6 +8,7 @@ A sessão é um cookie assinado por HMAC (SESSION_SECRET); não há estado no se
 O mesmo assinador gera/valida o `state` do OAuth.
 """
 import os
+import re
 import json
 import time
 import hmac
@@ -15,6 +16,7 @@ import base64
 import hashlib
 import secrets
 import datetime
+import unicodedata
 import urllib.parse
 
 import httpx
@@ -65,13 +67,17 @@ def unsign(token: str, max_age: int = None):
 
 # ----- sessão (cookie) -----
 
-def set_session(response, user_id: str, sv: int = 0, cc: bool = False):
+def set_session(response, user_id: str, sv: int = 0, cc: bool = False, bv: bool = False):
     """`sv` = versão da sessão do usuário; ao trocar a senha ela muda e os cookies antigos param de valer.
-    `cc`: esta sessão nasceu pedindo a confirmação do CRM no CFM (conta aprovada à mão; server._crm_bloqueio)."""
+    `cc`: esta sessão nasceu pedindo a confirmação do CRM no CFM (conta aprovada à mão; server._crm_bloqueio).
+    `bv`: a sessão da conta que acabou de nascer, que ainda não viu as boas-vindas da agenda (o /me diz; ela as mostra
+    quando a conta já usa o app e tira a marca). Na sessão, e não no endereço: não vai a outra conta no mesmo navegador."""
     secure = integrations.REDIRECT_BASE.startswith("https://")
     payload = {"k": "sess", "uid": user_id, "sv": int(sv or 0)}
     if cc:
         payload["cc"] = 1
+    if bv:
+        payload["bv"] = 1
     response.set_cookie(
         COOKIE_NAME, sign(payload),
         max_age=SESSION_MAX_AGE, httponly=True, samesite="lax",
@@ -151,6 +157,8 @@ def _session_user(request):
         return None                      # senha trocada depois deste login: sessão encerrada
     if payload.get("cc"):
         user = dict(user, crm_cc=True)   # sessão que ainda confirma o CRM no CFM (não sai em /me)
+    if payload.get("bv"):
+        user = dict(user, boas_vindas=True)   # conta nova que ainda não viu as boas-vindas (o /me diz à parte)
     return user
 
 
@@ -179,26 +187,17 @@ def safe_next(nxt) -> str:
     coisa (URL externa, "//host", barra invertida) vira a agenda — evita redirecionamento aberto."""
     if not isinstance(nxt, str) or not nxt.startswith("/") or nxt.startswith("//") or len(nxt) > 300:
         return HOME
-    if "\\" in nxt or any(c in nxt for c in "\r\n\t ") or nxt.startswith("/auth/"):
-        return HOME
+    if "\\" in nxt or any(ord(c) <= 0x20 or c == "\x7f" for c in nxt) or nxt.startswith("/auth/"):
+        return HOME                       # espaço e controle (o navegador apaga tab e quebra de linha: "/\t/x" vira "//x")
     parts = urllib.parse.urlsplit(nxt)
     if parts.scheme or parts.netloc:
         return HOME
-    if "bemvindo" in parts.query:
-        # a marca de primeiro acesso não viaja no destino: só o servidor a põe (with_welcome), na conta que acabou de
-        # nascer — senão um next velho (o histórico da aba) a levaria para outra conta que entrasse ali
-        q = [kv for kv in parts.query.split("&") if kv.split("=", 1)[0] != "bemvindo"]
-        nxt = urllib.parse.urlunsplit(("", "", parts.path, "&".join(q), parts.fragment))
+    # o navegador resolve "/./auth/logout", "/%2e/auth/…" e "/x/../auth/…" para /auth/: confere o caminho decodificado,
+    # sem segmento "." ou ".." (nenhuma página do site tem)
+    p = urllib.parse.unquote(parts.path)
+    if re.search(r"(^|/)\.\.?(/|$)", p) or p == "/auth" or p.startswith("/auth/") or "\\" in p:
+        return HOME
     return nxt
-
-
-def with_welcome(url: str, agenda: bool = False) -> str:
-    """Marca o primeiro acesso para a agenda mostrar as boas-vindas (`agenda`: o Google Agenda já ficou conectado)."""
-    if not url.split("?")[0].split("#")[0] == HOME:
-        return url
-    base, _, frag = url.partition("#")
-    base += ("&" if "?" in base else "?") + "bemvindo=" + ("agenda" if agenda else "1")
-    return base + ("#" + frag if frag else "")
 
 
 # ----- código de 6 dígitos por e-mail (confirmar cadastro / redefinir senha) -----
@@ -234,7 +233,9 @@ def password_problems(pw) -> list:
     out = []
     if not (8 <= len(pw) <= 128):
         out.append("tamanho")
-    if not (any(c.islower() for c in pw) and any(c.isupper() for c in pw) and sum(c.isdigit() for c in pw) >= 2):
+    # as categorias do \p{Ll} \p{Lu} \p{Nd} da tela: "ª" não é minúscula nem "²" é número (str.islower/isdigit diriam sim)
+    cat = [unicodedata.category(c) for c in pw]
+    if not ("Ll" in cat and "Lu" in cat and cat.count("Nd") >= 2):
         out.append("letras")
     if not any(not c.isalnum() and not c.isspace() for c in pw):
         out.append("especial")

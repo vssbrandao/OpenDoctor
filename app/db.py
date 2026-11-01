@@ -259,7 +259,10 @@ def get_user(user_id):
 CODE_TTL_S = 10 * 60          # o código vale 10 min
 CODE_MAX_ATTEMPTS = 5         # tentativas por código
 CODE_RESEND_S = 30            # intervalo mínimo entre envios para o mesmo e-mail
-CODE_MAX_PER_HOUR = 5         # envios por e-mail por hora
+CODE_MAX_PER_HOUR = 10        # envios por e-mail por hora (de um IP só, 5: server "codigo_email"; o aparelho conhecido
+                              # da conta, na nova senha, fica fora deste teto)
+CODE_MAX_WRONG_PER_HOUR = 25  # tentativas erradas somadas de todos os códigos do e-mail: com mais códigos, não mais chutes
+CODE_MAX_WRONG_PER_DAY = 50
 
 
 def user_by_email(email):
@@ -420,21 +423,25 @@ def set_password(user_id, password_hash, sv=None):
     return _row_to_user(row) if row else None
 
 
-def new_login_code(email, code_hash):
+def new_login_code(email, code_hash, teto=True):
     """Guarda um código novo e invalida os anteriores. Devolve ("ok", 0), ("aguarde", segundos)
-    ou ("limite", 0) quando o e-mail já recebeu códigos demais."""
+    ou ("limite", 0) quando o e-mail já recebeu códigos demais. `teto=False`: o aparelho conhecido da conta (nova senha)
+    não esbarra nos códigos que outra pessoa pediu para este e-mail (os 30 s continuam)."""
     with connection() as conn:
         with conn.cursor() as cur:
             cur.execute("delete from login_codes where created_at < now() - interval '1 day'")
+            # os 30 s contam do último código que ainda dá para usar: o que acabou nas tentativas erradas não segura o
+            # novo (a tela manda pedir outro em "Reenviar código"); o teto da hora conta todos
             cur.execute(
-                """select count(*), extract(epoch from now() - max(created_at))
+                """select count(*), extract(epoch from now() - max(created_at) filter (
+                          where used_at is null and attempts < %s and expires_at > now()))
                    from login_codes where email = %s and created_at > now() - interval '1 hour'""",
-                (email,))
+                (CODE_MAX_ATTEMPTS, email))
             n, since = cur.fetchone()
             if since is not None and since < CODE_RESEND_S:
                 conn.commit()
                 return "aguarde", int(CODE_RESEND_S - since) + 1
-            if n >= CODE_MAX_PER_HOUR:
+            if teto and n >= CODE_MAX_PER_HOUR:
                 conn.commit()
                 return "limite", 0
             cur.execute("update login_codes set used_at = now() where email = %s and used_at is null", (email,))
@@ -473,6 +480,14 @@ def check_login_code(email, code_hash):
             if attempts >= CODE_MAX_ATTEMPTS:
                 conn.commit()
                 return "bloqueado", 0
+            # as erradas de todos os códigos do e-mail somadas: pedir códigos novos não dá mais chutes
+            hora, dia = cur.execute(
+                """select coalesce(sum(attempts) filter (where created_at > now() - interval '1 hour'), 0),
+                          coalesce(sum(attempts), 0)
+                   from login_codes where email = %s and created_at > now() - interval '1 day'""", (email,)).fetchone()
+            if hora >= CODE_MAX_WRONG_PER_HOUR or dia >= CODE_MAX_WRONG_PER_DAY:
+                conn.commit()
+                return "bloqueado_email", 0
             if hmac.compare_digest(h, code_hash):
                 cur.execute("update login_codes set used_at = now() where id = %s", (cid,))
                 conn.commit()
@@ -706,6 +721,22 @@ def get_patient(user_id, patient_id):
         r = conn.execute(f"select {_PCOLS} from patients where user_id = %s and id = %s",
                          (user_id, patient_id)).fetchone()
     return _patient(r) if r else None
+
+
+def device_known(user_id, device):
+    """Esta conta já entrou por este aparelho (`device`: o hash do cookie od_dev)?"""
+    if not device:
+        return False
+    with connection() as conn:
+        return conn.execute("""select exists(select 1 from login_events
+                                             where user_id = %s and event = 'entrou' and device = %s)""",
+                            (user_id, device)).fetchone()[0]
+
+
+def patient_id_exists(patient_id):
+    """O id é de algum paciente (de qualquer médico)? Só sim ou não: separa o paciente excluído do de outro médico."""
+    with connection() as conn:
+        return conn.execute("select 1 from patients where id = %s", (patient_id,)).fetchone() is not None
 
 
 _PATIENT_FIELDS = ("name", "birth_date", "sex", "cpf", "phone", "allergies", "problems", "medications")

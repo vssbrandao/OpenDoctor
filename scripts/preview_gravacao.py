@@ -179,7 +179,8 @@ def _pr(pid: int = 9003, tab: str = "atual", ev: str = "", exemplo: int = 0):
 
 @mock.get("/_preview/pr.js")
 def _pr_js(pid: int = 9003, tab: str = "atual", ev: str = ""):
-    c = {"patient_id": pid, "patient": PATS.get(pid, PATS[9001])["name"], "from": "pacientes"}
+    # com a conta, como o persistCtx da agenda: ela só reabre o prontuário guardado pela conta logada
+    c = {"patient_id": pid, "patient": PATS.get(pid, PATS[9001])["name"], "from": "pacientes", "uid": UID}
     if ev:
         c.update(event_id=ev, title="Retorno", start=NOW.isoformat())
     js = (f"sessionStorage.setItem('od_prontuario_ctx', {json.dumps(json.dumps(c))});"

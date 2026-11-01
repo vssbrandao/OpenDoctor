@@ -379,6 +379,7 @@ def test_google_fora_do_ar_mostra_tente_de_novo():
 def test_consulta_da_maria_de_exemplo_excluida_nao_cai_numa_maria_real(monkeypatch):
     usou = []
     monkeypatch.setattr(db, "get_patient", lambda uid, pid: None)       # o id do evento não existe mais
+    monkeypatch.setattr(db, "patient_id_exists", lambda pid: False)     # excluído: o id não é de ninguém
     monkeypatch.setattr(db, "ensure_patient", lambda uid, name: usou.append(name) or ({"id": 1, "name": name}, False))
     u = {"id": "u1"}
     with pytest.raises(db.AmbiguousPatient):

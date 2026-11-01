@@ -88,6 +88,15 @@ _TEXTS = {
         "notes": ["Se não foi você, crie uma nova senha agora em “Esqueci minha senha”, na tela de login, e "
                   "confira a segurança do seu e-mail."],
     },
+    "created": {
+        "subject": "Uma senha foi criada para sua conta do OpenDoctor",
+        "title": "Uma senha foi criada para sua conta",
+        "lead": "Uma senha foi criada para sua conta no OpenDoctor em {when}. Agora você também entra com e-mail e "
+                "senha, além do Google. Por segurança, as sessões abertas em outros aparelhos foram encerradas.",
+        "button": "Entrar no OpenDoctor",
+        "notes": ["Se não foi você, crie uma nova senha agora em “Esqueci minha senha”, na tela de login, e "
+                  "confira a segurança do seu e-mail."],
+    },
     "device": {
         "subject": "Novo acesso à sua conta do OpenDoctor",
         "title": "Novo acesso à sua conta",
@@ -114,6 +123,15 @@ _TEXTS = {
                 "agenda e o prontuário.",
         "button": "Entrar no OpenDoctor",
         "notes": ["Se você não criou uma conta no OpenDoctor, ignore este e-mail."],
+    },
+    "crm_aprovado_confirmar": {
+        "subject": "Sua conta no OpenDoctor foi aprovada",
+        "title": "Seu cadastro foi aprovado",
+        "lead": "Conferimos seu registro e aprovamos sua conta no OpenDoctor. No primeiro acesso, confirme seu CPF e "
+                "sua data de nascimento: eles são conferidos no CFM e não ficam guardados.",
+        "button": "Entrar no OpenDoctor",
+        "notes": ["Se os dados não conferirem, fale com a equipe do OpenDoctor.",
+                  "Se você não criou uma conta no OpenDoctor, ignore este e-mail."],
     },
     "crm_recusado": {
         "subject": "Não conseguimos confirmar seu CRM",
@@ -250,12 +268,13 @@ def _now_brasilia():
     return now.strftime("%d/%m/%Y às %H:%M") + " (horário de Brasília)"
 
 
-def send_password_changed(to, name=""):
-    """Aviso de senha alterada (sem código)."""
+def send_password_changed(to, name="", criada=False):
+    """Aviso de senha alterada (sem código). `criada`: a conta (só Google) não tinha senha — ganhou um jeito novo de entrar."""
+    purpose = "created" if criada else "changed"
     if debug_codes():
-        print(f"[login-mail:changed] {to}", flush=True)
+        print(f"[login-mail:{purpose}] {to}", flush=True)
         return
-    _send(to, *render("changed", name=name, when=_now_brasilia()))
+    _send(to, *render(purpose, name=name, when=_now_brasilia()))
 
 
 def send_new_device(to, name="", device="", method=""):
@@ -298,9 +317,10 @@ def send_crm_pending(admins, nome, crm, uf):
     _send_all(admins, "crm_pendente", nome=nome, crm=f"{crm}/{uf}")
 
 
-def send_crm_decision(to, name="", aprovado=True):
-    """Ao médico: cadastro aprovado (conta liberada) ou recusado."""
-    purpose = "crm_aprovado" if aprovado else "crm_recusado"
+def send_crm_decision(to, name="", aprovado=True, confirmar=False):
+    """Ao médico: cadastro aprovado (conta liberada) ou recusado. `confirmar`: com a chave do CFM, o 1º acesso da conta
+    aprovada à mão ainda confirma o CPF e o nascimento — o e-mail avisa, em vez de dizer que já pode usar."""
+    purpose = ("crm_aprovado_confirmar" if confirmar else "crm_aprovado") if aprovado else "crm_recusado"
     if debug_codes():
         print(f"[login-mail:{purpose}] {to}", flush=True)
         return

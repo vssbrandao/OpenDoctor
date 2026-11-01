@@ -59,6 +59,8 @@ const EVS = [
 ];
 let RECONECTAR = null;                                     // 'permissao' ou 'expirada': o servidor pede reconectar
 let SEM_AGENDA = false;                                    // a conta não tem agenda conectada
+let BOAS_VINDAS = false;                                   // a sessão é da conta que acabou de nascer (/me boas_vindas)
+let UID = 'u-teste';                                       // a conta logada (outra conta no mesmo navegador: troca)
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
 const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
@@ -68,7 +70,8 @@ let LENTO_PAC = 0;                                         // ms de espera do ca
 const ANTIGOS = [{ id: 900, name: 'Otávio Antigo', notes: 3, last: '2025-01-10T12:00:00+00:00' }];
 const sem = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 function rota(method, path, q, body) {
-  if (path === '/me') return { logged_in: true, scribe: false, user: { id: 'u-teste' } };
+  if (path === '/me') return { logged_in: true, scribe: false, user: { id: UID }, boas_vindas: BOAS_VINDAS };
+  if (path === '/me/boas-vindas' && method === 'POST') { BOAS_VINDAS = false; return { ok: true }; }
   if (path === '/patients' && method === 'GET') return { patients: PACS, more: MAIS };
   if (path === '/patients/search' && method === 'POST') return { patients: ANTIGOS.filter((p) => sem(p.name).includes(sem(body.q).trim())) };
   if (path === '/patients' && method === 'POST') { const p = { id: 40 + PACS.length, name: body.name }; PACS.push(p); return { ok: true, patient: p }; }
@@ -541,32 +544,75 @@ const cenarios = [
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     return 'a segunda tentativa achou o paciente criado e não cadastrou outro';
   }],
-  ['boas-vindas: dizem se a agenda está conectada pela resposta da agenda (a URL é só o palpite)', async () => {
+  ['boas-vindas: vêm da sessão da conta nova, uma vez, e dizem se a agenda está conectada', async () => {
     const CONECTADA = 'Bem-vindo à OpenDoctor! Sua agenda do Google já está conectada.';
     const CONVITE = 'Bem-vindo à OpenDoctor! Conecte sua agenda do Google para ver suas consultas.';
-    const boas = async (q) => {
-      const antes = pedidos.length;
+    const abre = async (q = '') => {
       await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
-      await ate(`document.readyState === 'complete' && !document.getElementById('odWelcome').hidden`, 8000, 'boas-vindas ' + q);
-      await ate(`!!window.__calUltima`, 8000, 'a 1ª resposta da agenda');
-      certo(pedidos.slice(antes).some((r) => r.path === '/calendar/events'), 'a agenda não perguntou');
-      return ev(`({ t: document.querySelector('#odWelcome span').textContent, a: !!document.querySelector('#odWelcome a').offsetParent,
-                  q: location.search })`);
+      await ate(`document.readyState === 'complete' && !!window.__calUltima`, 8000, 'a 1ª resposta da agenda');
+      await sleep(400);
+      return ev(`({ v: !document.getElementById('odWelcome').hidden, t: document.querySelector('#odWelcome span').textContent,
+                  a: !!(document.querySelector('#odWelcome a') || {}).offsetParent, q: location.search })`);
     };
-    let r = await boas('?bemvindo=agenda');                                   // voltou do Google com a agenda
-    certo(r.t === CONECTADA && !r.a && r.q === '', 'agenda: ' + JSON.stringify(r));
+    BOAS_VINDAS = true;
+    let r = await abre();
+    certo(r.v && r.t === CONECTADA && !r.a, 'conta nova com a agenda: ' + JSON.stringify(r));
+    certo(pedidos.some((x) => x.method === 'POST' && x.path === '/me/boas-vindas') && !BOAS_VINDAS, 'a marca não saiu da sessão');
     await foto('boas-vindas-agenda.png');
-    r = await boas('?bemvindo=1');                                            // =1, mas a agenda já está conectada
-    certo(r.t === CONECTADA && !r.a, '=1 com a agenda conectada: ' + JSON.stringify(r));
-    SEM_AGENDA = true;
+    r = await abre();
+    certo(!r.v, 'as boas-vindas voltaram ao recarregar: ' + JSON.stringify(r));
+    r = await abre('?bemvindo=1');                                            // endereço antigo: só sai da URL
+    certo(!r.v && r.q === '', 'o ?bemvindo antigo deu boas-vindas: ' + JSON.stringify(r));
+    SEM_AGENDA = true; BOAS_VINDAS = true;
     try {
-      r = await boas('?bemvindo=1');
+      r = await abre();
       await foto('boas-vindas-1.png');
-      certo(r.t === CONVITE && r.a && r.q === '', '=1: ' + JSON.stringify(r));
-      r = await boas('?bemvindo=agenda');                                     // =agenda numa conta sem agenda (next velho)
-      certo(r.t === CONVITE && r.a, '=agenda sem a agenda: ' + JSON.stringify(r));
-    } finally { SEM_AGENDA = false; }
-    return 'conectada: sem o link (com =agenda ou =1); sem a agenda: Conectar agenda (com =1 ou =agenda)';
+      certo(r.v && r.t === CONVITE && r.a, 'conta nova sem a agenda: ' + JSON.stringify(r));
+    } finally { SEM_AGENDA = false; BOAS_VINDAS = false; }
+    return 'uma vez, pela sessão: conectada sem o link; sem a agenda, Conectar agenda; o ?bemvindo antigo não vale';
+  }],
+  ['outra conta no mesmo navegador: o prontuário aberto e as conversas da anterior não aparecem', async () => {
+    UID = 'u-teste';
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' });
+    await ate(`document.readyState === 'complete' && !!window.__odUid`, 8000, 'agenda da conta 1');
+    await ev(`sessionStorage.setItem('od_prontuario_ctx', JSON.stringify({ patient_id: 7, patient: 'Maria Silva', uid: 'u-teste' }));
+              localStorage.setItem('od_conversas_v1', JSON.stringify([{ id: 'c1', title: 'Pergunta da conta 1', turns: [] }]));
+              localStorage.setItem('od_draft_7_new', JSON.stringify({ s: 'rascunho da conta 1', base: '', at: Date.now() })); 1`);
+    UID = 'u-outra';                                                          // a sessão acabou e outra conta entrou
+    try {
+      const antes = pedidos.length;
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?outra=1#prontuario' });   // página nova (só o # não recarrega)
+      await ate(`document.readyState === 'complete' && window.__odUid === 'u-outra'`, 8000, 'agenda da conta 2');
+      await sleep(800);
+      const r = await ev(`({ pr: document.querySelector('.stage') && document.querySelector('.stage').classList.contains('prontuario'),
+        h: location.hash, ctx: sessionStorage.getItem('od_prontuario_ctx'), conv: localStorage.getItem('od_conversas_v1'),
+        dr: localStorage.getItem('od_draft_7_new'), hist: document.body.innerText.indexOf('Pergunta da conta 1') >= 0,
+        uid: localStorage.getItem('od_uid') })`);
+      certo(!r.pr && r.h === '' && !r.ctx && !r.conv && !r.dr && !r.hist && r.uid === 'u-outra', 'a conta 2 viu a 1: ' + JSON.stringify(r));
+      certo(!pedidos.slice(antes).some((x) => x.path === '/prontuario/list'), 'pediu o prontuário da conta 1');
+      // a mesma conta que volta encontra o que é dela
+      await ev(`sessionStorage.setItem('od_prontuario_ctx', JSON.stringify({ patient_id: 7, patient: 'Maria Silva', uid: 'u-outra' }));
+                localStorage.setItem('od_draft_7_new', JSON.stringify({ s: 'rascunho da conta 2', base: '', at: Date.now() })); 1`);
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' });
+      await ate(`document.readyState === 'complete' && window.__odUid === 'u-outra'`, 8000, 'de volta à conta 2');
+      await sleep(400);
+      certo(await ev(`(JSON.parse(localStorage.getItem('od_draft_7_new') || '{}')).s`) === 'rascunho da conta 2', 'apagou o rascunho da própria conta');
+    } finally {
+      UID = 'u-teste';
+      await ev(`localStorage.removeItem('od_draft_7_new'); sessionStorage.removeItem('od_prontuario_ctx'); 1`);
+    }
+    // guardado antes desta versão (sem dono): as conversas e o prontuário aberto saem; os rascunhos ficam
+    await ev(`localStorage.removeItem('od_uid');
+              localStorage.setItem('od_conversas_v1', JSON.stringify([{ id: 'c9', title: 'Pergunta de antes', turns: [] }]));
+              localStorage.setItem('od_draft_7_new', JSON.stringify({ s: 'rascunho de antes', base: '', at: Date.now() })); 1`);
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?antes=1' });
+    await ate(`document.readyState === 'complete' && localStorage.getItem('od_uid') === 'u-teste'`, 8000, 'agenda depois da versão');
+    await sleep(400);
+    const v = await ev(`({ conv: localStorage.getItem('od_conversas_v1'), dr: (JSON.parse(localStorage.getItem('od_draft_7_new') || '{}')).s,
+                          hist: document.body.innerText.indexOf('Pergunta de antes') >= 0 })`);
+    certo(!v.conv && !v.hist && v.dr === 'rascunho de antes', 'o guardado antes desta versão: ' + JSON.stringify(v));
+    await ev(`localStorage.removeItem('od_draft_7_new'); 1`);
+    return 'a conta 2 não reabre o prontuário nem vê as conversas e os rascunhos da 1; a própria conta mantém os dela; as conversas sem dono saem';
   }],
 ];
 

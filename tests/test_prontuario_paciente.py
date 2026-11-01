@@ -45,6 +45,7 @@ def test_consulta_de_paciente_excluido_abre_pelo_nome(monkeypatch):
     c = _logado(monkeypatch)
     novo = {"id": 12, "name": "João Teste", "key": "joao teste", "example": False}
     monkeypatch.setattr(db, "get_patient", lambda uid, pid: None)                     # o id do evento não existe mais
+    monkeypatch.setattr(db, "patient_id_exists", lambda pid: False)     # excluído: o id não é de ninguém
     monkeypatch.setattr(db, "ensure_patient", lambda uid, name: (dict(novo), True))
     monkeypatch.setattr(db, "list_notes", lambda uid, pid, key: [])
     monkeypatch.setattr(db, "has_example", lambda uid: False)
@@ -195,3 +196,13 @@ def test_pagina_exemplo_e_troca_de_paciente():
     # lista cortada (more): a busca do campo Paciente e a da tela Pacientes perguntam ao servidor, com o nome no corpo
     assert "fetch('/patients/search', { method: 'POST'" in html and "body: JSON.stringify({ q: raw })" in html
     assert "api('POST', '/patients/search', { q: v })" in html and "/patients/search?" not in html
+
+
+
+def test_id_de_paciente_de_outro_medico_nao_cria_o_paciente_pelo_nome(monkeypatch):
+    """Um prontuário que ficou aberto no navegador de outra conta manda o id e o nome do paciente dela: nem o nome vale
+    (senão o paciente do outro nasceria nesta conta). Só o id que não é de ninguém (excluído) cai no nome."""
+    monkeypatch.setattr(db, "get_patient", lambda uid, pid: None)
+    monkeypatch.setattr(db, "patient_id_exists", lambda pid: True)
+    monkeypatch.setattr(db, "ensure_patient", lambda uid, name: pytest.fail("criou o paciente de outro médico"))
+    assert server._note_patient({"id": "u2"}, {"patient_id": 3043, "patient": "Paciente Alfa"}) is None

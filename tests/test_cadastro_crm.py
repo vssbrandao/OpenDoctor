@@ -4,6 +4,7 @@ aprovadas à mão. Nada aqui fala com o CFM, com o banco ou com o Resend (tests/
 import base64
 import collections
 import json
+import re
 
 import httpx
 import pytest
@@ -13,6 +14,10 @@ from app import auth, cfm, db, mailer, server
 from tests.test_login import PW, REG, _client, _Fake, _novo, _user
 
 CHAVE = "AbC12345"
+
+
+def assert_(cond):
+    assert cond
 CPF = "52998224725"
 
 
@@ -235,7 +240,8 @@ def _tentativas(monkeypatch, st):
 
 def _avisos(monkeypatch, fake):
     monkeypatch.setattr(mailer, "send_crm_pending", lambda admins, nome, crm, uf: fake.sent.append(("admins", tuple(admins), nome, crm, uf)))
-    monkeypatch.setattr(mailer, "send_crm_decision", lambda to, name="", aprovado=True: fake.sent.append((to, name, "aprovado" if aprovado else "recusado")))
+    monkeypatch.setattr(mailer, "send_crm_decision", lambda to, name="", aprovado=True, confirmar=False:
+                        fake.sent.append((to, name, ("aprovado_confirmar" if confirmar else "aprovado") if aprovado else "recusado")))
 
 
 def _corpo_do_tiquete(t):
@@ -256,7 +262,7 @@ def test_cadastro_verificado_no_cfm(monkeypatch, capsys):
     assert CPF not in corpo and "529.982" not in corpo and "1985" not in corpo        # o CPF e o nascimento não vão no tíquete
     to, code, purpose = fake.sent[-1]
     r = c.post("/auth/signup/verify", json={"ticket": r.json()["ticket"], "code": code})
-    assert r.json() == {"ok": True, "redirect": auth.HOME + "?bemvindo=1"}             # sem espera: vai para o app
+    assert r.json() == {"ok": True, "redirect": auth.HOME} and _bv(r)                 # sem espera: vai para o app (boas-vindas)
     u = fake.users["novo@clinica.com.br"]
     assert (u["name"], u["crm"], u["crm_uf"], u["crm_status"], u["crm_fonte"]) == ("Ana Lima", "123456", "SP", "verificado", "cfm")
     assert [s for s in fake.sent if s[0] == "admins"] == []                             # verificado: ninguém precisa aprovar
@@ -495,10 +501,27 @@ def _google(monkeypatch, fake, existe=False, verificado=True):
 
 
 def _volta_do_google(c, q=""):
+    """Login pelo Google simulado; numa conta nova, guarda no cliente o `r` da aba (vai no Criar conta)."""
     import urllib.parse as up
     r = c.get("/auth/google/login" + q, follow_redirects=False)
     state = up.parse_qs(up.urlparse(r.headers["location"]).query)["state"][0]
-    return c.get("/auth/google/callback?code=x&state=" + up.quote(state), follow_redirects=False)
+    r = c.get("/auth/google/callback?code=x&state=" + up.quote(state), follow_redirects=False)
+    c.gr = (up.parse_qs(up.urlparse(r.headers.get("location") or "").query).get("r") or [""])[0]
+    return r
+
+
+def _rg(c, **kw):
+    """O Registro desta aba: os dados + o `r` da volta do Google que a abriu."""
+    return dict(REG, r=getattr(c, "gr", ""), **kw)
+
+
+def _sem_r(loc):
+    return re.sub(r"&r=[^&]+", "", loc)
+
+
+def _bv(r):
+    """A sessão que a resposta abriu leva a marca das boas-vindas?"""
+    return (auth.unsign(r.cookies.get(auth.COOKIE_NAME) or "") or {}).get("bv") == 1
 
 
 def test_google_conta_nova_guarda_o_next_e_o_registro_na_url(monkeypatch):
@@ -507,10 +530,10 @@ def test_google_conta_nova_guarda_o_next_e_o_registro_na_url(monkeypatch):
     c = _client(monkeypatch, fake)
     _google(monkeypatch, fake)
     r = _volta_do_google(c, "?next=/opendoctor-configuracoes.html")
-    assert r.headers["location"] == "/opendoctor-login.html?registro=google&next=%2Fopendoctor-configuracoes.html"
+    assert _sem_r(r.headers["location"]) == "/opendoctor-login.html?registro=google&next=%2Fopendoctor-configuracoes.html"
     r = _volta_do_google(c, "?next=https://mal.example/x")                      # destino de fora: fica sem next
-    assert r.headers["location"] == "/opendoctor-login.html?registro=google"
-    assert c.post("/auth/google/registro", json=REG).json()["redirect"] == auth.HOME + "?bemvindo=1"
+    assert _sem_r(r.headers["location"]) == "/opendoctor-login.html?registro=google"
+    assert c.post("/auth/google/registro", json=_rg(c)).json()["redirect"] == auth.HOME
 
 
 def test_google_conta_nova_passa_pelo_registro(monkeypatch):
@@ -519,12 +542,12 @@ def test_google_conta_nova_passa_pelo_registro(monkeypatch):
     _avisos(monkeypatch, fake)
     criadas = _google(monkeypatch, fake)
     r = _volta_do_google(c)
-    assert r.headers["location"] == "/opendoctor-login.html?registro=google"            # nada do perfil na URL
+    assert _sem_r(r.headers["location"]) == "/opendoctor-login.html?registro=google"    # nada do perfil na URL
     assert auth.COOKIE_NAME not in r.cookies and criadas == [] and fake.users == {}     # a conta ainda não existe
     assert r.cookies.get(server.GREG_COOKIE)
     assert TestClient(server.app).post("/auth/google/registro", json=REG).json()["error"] == "sessao_expirada"   # outro navegador
-    assert c.post("/auth/google/registro", json=dict(REG, cpf="123")).json()["error"] == "cpf"
-    r = c.post("/auth/google/registro", json=REG)
+    assert c.post("/auth/google/registro", json=_rg(c, cpf="123")).json()["error"] == "cpf"
+    r = c.post("/auth/google/registro", json=_rg(c))
     assert r.json()["ok"] and r.json()["bloqueio"] == "crm_pendente" and auth.COOKIE_NAME in r.cookies
     assert criadas == [("nova@clinica.com.br", "Ana Lima",
                         {"crm": "123456", "uf": "SP", "status": "pendente", "fonte": None, "situacao": None})]
@@ -537,11 +560,11 @@ def test_google_registro_recusado_e_verificado(monkeypatch):
     criadas = _google(monkeypatch, fake)
     _cfm_simulado(monkeypatch, {"status": "nao_encontrado"})
     _volta_do_google(c)
-    assert c.post("/auth/google/registro", json=REG).json() == {"error": "crm_nao_encontrado"} and criadas == []
+    assert c.post("/auth/google/registro", json=_rg(c)).json() == {"error": "crm_nao_encontrado"} and criadas == []
     _cfm_simulado(monkeypatch)
-    r = c.post("/auth/google/registro", json=REG)
+    r = c.post("/auth/google/registro", json=_rg(c))
     j = r.json()
-    assert j["ok"] and j["redirect"] == auth.HOME + "?bemvindo=1" and "bloqueio" not in j and j["agenda"]
+    assert j["ok"] and j["redirect"] == auth.HOME and "bloqueio" not in j and j["agenda"] and _bv(r)
     assert criadas[0][2]["status"] == "verificado" and fake.users["nova@clinica.com.br"]["crm_fonte"] == "cfm"
 
 
@@ -550,7 +573,7 @@ def test_google_registro_recusado_e_verificado(monkeypatch):
 def _agenda_do_registro(c):
     """Conclui o Registro do Google: a resposta, a URL da permissão da agenda (partes) e os parâmetros dela."""
     import urllib.parse as up
-    r = c.post("/auth/google/registro", json=REG)
+    r = c.post("/auth/google/registro", json=_rg(c))
     url = up.urlparse(r.json()["agenda"])
     return r, url, {k: v[0] for k, v in up.parse_qs(url.query).items()}
 
@@ -615,9 +638,10 @@ def test_agenda_do_cadastro_conectada_volta_ao_app_com_as_boas_vindas(monkeypatc
     _, _, q = _agenda_do_registro(c)
     gravou = _grava_agenda(monkeypatch)
     r = _volta_da_agenda(c, q)
-    assert r.headers["location"] == auth.HOME + "?bemvindo=agenda" and gravou == [("google", "x", "u-nova@clinica.com.br")]
+    assert r.headers["location"] == auth.HOME and gravou == [("google", "x", "u-nova@clinica.com.br")]
     assert _cal_apagado(r)
-    assert _volta_da_agenda(c, q).headers["location"] == auth.HOME + "?bemvindo=1" and len(gravou) == 1   # o nonce já saiu
+    assert _volta_da_agenda(c, q).headers["location"] == auth.HOME and len(gravou) == 1   # o nonce já saiu
+    assert c.get("/me").json()["boas_vindas"] is True                  # as boas-vindas vão na sessão da conta nova
 
 
 def test_agenda_do_cadastro_pendente_conecta_e_vai_para_a_espera(monkeypatch):
@@ -632,7 +656,7 @@ def test_agenda_do_cadastro_pendente_conecta_e_vai_para_a_espera(monkeypatch):
     assert r.json()["bloqueio"] == "crm_pendente"
     gravou = _grava_agenda(monkeypatch)
     r = _volta_da_agenda(c, q)
-    assert r.headers["location"] == "/opendoctor-login.html?next=" + up.quote(auth.HOME + "?bemvindo=agenda", safe="")
+    assert r.headers["location"] == "/opendoctor-login.html?next=" + up.quote(auth.HOME, safe="")
     assert gravou == [("google", "x", "u-nova@clinica.com.br")]
 
 
@@ -661,7 +685,7 @@ def test_agenda_nao_fica_na_conta_recusada_enquanto_o_medico_estava_no_google(mo
         if quando == "antes":
             conta["crm_status"] = "recusado"
         r = _volta_da_agenda(c, q)
-        assert r.headers["location"] == "/opendoctor-login.html?next=" + up.quote(auth.HOME + "?bemvindo=1", safe="")
+        assert r.headers["location"] == "/opendoctor-login.html?next=" + up.quote(auth.HOME, safe="")
         if quando == "antes":
             assert gravou == [] and apagou == []
         else:
@@ -734,10 +758,8 @@ def test_agenda_do_cadastro_sem_a_permissao_segue_sem_ela(monkeypatch, como):
             r = _volta_da_agenda(TestClient(server.app), q)
         else:
             r = _volta_da_agenda(c, q)
-        dest = auth.HOME + "?bemvindo=1"
-        if como == "outro_navegador":                         # sem a conta, sem as boas-vindas (o app manda entrar)
-            dest = auth.HOME
-        elif pendente:
+        dest = auth.HOME
+        if pendente and como != "outro_navegador":            # sem a conta no outro navegador: o app manda entrar
             dest = "/opendoctor-login.html?next=" + up.quote(dest, safe="")
         assert r.headers["location"] == dest, (como, pendente)
         assert gravou == []
@@ -752,13 +774,13 @@ def test_google_registro_nao_entra_em_conta_que_passou_a_existir(monkeypatch):
     criadas = _google(monkeypatch, fake)
     _volta_do_google(c)
     fake.users.update(_user("nova@clinica.com.br"))
-    r = c.post("/auth/google/registro", json=REG)
+    r = c.post("/auth/google/registro", json=_rg(c))
     assert r.json() == {"error": "sessao_expirada"} and auth.COOKIE_NAME not in r.cookies and criadas == []
     assert server.GREG_COOKIE not in c.cookies                                                  # o cookie foi apagado
     assert any(h.startswith(server.GREG_COOKIE + "=") and "Max-Age=0" in h and "Path=/auth/" in h
                for h in r.headers.get_list("set-cookie"))
     fake.users.pop("nova@clinica.com.br")                       # mesmo sem a conta, o cookie apagado não cria nenhuma
-    assert c.post("/auth/google/registro", json=REG).json() == {"error": "sessao_expirada"} and criadas == []
+    assert c.post("/auth/google/registro", json=_rg(c)).json() == {"error": "sessao_expirada"} and criadas == []
 
 
 def test_google_conta_que_ja_existe_entra_como_sempre(monkeypatch):
@@ -791,7 +813,7 @@ def test_google_com_email_que_mudou_nao_abre_o_registro(monkeypatch):
     assert not r.cookies.get(server.GREG_COOKIE) and auth.COOKIE_NAME not in r.cookies and criadas == []
     # o cookie do Registro de antes (a conta Google foi ligada no meio do caminho) não cria conta nem chama o CFM
     c.cookies.set(server.GREG_COOKIE, auth.sign({"k": "greg", "email": "nova@clinica.com.br", "ev": 1, "sub": "g-1"}))
-    assert c.post("/auth/google/registro", json=REG).json() == {"error": "sessao_expirada"}
+    assert c.post("/auth/google/registro", json=_rg(c)).json() == {"error": "sessao_expirada"}
     assert criadas == [] and st["consultas"] == [] and st["tentativas"] == {}
 
 
@@ -808,13 +830,13 @@ def test_google_com_email_nao_verificado_nao_entra_nem_cria_conta(monkeypatch, c
     assert r.headers["location"] == "/opendoctor-login.html?erro=google_nao_verificado&next=%2Fopendoctor-configuracoes.html"
     assert auth.COOKIE_NAME not in r.cookies and not r.cookies.get(server.GREG_COOKIE)
     assert criadas == [] and fake.events == []                               # nem atualizou a conta, nem registrou entrada
-    assert c.post("/auth/google/registro", json=REG).json() == {"error": "sessao_expirada"}
+    assert c.post("/auth/google/registro", json=_rg(c)).json() == {"error": "sessao_expirada"}
     assert c.get("/me").json()["logged_in"] is False
     assert "nova@clinica.com.br" not in capsys.readouterr().out.lower()      # o e-mail não vai para o log
     # o mesmo médico com o e-mail confirmado pelo Google: sem passo a mais (entra, ou vai direto ao Registro)
     _google(monkeypatch, fake, existe=existe, verificado=True)
     r = _volta_do_google(c)
-    assert r.headers["location"] == (auth.HOME if existe else "/opendoctor-login.html?registro=google")
+    assert _sem_r(r.headers["location"]) == (auth.HOME if existe else "/opendoctor-login.html?registro=google")
 
 
 def test_registro_google_so_com_o_cookie_que_tem_a_marca_do_email_confirmado(monkeypatch):
@@ -824,10 +846,10 @@ def test_registro_google_so_com_o_cookie_que_tem_a_marca_do_email_confirmado(mon
     criadas = _google(monkeypatch, fake)
     velho = {"k": "greg", "email": "nova@clinica.com.br", "sub": "g-1", "nx": auth.HOME}
     c.cookies.set(server.GREG_COOKIE, auth.sign(velho))
-    assert c.post("/auth/google/registro", json=REG).json() == {"error": "sessao_expirada"} and criadas == []
+    assert c.post("/auth/google/registro", json=_rg(c)).json() == {"error": "sessao_expirada"} and criadas == []
     c.cookies.clear()
     c.cookies.set(server.GREG_COOKIE, auth.sign(dict(velho, ev=1)))
-    assert c.post("/auth/google/registro", json=REG).json()["ok"] and len(criadas) == 1
+    assert c.post("/auth/google/registro", json=_rg(c)).json()["ok"] and len(criadas) == 1
 
 
 def test_email_verificado_pelo_google():
@@ -1118,7 +1140,9 @@ def test_administrador_aprova_e_recusa(monkeypatch):
     apagou = []
     monkeypatch.setattr(db, "delete_token", lambda uid, prov: apagou.append((uid, prov)))
     monkeypatch.setattr(mailer, "configured", lambda: True)
-    monkeypatch.setattr(mailer, "send_crm_decision", lambda to, name="", aprovado=True: enviados.append((to, aprovado)))
+    monkeypatch.setattr(mailer, "send_crm_decision",
+                        lambda to, name="", aprovado=True, confirmar=False: enviados.append((to, aprovado)) or
+                        assert_(not confirmar))      # sem a chave do CFM: a aprovação não pede a confirmação do CPF
     j = c.get("/admin/cadastros").json()
     assert j == {"pendentes": lista, "pendentes_mais": False, "manuais": [], "manuais_mais": False, "dispensa": True,
                  "cfm": False, "limite_falhas": server.CONF_FALHAS[0]}
@@ -1383,7 +1407,8 @@ def test_me_com_o_banco_fora_do_ar_nao_diz_que_a_sessao_acabou(monkeypatch):
     r = c.get("/me")
     assert r.status_code == 503 and r.json() == {"error": "indisponivel"}
     assert c.get("/cid10?q=diabetes").status_code == 401
-    assert TestClient(server.app).get("/me").json() == {"logged_in": False, "user": None, "scribe": False, "bloqueio": None}
+    assert TestClient(server.app).get("/me").json() == {"logged_in": False, "user": None, "scribe": False, "bloqueio": None,
+                                                        "boas_vindas": False}
 
 
 # ===================== nascimento sem preenchimento automático =====================
@@ -1396,3 +1421,90 @@ def test_nascimento_sem_preenchimento_automatico():
     for campo in ("rNasc", "cNasc"):                                    # Registro profissional e "Confirme seu registro"
         assert 'autocomplete="off"' in re.search(rf'<input[^>]*id="{campo}"[^>]*>', html).group(0), campo
     assert 'autocomplete="bday' not in html
+
+
+# ----- correções do teste contra o servidor de verdade (31/10) -----
+
+def test_registro_do_google_de_outra_aba_nao_cria_a_conta_de_outro_email(monkeypatch):
+    """Duas voltas do Google no mesmo navegador (duas abas, dois e-mails): o cookie é um só (a última volta). O Registro
+    da 1ª aba não cria a conta do 2º e-mail com os dados digitados nela; o da 2ª aba cria."""
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    criadas = _google(monkeypatch, fake)
+    _volta_do_google(c)
+    aba1 = c.gr
+    monkeypatch.setattr(auth, "exchange_login", lambda code: {"email": "outra@clinica.com.br", "name": "Outra", "sub": "g-2",
+                                                             "picture": None, "email_verified": True})
+    _volta_do_google(c)
+    assert c.gr and c.gr != aba1
+    r = c.post("/auth/google/registro", json=dict(REG, r=aba1))
+    assert r.json() == {"error": "google_outra_aba"} and criadas == [] and auth.COOKIE_NAME not in r.cookies
+    # a aba velha desiste (como a página faz no google_outra_aba e na seta): o Registro da outra aba fica
+    r = c.post("/auth/google/registro/cancelar", json={"r": aba1})
+    assert r.json() == {"ok": True} and not any(h.startswith(server.GREG_COOKIE + "=") for h in r.headers.get_list("set-cookie"))
+    r = c.post("/auth/google/registro/cancelar", content="r=x", headers={"content-type": "application/x-www-form-urlencoded"})
+    assert not any(h.startswith(server.GREG_COOKIE + "=") for h in r.headers.get_list("set-cookie"))   # formulário de fora
+    assert c.post("/auth/google/registro", json=_rg(c)).json()["ok"] and criadas[0][0] == "outra@clinica.com.br"
+
+
+def test_seta_que_desiste_do_google_apaga_o_perfil_guardado(monkeypatch):
+    """Depois da seta (ou do Sair), o Registro não volta: num F5 da entrada antiga, o Criar conta não cria a conta deste
+    e-mail com os dados de outra pessoa."""
+    fake = _Fake()
+    c = _client(monkeypatch, fake)
+    criadas = _google(monkeypatch, fake)
+    _volta_do_google(c)
+    r = c.post("/auth/google/registro/cancelar", json={"r": c.gr})
+    assert r.json() == {"ok": True} and any(h.startswith(server.GREG_COOKIE + "=") and "Max-Age=0" in h and "Path=/auth/" in h
+                                            for h in r.headers.get_list("set-cookie"))
+    assert c.post("/auth/google/registro", json=_rg(c)).json() == {"error": "sessao_expirada"} and criadas == []
+    _volta_do_google(c)                                                                 # o Sair também apaga
+    c.get("/auth/logout", follow_redirects=False)
+    assert c.post("/auth/google/registro", json=_rg(c)).json() == {"error": "sessao_expirada"} and criadas == []
+
+
+def test_conta_google_de_outra_conta_com_email_que_tem_conta(monkeypatch, capsys):
+    """O e-mail tem conta própria, mas esta conta Google (sub) já é de outra conta: o aviso de conta ligada a outro
+    e-mail, em vez de "Erro de conexão" a cada tentativa; e o id da conta Google não vai para o log."""
+    fake = _Fake(dict(_user("nova@clinica.com.br"), **_user("antiga@clinica.com.br", pw=None, google_sub="g-1")))
+    c = _client(monkeypatch, fake)
+    _google(monkeypatch, fake)
+    monkeypatch.setattr(db, "upsert_user", lambda *a, **k: pytest.fail("pôs o sub de outra conta nesta"))
+    r = _volta_do_google(c)
+    assert r.headers["location"].startswith("/opendoctor-login.html?erro=google_outro_email")
+    assert auth.COOKIE_NAME not in r.cookies and "g-1" not in capsys.readouterr().out
+
+
+def test_nome_conferido_nao_muda_em_configuracoes(monkeypatch):
+    """O nome foi conferido junto com o CRM (vai com ele na receita): na conta conferida não muda em Configurações; na
+    conta antiga, sim."""
+    medico = {"name": "Ana Maria Lima", "crm": "123456", "crm_uf": "SP", "especialidade": None, "consultorio_endereco": None,
+              "consultorio_telefone": None, "receita_papel": None}
+    monkeypatch.setattr(db, "get_medico", lambda uid: dict(medico))
+    monkeypatch.setattr(db, "update_medico", lambda uid, campos: medico.update(campos) or dict(medico))
+    c = _logado(monkeypatch, crm_status="verificado", crm_fonte="manual")
+    r = c.patch("/me/medico", json={"name": "José Carlos Pereira"})
+    assert r.status_code == 400 and medico["name"] == "Ana Maria Lima"
+    assert c.patch("/me/medico", json={"name": "  Ana  Maria Lima ", "especialidade": "Clínica"}).status_code == 200
+    c = _logado(monkeypatch)
+    assert c.patch("/me/medico", json={"name": "Ana M. Lima"}).status_code == 200 and medico["name"] == "Ana M. Lima"
+    html = open(server.os.path.join(server.WEB_DIR, "opendoctor-configuracoes.html"), encoding="utf-8").read()
+    assert "f.crm.disabled = f.crm_uf.disabled = f.name.disabled = true" in html
+
+
+def test_aprovacao_com_a_chave_do_cfm_avisa_da_confirmacao(monkeypatch):
+    """Com a chave, a conta aprovada à mão ainda confirma o CPF no 1º acesso: o e-mail avisa, em vez de "já pode usar"."""
+    monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
+    c = _logado(monkeypatch, email="dono@opendoctor.app")
+    monkeypatch.setattr(db, "decide_crm", lambda uid, ap: {"id": uid, "email": "ana@clinica.com.br", "name": "Ana Lima"})
+    monkeypatch.setattr(db, "delete_token", lambda uid, prov: None)
+    monkeypatch.setattr(mailer, "configured", lambda: True)
+    enviados = []
+    monkeypatch.setattr(mailer, "send_crm_decision",
+                        lambda to, name="", aprovado=True, confirmar=False: enviados.append((aprovado, confirmar)))
+    monkeypatch.setattr(cfm, "configured", lambda: True)
+    assert c.post("/admin/cadastros/aprovar", json={"id": UID}).json()["ok"]
+    assert c.post("/admin/cadastros/recusar", json={"id": UID}).json()["ok"]
+    assert enviados == [(True, True), (False, False)]
+    assunto, corpo_html, texto = mailer.render("crm_aprovado_confirmar")
+    assert "aprovada" in assunto and "CPF" in texto and "já pode" not in texto.lower()

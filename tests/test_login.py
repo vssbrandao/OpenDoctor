@@ -1,6 +1,7 @@
 """Tela de login: e-mail vira login_hint do Google (sem banco, sem rede)."""
 import asyncio
 import json
+import os
 import urllib.parse
 
 import pytest
@@ -59,14 +60,11 @@ def test_safe_next():
     for bad in ("https://evil.com", "//evil.com", "/\\evil.com", "javascript:alert(1)", "", None,
                 "/auth/logout", "/a b", "/" + "x" * 400):
         assert auth.safe_next(bad) == auth.HOME
-    assert auth.with_welcome(auth.HOME) == auth.HOME + "?bemvindo=1"
-    assert auth.with_welcome(auth.HOME + "#pacientes") == auth.HOME + "?bemvindo=1#pacientes"
-    assert auth.with_welcome(auth.HOME + "#pacientes", agenda=True) == auth.HOME + "?bemvindo=agenda#pacientes"
-    # a marca de primeiro acesso não viaja no next (um next velho da aba a levaria para outra conta); o resto fica
-    assert auth.safe_next(auth.HOME + "?bemvindo=agenda") == auth.HOME
-    assert auth.safe_next("/opendoctor-agenda.html?a=1&bemvindo=1&b=2#pacientes") == "/opendoctor-agenda.html?a=1&b=2#pacientes"
-    assert auth.with_welcome(auth.safe_next(auth.HOME + "?bemvindo=agenda")) == auth.HOME + "?bemvindo=1"
-    assert auth.with_welcome("/opendoctor-integracao.html") == "/opendoctor-integracao.html"
+    # o navegador resolve "." e ".." (e o que vem codificado): /./auth/logout é o /auth/logout
+    for bad in ("/./auth/logout", "/%2e/auth/logout", "/x/../auth/logout", "/%61uth/logout", "/auth", "/..//evil.example",
+                "/a/%2e%2e/auth/logout", "/%5cevil.example"):
+        assert auth.safe_next(bad) == auth.HOME, bad
+    assert auth.safe_next("/opendoctor-agenda.html?a=1&b=..#x") == "/opendoctor-agenda.html?a=1&b=..#x"   # só o caminho
 
 
 def test_next_da_pagina_de_login_so_fica_no_site():
@@ -81,17 +79,19 @@ def test_next_da_pagina_de_login_so_fica_no_site():
         pytest.skip("sem node")
     html = open(os.path.join(os.path.dirname(__file__), "..", "web", "opendoctor-login.html"), encoding="utf-8").read()
     fn = re.search(r"function safeNext\(v\) \{.*?\n      \}", html, re.S).group(0)
-    # "/..//x" fica como veio: no navegador é https://opendoctor.app//x (normalizado viraria "//x", outro site)
-    bons = ["/opendoctor-agenda.html#pacientes", "/opendoctor-prontuario.html?x=1", "/..//evil.example"]
+    bons = ["/opendoctor-agenda.html#pacientes", "/opendoctor-prontuario.html?x=1", "/opendoctor-agenda.html?a=..#x"]
     ruins = ["/\t/evil.example", "/\n/evil.example", "/\r/evil.example", "/ /evil.example", "/\x00/evil.example",
              "//evil.example", "/\\evil.example", "https://evil.example", "javascript:alert(1)", "", "/auth/logout",
-             "/" + "x" * 400]
+             "/" + "x" * 400, "/..//evil.example", "/./auth/logout", "/%2e/auth/logout", "/x/../auth/logout",
+             "/%61uth/logout", "/%5cevil.example"]
     js = (fn + "; var location = { origin: 'https://opendoctor.app' };"
           + "process.stdout.write(JSON.stringify(JSON.parse(process.argv[1]).map(safeNext)));")
     out = subprocess.run([node, "-e", js, json.dumps(bons + ruins)], capture_output=True, text=True, check=True).stdout
     assert json.loads(out) == bons + [""] * len(ruins)
     for v in bons:                                       # o servidor aceita o mesmo
         assert auth.safe_next(v) == v
+    for v in ruins:                                      # e recusa o mesmo
+        assert auth.safe_next(v) == auth.HOME, v
 
 
 def test_codigo_por_finalidade():
@@ -173,8 +173,9 @@ def _client(monkeypatch, fake, configured=True):
     server._RL.clear()
     monkeypatch.setattr(mailer, "configured", lambda: configured)
     monkeypatch.setattr(mailer, "send_code", lambda to, code, purpose, name="": fake.sent.append((to, code, purpose)))
-    monkeypatch.setattr(mailer, "send_password_changed", lambda to, name="": fake.sent.append((to, "", "changed")))
-    monkeypatch.setattr(db, "new_login_code", lambda e, h: (fake.codes.__setitem__(e, h), ("ok", 0))[1])
+    monkeypatch.setattr(mailer, "send_password_changed",
+                        lambda to, name="", criada=False: fake.sent.append((to, "", "created" if criada else "changed")))
+    monkeypatch.setattr(db, "new_login_code", lambda e, h, teto=True: (fake.codes.__setitem__(e, h), ("ok", 0))[1])
     monkeypatch.setattr(db, "discard_login_code", lambda e: fake.codes.pop(e, None))
 
     def check(e, h):
@@ -273,7 +274,8 @@ def test_cadastro_exige_codigo(monkeypatch):
     assert c.post("/auth/signup/verify", json={"ticket": ticket, "code": "000000"}).json()["error"] == "codigo_incorreto"
     assert c.post("/auth/signup/verify", json={"ticket": "x.y", "code": code}).json()["error"] == "sessao_expirada"
     r = c.post("/auth/signup/verify", json={"ticket": ticket, "code": code})
-    assert r.json()["redirect"] == auth.HOME + "?bemvindo=1" and auth.COOKIE_NAME in r.cookies
+    assert r.json()["redirect"] == auth.HOME and auth.COOKIE_NAME in r.cookies
+    assert auth.unsign(r.cookies[auth.COOKIE_NAME])["bv"] == 1           # a conta nova: as boas-vindas vão na sessão
     u = fake.users["novo@clinica.com.br"]
     assert u["name"] == "Dra. Nova Lima" and auth.check_password(PW, u["hash"])
     # o código de cadastro não serve para redefinir senha
@@ -363,7 +365,7 @@ def test_reenvio_dentro_de_30s_nao_finge_envio(monkeypatch):
     c = _client(monkeypatch, fake)
     j = c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}).json()
     assert j == {"ok": True, "resend_in": 30, "sent": True}
-    monkeypatch.setattr(db, "new_login_code", lambda e, h: ("aguarde", 12))
+    monkeypatch.setattr(db, "new_login_code", lambda e, h, teto=True: ("aguarde", 12))
     n = len(fake.sent)
     assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}).json() == {"ok": True, "resend_in": 12, "sent": False}
     r = c.post("/auth/signup/start", json=_novo()).json()
@@ -440,6 +442,7 @@ def test_login_google_amarrado_ao_navegador(monkeypatch):
     monkeypatch.setattr(auth, "exchange_login", lambda code: {"email": "ana@clinica.com.br", "name": "Ana", "sub": "1",
                                                              "email_verified": True})
     monkeypatch.setattr(db, "user_by_email", lambda e: {"id": "u1"})
+    monkeypatch.setattr(db, "user_by_google_sub", lambda s: None)
     monkeypatch.setattr(db, "upsert_user", lambda *a, **k: {"id": "u1", "email": "ana@clinica.com.br", "sv": 0})
     fake = _Fake()
     _fake_audit(monkeypatch, fake)
@@ -567,3 +570,164 @@ def test_paginas_do_app_exigem_login(monkeypatch):
     r = c.get("/opendoctor-agenda.html", follow_redirects=False)
     assert r.status_code == 200 and r.headers["cache-control"] == "no-store" and "<html" in r.text.lower()
     assert c.get("/README.md").status_code == 404                     # notas internas: nem logado
+
+
+# ----- correções do teste contra o servidor de verdade (31/10) -----
+
+def test_regras_da_senha_iguais_na_tela_e_no_servidor():
+    """A lista de requisitos da tela é o que o servidor aceita: emoji conta 1 caractere; "²" não é número; "ª" não é
+    minúscula (as categorias \\p{Nd} \\p{Ll} \\p{Lu} do JS)."""
+    import os
+    import re
+    import shutil
+    import subprocess
+    casos = ["Ab12!😀😀", "Abcdefg²²!", "ªBCDEFG12!", "Abcdef12!", "ABCDEF12!", "Ab1!" * 3, "Abcdefgh12", "Ç" * 30 + "ab12!"]
+    assert auth.password_problems("Ab12!😀😀") == ["tamanho"]          # 7 caracteres
+    assert "letras" in auth.password_problems("Abcdefg²²!") and "letras" in auth.password_problems("ªBCDEFG12!")
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("sem node")
+    html = open(os.path.join(os.path.dirname(__file__), "..", "web", "opendoctor-login.html"), encoding="utf-8").read()
+    fn = re.search(r"function problems\(pw\) \{.*?\n      \}", html, re.S).group(0)
+    js = fn + "; process.stdout.write(JSON.stringify(JSON.parse(process.argv[1]).map(problems)));"
+    out = subprocess.run([node, "-e", js, json.dumps(casos)], capture_output=True, text=True, check=True).stdout
+    assert json.loads(out) == [auth.password_problems(p) for p in casos]
+
+
+def test_bloqueio_deixa_entrar_o_aparelho_conhecido(monkeypatch):
+    """Quem só sabe o e-mail tranca a conta com 5 senhas erradas, mas não o médico: do aparelho de onde a conta já entrou,
+    a senha certa entra. De outro aparelho (ou com a senha errada), o bloqueio de sempre, sem contar mais erro."""
+    from app import db
+    fake = _Fake(_user("ana@clinica.com.br", locked_s=600))
+    c = _client(monkeypatch, fake)
+    conhecido = auth.device_hash("aparelho-da-ana-0123456789")
+    monkeypatch.setattr(db, "device_known", lambda uid, dev: uid == "u-ana@clinica.com.br" and dev == conhecido)
+    erros = []
+    monkeypatch.setattr(db, "login_failed", lambda uid: erros.append(uid) or (0, 900))
+    corpo = {"email": "ana@clinica.com.br", "password": PW}
+    r = c.post("/auth/password/login", json=corpo)
+    assert r.status_code == 429 and r.json()["error"] == "bloqueado"                  # aparelho que nunca entrou
+    c.cookies.set(auth.DEVICE_COOKIE, "aparelho-da-ana-0123456789")
+    r = c.post("/auth/password/login", json=dict(corpo, password="errada"))
+    assert r.status_code == 429 and r.json()["error"] == "bloqueado" and erros == []  # senha errada: nem conta
+    r = c.post("/auth/password/login", json=corpo)
+    assert r.json()["ok"] and auth.COOKIE_NAME in r.cookies                            # o médico, do aparelho dele
+    c.cookies.clear()                                                                  # outro navegador
+    c.cookies.set(auth.DEVICE_COOKIE, "outro-aparelho-0123456789xx")
+    conferiu = []
+    real = auth.check_password
+    monkeypatch.setattr(auth, "check_password", lambda pw, h: conferiu.append(pw) or real(pw, h))
+    for senha in (PW, "errada"):                    # de outro aparelho, nem o hash: o tempo não diz se a senha confere
+        assert c.post("/auth/password/login", json=dict(corpo, password=senha)).json()["error"] == "bloqueado"
+    assert conferiu == []
+
+
+def test_codigos_da_nova_senha_por_ip_nao_gastam_os_do_dono(monkeypatch):
+    """De um IP só, 5 pedidos de código para o mesmo e-mail por hora: quem sabe só o e-mail não esgota sozinho os
+    códigos da hora, e o dono, de outro lugar, ainda pede o dele."""
+    fake = _Fake(_user("ana@clinica.com.br"))
+    c = _client(monkeypatch, fake)
+    de = lambda ip: {"cf-connecting-ip": ip}                                           # noqa: E731
+    for _ in range(5):
+        assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}, headers=de("203.0.113.9")).json()["ok"]
+    r = c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}, headers=de("203.0.113.9"))
+    assert r.status_code == 429 and r.json()["error"] == "limite"
+    assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}, headers=de("198.51.100.7")).json()["ok"]
+    assert c.post("/auth/password/forgot", json={"email": "bia@clinica.com.br"}, headers=de("203.0.113.9")).json()["ok"]
+
+
+def test_conta_google_que_cria_a_primeira_senha_recebe_o_aviso_de_criada(monkeypatch):
+    from app import db
+    fake = _Fake(_user("gabi@clinica.com.br", pw=None))
+    c = _client(monkeypatch, fake)
+    monkeypatch.setattr(db, "get_user", lambda uid: next((u for u in fake.users.values() if u["id"] == uid), None))
+    c.post("/auth/password/forgot", json={"email": "gabi@clinica.com.br"})
+    tk = c.post("/auth/password/reset/verify", json={"email": "gabi@clinica.com.br", "code": fake.sent[-1][1]}).json()["ticket"]
+    assert c.post("/auth/password/reset", json={"ticket": tk, "password": "Nova!12ab"}).json()["ok"]
+    assert fake.sent[-1] == ("gabi@clinica.com.br", "", "created")
+    from app import mailer
+    assert "foi criada" in mailer.render("created", when="31/10/2026 às 22:00")[0]
+
+
+def test_sair_vindo_de_outro_site_nao_desloga_nem_apaga(monkeypatch):
+    """Um link (ou imagem) de outro site para /auth/logout não tira o médico do app nem apaga os rascunhos deste
+    navegador (Clear-Site-Data). O Sair do próprio site (ou digitado) continua saindo, e leva junto o cadastro pelo
+    Google que ficou no meio e as conexões começadas."""
+    from fastapi.testclient import TestClient
+    from app import server
+    c = TestClient(server.app)
+    for site in ("cross-site", "same-site"):
+        r = c.get("/auth/logout", headers={"sec-fetch-site": site}, follow_redirects=False)
+        assert r.status_code in (302, 307) and "clear-site-data" not in r.headers and not r.headers.get_list("set-cookie")
+    for site in ("same-origin", "none", None):
+        r = c.get("/auth/logout", headers={"sec-fetch-site": site} if site else {}, follow_redirects=False)
+        apaga = " ".join(r.headers.get_list("set-cookie"))
+        assert r.headers["clear-site-data"] == '"storage"'
+        for nome in (auth.COOKIE_NAME, server.GREG_COOKIE, auth.OAUTH_COOKIE, auth.CAL_COOKIE):
+            assert nome + "=" in apaga, nome
+
+
+def test_boas_vindas_vao_na_sessao_da_conta_nova(monkeypatch):
+    """A sessão da conta que acabou de nascer leva a marca; o /me diz (só com a conta já usando o app) e a agenda a tira
+    ao mostrar. Outra conta neste navegador (outra sessão) não a recebe."""
+    from fastapi.testclient import TestClient
+    from app import db, server
+    contas = {"u1": {"id": "u1", "email": "ana@clinica.com.br", "name": "Ana", "sv": 0, "crm_status": "verificado"},
+              "u2": {"id": "u2", "email": "bia@clinica.com.br", "name": "Bia", "sv": 0, "crm_status": "pendente"}}
+    monkeypatch.setattr(db, "get_user", lambda uid: dict(contas[uid]) if uid in contas else None)
+    c = TestClient(server.app)
+    c.cookies.clear()                       # o cookie que a resposta deixou sai: só o deste passo
+    c.cookies.set(auth.COOKIE_NAME, auth.sign({"k": "sess", "uid": "u1", "sv": 0, "bv": 1}))
+    assert c.get("/me").json()["boas_vindas"] is True and "boas_vindas" not in c.get("/me").json()["user"]
+    r = c.post("/me/boas-vindas", json={})
+    assert r.json() == {"ok": True} and "bv" not in auth.unsign(r.cookies[auth.COOKIE_NAME])
+    assert c.get("/me").json()["boas_vindas"] is False                               # não voltam ao recarregar
+    c.cookies.clear()                       # o cookie que a resposta deixou sai: só o deste passo
+    c.cookies.set(auth.COOKIE_NAME, auth.sign({"k": "sess", "uid": "u1", "sv": 0}))
+    assert c.get("/me").json()["boas_vindas"] is False                               # outra sessão: sem a marca
+    c.cookies.clear()                       # o cookie que a resposta deixou sai: só o deste passo
+    c.cookies.set(auth.COOKIE_NAME, auth.sign({"k": "sess", "uid": "u2", "sv": 0, "bv": 1}))
+    assert c.get("/me").json()["boas_vindas"] is False                               # pendente: só quando liberar
+    assert c.post("/me/boas-vindas", json={}).status_code == 403                     # e a marca fica para depois
+
+
+def test_limites_dos_codigos_contam_so_o_que_enviou_e_poupam_o_aparelho_conhecido(monkeypatch):
+    """O pedido que não envia (o código de agora há pouco ainda vale) não gasta os 5 por hora deste IP; o aparelho de onde
+    a conta já entrou fica fora dos limites do e-mail (e do teto do banco); o cadastro também tem os 5 por e-mail + IP."""
+    from app import db
+    fake = _Fake(_user("ana@clinica.com.br"))
+    c = _client(monkeypatch, fake)
+    ip = {"cf-connecting-ip": "203.0.113.20"}
+    tetos = []
+    monkeypatch.setattr(db, "new_login_code", lambda e, h, teto=True: tetos.append(teto) or ("aguarde", 20))
+    for _ in range(8):                                                     # nenhum envia: nenhum conta
+        assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}, headers=ip).json()["sent"] is False
+    server._RL.pop(("login_code", server._rl_ip("203.0.113.20")), None)   # (o limite geral do IP é outro balde)
+    monkeypatch.setattr(db, "new_login_code", lambda e, h, teto=True: tetos.append(teto) or ("ok", 0))
+    for _ in range(5):
+        assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}, headers=ip).json()["sent"] is True
+    assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}, headers=ip).json()["error"] == "limite"
+    assert all(tetos)
+    monkeypatch.setattr(db, "device_known", lambda uid, dev: dev == auth.device_hash("aparelho-da-ana-0123456789"))
+    c.cookies.set(auth.DEVICE_COOKIE, "aparelho-da-ana-0123456789")
+    server._RL.pop(("login_code", server._rl_ip("203.0.113.20")), None)   # (o limite geral do IP é outro balde)
+    assert c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}, headers=ip).json()["sent"] is True
+    assert tetos[-1] is False                                              # o aparelho conhecido: fora do teto do e-mail
+    # cadastro: o mesmo balde
+    c = _client(monkeypatch, _Fake())
+    novo = {"cf-connecting-ip": "203.0.113.30"}
+    for _ in range(5):
+        assert c.post("/auth/signup/start", json=_novo(), headers=novo).json()["ok"]
+    assert c.post("/auth/signup/start", json=_novo(), headers=novo).json()["error"] == "limite"
+    assert c.post("/auth/signup/start", json=_novo(), headers={"cf-connecting-ip": "198.51.100.30"}).json()["ok"]
+
+
+def test_erradas_demais_no_email_dizem_que_um_codigo_novo_nao_ajuda(monkeypatch):
+    from app import db
+    fake = _Fake(_user("ana@clinica.com.br"))
+    c = _client(monkeypatch, fake)
+    monkeypatch.setattr(db, "check_login_code", lambda e, h: ("bloqueado_email", 0))
+    r = c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": "123456"})
+    assert r.status_code == 429 and r.json()["error"] == "tentativas_email"
+    html = open(os.path.join(os.path.dirname(__file__), "..", "web", "opendoctor-login.html"), encoding="utf-8").read()
+    assert "e === 'tentativas_email' ? 'Muitas tentativas erradas para este e-mail." in html

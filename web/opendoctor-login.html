@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="/assets/login/logo-simbolo.svg">
   <title>OpenDoctor | Entrar</title>
   <style>
     @font-face{font-family:"Helvetica Now Display";font-weight:400;font-style:normal;font-display:swap;
@@ -332,9 +333,14 @@
       var params = new URLSearchParams(location.search);
       // só páginas deste site (a mesma regra de auth.safe_next): o navegador apaga tab e quebra de linha, então
       // "/\t/site.com" viraria "//site.com" — recusa espaço, controle e barra invertida e confere a origem
+      // o caminho conferido é o decodificado e sem "." nem "..": o navegador resolve "/./auth/logout" para /auth/
       function safeNext(v) {
-        if (!v || v.length > 300 || !/^\/(?!\/)/.test(v) || /[\x00-\x20\x7f\\]/.test(v) || v.indexOf('/auth/') === 0) return '';
-        try { return new URL(v, location.origin).origin === location.origin ? v : ''; } catch (e) { return ''; }
+        if (!v || v.length > 300 || !/^\/(?!\/)/.test(v) || /[\x00-\x20\x7f\\]/.test(v)) return '';
+        try {
+          var p = decodeURIComponent(v.split(/[?#]/)[0]);
+          if (/^\/auth(\/|$)/.test(p) || /(^|\/)\.\.?(\/|$)/.test(p) || p.indexOf('\\') >= 0) return '';
+          return new URL(v, location.origin).origin === location.origin ? v : '';
+        } catch (e) { return ''; }
       }
       var nextUrl = safeNext(params.get('next') || '');
       // codeMode: 'signup' (confirmar cadastro) | 'reset' (redefinir/criar senha); firstPw: conta Google criando a 1ª senha
@@ -379,7 +385,10 @@
         if (parts[2]) el.appendChild(document.createTextNode(parts[2]));
         if (parts[3]) {
           var a = document.createElement('button'); a.type = 'button'; a.className = 'link'; a.textContent = 'Editar';
-          a.addEventListener('click', function () { show('email', true); $('email').focus(); $('email').select(); });
+          a.addEventListener('click', function () {
+            if (etapa() === 'code') { st.ticket = ''; st.resetTicket = ''; cooldown(0); }   // o código foi para o e-mail errado
+            show('email', true); $('email').focus(); $('email').select();
+          });
           el.appendChild(document.createTextNode(' ')); el.appendChild(a);
         }
       }
@@ -396,7 +405,7 @@
         var e = st.email;
         sub(null);
         if (step === 'signup') sub(['Não encontramos uma conta com ', e, '. Crie a sua.', true]);
-        if (step === 'code') sub(['Enviamos um código para seu e-mail ', e]);
+        if (step === 'code') sub(['Enviamos um código para seu e-mail ', e, '', true]);   // e-mail errado: o Editar corrige
         if (step === 'reset') sub(['Para a conta ', e, '.']);
         if (step === 'google') sub(['A conta ', e, ' foi criada com o Google.', true]);
         if (step === 'erro') sub(['Houve um problema ao conectar sua conta do Google. Tente entrar novamente.']);
@@ -428,7 +437,7 @@
       });
       // a URL sem o registro=google (desistiu do Google, o tempo acabou ou a conta já existe); o next fica
       function semRegistro() {
-        params.delete('registro');
+        params.delete('registro'); params.delete('r');
         return location.pathname + (params.toString() ? '?' + params.toString() : '');
       }
       // conta criada (ou login concluído): o CPF, o nascimento, a senha e o tíquete saem da página
@@ -540,7 +549,7 @@
       // volta do Google com um e-mail sem conta: Registro profissional antes de a conta existir
       // (o registro=google e o next ficam na URL até a conta existir: recarregar a página volta para cá)
       if (params.get('registro') === 'google') {
-        st.google = true;
+        st.google = true; st.gr = params.get('r') || '';   // a volta do Google desta aba (o servidor confere no Criar conta)
         history.replaceState({ step: 'registro' }, '');
         show('registro'); setTimeout(function () { $('rNome').focus(); }, 0);
       }
@@ -559,20 +568,22 @@
       // requisitos da senha ao vivo (mesmas regras do servidor)
       function problems(pw) {
         var out = [];
-        if (pw.length < 8 || pw.length > 128) out.push('tamanho');
+        var n = Array.from(pw).length;                     // em caracteres, como o servidor (um emoji conta 1)
+        if (n < 8 || n > 128) out.push('tamanho');
         if (!(/\p{Ll}/u.test(pw) && /\p{Lu}/u.test(pw) && (pw.match(/\p{Nd}/gu) || []).length >= 2)) out.push('letras');
         if (!/[^\p{L}\p{N}\s]/u.test(pw)) out.push('especial');
         return out;
       }
-      function paintRules(id) {
-        var bad = problems($(id).value), list = document.querySelector('[data-rules="' + id + '"]');
+      // `rules`: as que o servidor recusou (senha_fraca) — a lista mostra o que ele disse, mesmo se a conta daqui divergir
+      function paintRules(id, rules) {
+        var bad = rules || problems($(id).value), list = document.querySelector('[data-rules="' + id + '"]');
         [].forEach.call(list.children, function (li) { li.classList.toggle('ok', bad.indexOf(li.getAttribute('data-rule')) < 0); });
         return bad;
       }
       ['newPw', 'rPw'].forEach(function (id) { $(id).addEventListener('input', function () { paintRules(id); fieldErr($(id), ''); }); });
 
       function sendFail(e) {         // erros comuns ao pedir um código
-        alertMsg(e === 'limite' ? 'Você pediu muitos códigos para este e-mail. Tente de novo em uma hora.'
+        alertMsg(e === 'limite' ? 'Muitos códigos foram pedidos para este e-mail. Tente de novo mais tarde.'
                : e === 'limite_ip' ? TOO_FAST
                : e === 'envio_falhou' ? 'Não conseguimos enviar o e-mail agora. Tente de novo em instantes.'
                : e === 'email_indisponivel' ? 'O envio de e-mails ainda não está disponível. Use Continuar com o Google.'
@@ -699,6 +710,7 @@
           if (!res.ok) { sendFail(res.j.error); cooldown(0); return; }
           if ($('codeForm').hidden || st.codeMode !== 'reset') { openCode('reset', res.j.resend_in); return; }
           if (res.j.sent) { alertMsg('Enviamos um novo código.', true); resetBoxes(); boxes[0].focus(); }
+          else otpErr('O código anterior ainda vale. Aguarde ' + res.j.resend_in + ' s para pedir outro.');
           cooldown(res.j.resend_in);
         }).catch(function () { busy(btn, false); if (ainda()) { alertMsg(OFFLINE); cooldown(0); } });
       }
@@ -878,7 +890,10 @@
         ([rNome, rCpf, rNasc, rCrm, rUf].filter(function (i) { return !i.value; })[0] || rNome).focus();
       }
       function desisteGoogle() {           // a seta (ou o tempo do Google acabou): volta ao início, sem o registro=google
-        st.google = false; show('email'); history.pushState({ step: 'email' }, '', semRegistro());
+        // o perfil do Google guardado no servidor sai do navegador: ninguém cria a conta deste e-mail depois (nem num F5 da
+        // entrada antiga do histórico)
+        post('/auth/google/registro/cancelar', { r: st.gr || '' }).catch(function () {});   // só o desta aba
+        st.google = false; st.gr = ''; show('email'); history.pushState({ step: 'email' }, '', semRegistro());
         ['rNome', 'rCpf', 'rNasc', 'rCrm', 'rUf'].forEach(function (id) { $(id).value = ''; });   // esse Registro não volta
       }
       $('back').addEventListener('click', function () {
@@ -901,8 +916,9 @@
                        fieldErr(inp, MSG[er]); inp.focus(); return; }
         if (er === 'crm_irregular') { alertMsg('O CFM não mostra este CRM como regular. O OpenDoctor é só para médicos com inscrição regular.'); return; }
         if (er === 'crm_dados') { alertMsg('O CPF ou a data de nascimento não conferem com o registro deste CRM no CFM.'); rCpf.focus(); return; }
-        if (er === 'senha_fraca') { show('signup', true); paintRules('newPw'); fieldErr($('newPw'), 'Confira os requisitos da senha abaixo.'); $('newPw').focus(); return; }
+        if (er === 'senha_fraca') { show('signup', true); paintRules('newPw', j.rules); fieldErr($('newPw'), 'Confira os requisitos da senha abaixo.'); $('newPw').focus(); return; }
         if (er === 'conta_existe') { $('pw').value = ''; show('password', true); alertMsg('Este e-mail já tem uma conta. Digite sua senha.', true); $('pw').focus(); return; }
+        if (er === 'google_outra_aba' && st.google) { desisteGoogle(); alertMsg('Você começou outro cadastro com o Google em outra aba. Toque em Continuar com o Google de novo.'); return; }
         if (er === 'sessao_expirada' && st.google) { desisteGoogle(); alertMsg('O tempo para concluir o cadastro com o Google acabou. Toque em Continuar com o Google de novo.'); return; }
         if (er === 'email_invalido') { show('email', true); fieldErr(email, 'Confira o e-mail digitado.'); return; }
         sendFail(er);
@@ -918,7 +934,7 @@
         var ainda = aqui(function () {
           return JSON.stringify([st.google, $('newPw').value, nomeLimpo(), digits(rCpf.value), rNasc.value, rCrm.value, rUf.value]);
         });
-        var req = st.google ? post('/auth/google/registro', body)
+        var req = st.google ? post('/auth/google/registro', Object.assign({ r: st.gr || '' }, body))
           : post('/auth/signup/start', { email: st.email, password: $('newPw').value, nome: body.nome, cpf: body.cpf,
                                          nascimento: body.nascimento, crm: body.crm, uf: body.uf });
         req.then(function (res) {
@@ -963,6 +979,7 @@
         return e === 'codigo_incorreto' ? 'Código incorreto. ' + (j.left === 1 ? 'Resta 1 tentativa.' : 'Restam ' + j.left + ' tentativas.')
              : e === 'codigo_expirado' ? 'Este código expirou ou já foi usado. Peça um novo em "Reenviar código".'
              : e === 'muitas_tentativas' ? 'Muitas tentativas erradas. Peça um novo código em "Reenviar código".'
+             : e === 'tentativas_email' ? 'Muitas tentativas erradas para este e-mail. Tente de novo mais tarde.'
              : e === 'codigo_invalido' ? 'Digite os 6 dígitos do código.' : '';
       }
       $('codeForm').addEventListener('submit', function (e) {
@@ -987,8 +1004,8 @@
           }
           var m = codeErrMsg(er, j);
           if (m) {
-            otpErr(m); boxes[5].focus();
-            if (er === 'codigo_expirado' || er === 'muitas_tentativas') { resetBoxes(); otpErr(m); boxes[0].focus(); cooldown(0); }
+            resetBoxes(); otpErr(m); boxes[0].focus();           // o código errado sai: redigitar recomeça da 1ª caixa
+            if (er === 'codigo_expirado' || er === 'muitas_tentativas') cooldown(0);   // o servidor já aceita outro na hora
             return;
           }
           alertMsg(er === 'limite_ip' ? TOO_FAST : GENERIC);
@@ -1006,6 +1023,7 @@
           if (!ainda()) { cooldown(0); return; }
           if (res.ok) {
             if (res.j.sent) { alertMsg('Enviamos um novo código.', true); resetBoxes(); boxes[0].focus(); }
+            else otpErr('O código anterior ainda vale. Aguarde ' + res.j.resend_in + ' s para pedir outro.');
             cooldown(res.j.resend_in); return;
           }
           cooldown(0);
@@ -1027,7 +1045,7 @@
           var j = res.j, er = j.error;
           if (res.ok && j.redirect) { done(j); return; }
           if (!ainda()) return;
-          if (er === 'senha_fraca') { paintRules('rPw'); fieldErr($('rPw'), 'Confira os requisitos da senha abaixo.'); return; }
+          if (er === 'senha_fraca') { paintRules('rPw', j.rules); fieldErr($('rPw'), 'Confira os requisitos da senha abaixo.'); return; }
           if (er === 'sessao_expirada') { st.resetTicket = ''; show('email', true); alertMsg('O tempo para criar a senha expirou. Toque em Continuar e peça um novo código.'); return; }
           alertMsg(GENERIC);
         }).catch(function () { busy(btn, false); if (ainda()) alertMsg(OFFLINE); });

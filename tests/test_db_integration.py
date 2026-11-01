@@ -69,6 +69,13 @@ def test_codigo_de_email(novo_usuario):
         assert db.check_login_code(email, "hash-errado")[0] == "errado"
         assert db.check_login_code(email, "hash-certo")[0] == "ok"
         assert db.check_login_code(email, "hash-certo")[0] != "ok"                      # uso único
+        # os 30 s contam do código que ainda dá para usar: o usado e o que acabou nas tentativas não seguram o novo
+        assert db.new_login_code(email, "hash-2")[0] == "ok"                           # o anterior já foi usado
+        assert db.new_login_code(email, "hash-2b")[0] == "aguarde"                     # este ainda vale
+        for _ in range(db.CODE_MAX_ATTEMPTS):
+            db.check_login_code(email, "hash-errado")
+        assert db.new_login_code(email, "hash-3")[0] == "ok"
+        assert db.check_login_code(email, "hash-3")[0] == "ok"
     finally:
         with db.connection() as c:
             c.execute("delete from login_codes where email = %s", (email,))
@@ -799,3 +806,40 @@ def test_liberar_aprovada_a_mao_sem_confirmar(novo_usuario):
         assert db.get_user(outra["id"])["crm_dispensado"] is False
     assert db.crm_dispensa(str(uuid.uuid4())) is None
     assert all(m["id"] not in (cfm_ok["id"], recusada["id"], antiga["id"]) for m in db.manual_doctors(24 * 3600)[0])
+
+
+def test_aparelho_conhecido_e_id_de_paciente(novo_usuario):
+    """device_known: a conta já entrou por este aparelho? patient_id_exists: o id é de algum paciente (qualquer médico)?"""
+    ana, bia = novo_usuario("Ana")["id"], novo_usuario("Bia")["id"]
+    db.record_login(ana, "entrou", "senha", "1.2.3.4", "UA", "dev-ana")
+    db.record_login(ana, "senha_incorreta", "senha", "1.2.3.4", "UA", "dev-tentou")
+    assert db.device_known(ana, "dev-ana") and not db.device_known(ana, "dev-tentou") and not db.device_known(bia, "dev-ana")
+    assert not db.device_known(ana, None)
+    p = db.create_patient(ana, "Paciente da Ana")
+    assert db.patient_id_exists(p["id"]) and db.get_patient(bia, p["id"]) is None
+    assert not db.patient_id_exists(p["id"] + 10_000_000)
+
+
+def test_erradas_somadas_por_email_e_o_teto_do_aparelho_conhecido(test_db):
+    """Pedir códigos novos não dá mais chutes: passadas 25 erradas na hora (somando os códigos do e-mail), nem o código
+    certo vale. E o teto de envios do e-mail não vale para o aparelho conhecido (teto=False), os 30 s sim."""
+    email = f"teste-{uuid.uuid4().hex[:12]}@example.invalid"
+    try:
+        for i in range(db.CODE_MAX_WRONG_PER_HOUR // db.CODE_MAX_ATTEMPTS):
+            assert db.new_login_code(email, f"h{i}")[0] == "ok"
+            for _ in range(db.CODE_MAX_ATTEMPTS):
+                db.check_login_code(email, "errado")
+        assert db.new_login_code(email, "certo")[0] == "ok"
+        assert db.check_login_code(email, "certo")[0] == "bloqueado_email"
+        with db.connection() as c:
+            c.execute("update login_codes set attempts = 0, used_at = now() where email = %s", (email,))   # recomeça sem chutes
+            c.commit()
+        while db.new_login_code(email, "x")[0] == "ok":
+            db.check_login_code(email, "x")                                     # usado: o próximo não espera os 30 s
+        assert db.new_login_code(email, "y")[0] == "limite"
+        assert db.new_login_code(email, "z", teto=False)[0] == "ok"
+        assert db.new_login_code(email, "w", teto=False)[0] == "aguarde"
+    finally:
+        with db.connection() as c:
+            c.execute("delete from login_codes where email = %s", (email,))
+            c.commit()
