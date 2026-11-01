@@ -2719,21 +2719,32 @@
         try {
           var antes = localStorage.getItem('od_uid');
           if (antes !== uid) {
-            // de outra conta, ou de antes desta versão (sem dono): as conversas e o prontuário aberto saem. Os rascunhos
-            // de antes ficam (só abrem no paciente deles, de uma conta só), os de outra conta saem
+            // de outra conta, ou de antes desta versão (sem dono): as conversas saem. Rascunho: sai o de outra conta (o
+            // dono gravado nele, ou, sem o campo, o do dono anterior); fica o gravado sem saber a conta (o /me falhou) e o
+            // de antes desta versão (só abrem no paciente deles, de uma conta só)
             Object.keys(localStorage).forEach(function (k) {
-              if (k === 'od_conversas_v1' || (antes && k.indexOf('od_draft_') === 0)) localStorage.removeItem(k);
+              if (k === 'od_conversas_v1') { localStorage.removeItem(k); return; }
+              if (k.indexOf('od_draft_') !== 0) return;
+              var d = null; try { d = JSON.parse(localStorage.getItem(k)); } catch (_) {}
+              if (d && (d.u ? d.u !== uid : antes && !('u' in d))) localStorage.removeItem(k);
             });
-            var ctx0 = null; try { ctx0 = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {}
-            var meu = !!(ctx0 && ctx0.uid === uid);          // o prontuário aberto que já é desta conta fica
+          }
+          // o prontuário aberto (e o tempo da consulta) de outra conta sai, mesmo se outra aba já trocou o dono; o desta
+          // conta fica; o de antes desta versão (sem dono) sai na troca
+          var ctx0 = null; try { ctx0 = JSON.parse(sessionStorage.getItem('od_prontuario_ctx') || 'null'); } catch (_) {}
+          if (ctx0 && (ctx0.uid ? ctx0.uid !== uid : antes !== uid)) {
             Object.keys(sessionStorage).forEach(function (k) {
-              if ((k === 'od_prontuario_ctx' || k.indexOf('od_tm_') === 0) && !meu) sessionStorage.removeItem(k);
+              if (k === 'od_prontuario_ctx' || k.indexOf('od_tm_') === 0) sessionStorage.removeItem(k);
             });
           }
           if (antes !== uid) localStorage.setItem('od_uid', uid);
         } catch (_) {}
         return uid;
       }).catch(function () { return ''; });
+    // esta aba é de uma conta que outra substituiu neste navegador (a outra entrou em outra aba)?
+    window.__odOutraConta = function () {
+      try { var d = localStorage.getItem('od_uid'); return !!(window.__odUid && d && d !== window.__odUid); } catch (_) { return false; }
+    };
     // itens do menu que levam a outra tela (data-href: a política de segurança não aceita onclick no HTML)
     document.querySelectorAll('[data-href]').forEach(function (el) {
       el.addEventListener('click', function () { location.href = el.getAttribute('data-href'); });
@@ -4753,9 +4764,9 @@
       function draftWrite(s) {
         if (!ctx || !ctx.patient_id) return;
         // outra conta tomou este navegador (a aba é da anterior): não grava sob o dono novo. Sem saber a conta (o /me
-        // falhou), grava mesmo assim: o rascunho é o que salva o texto quando a internet cai
-        try { var dono = localStorage.getItem('od_uid'); if (window.__odUid && dono && dono !== window.__odUid) return; } catch (_) {}
-        try { if (s === saved) localStorage.removeItem(dkey()); else localStorage.setItem(dkey(), JSON.stringify({ s: s, base: saved, at: Date.now() })); } catch (_) {}
+        // falhou), grava mesmo assim, sem dono (u ''): o rascunho é o que salva o texto quando a internet cai
+        if (window.__odOutraConta()) return;
+        try { if (s === saved) localStorage.removeItem(dkey()); else localStorage.setItem(dkey(), JSON.stringify({ s: s, base: saved, at: Date.now(), u: window.__odUid || '' })); } catch (_) {}
       }
       // dados de saúde não ficam no navegador indefinidamente: rascunho com mais de 7 dias é apagado
       try {
@@ -4768,6 +4779,7 @@
       function draftRead() { try { return JSON.parse(localStorage.getItem(dkey()) || 'null'); } catch (_) { return null; } }
 
       // ===== salvar (fila por paciente/consulta; novas tentativas se a conexão cair) =====
+      var ORFA = 'Outra conta entrou neste navegador: este texto não foi salvo. Copie-o antes de sair ou entre de novo com a sua conta.';
       function save() {
         if (!ready || !ctx || locked()) return;
         var x = compose(); send(ctx, x, snap(x));
@@ -4809,6 +4821,9 @@
             if (c === ctx) setStatus('Texto grande demais para salvar: reduza a evolução.', true);
           } else if (res.status === 401) {
             if (c === ctx) setStatus('Entre na sua conta para salvar o prontuário.', true);
+          } else if (window.__odOutraConta()) {           // outra conta entrou neste navegador: nem guarda nem insiste
+            if (c === ctx) setStatus(ORFA, true);
+            return;
           } else {
             if (c === ctx) setStatus('Não foi possível salvar. Tentando de novo…', true);
             retryLater(c);
@@ -4816,6 +4831,7 @@
           flush();
         }).catch(function () {
           saving = false;
+          if (window.__odOutraConta()) { if (c === ctx) setStatus(ORFA, true); return; }
           if (c === ctx) setStatus('Sem conexão. O texto ficou guardado neste navegador e será salvo quando a conexão voltar.', true);
           retryLater(c); flush();
         });

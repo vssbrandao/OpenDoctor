@@ -374,7 +374,14 @@ const cenarios = [
     await ate(`!document.getElementById('regForm').hidden`, 3000, 'Registro do Google');
     await clica('#back');
     await ate(`!document.getElementById('emailForm').closest('[data-step]').hidden`, 2000, 'a seta voltou para o início');
-    return 'registro=google abre o Registro; POST sem e-mail/senha; vai para a permissão da agenda (o Voltar dela abre o app, ou a espera, com as boas-vindas)';
+    // outra conta logada neste navegador: a volta do Google para criar conta fica no Registro, com o aviso (não cai no app dela)
+    ME = { logged_in: true, user: { id: 'u9', email: 'outra@clinica.com.br' }, scribe: false, bloqueio: null };
+    await abre('?registro=google&r=x1');
+    await sleep(600);
+    certo(await vis('#regForm') && (await txt('#alertText')).includes('outra conta (outra@clinica.com.br)'),
+          'com outra conta logada: ' + await ev(`location.pathname`) + ' ' + await txt('#alertText'));
+    ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
+    return 'registro=google abre o Registro; POST sem e-mail/senha; vai para a permissão da agenda (o Voltar dela abre o app, ou a espera, com as boas-vindas); com outra conta logada, fica no Registro com o aviso';
   }],
   ['conta recusada e conta a confirmar no CFM', async () => {
     ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_recusado' };

@@ -263,7 +263,9 @@ O `scripts/preview_login.py` roda o servidor de verdade contra o banco de testes
 - **Chutes no código:** além das 5 por código, as erradas somadas de todos os códigos do e-mail: 25 por hora e 50 por
   dia (`db.CODE_MAX_WRONG_PER_*`); passou disso, nem o código certo vale ("Muitas tentativas erradas para este
   e-mail…", `tentativas_email`), e nem sai código novo. Mais códigos não dão mais chutes. Na nova senha, o aparelho
-  conhecido da conta fica fora desse teto (recebe o código e ele vale): os chutes de outra pessoa não trancam o dono.
+  conhecido da conta fica fora desse teto (recebe o código e ele vale): os chutes de outra pessoa não trancam o dono. Ele
+  tem o seu, por conta + aparelho: 25 erradas por hora, 50 por dia, 10 códigos por hora (`reset_dev`, `codigo_dev`);
+  passado isso, valem os do e-mail.
 - **"Prefiro criar uma senha"** (conta só Google): o e-mail do código é o de criar senha (`reset_criar`), não o de nova
   senha.
 - **Tela do código:** o código errado esvazia as 6 caixas (redigitar não manda códigos misturados); "Editar" corrige o
@@ -279,8 +281,12 @@ O `scripts/preview_login.py` roda o servidor de verdade contra o banco de testes
   rascunhos) é da conta que guardou (`localStorage.od_uid`); outra conta que entra no navegador não o vê (sai do
   aparelho antes de as telas lerem). O que foi guardado antes desta versão não tem dono: as conversas e o prontuário
   aberto saem na 1ª abertura; os rascunhos ficam (só abrem no paciente deles, que é de uma conta só). Sem saber a conta
-  (o `/me` falhou), as conversas não aparecem nem são gravadas; a aba de uma conta que outra substituiu no navegador não
-  grava conversas nem rascunhos por cima da nova. E o servidor não cria pelo nome o paciente cujo id é de outro médico
+  (o `/me` falhou), as conversas não aparecem nem são gravadas, e o rascunho é gravado sem dono (fica numa troca de
+  conta, como os de antes). Cada rascunho leva o dono (`u`); a troca de conta apaga os de outra conta. A aba de uma conta
+  que outra substituiu no navegador não grava conversas nem rascunhos por cima da nova, e o salvar diz que o texto não
+  foi salvo (sem prometer que ficou guardado, sem insistir). O prontuário aberto de outra conta sai da aba ao recarregar.
+- **Volta do Google para criar conta com outra conta logada no navegador:** a tela fica no Registro, com o aviso de qual
+  conta está aberta (não cai no app dela); o Criar conta troca a sessão. E o servidor não cria pelo nome o paciente cujo id é de outro médico
   (`db.patient_id_exists`): só o id que não é de ninguém (excluído) cai no nome.
 - **CSP:** de fora, só o arquivo exato do mermaid (nunca o host inteiro do CDN). Todas as páginas declaram o ícone
   (`/assets/login/logo-simbolo.svg`), e o navegador não pede o `/favicon.ico`, que é privado.

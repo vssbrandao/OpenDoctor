@@ -408,7 +408,9 @@ RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em
                "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600),      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
                "cfm": (10, 3600),     # conferências do CRM no CFM (cadastro): o Validar responde se um CPF é de um CRM
                "codigo_email": (5, 3600),
-               "login_dev": (5, 900)}      # senhas do aparelho conhecido durante o bloqueio (as erradas não contam na conta)   # códigos (nova senha e cadastro) para um e-mail, por IP; o teto do e-mail é db
+               "login_dev": (5, 900),      # senhas do aparelho conhecido durante o bloqueio (as erradas não contam na conta)
+               # o aparelho conhecido na nova senha, fora dos tetos do e-mail, tem os seus (por conta + aparelho)
+               "reset_dev": (25, 3600), "reset_dev_dia": (50, 86400), "codigo_dev": (10, 3600)}   # códigos (nova senha e cadastro) para um e-mail, por IP; o teto do e-mail é db
 MAX_QUERY_CHARS = 2000
 _RL = {}
 _RL_LOCK = threading.Lock()
@@ -1395,6 +1397,9 @@ def _password_forgot(request, b):
             conhecido = bool(dev) and db.device_known(acc["id"], auth.device_hash(dev))
         except Exception:
             conhecido = False
+        k = (acc["id"], auth.device_hash(dev)) if conhecido else None
+        if k and _rate_limited(request, "codigo_dev", key=k):
+            conhecido, k = False, None                    # passou dos códigos dele: valem os limites do e-mail
         chave = None if conhecido else _codigo_email(request, email)
         if not conhecido and chave is None:
             return _err("limite", 429)
@@ -1406,6 +1411,8 @@ def _password_forgot(request, b):
                                 modelo=None if tem_senha else "reset_criar")
         if chave and (fail or wait <= 0):
             _rl_undo("codigo_email", chave)           # não enviou: não conta
+        if k and (fail or wait <= 0):
+            _rl_undo("codigo_dev", k)
         if fail:
             return fail
     return {"ok": True, "resend_in": abs(wait), "sent": wait > 0}
@@ -1427,7 +1434,13 @@ def _password_reset_verify(request, b):
         acc = db.user_by_email(email)
         dev = auth.device_id(request)
         conhecido = bool(acc and dev) and db.device_known(acc["id"], auth.device_hash(dev))
+        k = (acc["id"], auth.device_hash(dev)) if conhecido else None
+        if k:
+            hora, dia = _rate_limited(request, "reset_dev", key=k), _rate_limited(request, "reset_dev_dia", key=k)
+            conhecido = not (hora or dia)                 # passou do orçamento dele: vale o teto do e-mail
         bad = _check_code(email, b.get("code"), "reset", soma=not conhecido)
+        if k and conhecido and not bad:
+            _rl_undo("reset_dev", k); _rl_undo("reset_dev_dia", k)   # só as erradas contam
         if bad:
             return bad
         tinha = bool((db.account(email) or {}).get("password")) if acc else False

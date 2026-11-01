@@ -780,3 +780,26 @@ def test_criar_a_primeira_senha_tem_o_e_mail_do_codigo_proprio(monkeypatch):
     c = _client(monkeypatch, fake)
     c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"})
     assert fake.sent[-1][2] == "reset"
+
+
+def test_aparelho_conhecido_tem_o_seu_orcamento_na_nova_senha(monkeypatch):
+    """Fora dos tetos do e-mail, mas não sem teto: 25 erradas por hora (50 por dia) e 10 códigos por hora por conta +
+    aparelho; passado isso, valem os limites do e-mail."""
+    from app import db, server
+    server._RL.clear()
+    fake = _Fake(_user("ana@clinica.com.br"))
+    c = _client(monkeypatch, fake)
+    monkeypatch.setattr(db, "device_known", lambda uid, dev: dev == auth.device_hash("aparelho-da-ana-0123456789"))
+    c.cookies.set(auth.DEVICE_COOKIE, "aparelho-da-ana-0123456789")
+    somas = []
+    monkeypatch.setattr(db, "check_login_code", lambda e, h, soma=True: somas.append(soma) or ("errado", 3))
+    for i in range(26):
+        c.post("/auth/password/reset/verify", json={"email": "ana@clinica.com.br", "code": "123456"},
+               headers={"cf-connecting-ip": f"203.0.113.{i % 3 + 1}"})          # (o login_verify é por IP)
+    assert somas[:25] == [False] * 25 and somas[25] is True                     # a 26ª errada: o teto do e-mail
+    tetos = []
+    monkeypatch.setattr(db, "new_login_code", lambda e, h, teto=True: tetos.append(teto) or ("ok", 0))
+    for i in range(11):
+        c.post("/auth/password/forgot", json={"email": "ana@clinica.com.br"}, headers={"cf-connecting-ip": f"198.51.100.{i}"})
+    assert tetos[:10] == [False] * 10 and tetos[10] is True                     # o 11º código: os limites do e-mail
+    server._RL.clear()

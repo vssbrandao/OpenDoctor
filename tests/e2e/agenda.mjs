@@ -614,6 +614,22 @@ const cenarios = [
                           hist: document.body.innerText.indexOf('Pergunta de antes') >= 0 })`);
     certo(!v.conv && !v.hist && v.dr === 'rascunho de antes', 'o guardado antes desta versão: ' + JSON.stringify(v));
     await ev(`localStorage.removeItem('od_draft_7_new'); 1`);
+    // a troca de conta apaga o rascunho de outra conta (o dono nele), e deixa o gravado sem saber a conta (u '')
+    await ev(`localStorage.setItem('od_uid', 'u-outra');
+              localStorage.setItem('od_draft_7_e1', JSON.stringify({ s: 'da outra', base: '', at: Date.now(), u: 'u-outra' }));
+              localStorage.setItem('od_draft_7_e2', JSON.stringify({ s: 'sem dono', base: '', at: Date.now(), u: '' })); 1`);
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?dono=1' });
+    await ate(`document.readyState === 'complete' && localStorage.getItem('od_uid') === 'u-teste'`, 8000, 'agenda da conta 1 de novo');
+    await sleep(300);
+    const dr = await ev(`[localStorage.getItem('od_draft_7_e1'), (JSON.parse(localStorage.getItem('od_draft_7_e2') || '{}')).s]`);
+    certo(dr[0] === null && dr[1] === 'sem dono', 'rascunhos na troca de conta: ' + JSON.stringify(dr));
+    // o prontuário aberto de outra conta sai, mesmo se outra aba já deixou esta conta como dona do navegador
+    await ev(`localStorage.removeItem('od_draft_7_e2');
+              sessionStorage.setItem('od_prontuario_ctx', JSON.stringify({ patient_id: 7, patient: 'Maria Silva', uid: 'u-outra' })); 1`);
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?alheio=1' });
+    await ate(`document.readyState === 'complete' && window.__odUid === 'u-teste'`, 8000, 'agenda com o prontuário alheio');
+    await sleep(300);
+    certo(await ev(`sessionStorage.getItem('od_prontuario_ctx')`) === null, 'o prontuário da outra conta ficou na aba');
     // o /me não respondeu: sem saber de quem é a sessão, as conversas guardadas não aparecem
     await ev(`localStorage.setItem('od_conversas_v1', JSON.stringify([{ id: 'c8', title: 'Pergunta guardada', turns: [] }])); 1`);
     ME_FORA = true;

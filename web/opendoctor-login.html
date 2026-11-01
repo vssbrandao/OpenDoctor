@@ -525,6 +525,11 @@
               show('email'); history.replaceState({ step: 'email' }, '', semRegistro()); return;
             }
             if (!j || !j.logged_in) return;
+            if (st.google && !volta) {          // voltou do Google para criar outra conta: não cai no app da que está aberta
+              alertMsg('Este navegador está conectado em outra conta' + (j.user && j.user.email ? ' (' + j.user.email + ')' : '')
+                       + '. Ao criar a conta, você entra na nova.', true);
+              return;
+            }
             if (j.bloqueio) waitFor(j.bloqueio); else location.replace(nextUrl || HOME);
           }).catch(function () {});
       }
