@@ -194,7 +194,7 @@ def render(purpose, name="", code="", when="", device="", via="", nome="", crm="
     """(assunto, html, texto) do e-mail. `nome` e `crm`: o médico do cadastro (aviso aos administradores)."""
     t = _TEXTS[purpose]
     base = _app_url()
-    logo = (f'<img src="{base}/assets/email/logo.png" width="24" height="24" alt="OpenDoctor" '
+    logo = (f'<img src="{base}/assets/email/logo.png?v=3" width="24" height="24" alt="OpenDoctor" '
             'style="display:block;width:24px;height:24px;border:0">')
     first = _sem_link(first_name(name))           # o nome é o que a pessoa digitou: não vira link no e-mail
     greet = f"{first}," if first else "Olá,"
