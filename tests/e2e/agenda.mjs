@@ -553,7 +553,22 @@ const cenarios = [
   }],
   ['boas-vindas: vêm da sessão da conta nova, uma vez, e dizem se a agenda está conectada', async () => {
     const CONECTADA = 'Bem-vindo à OpenDoctor! Sua agenda do Google já está conectada.';
-    const CONVITE = 'Bem-vindo à OpenDoctor! Conecte sua agenda do Google para ver suas consultas.';
+    const CONVITE = 'Bem-vindo! Conecte sua agenda do Google.';
+    // o aviso fica numa linha só em qualquer largura; a frase inteira cabe a partir de 1366 px (abaixo, as reticências)
+    const linha = async () => {
+      const r = [];
+      for (const w of [1280, 1366, 1440, 1536, 1920]) {
+        await send('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: false });
+        await sleep(150);
+        r.push(await ev(`(() => { const t = document.getElementById('odWelcome'), s = t.querySelector('span'),
+            c = document.querySelector('.center').getBoundingClientRect(), b = t.getBoundingClientRect();
+          return { w: ${w}, linhas: Math.round(s.getBoundingClientRect().height / parseFloat(getComputedStyle(s).lineHeight)),
+                   cortada: s.scrollWidth > s.clientWidth, dentro: b.left >= c.left && b.right <= c.right, alto: Math.round(b.height) }; })()`));
+      }
+      await send('Emulation.clearDeviceMetricsOverride');
+      return r;
+    };
+    const linhaSo = (r) => r.every((x) => x.linhas === 1 && x.dentro && x.alto <= 64 && (x.w < 1366 || !x.cortada));
     const abre = async (q = '') => {
       await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
       await ate(`document.readyState === 'complete' && !!window.__calUltima`, 8000, 'a 1ª resposta da agenda');
@@ -564,6 +579,7 @@ const cenarios = [
     BOAS_VINDAS = true;
     let r = await abre();
     certo(r.v && r.t === CONECTADA && !r.a, 'conta nova com a agenda: ' + JSON.stringify(r));
+    certo(linhaSo(await linha()), 'a boas-vinda da agenda conectada não ficou numa linha: ' + JSON.stringify(await linha()));
     certo(pedidos.some((x) => x.method === 'POST' && x.path === '/me/boas-vindas') && !BOAS_VINDAS, 'a marca não saiu da sessão');
     await foto('boas-vindas-agenda.png');
     r = await abre();
@@ -574,6 +590,7 @@ const cenarios = [
     try {
       r = await abre();
       await foto('boas-vindas-1.png');
+      certo(linhaSo(await linha()), 'o convite não ficou numa linha: ' + JSON.stringify(await linha()));
       certo(r.v && r.t === CONVITE && r.a, 'conta nova sem a agenda: ' + JSON.stringify(r));
     } finally { SEM_AGENDA = false; BOAS_VINDAS = false; }
     return 'uma vez, pela sessão: conectada sem o link; sem a agenda, Conectar agenda; o ?bemvindo antigo não vale';
