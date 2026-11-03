@@ -9018,7 +9018,7 @@
   <!-- ===== sessão expirada + boas-vindas (fluxo de login) ===== -->
   <style>
     .od-modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
-    .od-modal[hidden],.od-toast[hidden],.od-toast a[hidden]{display:none}
+    .od-modal[hidden],.od-toast[hidden]{display:none}
     .od-card{width:454px;max-width:100%;background:#fff;border-radius:24px;padding:40px;display:flex;flex-direction:column;gap:12px;font-family:var(--disp)}
     .od-card h2{margin:0;font-weight:500;font-size:24px;line-height:1.15;color:#0C0C0D}
     .od-card p{margin:0;font-weight:500;font-size:14px;line-height:1.4;color:#7D7D82}
@@ -9089,20 +9089,18 @@
       function boasVindas() {
         nativeFetch('/me/boas-vindas', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
                                          body: '{}' }).catch(function () {});
-        var t = document.getElementById('odWelcome'), stg = document.querySelector('.center');
-        var tx = t.querySelector('span'), link = t.querySelector('a'), CONVITE = tx.textContent, mostrou = false;
+        var t = document.getElementById('odWelcome'), stg = document.querySelector('.center'), mostrou = false;
+        // só o convite para conectar a agenda: com ela conectada, nenhum aviso. Espera a resposta de verdade (a do
+        // Google pode levar segundos): sem ela, nada aparece, em vez de convidar quem já conectou
         function mostra(d) {
           if (mostrou) return;
           mostrou = true; window.__calBoasVindas = null;
-          var on = !!(d && d.connected && !d.needs_reconnect);
-          tx.textContent = on ? 'Bem-vindo à OpenDoctor! Sua agenda do Google já está conectada.' : CONVITE;
-          link.hidden = on;
+          if (d && d.connected && !d.needs_reconnect) return;
           if (stg) stg.appendChild(t);
           t.hidden = false;
         }
         window.__calBoasVindas = mostra;
         if (window.__calUltima) mostra(window.__calUltima);   // a agenda já respondeu
-        setTimeout(function () { mostra(null); }, 3000);        // a agenda não respondeu: o convite
         document.getElementById('odWelcomeX').addEventListener('click', function () { t.hidden = true; });
       }
     })();

@@ -73,8 +73,9 @@ nascimento, CRM e UF. O CRM é conferido no **web service oficial do CFM** antes
     a agenda mostra o aviso e chama `POST /me/boas-vindas`, que tira a marca (não volta ao recarregar). Assim elas
     chegam depois da aprovação (mesmo com a aba da espera fechada, no mesmo navegador) e da confirmação do CPF, e nunca
     a outra conta que entre no mesmo navegador. Um `?bemvindo` antigo na URL só é apagado.
-    - **O texto segue a agenda de verdade:** a 1ª resposta do `/calendar/events` decide ("Sua agenda do Google já está
-      conectada", sem o link; senão, o convite "Conectar agenda"; sem resposta em 3 s, o convite).
+    - **Só para quem não tem a agenda:** a 1ª resposta do `/calendar/events` decide. Agenda conectada: nenhum aviso. Sem a
+      agenda (ou com a conexão expirada): o convite "Bem-vindo! Conecte sua agenda do Google.", com "Conectar agenda",
+      sempre numa linha. Sem resposta, nada aparece (a do Google pode demorar, e o convite não vai a quem já conectou).
   - **Conta pendente:** a agenda já fica conectada, pronta para a aprovação. Se o cadastro for **recusado**, a conexão é
     apagada (todos os provedores); a aprovação não mexe nela.
     - **Recusa com o médico ainda na tela do Google:** a volta não grava na conta recusada; a troca que já estava em
@@ -386,6 +387,7 @@ O `scripts/preview_login.py` roda o servidor de verdade contra o banco de testes
   - A espera com o relógio curto (`OD_ESPERA_MS` = 250 ms) e a aba escondida simulada; o intervalo de verdade (30 s);
     o aviso do Google não verificado; a lista dos aprovados à mão e o "Liberar sem confirmar".
   - O Registro pelo Google vai à permissão da agenda (também a conta pendente); o Voltar dela abre o app (ou a espera,
-    que liberada abre o destino) com `bemvindo=1`; a espera depois da agenda abre o destino com `bemvindo=agenda`.
-    `node tests/e2e/agenda.mjs`: as boas-vindas pela agenda de verdade (`=1` e `=agenda`, com e sem agenda conectada).
+    que liberada abre o destino).
+    `node tests/e2e/agenda.mjs`: as boas-vindas pela sessão, uma vez, só para quem não tem a agenda conectada (mesmo
+    com a do Google demorando), numa linha só de 1280 a 1920 px.
 - **Conftest:** zera `CFM_CHAVE`, então nenhum teste chama o CFM de verdade.

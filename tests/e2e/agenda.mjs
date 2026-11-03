@@ -551,8 +551,7 @@ const cenarios = [
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     return 'a segunda tentativa achou o paciente criado e não cadastrou outro';
   }],
-  ['boas-vindas: vêm da sessão da conta nova, uma vez, e dizem se a agenda está conectada', async () => {
-    const CONECTADA = 'Bem-vindo à OpenDoctor! Sua agenda do Google já está conectada.';
+  ['boas-vindas: vêm da sessão da conta nova, uma vez, só para quem não tem a agenda conectada', async () => {
     const CONVITE = 'Bem-vindo! Conecte sua agenda do Google.';
     // o aviso fica numa linha só em qualquer largura; a frase inteira cabe a partir de 1366 px (abaixo, as reticências)
     const linha = async () => {
@@ -578,22 +577,36 @@ const cenarios = [
     };
     BOAS_VINDAS = true;
     let r = await abre();
-    certo(r.v && r.t === CONECTADA && !r.a, 'conta nova com a agenda: ' + JSON.stringify(r));
-    certo(linhaSo(await linha()), 'a boas-vinda da agenda conectada não ficou numa linha: ' + JSON.stringify(await linha()));
+    certo(!r.v, 'conta nova com a agenda conectada viu o aviso: ' + JSON.stringify(r));
     certo(pedidos.some((x) => x.method === 'POST' && x.path === '/me/boas-vindas') && !BOAS_VINDAS, 'a marca não saiu da sessão');
-    await foto('boas-vindas-agenda.png');
-    r = await abre();
-    certo(!r.v, 'as boas-vindas voltaram ao recarregar: ' + JSON.stringify(r));
-    r = await abre('?bemvindo=1');                                            // endereço antigo: só sai da URL
-    certo(!r.v && r.q === '', 'o ?bemvindo antigo deu boas-vindas: ' + JSON.stringify(r));
+    // a agenda conectada que demora a responder (o Google pode levar segundos): nenhum convite enquanto espera
+    BOAS_VINDAS = true; LENTA_AGENDA = 4000;
+    try {
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?lenta=1' });
+      await ate(`location.search === '?lenta=1' && document.readyState === 'complete'`, 8000, 'a agenda lenta');
+      await sleep(3600);
+      certo(await ev(`document.getElementById('odWelcome').hidden`), 'o convite apareceu com a agenda conectada ainda carregando');
+      await ate(`!!window.__calUltima`, 10000, 'a resposta lenta da agenda');
+      await sleep(300);
+      certo(await ev(`document.getElementById('odWelcome').hidden`), 'aviso com a agenda conectada (lenta)');
+    } finally { LENTA_AGENDA = 0; BOAS_VINDAS = false; }
     SEM_AGENDA = true; BOAS_VINDAS = true;
     try {
       r = await abre();
       await foto('boas-vindas-1.png');
       certo(linhaSo(await linha()), 'o convite não ficou numa linha: ' + JSON.stringify(await linha()));
       certo(r.v && r.t === CONVITE && r.a, 'conta nova sem a agenda: ' + JSON.stringify(r));
+      r = await abre('?de-novo=1');
+      certo(!r.v, 'as boas-vindas voltaram ao recarregar: ' + JSON.stringify(r));
+      r = await abre('?bemvindo=1');                                          // endereço antigo: só sai da URL
+      certo(!r.v && r.q === '', 'o ?bemvindo antigo deu boas-vindas: ' + JSON.stringify(r));
     } finally { SEM_AGENDA = false; BOAS_VINDAS = false; }
-    return 'uma vez, pela sessão: conectada sem o link; sem a agenda, Conectar agenda; o ?bemvindo antigo não vale';
+    RECONECTAR = 'expirada'; BOAS_VINDAS = true;                               // a conexão expirou: o convite também
+    try {
+      r = await abre('?expirada=1');
+      certo(r.v && r.t === CONVITE && r.a, 'conta nova com a conexão expirada: ' + JSON.stringify(r));
+    } finally { RECONECTAR = null; BOAS_VINDAS = false; }
+    return 'uma vez, pela sessão, só sem a agenda: conectada (mesmo demorando) sem aviso; sem a agenda ou com a conexão expirada, o convite com Conectar agenda; o ?bemvindo antigo não vale';
   }],
   ['outra conta no mesmo navegador: o prontuário aberto e as conversas da anterior não aparecem', async () => {
     UID = 'u-teste';
