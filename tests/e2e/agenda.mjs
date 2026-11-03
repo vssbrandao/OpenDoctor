@@ -8,7 +8,8 @@
 // alteração que não dá para salvar avisa em vez de sumir; a semana e a busca pedem o teto e a busca lê o futuro à parte;
 // a faixa "Reconectar" diz se o Google Agenda está sem permissão ou se a conexão expirou;
 // no campo Paciente, a de exemplo fica por último e o Enter nunca a escolhe (só a seta ou o mouse); com a lista de
-// pacientes cortada (more), o campo Paciente e a tela Pacientes acham no servidor quem ficou de fora.
+// pacientes cortada (more), o campo Paciente e a tela Pacientes acham no servidor quem ficou de fora; o Dia não mostra
+// consulta nenhuma que não seja da agenda (nem enquanto ela carrega, nem sem a agenda conectada, nem com ela vazia).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -62,6 +63,8 @@ let SEM_AGENDA = false;                                    // a conta não tem a
 let BOAS_VINDAS = false;                                   // a sessão é da conta que acabou de nascer (/me boas_vindas)
 let UID = 'u-teste';                                       // a conta logada (outra conta no mesmo navegador: troca)
 let ME_FORA = false;                                       // o /me não responde (a agenda não sabe de quem é a sessão)
+let AGENDA_VAZIA = false;                                  // a agenda conectada não tem nada
+let LENTA_AGENDA = 0;                                      // ms de espera do /calendar/events (GET)
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
 const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
@@ -78,6 +81,7 @@ function rota(method, path, q, body) {
   if (path === '/patients/search' && method === 'POST') return { patients: ANTIGOS.filter((p) => sem(p.name).includes(sem(body.q).trim())) };
   if (path === '/patients' && method === 'POST') { const p = { id: 40 + PACS.length, name: body.name }; PACS.push(p); return { ok: true, patient: p }; }
   if (path === '/calendar/events' && method === 'GET' && SEM_AGENDA) return { logged_in: true, connected: null, events: [] };
+  if (path === '/calendar/events' && method === 'GET' && AGENDA_VAZIA) return { logged_in: true, connected: 'google', events: [] };
   if (path === '/calendar/events' && method === 'GET') return RECONECTAR
     ? { logged_in: true, connected: 'google', events: [], needs_reconnect: true, reason: RECONECTAR }
     : { logged_in: true, connected: 'google', events: EVS };
@@ -97,6 +101,7 @@ async function responde(p) {
   if (arq.startsWith(WEB) && extname(arq) && existsSync(arq)) { dado = readFileSync(arq); tipo = TIPOS[extname(arq)] || 'application/octet-stream'; }
   else {
     if (LENTA && u.pathname === '/patients/search') await sleep(LENTA);
+    if (LENTA_AGENDA && u.pathname === '/calendar/events' && method === 'GET') await sleep(LENTA_AGENDA);
     if (LENTO_PAC && u.pathname === '/patients' && method === 'POST') await sleep(LENTO_PAC);
     const j = rota(method, u.pathname, u.searchParams, body);
     pedidos.push({ method, path: u.pathname, q: Object.fromEntries(u.searchParams), body });
@@ -640,6 +645,44 @@ const cenarios = [
       certo(!(await ev(`document.body.innerText.indexOf('Pergunta guardada') >= 0`)), 'sem o /me, mostrou as conversas guardadas');
     } finally { ME_FORA = false; await ev(`localStorage.removeItem('od_conversas_v1'); 1`); }
     return 'a conta 2 não reabre o prontuário nem vê as conversas e os rascunhos da 1; a própria conta mantém os dela; as conversas sem dono saem';
+  }],
+  ['sem consultas de exemplo: o Dia fica vazio enquanto a agenda carrega, sem a agenda e com a agenda vazia', async () => {
+    const vazio = `(() => { const c = document.querySelector('.cal-inner');
+      return !c.querySelector('.ev-real') && [...c.querySelectorAll('.hr-row')].every((r) => r.children.length === 1)
+        && !/[A-Za-zÀ-ú]{3}/.test(c.innerText); })()`;                       // só as horas (0h…23h) e o traço de agora
+    const abre = async (q) => {
+      await ev(`localStorage.setItem('od_agenda_view', 'dia'); 1`);              // a visão Dia (a Semana nunca teve exemplos)
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await ate(`location.search === ${JSON.stringify(q)} && document.readyState === 'complete'`, 8000, 'agenda ' + q);
+      certo(!(await ev(`document.querySelector('.stage').classList.contains('week')`)), 'abriu na Semana');
+    };
+    LENTA_AGENDA = 2000;
+    try {
+      await abre('?carregando=1');
+      await sleep(300);
+      certo(!(await ev(`!!window.__calUltima`)) && await ev(vazio), 'apareceu consulta enquanto a agenda carregava');
+      await foto('dia-carregando.png');
+      await ate(`!!document.querySelector('.cal-inner .ev-real')`, 8000, 'os eventos da agenda depois');
+    } finally { LENTA_AGENDA = 0; }
+    SEM_AGENDA = true;
+    try {
+      await abre('?semagenda=1');
+      await ate(`!!window.__calUltima`, 8000, 'a resposta da agenda');
+      await sleep(300);
+      certo(await ev(vazio), 'apareceu consulta sem a agenda conectada');
+      await foto('dia-sem-agenda.png');
+    } finally { SEM_AGENDA = false; }
+    AGENDA_VAZIA = true;
+    try {
+      await abre('?vazia=1');
+      await ate(`!!window.__calUltima`, 8000, 'a resposta da agenda');
+      await sleep(300);
+      certo(await ev(vazio), 'apareceu consulta com a agenda vazia');
+      await foto('dia-vazio.png');
+    } finally { AGENDA_VAZIA = false; }
+    await abre('?volta=1');
+    await ate(`!!document.querySelector('.cal-inner .ev-real')`, 8000, 'a agenda de volta');
+    return 'só as horas: enquanto o /calendar/events não responde, sem a agenda conectada e com a agenda conectada sem nada';
   }],
 ];
 

@@ -1735,32 +1735,17 @@
     .hr-label{position:absolute;left:0;top:0;font-family:var(--disp);font-weight:400;font-size:12px;
       line-height:24px;color:var(--ink2)}
 
-    /* event card (Figma "Big input" repurposed) */
-    .ev{position:absolute;left:86px;right:24px;top:8px;
-      background:var(--ev-bg);border-radius:40px;display:flex;flex-direction:column;z-index:2;overflow:hidden;
-      cursor:pointer;transition:background .15s ease}
-    .ev:hover{background:var(--ev-bg-hover)}
-    .ev-body{flex:0 0 142px;display:flex;flex-direction:column;justify-content:space-between}
-    .ev-top{padding:24px 24px 0}
-    .ev-title{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
-    .ev-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--muted)}
-    .ev-foot{display:flex;justify-content:flex-end;padding:0 24px 24px}
-    /* 30-min compact card */
-    .ev.half{flex-direction:row;align-items:center;justify-content:space-between;padding:0 24px}
-    .ev.half .ev-htext{display:flex;flex-direction:column;gap:2px}
     .avatar{width:60px;height:48px;flex:none;border-radius:999px;background:var(--avatar-bg);
       display:flex;align-items:center;justify-content:center;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--avatar-ink)}
 
-    /* eventos reais do calendário conectado (posicionados por horário) */
-    .cal-inner.real .hr-row .ev{display:none}
-    .cal-inner.other-day .hr-row .ev{display:none}
     /* evento selecionado (clique): fundo azul claro, iniciais em círculo branco — Figma 1019:12340 */
-    .ev.sel,.ev.sel:hover,.ev-real.sel,.ev-real.sel:hover,.wk-ev.sel,.wk-ev.sel:hover{background:#D3E3FD}
-    .ev.sel .avatar,.ev-real.sel .avatar,.wk-ev.sel .avatar{background:#FEFEFE}
+    .ev-real.sel,.ev-real.sel:hover,.wk-ev.sel,.wk-ev.sel:hover{background:#D3E3FD}
+    .ev-real.sel .avatar,.wk-ev.sel .avatar{background:#FEFEFE}
     /* semana: mesmo círculo azul com as iniciais do paciente, no canto inferior direito (como no Dia) */
     .wk-ev-foot{margin-top:auto;display:flex;justify-content:flex-end}
     .wk-ev .avatar{width:42px;height:34px;font-size:10px;line-height:14px}   /* 30% menor que o do Dia (60x48, 14px) */
+    /* eventos do calendário conectado (posicionados por horário) */
     .ev-real{position:absolute;left:86px;right:24px;background:var(--ev-bg);border-radius:40px;
       padding:20px 24px;overflow:hidden;z-index:2;display:flex;flex-direction:column;
       justify-content:space-between}
@@ -2503,106 +2488,20 @@
           <div class="hr-row"><span class="hr-label">5h</span></div>
           <div class="hr-row"><span class="hr-label">6h</span></div>
           <div class="hr-row"><span class="hr-label">7h</span></div>
-          <div class="hr-row"><span class="hr-label">8h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Consulta</div><div class="ev-sub">Vinicius Zarveks</div></div>
-                <div class="ev-foot"><span class="avatar">VZ</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">9h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Consulta</div><div class="ev-sub">Lais Brandão</div></div>
-                <div class="ev-foot"><span class="avatar">LB</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">10h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Próxima consulta</div><div class="ev-sub">Luiza Nonata</div></div>
-                <div class="ev-foot"><span class="avatar">LN</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">11h</span>
-            <div class="ev" style="height:392px">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Plantão</div><div class="ev-sub">Einstein Hospital Israelita</div></div>
-                <div class="ev-foot"><span class="avatar">EH</span></div>
-              </div>
-            </div>
-          </div>
+          <div class="hr-row"><span class="hr-label">8h</span></div>
+          <div class="hr-row"><span class="hr-label">9h</span></div>
+          <div class="hr-row"><span class="hr-label">10h</span></div>
+          <div class="hr-row"><span class="hr-label">11h</span></div>
           <div class="hr-row"><span class="hr-label">12h</span></div>
           <div class="hr-row"><span class="hr-label">13h</span></div>
-          <div class="hr-row"><span class="hr-label">14h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Almoço</div><div class="ev-sub">Intervalo</div></div>
-                <div class="ev-foot"></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">15h</span>
-            <div class="ev half" style="top:8px;height:67px">
-              <div class="ev-htext"><div class="ev-title">Consulta</div><div class="ev-sub">João Pereira · 15h–15h30</div></div>
-              <span class="avatar">JP</span>
-            </div>
-            <div class="ev half" style="top:83px;height:67px">
-              <div class="ev-htext"><div class="ev-title">Consulta</div><div class="ev-sub">Carlos Nunes · 15h30–16h</div></div>
-              <span class="avatar">CN</span>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">16h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Consulta</div><div class="ev-sub">Marina Costa</div></div>
-                <div class="ev-foot"><span class="avatar">MC</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">17h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Consulta</div><div class="ev-sub">Pedro Alves</div></div>
-                <div class="ev-foot"><span class="avatar">PA</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">18h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Consulta</div><div class="ev-sub">Sofia Ramos</div></div>
-                <div class="ev-foot"><span class="avatar">SR</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">19h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Consulta</div><div class="ev-sub">Lucas Martins</div></div>
-                <div class="ev-foot"><span class="avatar">LM</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">20h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Consulta</div><div class="ev-sub">Helena Dias</div></div>
-                <div class="ev-foot"><span class="avatar">HD</span></div>
-              </div>
-            </div>
-          </div>
-          <div class="hr-row"><span class="hr-label">21h</span>
-            <div class="ev">
-              <div class="ev-body">
-                <div class="ev-top"><div class="ev-title">Consulta</div><div class="ev-sub">Gustavo Rocha</div></div>
-                <div class="ev-foot"><span class="avatar">GR</span></div>
-              </div>
-            </div>
-          </div>
+          <div class="hr-row"><span class="hr-label">14h</span></div>
+          <div class="hr-row"><span class="hr-label">15h</span></div>
+          <div class="hr-row"><span class="hr-label">16h</span></div>
+          <div class="hr-row"><span class="hr-label">17h</span></div>
+          <div class="hr-row"><span class="hr-label">18h</span></div>
+          <div class="hr-row"><span class="hr-label">19h</span></div>
+          <div class="hr-row"><span class="hr-label">20h</span></div>
+          <div class="hr-row"><span class="hr-label">21h</span></div>
           <div class="hr-row"><span class="hr-label">22h</span></div>
           <div class="hr-row"><span class="hr-label">23h</span></div>
 
@@ -2827,7 +2726,6 @@
       var t = h + m / 60;
       var sel = window.__calSelected ? window.__calSelected() : d;
       var isToday = sel.getFullYear() === d.getFullYear() && sel.getMonth() === d.getMonth() && sel.getDate() === d.getDate();
-      var ci = document.querySelector('.cal-inner'); if (ci) ci.classList.toggle('other-day', !isToday);
       if (!isToday || t < FIRST_HOUR || t >= LAST_HOUR + 1) { el.style.display = 'none'; return; }
       el.style.display = '';
       el.style.top = ((t - FIRST_HOUR) * HOUR_PX) + 'px';
@@ -2878,11 +2776,9 @@
       applySel();
     };
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && window.__selEv) window.__evSelect(null); });
-    // consultas de exemplo (sem calendário conectado) também podem ser selecionadas
-    document.querySelectorAll('.cal-inner .ev').forEach(function (n, i) { n.setAttribute('data-evkey', 'demo-' + i); });
 
     // abre a agenda com o traço da hora atual no MEIO da área visível;
-    // fora da faixa 1h–23h (traço escondido), cai no primeiro compromisso no topo
+    // fora da faixa 1h–23h (traço escondido), cai no primeiro compromisso no topo (dia sem compromisso: nas 8h)
     function scrollToFirst() {
       var cal = document.querySelector('.cal');
       if (!cal) return;
@@ -2898,8 +2794,7 @@
       if (real) {
         top = parseFloat(real.style.top) || real.offsetTop;
       } else {
-        var ev = document.querySelector('.cal-inner .ev');
-        var row = ev ? ev.closest('.hr-row') : null;
+        var row = document.querySelectorAll('.cal-inner .hr-row')[8];
         top = row ? row.offsetTop + 8 : 0;
       }
       cal.scrollTop = Math.max(top - 8, 0);
@@ -2922,7 +2817,6 @@
         var inner = document.querySelector('.cal-inner');
         if (!inner) return;
         inner.querySelectorAll('.ev-real').forEach(function (n) { n.remove(); });
-        inner.classList.add('real');          // esconde os exemplos fixos
         var strip = document.getElementById('calAllDay'), ad = events.filter(function (ev) { return allDayOn(ev, dayStart); });
         if (strip) { strip.innerHTML = ''; ad.forEach(function (ev) { strip.appendChild(allDayPill(ev)); }); strip.hidden = !ad.length; }
         events.forEach(function (ev) {
@@ -3481,11 +3375,6 @@
           elMsg.textContent = 'Há mais de um paciente com esse nome. Escolha qual na lista do campo Paciente.';
           elPatient.focus(); return;
         }
-        if (!selPatient.id && !(editEv && editEv.id)) {    // consulta de exemplo (sem calendário): não cria paciente
-          elMsg.className = 'evpop-msg'; elMsg.hidden = false;
-          elMsg.innerHTML = 'Esta é uma consulta de exemplo. <a href="/opendoctor-integracao.html">Conecte o Google Calendar</a> para usar o prontuário.';
-          return;
-        }
         var ctx = { event_id: editEv && editEv.id || null, title: p._title || '', patient: selPatient.name,
                     patient_id: selPatient.id || null,
                     start: p.start || null, end: p.end || null, all_day: !!p.all_day, location: p.location || '' };
@@ -3518,20 +3407,12 @@
 
       calInner.addEventListener('click', function (e) {
         if (e.target.closest('.now')) return;
-        var evEl = e.target.closest('.ev, .ev-real');
+        var evEl = e.target.closest('.ev-real');
         if (!evEl && !pop.hidden) { close(); return; }         // aberto → clicar num vazio fecha
         if (evEl) {                                            // seleciona e abre a janela preenchida
           var k = evEl.getAttribute('data-evkey');
           window.__selEv = null; window.__evSelect(k);
           var data = window.__evData[k];
-          if (!data && evEl.classList.contains('ev')) {        // consulta de exemplo (sem calendário)
-            var row = evEl.closest('.hr-row'), hl = row ? parseInt(row.querySelector('.hr-label').textContent, 10) : 9;
-            var d0 = window.__calSelected ? window.__calSelected() : new Date();
-            var st = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate(), hl, 0);
-            var t1 = evEl.querySelector('.ev-title'), t2 = evEl.querySelector('.ev-sub');
-            data = { title: (t1 ? t1.textContent : '') + (t2 ? ' — ' + t2.textContent : ''),
-                     start: st.toISOString(), end: new Date(st.getTime() + 36e5).toISOString() };
-          }
           if (data && window.__openEventEdit) window.__openEventEdit(e.clientX, e.clientY, data);
           return;
         }
