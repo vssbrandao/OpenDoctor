@@ -4,7 +4,7 @@
 //     node tests/e2e/cadastro.mjs               (SHOT=/pasta salva o Registro profissional em 1440×780; CHROME=/outro Chrome)
 //
 // Confere: a etapa da senha não pede mais o nome e não vai ao servidor; o Registro profissional segue o Figma 1178-7176
-// (seta no lugar do logo, título em y=155, campos de 84px em 3 linhas, botão #10132C); máscaras de CPF, nascimento, CRM e
+// (seta no lugar do logo, título em y=155, campos de 84px em 3 linhas, botão #0B0B0C); máscaras de CPF, nascimento, CRM e
 // UF; o CRM colado com a UF ("CRM-SP 123.456", "52-1234/RJ", "1234567-P/SP"…) separa os dois; erros nos campos; a seta
 // volta para a senha; Criar conta manda tudo num POST só (nada de CPF em URL); a conta pendente mostra a espera; as
 // recusas do CFM aparecem no campo certo; o Google com conta nova cai direto no registro; recusada e a confirmar; a
@@ -214,7 +214,7 @@ const cenarios = [
     for (const [k, q] of Object.entries(quer)) for (const [d, v] of Object.entries(q)) if (Math.abs(g[k][d] - v) > 0.6) fora.push(`${k}.${d}=${g[k][d]} (Figma ${v})`);
     certo(!fora.length, 'posições: ' + fora.join(', '));
     const cor = await ev(`getComputedStyle(document.getElementById('regGo')).backgroundColor`);
-    certo(cor === 'rgb(16, 19, 44)', 'cor do botão: ' + cor);
+    certo(cor === 'rgb(11, 11, 12)', 'cor do botão: ' + cor);
     const fonte = await ev(`(() => { const s = getComputedStyle(document.getElementById('title')); return s.fontSize + ' ' + s.fontWeight + ' ' + s.color; })()`);
     certo(fonte === '24px 500 rgb(12, 12, 13)', 'título: ' + fonte);
     certo(await ev(`document.fonts.check('500 24px "Helvetica Now Display"')`), 'fonte Helvetica Now Display não carregou');
@@ -228,7 +228,7 @@ const cenarios = [
       writeFileSync(join(process.env.SHOT, 'registro-1440x780.png'), Buffer.from(r.data, 'base64'));
     }
     await send('Emulation.clearDeviceMetricsOverride');
-    return 'seta 803,60; título y=155; campos 243/335/427; botão 527 #10132C; texto legal y=688';
+    return 'seta 803,60; título y=155; campos 243/335/427; botão 527 #0B0B0C; texto legal y=688';
   }],
   ['máscaras e o CRM com a UF', async () => {
     await ateRegistro();
@@ -596,23 +596,23 @@ const cenarios = [
     await send('Emulation.clearDeviceMetricsOverride');
     return `5 erros com ${alturas.join('/')} px; "não achamos" numa linha de 447 px embaixo de CRM | UF`;
   }],
-  ['as outras etapas continuam com o visual novo (logo 34 px, "Bem-vindo à", botão #10132C)', async () => {
+  ['as outras etapas continuam com o visual novo (logo 34 px, "Bem-vindo à", botão #0B0B0C)', async () => {
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 780, deviceScaleFactor: 1, mobile: false });
     await abre();
     const logo = await ev(`(() => { const l = document.querySelector('.logo'); const r = l.getBoundingClientRect();
       return { src: l.getAttribute('src'), w: r.width, y: r.top }; })()`);
-    certo(logo.src === 'assets/login/logo-simbolo.svg' && logo.w === 34 && logo.y === 60, 'logo: ' + JSON.stringify(logo));
+    certo(logo.src === 'assets/login/logo-simbolo.svg?v=4' && logo.w === 34 && logo.y === 60, 'logo: ' + JSON.stringify(logo));
     certo(await titulo() === 'Bem-vindo à OpenDoctor' && (await caixa('#title')).y === 171, 'título: ' + await titulo() + ' ' + JSON.stringify(await caixa('#title')));
-    certo(await ev(`getComputedStyle(document.getElementById('go')).backgroundColor`) === 'rgb(16, 19, 44)', 'botão do e-mail');
+    certo(await ev(`getComputedStyle(document.getElementById('go')).backgroundColor`) === 'rgb(11, 11, 12)', 'botão do e-mail');
     certo(!(await ev(`[...document.styleSheets].some((s) => [...s.cssRules].some((r) => /btn-reg/.test(r.cssText)))`)), '.btn-reg ainda existe');
     ME = { logged_in: true, user: { id: 'u1' }, scribe: false, bloqueio: 'crm_confirmar' };
     await abre();
     await ate(`!document.getElementById('confForm').hidden`, 3000, 'confirmar');
     const cor = await ev(`getComputedStyle(document.getElementById('confGo')).backgroundColor`);
     ME = { logged_in: false, user: null, scribe: false, bloqueio: null };
-    certo(cor === 'rgb(16, 19, 44)', 'botão da confirmação: ' + cor);
+    certo(cor === 'rgb(11, 11, 12)', 'botão da confirmação: ' + cor);
     await send('Emulation.clearDeviceMetricsOverride');
-    return 'logo-simbolo 34 px em y=60; título y=171; botões #10132C; sem .btn-reg';
+    return 'logo-simbolo 34 px em y=60; título y=171; botões #0B0B0C; sem .btn-reg';
   }],
   ['a espera confere o /me a cada 30 s com a aba à vista e abre o app quando liberada', async () => {
     // relógio do teste: o intervalo da página (OD_ESPERA_MS, 30 s de verdade) vira 250 ms; a aba "escondida" é simulada
