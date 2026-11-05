@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg?v=4">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/brand/favicon-32.png?v=4">
+  <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png?v=4">
+  <title>OpenDoctor | Perfil</title>
+  <style>
+    @font-face{font-family:"Helvetica Now Display";font-weight:400;font-style:normal;font-display:swap;
+      src:url("assets/fonts/HelveticaNowDisplay-Regular.woff2") format("woff2");}
+    @font-face{font-family:"Helvetica Now Display";font-weight:500;font-style:normal;font-display:swap;
+      src:url("assets/fonts/HelveticaNowDisplay-Medium.woff2") format("woff2");}
+    @font-face{font-family:"Helvetica Now Display";font-weight:700;font-style:normal;font-display:swap;
+      src:url("assets/fonts/HelveticaNowDisplay-Bold.woff2") format("woff2");}
+    :root{
+      --disp:"Helvetica Now Display","Helvetica Neue",Helvetica,Arial,sans-serif;
+      --ink:#071216; --muted:#666c6f; --sb-border:rgba(0,0,0,.08);
+      --active:#f7f8f8; --card-border:rgba(26,26,26,.08);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%}
+    body{overflow:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;background:#fff}
+    svg{display:block}
+    .stage{position:relative;display:flex;width:100%;height:100%;background:#fff;
+      font-family:var(--disp);color:var(--ink);overflow:hidden}
+
+    /* ===== LEFT SIDEBAR (268) ===== */
+    .nav{flex:none;width:268px;height:100%;background:#fff;position:relative;
+      border-right:1px solid var(--sb-border);overflow:hidden}
+    .nav-top svg{width:268px;height:52px;display:block}
+    /* botão do painel (Figma IconButton 36x36 em x 226, y 8; ícone 20x20 no centro) */
+    .nav-toggle{position:absolute;top:8px;right:6px;width:36px;height:36px;border:0;padding:0;
+      background:none;cursor:pointer;border-radius:8px;display:flex;align-items:center;justify-content:center}
+    .nav-toggle:hover{background:rgba(0,0,0,.05)}
+    .nav-top .nav-toggle svg{width:20px;height:20px;flex:none}
+    .nav:not(.collapsed) .nav-toggle svg{visibility:hidden}   /* o ícone já está desenhado no topo */
+    /* menu retraído (Figma 1012:7520): faixa de 52px, só ícones, botão do painel em x 8, y 8 */
+    .nav.collapsed{width:52px}
+    .nav.collapsed .nav-top svg.nav-logo{visibility:hidden}
+    .nav.collapsed .nav-toggle{left:8px;right:auto}
+    .nav.collapsed .item>span:not(.ico){display:none}
+    .nav.collapsed .item{width:40px}
+    .nav-main{padding:0 6px;display:flex;flex-direction:column;gap:42px}
+    .nav-sec{display:flex;flex-direction:column;gap:4px}
+    .item{display:flex;align-items:center;gap:6px;padding:8px 10px;border-radius:100px;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:var(--ink);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .item:hover{background:var(--active);border-radius:10px}
+    .item.active{background:var(--active);border-radius:10px}
+    .item .ico{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center}
+    .item .ico svg{display:block}
+
+    /* ===== CENTER: PERFIL — os mesmos cartões, campos e botão de Configurações (coluna de 516, título 18, cartões com 42 de
+       respiro, canto 40 e borda rgba(26,26,26,.08), 8 entre cartões, 48 entre os blocos do cartão, botão pílula de 64) ===== */
+    .center{flex:1;min-width:0;height:100%;overflow-y:auto;display:flex;justify-content:center;padding:42px 20px 0 0}
+    .cfg{width:516px;flex:none;display:flex;flex-direction:column;gap:42px;align-self:flex-start;padding-bottom:42px}
+    .cfg-title{font-family:var(--disp);font-weight:500;font-size:18px;line-height:24px;color:#071216}
+    .cfg-list{display:flex;flex-direction:column;gap:8px}
+    .cfg-card{padding:42px;border-radius:40px;border:1px solid var(--card-border);display:flex;flex-direction:column;gap:48px}
+    .cfg-name{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .cfg-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .cfg-fields{display:flex;flex-direction:column;gap:16px}
+    .cfg-row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:16px}
+    .cfg-fld{display:flex;flex-direction:column;gap:8px;min-width:0}
+    /* dados da conta, só leitura: o campo preenchido de Configurações (branco, contorno fino, rótulo 12px em cima, texto 15px) */
+    .fl{position:relative;width:100%;height:84px;border-radius:24px;background:#fff;box-shadow:inset 0 0 0 1px var(--card-border)}
+    .fl-input{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:24px;outline:none;background:transparent;
+      padding:41.4px 32px 24.6px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:400;font-size:15px;
+      line-height:18px;letter-spacing:-.2px;color:#000;cursor:default;text-overflow:ellipsis}
+    .fl-label{position:absolute;left:32px;right:32px;top:24.6px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      font-family:var(--disp);font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
+    .cfg-help{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    /* rodapé do cartão: o botão de Integrações (h 64, padding 16 48, pílula, borda fina, 14 Bold) e o status ao lado */
+    .cfg-foot{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+    .cfg-btn{flex:none;height:64px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:16px 48px;border:0;
+      background:none;border-radius:999px;box-shadow:inset 0 0 0 1px var(--card-border);cursor:pointer;
+      font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.01em;color:#000}
+    .cfg-btn:hover{background:var(--active)}
+    .cfg-st{min-width:0;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
+    .cfg-st.err{color:#C0151D}
+    .cfg-back{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;text-decoration:underline;
+      text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer}
+    .fl[hidden],.cfg-fld[hidden],.cfg-foot[hidden],.cfg-help[hidden],.cfg-back[hidden]{display:none}
+  </style>
+</head>
+<body>
+  <div class="stage">
+
+    <!-- ===== LEFT SIDEBAR ===== -->
+    <aside class="nav">
+      <div class="nav-top">
+        <svg class="nav-logo" viewBox="0 0 268 52" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenDoctor">
+          <svg x="17" y="16" width="20" height="20" viewBox="0 0 1000 1000"><path fill="#0D0D0D" fill-rule="evenodd" d="M489.304 340.358 A160.000 160.000 0 0 1 504.085 340.052 L408.739 51.064 L395.532 11.035 A500.000 500.000 0 0 0 304.474 39.816 L313.108 56.600 A330.000 330.000 0 0 1 375.759 49.816 L489.304 340.358Z M249.547 67.249 A500.000 500.000 0 0 0 215.073 89.127 L418.745 362.168 A160.000 160.000 0 0 1 435.135 353.738 L249.547 67.249Z M128.077 165.824 A500.000 500.000 0 0 0 107.828 189.837 L369.905 406.858 A160.000 160.000 0 0 1 378.665 395.704 L128.077 165.824Z M43.015 297.110 A500.000 500.000 0 0 0 28.447 333.755 L341.930 475.225 A160.000 160.000 0 0 1 345.658 457.828 L43.015 297.110Z M2.685 448.257 A500.000 500.000 0 0 0 0.019 495.637 L299.766 541.363 A330.000 330.000 0 0 1 305.976 519.419 L2.685 448.257Z M11.035 604.468 A500.000 500.000 0 0 0 25.617 657.990 L290.223 623.385 A330.000 330.000 0 0 1 291.181 594.892 L11.035 604.468Z M419.180 638.087 A160.000 160.000 0 0 1 418.927 637.939 L295.222 677.516 L67.249 750.453 A500.000 500.000 0 0 0 102.475 803.272 L303.326 712.327 A330.000 330.000 0 0 1 295.289 677.896 L419.180 638.087Z M480.657 658.827 A160.000 160.000 0 0 1 477.486 658.408 L323.226 764.089 L165.824 871.923 A500.000 500.000 0 0 0 222.287 915.783 L345.608 803.223 A330.000 330.000 0 0 1 325.608 768.904 L480.657 658.827Z M533.337 656.488 A160.000 160.000 0 0 1 528.762 657.394 L381.407 847.966 L297.110 956.985 A500.000 500.000 0 0 0 372.108 983.367 L424.238 885.718 A330.000 330.000 0 0 1 389.644 856.302 L533.337 656.488Z M568.755 644.474 A160.000 160.000 0 0 1 564.456 646.443 L475.005 916.546 L448.257 997.315 A500.000 500.000 0 0 0 535.749 998.720 L542.603 940.953 A330.000 330.000 0 0 1 493.083 924.739 L568.755 644.474Z M561.850 352.438 A160.000 160.000 0 0 1 571.898 357.064 L557.372 101.646 L551.744 2.685 A500.000 500.000 0 0 0 464.251 1.280 L477.324 64.534 A330.000 330.000 0 0 1 535.774 88.983 L561.850 352.438Z M620.440 394.671 A160.000 160.000 0 0 1 625.075 400.219 L665.500 214.652 L702.890 43.015 A500.000 500.000 0 0 0 627.892 16.633 L617.706 151.107 A330.000 330.000 0 0 1 656.787 200.422 L620.440 394.671Z M653.350 454.351 A160.000 160.000 0 0 1 654.290 457.639 L709.028 357.356 L834.176 128.077 A500.000 500.000 0 0 0 777.713 84.217 L697.803 291.650 A330.000 330.000 0 0 1 708.396 349.476 L653.350 454.351Z M659.494 512.711 A160.000 160.000 0 0 1 659.477 512.930 L694.459 479.214 L932.751 249.547 A500.000 500.000 0 0 0 897.525 196.728 L705.025 435.682 A330.000 330.000 0 0 1 694.593 478.787 L659.494 512.711Z M988.965 395.532 A500.000 500.000 0 0 0 974.383 342.010 L654.551 541.401 A160.000 160.000 0 0 1 650.592 554.055 L988.965 395.532Z M997.315 551.744 A500.000 500.000 0 0 0 999.981 504.363 L641.975 573.777 A160.000 160.000 0 0 1 638.235 580.568 L997.315 551.744Z M956.985 702.890 A500.000 500.000 0 0 0 971.553 666.245 L629.321 594.213 A160.000 160.000 0 0 1 626.441 598.044 L956.985 702.890Z M871.923 834.176 A500.000 500.000 0 0 0 892.172 810.163 L617.396 608.712 A160.000 160.000 0 0 1 615.109 611.130 L871.923 834.176Z M750.453 932.751 A500.000 500.000 0 0 0 784.927 910.873 L606.214 619.660 A160.000 160.000 0 0 1 602.817 622.592 L750.453 932.751Z M590.930 631.650 A160.000 160.000 0 0 1 587.244 634.121 L602.564 949.736 L604.468 988.965 A500.000 500.000 0 0 0 695.526 960.184 L690.360 942.665 A330.000 330.000 0 0 1 632.273 949.988 L590.930 631.650Z"/></svg>
+          <path d="M249 18C251.209 18 253 19.7909 253 22V29C253 31.2091 251.209 33 249 33H240C237.791 33 236 31.2091 236 29V22C236 19.7909 237.791 18 240 18H249ZM240 19.5C238.619 19.5 237.5 20.6193 237.5 22V29C237.5 30.3807 238.619 31.5 240 31.5H249C250.381 31.5 251.5 30.3807 251.5 29V22C251.5 20.6193 250.381 19.5 249 19.5H240ZM241.75 22C242.164 22 242.5 22.3358 242.5 22.75V28.25C242.5 28.6642 242.164 29 241.75 29C241.336 29 241 28.6642 241 28.25V22.75C241 22.3358 241.336 22 241.75 22Z" fill="#8B8B8B"/>
+        </svg>
+        <button class="nav-toggle" id="navToggle" aria-label="Recolher menu" title="Recolher menu"><svg width="20" height="20" viewBox="234 16 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M249 18C251.209 18 253 19.7909 253 22V29C253 31.2091 251.209 33 249 33H240C237.791 33 236 31.2091 236 29V22C236 19.7909 237.791 18 240 18H249ZM240 19.5C238.619 19.5 237.5 20.6193 237.5 22V29C237.5 30.3807 238.619 31.5 240 31.5H249C250.381 31.5 251.5 30.3807 251.5 29V22C251.5 20.6193 250.381 19.5 249 19.5H240ZM241.75 22C242.164 22 242.5 22.3358 242.5 22.75V28.25C242.5 28.6642 242.164 29 241.75 29C241.336 29 241 28.6642 241 28.25V22.75C241 22.3358 241.336 22 241.75 22Z" fill="#8B8B8B"/></svg></button>
+      </div>
+      <div class="nav-main">
+        <div class="nav-sec">
+          <div class="item" data-href="opendoctor-agenda.html" title="Consultas"><span class="ico"><svg width="15" height="14" viewBox="0 0 15 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z" fill="#071216"/></svg></span><span>Consultas</span></div>
+          <div class="item" title="Search"><span class="ico"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.00100402 6.12952C0.00100402 2.74849 2.7495 0 6.13052 0C9.51155 0 12.26 2.74849 12.26 6.12952C12.26 7.44729 11.8308 8.66717 11.1155 9.65361L14.5567 13.1024C14.76 13.3133 14.8655 13.5919 14.8655 13.8931C14.8655 14.5181 14.4061 15 13.7661 15C13.4724 15 13.1787 14.9021 12.9679 14.6837L9.50402 11.2199C8.54016 11.875 7.38805 12.259 6.13052 12.259C2.7495 12.259 0.00100402 9.51054 0.00100402 6.12952ZM1.56727 6.12952C1.56727 8.65211 3.60793 10.6928 6.13052 10.6928C8.65311 10.6928 10.6938 8.65211 10.6938 6.12952C10.6938 3.60693 8.65311 1.56627 6.13052 1.56627C3.60793 1.56627 1.56727 3.60693 1.56727 6.12952Z" fill="#071216"/></svg></span><span>Search</span></div>
+          <div class="item" data-href="opendoctor-agenda.html#pacientes" title="Pacientes"><span class="ico"><svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z" fill="#071216"/></svg></span><span>Pacientes</span></div>
+          <div class="item" title="Prescrições"><span class="ico"><svg width="17" height="14" viewBox="0 0 17 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.43415 13.8229C0.8315 13.8229 0.000494646 12.9993 0.000494646 11.4115V2.36688C0.000494646 0.808747 0.816661 0 2.20414 0H4.30392C5.07556 0 5.46139 0.140974 5.98077 0.571316L6.41111 0.912622C6.81919 1.24651 7.13082 1.37264 7.66504 1.37264H14.5654C16.168 1.37264 16.999 2.19623 16.999 3.78404V11.4115C16.999 12.9993 16.1754 13.8229 14.7583 13.8229H2.43415ZM2.52319 12.3686H14.4837C15.1663 12.3686 15.5448 12.0125 15.5448 11.2928V3.91018C15.5448 3.18305 15.1663 2.8269 14.4837 2.8269H7.27921C6.50757 2.8269 6.1069 2.68593 5.59494 2.26301L5.1646 1.91428C4.7491 1.57297 4.44489 1.45426 3.91809 1.45426H2.49351C1.82574 1.45426 1.45475 1.81041 1.45475 2.49302V11.2928C1.45475 12.0125 1.83316 12.3686 2.52319 12.3686ZM2.35996 5.15669V4.62989C2.35996 4.16245 2.59739 3.93986 3.07225 3.93986H13.9273C14.4021 3.93986 14.6321 4.16245 14.6321 4.62989V5.15669H2.35996Z" fill="#071216"/></svg></span><span>Prescrições</span></div>
+        </div>
+        <div class="nav-sec">
+          <div class="item" data-href="opendoctor-integracao.html" title="Integrações"><span class="ico"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.4112 13.722C0.823661 13.722 0.000489983 12.9061 0.000489983 11.3333V2.38867C0.000489983 0.815821 0.823661 0 2.4112 0H12.5244C14.112 0 14.9352 0.815821 14.9352 2.38867V6.51187C14.7 6.47512 14.4574 6.45307 14.2222 6.45307C13.9797 6.45307 13.7372 6.47512 13.4946 6.51187V4.52744C13.4946 3.88066 13.1492 3.56462 12.5318 3.56462H2.38916C1.77913 3.56462 1.44104 3.88066 1.44104 4.52744V11.3186C1.44104 11.958 1.77913 12.2814 2.38916 12.2814H9.52575C9.61395 12.7959 9.80504 13.281 10.0696 13.722H2.4112ZM6.04932 6.11498C5.78473 6.11498 5.69654 6.03414 5.69654 5.76954V5.34326C5.69654 5.07867 5.78473 4.99782 6.04932 4.99782H6.48296C6.7402 4.99782 6.8284 5.07867 6.8284 5.34326V5.76954C6.8284 6.03414 6.7402 6.11498 6.48296 6.11498H6.04932ZM8.45269 6.11498C8.1881 6.11498 8.0999 6.03414 8.0999 5.76954V5.34326C8.0999 5.07867 8.1881 4.99782 8.45269 4.99782H8.88632C9.14356 4.99782 9.23176 5.07867 9.23176 5.34326V5.76954C9.23176 6.03414 9.14356 6.11498 8.88632 6.11498H8.45269ZM10.8561 6.11498C10.5915 6.11498 10.5033 6.03414 10.5033 5.76954V5.34326C10.5033 5.07867 10.5915 4.99782 10.8561 4.99782H11.2897C11.5543 4.99782 11.6425 5.07867 11.6425 5.34326V5.76954C11.6425 6.03414 11.5543 6.11498 11.2897 6.11498H10.8561ZM3.64596 8.4816C3.38137 8.4816 3.29317 8.40075 3.29317 8.13616V7.70988C3.29317 7.44529 3.38137 7.36444 3.64596 7.36444H4.07225C4.33684 7.36444 4.42503 7.44529 4.42503 7.70988V8.13616C4.42503 8.40075 4.33684 8.4816 4.07225 8.4816H3.64596ZM6.04932 8.4816C5.78473 8.4816 5.69654 8.40075 5.69654 8.13616V7.70988C5.69654 7.44529 5.78473 7.36444 6.04932 7.36444H6.48296C6.7402 7.36444 6.8284 7.44529 6.8284 7.70988V8.13616C6.8284 8.40075 6.7402 8.4816 6.48296 8.4816H6.04932ZM8.45269 8.4816C8.1881 8.4816 8.0999 8.40075 8.0999 8.13616V7.70988C8.0999 7.44529 8.1881 7.36444 8.45269 7.36444H8.88632C9.14356 7.36444 9.23176 7.44529 9.23176 7.70988V8.13616C9.23176 8.40075 9.14356 8.4816 8.88632 8.4816H8.45269ZM14.2222 15.0596C12.1496 15.0596 10.4371 13.3545 10.4371 11.2745C10.4371 9.20187 12.1496 7.49673 14.2222 7.49673C16.2949 7.49673 18 9.20187 18 11.2745C18 13.3398 16.2728 15.0596 14.2222 15.0596ZM14.2222 13.6705C14.5236 13.6705 14.722 13.4721 14.722 13.1781V11.7743H16.1111C16.4125 11.7743 16.6109 11.5832 16.6109 11.2745C16.6109 10.9732 16.4125 10.7747 16.1111 10.7747H14.722V9.38562C14.722 9.08428 14.5236 8.88583 14.2222 8.88583C13.9135 8.88583 13.7225 9.09163 13.7225 9.38562V10.7747H12.326C12.0247 10.7747 11.8262 10.9732 11.8262 11.2745C11.8262 11.5832 12.0247 11.7743 12.326 11.7743H13.7225V13.1781C13.7225 13.4721 13.9135 13.6705 14.2222 13.6705ZM3.64596 10.8482C3.38137 10.8482 3.29317 10.7674 3.29317 10.5028V10.0765C3.29317 9.8119 3.38137 9.73105 3.64596 9.73105H4.07225C4.33684 9.73105 4.42503 9.8119 4.42503 10.0765V10.5028C4.42503 10.7674 4.33684 10.8482 4.07225 10.8482H3.64596ZM6.04932 10.8482C5.78473 10.8482 5.69654 10.7674 5.69654 10.5028V10.0765C5.69654 9.8119 5.78473 9.73105 6.04932 9.73105H6.48296C6.7402 9.73105 6.8284 9.8119 6.8284 10.0765V10.5028C6.8284 10.7674 6.7402 10.8482 6.48296 10.8482H6.04932ZM8.45269 10.8482C8.1881 10.8482 8.0999 10.7674 8.0999 10.5028V10.0765C8.0999 9.8119 8.1881 9.73105 8.45269 9.73105H8.88632C9.14356 9.73105 9.23176 9.8119 9.23176 10.0765V10.5028C9.23176 10.7674 9.14356 10.8482 8.88632 10.8482H8.45269Z" fill="#071216"/></svg></span><span>Integrações</span></div>
+          <div class="item" data-href="opendoctor-configuracoes.html" title="Configurações"><span class="ico"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 15.7712C8.32619 15.7712 8.15238 15.7637 7.97857 15.7486L7.5705 16.5194C7.44959 16.731 7.26067 16.8368 7.01885 16.7914C6.79214 16.7461 6.63345 16.5874 6.60322 16.3456L6.48231 15.4916C6.14225 15.3934 5.8173 15.2725 5.50747 15.1289L4.85757 15.7108C4.67621 15.8695 4.45706 15.8997 4.24547 15.7788C4.04143 15.6579 3.9583 15.4539 4.00365 15.2196L4.18501 14.3732C3.90541 14.1692 3.63336 13.95 3.38398 13.7007L2.58295 14.0256C2.35624 14.1163 2.14465 14.0709 1.98595 13.882C1.83482 13.7007 1.8197 13.474 1.94817 13.2699L2.40914 12.5445C2.21266 12.2497 2.03885 11.9475 1.88771 11.6376L1.02623 11.6603C0.776849 11.6679 0.595484 11.5545 0.512358 11.3278C0.436789 11.1011 0.489687 10.8819 0.686166 10.7384L1.36629 10.2094C1.28316 9.86931 1.22271 9.52925 1.18492 9.17408L0.36122 8.90958C0.126956 8.83401 -0.00151138 8.65265 -0.00151138 8.41839C-0.00151138 8.17656 0.126956 7.9952 0.36122 7.92719L1.18492 7.6627C1.22271 7.30752 1.28316 6.96746 1.36629 6.6274L0.686166 6.09842C0.489687 5.94728 0.429232 5.73569 0.512358 5.51654C0.595484 5.28983 0.776849 5.16136 1.02623 5.16892L1.88771 5.2067C2.03885 4.88931 2.21266 4.58704 2.40914 4.29988L1.94817 3.56686C1.8197 3.36282 1.82726 3.13611 1.98595 2.95475C2.14465 2.77338 2.35624 2.71293 2.58295 2.81117L3.38398 3.13611C3.63336 2.89429 3.89785 2.66759 4.18501 2.46355L4.00365 1.61718C3.9583 1.38291 4.03387 1.17132 4.24547 1.05797C4.45706 0.944612 4.68377 0.959726 4.85757 1.12598L5.49235 1.7003C5.8173 1.56428 6.13469 1.44337 6.47475 1.34513L6.60322 0.483642C6.641 0.249378 6.78458 0.0831259 7.0264 0.0453414C7.26067 0.0075569 7.45715 0.105797 7.5705 0.31739L7.97857 1.08819C8.15238 1.07308 8.32619 1.06552 8.5 1.06552C8.67381 1.06552 8.84762 1.07308 9.02143 1.08819L9.4295 0.31739C9.54285 0.105797 9.73933 0 9.9736 0.0453414C10.2079 0.0906828 10.359 0.249378 10.3968 0.491198L10.5101 1.34513C10.8502 1.44337 11.1827 1.55672 11.4925 1.7003L12.1424 1.12598C12.3162 0.967283 12.5429 0.929499 12.7545 1.05797C12.9586 1.17888 13.0417 1.37536 12.9964 1.61718L12.8074 2.45599C13.0946 2.66003 13.3666 2.88674 13.616 3.13611L14.4171 2.81117C14.6362 2.72048 14.8554 2.76583 15.014 2.95475C15.1576 3.13611 15.1803 3.36282 15.0518 3.56686L14.5909 4.29232C14.7798 4.57948 14.9611 4.88176 15.1123 5.19915L15.9738 5.17648C16.2156 5.16892 16.4045 5.27472 16.4876 5.50898C16.5632 5.73569 16.5103 5.95484 16.3138 6.09842L15.6262 6.6274C15.7168 6.9599 15.7773 7.30752 15.8151 7.6627L16.6388 7.92719C16.8655 7.9952 17.0015 8.17656 17.0015 8.41839C17.0015 8.65265 16.8655 8.83401 16.6388 8.90958L15.8151 9.17408C15.7773 9.52925 15.7168 9.86931 15.6262 10.2094L16.3138 10.7384C16.5103 10.8895 16.5708 11.1011 16.4876 11.3202C16.4045 11.5469 16.2156 11.6754 15.9738 11.6679L15.1123 11.6301C14.9611 11.9475 14.7798 12.2497 14.5909 12.5369L15.0518 13.2699C15.1803 13.474 15.1727 13.7007 15.014 13.882C14.8554 14.0634 14.6438 14.1163 14.4095 14.0256L13.616 13.7007C13.3666 13.9425 13.1022 14.1692 12.8074 14.3657L12.9888 15.2196C13.0417 15.4539 12.9586 15.6579 12.747 15.7788C12.5429 15.8922 12.3162 15.877 12.1424 15.7108L11.5001 15.1289C11.1827 15.2725 10.8578 15.3934 10.5177 15.4916L10.3892 16.3456C10.359 16.5874 10.2154 16.7536 9.9736 16.7914C9.73933 16.8217 9.54285 16.731 9.4295 16.5194L9.02143 15.7486C8.84762 15.7637 8.67381 15.7712 8.5 15.7712ZM8.5 6.31001C9.44461 6.31001 10.2456 6.92968 10.5177 7.79116H14.3566C14.0468 4.82886 11.5454 2.524 8.5 2.524C7.63096 2.524 6.80725 2.71293 6.05912 3.05299L7.99369 6.37047C8.15994 6.33268 8.32619 6.31001 8.5 6.31001ZM2.60562 8.41839C2.60562 10.3378 3.52 12.0381 4.9407 13.1188L6.94328 9.83908C6.60322 9.46124 6.39163 8.96248 6.39163 8.41839C6.39163 7.87429 6.60322 7.38309 6.93572 7.00525L4.9936 3.68021C3.54267 4.75329 2.60562 6.47626 2.60562 8.41839ZM8.5 9.27232C8.97608 9.27232 9.35393 8.88691 9.35393 8.41839C9.35393 7.9423 8.97608 7.56446 8.5 7.56446C8.03147 7.56446 7.64607 7.9423 7.64607 8.41839C7.64607 8.88691 8.03147 9.27232 8.5 9.27232ZM8.5 14.3128C11.553 14.3128 14.0543 11.9928 14.3642 9.02294H10.5252C10.2608 9.89198 9.45217 10.5268 8.5 10.5268C8.32619 10.5268 8.15994 10.5041 8.00124 10.4663L5.99867 13.7536C6.76191 14.1087 7.60829 14.3128 8.5 14.3128Z" fill="#071216"/></svg></span><span>Configurações</span></div>
+          <div class="item active" title="Perfil"><span class="ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.0001 16C12.4157 16 16 12.4157 16 8.0001C16 3.5843 12.4157 0 8.0001 0C3.5843 0 0 3.5843 0 8.0001C0 12.4157 3.5843 16 8.0001 16ZM8.0001 14.6668C4.3137 14.6668 1.3334 11.6863 1.3334 8.0001C1.3334 4.3137 4.3137 1.3334 8.0001 1.3334C11.6863 1.3334 14.6668 4.3137 14.6668 8.0001C14.6668 11.6863 11.6863 14.6668 8.0001 14.6668ZM13.3647 13.1686L13.3413 13.0824C12.9569 11.9295 10.8862 10.6667 8.0001 10.6667C5.1216 10.6667 3.051 11.9295 2.6589 13.0745L2.6353 13.1686C4.047 14.5648 6.4706 15.3805 8.0001 15.3805C9.5373 15.3805 11.9372 14.5727 13.3647 13.1686ZM8.0001 9.3333C9.5138 9.349 10.6903 8.0627 10.6903 6.3765C10.6903 4.7922 9.506 3.4824 8.0001 3.4824C6.4942 3.4824 5.302 4.7922 5.3099 6.3765C5.3176 8.0627 6.4942 9.3177 8.0001 9.3333Z" fill="#071216"/></svg></span><span>Perfil</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== CENTER: PERFIL ===== -->
+    <div class="center">
+      <div class="cfg">
+        <div class="cfg-title">Perfil</div>
+        <div class="cfg-list">
+          <!-- os dados da conta, só para ver (/me e /me/medico): quem muda é Configurações -->
+          <div class="cfg-card" id="pfDados">
+            <div>
+              <div class="cfg-name">Seus dados</div>
+              <div class="cfg-sub">Para mudar, vá em <a class="cfg-back" href="opendoctor-configuracoes.html">Configurações</a></div>
+            </div>
+            <div class="cfg-fields">
+              <div class="fl" id="pfNomeF"><input class="fl-input" id="pfNome" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfNome">Nome</label></div>
+              <div class="fl" id="pfEmailF"><input class="fl-input" id="pfEmail" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfEmail">E-mail</label></div>
+              <div class="cfg-fld" id="pfCrmF">
+                <div class="cfg-row">
+                  <div class="fl"><input class="fl-input" id="pfCrm" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfCrm">CRM</label></div>
+                  <div class="fl"><input class="fl-input" id="pfUf" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfUf">UF do CRM</label></div>
+                </div>
+                <span class="cfg-help" id="pfCrmH" hidden>Conferido no cadastro</span>
+              </div>
+              <div class="fl" id="pfEspF" hidden><input class="fl-input" id="pfEsp" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfEsp">Especialidade</label></div>
+            </div>
+            <div class="cfg-foot" id="pfFoot">
+              <span class="cfg-st" id="pfSt" role="status">Carregando…</span>
+              <button class="cfg-back" type="button" id="pfRetry" hidden></button>
+            </div>
+          </div>
+
+          <!-- sair só deste navegador (/auth/logout apaga a sessão e o que o app guardou aqui) -->
+          <div class="cfg-card" id="pfSair">
+            <div>
+              <div class="cfg-name">Sair</div>
+              <div class="cfg-sub">Encerra a sessão neste navegador</div>
+            </div>
+            <div class="cfg-foot">
+              <button class="cfg-btn" type="button" id="pfLogout" data-href="/auth/logout">Sair</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script>
+    // itens do menu que levam a outra tela (data-href: a política de segurança não aceita onclick no HTML)
+    document.querySelectorAll('[data-href]').forEach(function (el) {
+      el.addEventListener('click', function () { location.href = el.getAttribute('data-href'); });
+    });
+    // menu lateral: recolher / abrir (lembra a escolha entre as telas)
+    (function () {
+      var nav = document.querySelector('.nav'), t = document.getElementById('navToggle');
+      if (!nav || !t) return;
+      function setNav(c) {
+        nav.classList.toggle('collapsed', c);
+        t.title = c ? 'Abrir menu' : 'Recolher menu'; t.setAttribute('aria-label', t.title);
+        try { localStorage.setItem('od_nav_collapsed', c ? '1' : '0'); } catch (_) {}
+      }
+      t.addEventListener('click', function () { setNav(!nav.classList.contains('collapsed')); });
+      var saved = '0'; try { saved = localStorage.getItem('od_nav_collapsed') || '0'; } catch (_) {}
+      if (saved === '1') setNav(true);
+    })();
+  </script>
+  <script>
+    (function () {
+      var st = document.getElementById('pfSt'), foot = document.getElementById('pfFoot'), retry = document.getElementById('pfRetry');
+      var sessao = false;            // a sessão acabou: o botão leva ao login, que volta para cá
+      function campo(id) { return document.getElementById(id); }
+      // o campo com o valor; sem valor (conta sem especialidade, nome vazio), o campo some
+      function poe(id, v) { campo(id).value = v || ''; campo(id + 'F').hidden = !v; }
+      function status(t, botao) {
+        st.textContent = t || ''; st.className = 'cfg-st' + (botao ? ' err' : '');
+        retry.textContent = botao || ''; retry.hidden = !botao; foot.hidden = !t;
+      }
+      function pede(url) {
+        return fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
+          if (r.status === 401) throw new Error('sessao');
+          if (!r.ok) throw new Error('falha');
+          return r.json();
+        });
+      }
+      function carrega() {
+        status('Carregando…');
+        Promise.all([pede('/me'), pede('/me/medico')]).then(function (r) {
+          var u = r[0] && r[0].user, m = (r[1] && r[1].medico) || {};
+          if (!u) throw new Error('sessao');
+          poe('pfNome', m.name || u.name);
+          poe('pfEmail', u.email);
+          campo('pfCrm').value = m.crm || ''; campo('pfUf').value = m.crm_uf || '';
+          campo('pfCrmF').hidden = !(m.crm || m.crm_uf);
+          campo('pfCrmH').hidden = !r[1].crm_conferido;        // CRM conferido no cadastro (CFM ou à mão)
+          poe('pfEsp', m.especialidade);
+          status('');
+        }).catch(function (e) {
+          sessao = !!e && e.message === 'sessao';
+          status(sessao ? 'Sua sessão terminou.' : 'Não foi possível carregar seus dados.', sessao ? 'Entrar de novo' : 'Tentar de novo');
+        });
+      }
+      retry.addEventListener('click', function () {
+        if (sessao) location.href = '/opendoctor-login.html?next=' + encodeURIComponent('/opendoctor-perfil.html');
+        else carrega();
+      });
+      carrega();
+    })();
+  </script>
+</body>
+</html>
