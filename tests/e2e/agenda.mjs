@@ -9,7 +9,8 @@
 // a faixa "Reconectar" diz se o Google Agenda está sem permissão ou se a conexão expirou;
 // no campo Paciente, a de exemplo fica por último e o Enter nunca a escolhe (só a seta ou o mouse); com a lista de
 // pacientes cortada (more), o campo Paciente e a tela Pacientes acham no servidor quem ficou de fora; o Dia não mostra
-// consulta nenhuma que não seja da agenda (nem enquanto ela carrega, nem sem a agenda conectada, nem com ela vazia).
+// consulta nenhuma que não seja da agenda (nem enquanto ela carrega, nem sem a agenda conectada, nem com ela vazia); a
+// agenda sempre abre no Dia (a Semana escolhida não volta ao recarregar, e a escolha guardada pela versão anterior sai).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -681,7 +682,6 @@ const cenarios = [
       return !c.querySelector('.ev-real') && [...c.querySelectorAll('.hr-row')].every((r) => r.children.length === 1)
         && !/[A-Za-zÀ-ú]{3}/.test(c.innerText); })()`;                       // só as horas (0h…23h) e o traço de agora
     const abre = async (q) => {
-      await ev(`localStorage.setItem('od_agenda_view', 'dia'); 1`);              // a visão Dia (a Semana nunca teve exemplos)
       await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
       await ate(`location.search === ${JSON.stringify(q)} && document.readyState === 'complete'`, 8000, 'agenda ' + q);
       certo(!(await ev(`document.querySelector('.stage').classList.contains('week')`)), 'abriu na Semana');
@@ -713,6 +713,24 @@ const cenarios = [
     await abre('?volta=1');
     await ate(`!!document.querySelector('.cal-inner .ev-real')`, 8000, 'a agenda de volta');
     return 'só as horas: enquanto o /calendar/events não responde, sem a agenda conectada e com a agenda conectada sem nada';
+  }],
+  ['a agenda sempre abre no Dia: a Semana escolhida não volta ao recarregar (nem a guardada pela versão anterior)', async () => {
+    const dia = `(() => { const st = document.querySelector('.stage'), b = document.getElementById('viewSel');
+      return !st.classList.contains('week') && b.title === 'Mudar para Semana' && /agenda-day\.svg/.test(document.getElementById('viewIcon').src); })()`;
+    const abre = async (q) => {
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await ate(`location.search === ${JSON.stringify(q)} && document.readyState === 'complete'`, 8000, 'agenda ' + q);
+    };
+    await ev(`localStorage.setItem('od_agenda_view', 'semana'); 1`);         // o que a versão anterior guardava
+    await abre('?visao=1');
+    certo(await ev(dia), 'com a Semana guardada, abriu na Semana');
+    certo(await ev(`localStorage.getItem('od_agenda_view')`) === null, 'a escolha antiga ficou guardada');
+    await clica('#viewSel');
+    await ate(`document.querySelector('.stage').classList.contains('week')`, 3000, 'Semana pelo botão');
+    certo(await ev(`localStorage.getItem('od_agenda_view')`) === null, 'a Semana foi guardada');
+    await abre('?visao=2');
+    certo(await ev(dia), 'depois de escolher a Semana, recarregar abriu na Semana');
+    return 'abre no Dia com a Semana guardada; a Semana do botão não volta ao recarregar; nada guardado';
   }],
 ];
 

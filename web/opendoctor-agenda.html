@@ -4038,14 +4038,13 @@
       }
       function isWeek() { return stage.classList.contains('week'); }
 
-      function setView(v, save) {
+      function setView(v) {
         var week = v === 'semana';
         stage.classList.toggle('week', week);
         sel.title = 'Mudar para ' + (week ? 'Dia' : 'Semana'); sel.setAttribute('aria-label', sel.title);
         var vi = document.getElementById('viewIcon');       // o ícone mostra a visão atual (Figma 1021:6331 / 1021:6348)
         if (vi) vi.src = 'assets/icons/agenda-' + (week ? 'week' : 'day') + '.svg?v=' + ICON_V;
         if (window.__calRefreshLabel) window.__calRefreshLabel();
-        if (save) { try { localStorage.setItem('od_agenda_view', v); } catch (_) {} }
         clearInterval(timer);
         if (week) {
           showWeek(null, true);
@@ -4056,15 +4055,17 @@
       }
 
       // ícone da visão: um clique alterna direto entre Dia e Semana (sem menu)
-      sel.addEventListener('click', function () { setView(isWeek() ? 'dia' : 'semana', true); });
+      sel.addEventListener('click', function () { setView(isWeek() ? 'dia' : 'semana'); });
 
       // data escolhida no calendário (ou "hoje") → semana correspondente
       window.__onDateChange = function (d) { if (isWeek()) showWeek(d, true); };
       window.__isWeekView = isWeek;
       window.__refreshWeek = function () { if (isWeek()) fetchWeek().then(function () { if (isWeek()) render(); }); };
 
-      var saved = 'dia'; try { saved = localStorage.getItem('od_agenda_view') || 'dia'; } catch (_) {}
-      setView(saved === 'semana' ? 'semana' : 'dia', false);
+      // a agenda sempre abre no Dia (pedido do dono); a Semana vale até sair da tela. A escolha que a versão anterior
+      // guardava no aparelho sai
+      try { localStorage.removeItem('od_agenda_view'); } catch (_) {}
+      setView('dia');
     })();
   </script>
   <script>
