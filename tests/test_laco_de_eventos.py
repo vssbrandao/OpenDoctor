@@ -39,12 +39,12 @@ def fake(monkeypatch):
         "manual_doctors": lambda janela_s, limit=200: ([], True), "crm_dispensa": lambda uid: dict(USER),
         "crm_confirmed": lambda uid: True, "get_medico": lambda uid: {"name": "Ana Lima", "crm": "123456", "crm_uf": "SP"},
         "upsert_user": lambda *a, **k: dict(USER), "cfm_tentativa_usa": lambda *a: True, "cfm_tentativas": lambda *a: 0,
-        "cfm_tentativa_registra": lambda *a: None,
+        "cfm_tentativa_registra": lambda *a: None, "excluir_conta": lambda uid, e: {"email": e, "name": "Ana"},
     }.items():
         monkeypatch.setattr(db, nome, v)
     monkeypatch.setattr(mailer, "configured", lambda: True)
     for nome in ("send_code", "send_password_changed", "send_new_device", "send_crm_pending", "send_crm_decision",
-                 "send_cfm_alerta"):
+                 "send_cfm_alerta", "send_account_deleted"):
         monkeypatch.setattr(mailer, nome, lambda *a, **k: None)
     # CFM com chave, que confere o médico (cada caso pode deixar a consulta lenta); USER é administrador
     monkeypatch.setattr(cfm, "configured", lambda: True)
@@ -73,6 +73,8 @@ GREG = {"cookie": "od_greg=" + auth.sign({"k": "greg", "email": "nova@clinica.co
 # aprovada à mão, numa sessão que nasceu pedindo a confirmação no CFM (marca "cc" no cookie)
 MANUAL = {"_user": {"crm_status": "verificado", "crm_fonte": "manual", "crm_cc": True}}
 CASOS = [   # (método, rota, pedido, (módulo, função lenta), troca no banco simulado)
+    ("post", "/me/excluir", {"json": {"email": "ana@clinica.com.br"}}, (db, "excluir_conta"), {}),
+    ("post", "/me/excluir", {"json": {"email": "ana@clinica.com.br"}}, (mailer, "send_account_deleted"), {}),
     ("post", "/auth/password/login", {"json": {"email": "ana@clinica.com.br", "password": PW}}, (auth, "check_password"), {}),
     ("post", "/auth/password/login", {"json": {"email": "ana@clinica.com.br", "password": PW}}, (db, "password_login_info"), {}),
     ("post", "/auth/email/check", {"json": {"email": "ana@clinica.com.br"}}, (db, "account"), {}),

@@ -202,10 +202,15 @@ def _client(monkeypatch, fake, configured=True):
     monkeypatch.setattr(db, "login_failed", failed)
     monkeypatch.setattr(db, "login_succeeded", lambda uid: fake.failed.pop(uid, None))
 
-    def create(e, n, ph, crm=None):
+    def create(e, n, ph, crm=None, so_existente=False):
+        if so_existente:                       # como o banco: só atualiza a conta que existe (excluída: None)
+            u = fake.users.get(e)
+            if u is not None and not u.get("hash"):
+                u["hash"] = ph
+            return u
         crm = crm or {}
         st, fonte = crm.get("status"), crm.get("fonte")
-        # como db._CRM_DECISAO: 'verificado' de um CRM/UF que outra conta (não recusada) já tem nasce pendente
+        # como db._crm_decisao: 'verificado' de um CRM/UF que outra conta (não recusada) já tem nasce pendente
         if st == "verificado" and any(u.get("crm") == crm.get("crm") and u.get("crm_uf") == crm.get("uf")
                                       and u.get("crm_status") != "recusado" for k, u in fake.users.items() if k != e):
             st, fonte = "pendente", None

@@ -449,7 +449,7 @@ def test_limite_por_crm_vale_para_qualquer_ip(monkeypatch):
 def test_crm_repetido_na_hora_de_criar_a_conta_fica_pendente_e_avisa(monkeypatch):
     """Dois cadastros com o mesmo CRM começados juntos: os dois tíquetes dizem 'verificado' (nenhuma conta existia no
     início), mas só o primeiro a confirmar o código fica verificado; o segundo nasce pendente (quem decide é o banco, na
-    hora de criar: db._CRM_DECISAO) e os administradores recebem o aviso."""
+    hora de criar: db._crm_decisao) e os administradores recebem o aviso."""
     monkeypatch.setenv("ADMIN_EMAILS", "dono@opendoctor.app")
     fake = _Fake()
     c = _client(monkeypatch, fake)
@@ -490,9 +490,11 @@ def _google(monkeypatch, fake, existe=False, verificado=True):
         fake.users.update(_user("nova@clinica.com.br", pw=None))
     criadas = []
 
-    def upsert(email, name=None, picture=None, google_sub=None, crm=None):
+    def upsert(email, name=None, picture=None, google_sub=None, crm=None, so_existente=False):
         crm = crm or {}
         criadas.append((email, name, crm))
+        if so_existente:                       # como o banco: a entrada numa conta que existe só atualiza (excluída: None)
+            return fake.users.get(email)
         u = fake.users.setdefault(email, {"id": "u-" + email, "email": email, "name": name, "sv": 0,
                                           "crm_status": crm.get("status"), "crm_fonte": crm.get("fonte")})
         return u

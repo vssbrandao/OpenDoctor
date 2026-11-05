@@ -4,6 +4,7 @@ logo · "Nome," + título 40px · texto · bloco (código em 6 caixas ou botão)
   signup   código para confirmar o e-mail do cadastro
   reset    código para criar uma nova senha (esqueci a senha / conta Google criando senha)
   changed  aviso de que a senha foi alterada (sem código)
+  excluida aviso de que a conta foi excluída (Perfil → Excluir conta)
   device   aviso de entrada por um aparelho novo (sem código)
   crm_pendente  aos administradores (ADMIN_EMAILS): cadastro novo esperando a conferência do CRM (só nome e CRM/UF)
   crm_aprovado  ao médico: CRM conferido à mão, conta liberada
@@ -94,6 +95,17 @@ _TEXTS = {
         "button": "Entrar no OpenDoctor",
         "notes": ["Se não foi você, crie uma nova senha agora em “Esqueci minha senha”, na tela de login, e "
                   "confira a segurança do seu e-mail."],
+    },
+    "excluida": {
+        "subject": "Sua conta do OpenDoctor foi excluída",
+        "title": "Sua conta foi excluída",
+        "lead": "Sua conta no OpenDoctor foi excluída em {when}. As sessões foram encerradas em todos os aparelhos e a "
+                "agenda do Google foi desconectada. Os prontuários ficam guardados pelo prazo legal (Lei 13.787/2018), "
+                "sem acesso pelo app.",
+        "button": "Abrir o OpenDoctor",
+        "notes": ["Você pode criar uma conta nova com este e-mail quando quiser; ela começa vazia.",
+                  "Se não foi você, fale com a equipe do OpenDoctor em privacidade@opendoctor.app e confira a "
+                  "segurança do seu e-mail."],
     },
     "created": {
         "subject": "Uma senha foi criada para sua conta do OpenDoctor",
@@ -282,6 +294,14 @@ def send_password_changed(to, name="", criada=False):
         print(f"[login-mail:{purpose}] {to}", flush=True)
         return
     _send(to, *render(purpose, name=name, when=_now_brasilia()))
+
+
+def send_account_deleted(to, name=""):
+    """Aviso de conta excluída (sem código), para o e-mail que a conta tinha."""
+    if debug_codes():
+        print(f"[login-mail:excluida] {to}", flush=True)
+        return
+    _send(to, *render("excluida", name=name, when=_now_brasilia()))
 
 
 def send_new_device(to, name="", device="", method=""):

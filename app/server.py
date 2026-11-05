@@ -408,6 +408,7 @@ RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em
                "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600),      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
                "cfm": (10, 3600),     # conferências do CRM no CFM (cadastro): o Validar responde se um CPF é de um CRM
                "codigo_email": (5, 3600),
+               "excluir_conta": (5, 3600),   # e-mails digitados para excluir a conta (por conta)
                "login_dev": (5, 900),      # senhas do aparelho conhecido durante o bloqueio (as erradas não contam na conta)
                # o aparelho conhecido na nova senha, fora dos tetos do e-mail, tem os seus (por conta + aparelho)
                "reset_dev": (25, 3600), "reset_dev_dia": (50, 86400), "codigo_dev": (10, 3600)}   # códigos (nova senha e cadastro) para um e-mail, por IP; o teto do e-mail é db
@@ -1066,7 +1067,7 @@ def _crm_decide(r):
     Cada CRM/UF tem poucas conferências por dia, valendo para qualquer IP (CRM_TENTATIVAS): passou disso, a conta fica
     pendente sem chamar o CFM — o cadastro não vira um jeito de testar datas de nascimento até achar a certa.
     CRM que outra conta já usa também fica pendente: alguém com os dados de um médico não abre uma 2ª conta sozinho
-    (conferido aqui e, de novo e sem corrida, na hora de criar a conta: db._CRM_DECISAO)."""
+    (conferido aqui e, de novo e sem corrida, na hora de criar a conta: db._crm_decisao)."""
     dec = {"crm": r["crm"], "uf": r["uf"], "status": "pendente", "fonte": None, "situacao": None}
     if cfm.configured():
         if not db.cfm_tentativa_usa(f"crm:{r['uf']}:{r['crm']}", *CRM_TENTATIVAS):
@@ -1231,7 +1232,10 @@ def _signup_verify(request, b):
             if bad:
                 return bad
             novo = db.user_by_email(t["email"]) is None
-            user = db.create_email_user(t["email"], t.get("name"), t["ph"], crm=dec if novo else None)
+            user = db.create_email_user(t["email"], t.get("name"), t["ph"], crm=dec if novo else None,
+                                        so_existente=not novo)
+            if not user:
+                return _err("sessao_expirada")      # a conta foi excluída no meio do caminho: refaz o cadastro
     except Exception as e:
         print("[login] confirmação falhou:", str(e)[:200], flush=True)
         return _err("erro", 500)
@@ -1538,6 +1542,54 @@ def me_boas_vindas(request: Request):
     return resp
 
 
+@app.post("/me/excluir")
+async def me_excluir(request: Request):
+    """Excluir a conta (Perfil), com o e-mail da conta digitado como confirmação (db.excluir_conta: a conta é encerrada e
+    o prontuário fica pelo prazo legal). Só a conta da sessão; pedido de outro site não passa (JSON e Sec-Fetch-Site)."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    if (request.headers.get("sec-fetch-site") or "same-origin") != "same-origin":
+        return _err("origem", 403)
+    return await run_in_threadpool(_me_excluir, request, u, await _body(request))
+
+
+def _me_excluir(request, u, b):
+    if _rate_limited(request, "excluir_conta", key=u["id"]):
+        return _err("limite_ip", 429)
+    email = str(u.get("email") or "").strip().lower()
+    digitado = str(b.get("email") or "").strip().lower()
+    if not email or not hmac.compare_digest(digitado.encode(), email.encode()):
+        return _err("email_nao_confere")
+    try:
+        # um pedido de cada vez com o login, o código e a nova senha desta conta (as chaves deles)
+        with _na_vez(email) as vez, _na_vez("uid:" + u["id"]) as vez_uid:
+            if not (vez and vez_uid):
+                return _err("limite_ip", 429)
+            r = db.excluir_conta(u["id"], email)
+    except db.MigracaoPendente:
+        print("[conta] exclusão sem a migração 0020", flush=True)
+        return _err("indisponivel", 503)
+    except Exception as e:
+        print("[conta] exclusão falhou:", type(e).__name__, flush=True)
+        return _err("erro", 500)
+    if not r:
+        return _err("email_nao_confere")              # já excluída (outro pedido) ou o e-mail não é mais o da conta
+    print("[conta] excluída", flush=True)
+    if mailer.configured():
+        try:
+            mailer.send_account_deleted(r["email"], r.get("name") or "")   # aviso; a falha não desfaz a exclusão
+        except Exception as e:
+            print("[conta] aviso da exclusão falhou:", type(e).__name__, flush=True)
+    # este navegador sai como no Sair (a página ainda passa por /auth/logout, que repete isto)
+    resp = JSONResponse({"ok": True})
+    auth.clear_session(resp)
+    for c in (GREG_COOKIE, auth.OAUTH_COOKIE, auth.CAL_COOKIE):
+        resp.delete_cookie(c, path="/auth/")
+    resp.headers["Clear-Site-Data"] = '"storage"'
+    return resp
+
+
 # ===== integrações de calendário (OAuth, por usuário) =====
 @app.get("/integrations/status")
 def integrations_status(request: Request):
@@ -1634,7 +1686,12 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
                     secure=integrations.REDIRECT_BASE.startswith("https://"), path="/auth/")
                 resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
                 return resp
-            user = db.upsert_user(email, info.get("name"), info.get("picture"), info.get("sub"))
+            # conta que já existia: só atualiza — excluída no meio do caminho, não nasce outra sem o Registro profissional
+            user = db.upsert_user(email, info.get("name"), info.get("picture"), info.get("sub"), so_existente=True)
+            if not user:
+                resp = RedirectResponse(_login_page("conexao", payload.get("nx", "")))
+                resp.delete_cookie(auth.OAUTH_COOKIE, path="/auth/")
+                return resp
             dest = auth.safe_next(payload.get("nx"))
             resp = RedirectResponse(dest)
             auth.set_session(resp, user["id"], user.get("sv", 0), cc=_cc_ao_entrar(user))

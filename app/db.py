@@ -178,6 +178,26 @@ def _user_cols(conn):
     return _USER_COLS + (", crm_dispensado_em is not null" if tem_dispensa(conn) else "")
 
 
+_EXCLUSAO = {"ok": None, "t": 0.0}
+
+
+def tem_exclusao(conn):
+    """A migração 0020 (users.excluida_em: conta excluída pelo médico) já foi aplicada? Sem ela o servidor segue como
+    antes e só a exclusão espera (MigracaoPendente). Guardado como tem_dispensa."""
+    if _EXCLUSAO["ok"] or (_EXCLUSAO["ok"] is False and time.monotonic() - _EXCLUSAO["t"] < DISPENSA_RECHECA_S):
+        return _EXCLUSAO["ok"]
+    ok = bool(conn.execute("""select exists(select 1 from pg_attribute where attrelid = to_regclass('users')
+                                            and attname = 'excluida_em' and not attisdropped)""").fetchone()[0])
+    _EXCLUSAO.update(ok=ok, t=time.monotonic())
+    return ok
+
+
+def _viva(conn, alias=""):
+    """Filtro de conta não excluída (` and <alias>excluida_em is null`), só com a 0020: a conta excluída não entra,
+    não aparece aos administradores e não conta como dona de um CRM."""
+    return f" and {alias}excluida_em is null" if tem_exclusao(conn) else ""
+
+
 def _row_to_user(row):
     """sv = versão da sessão (muda ao trocar a senha; o cookie guarda a versão com que foi criado).
     crm_status/crm_fonte: a conferência do CRM no cadastro (NULL = conta anterior a ela; veja 0017_crm.sql).
@@ -207,30 +227,43 @@ def _crm_trava(cur, crm):
 
 
 # O CRM repetido é decidido aqui, na hora de criar a conta (e não só no início do cadastro, que espera o código por até
-# 30 min): 'verificado' de um CRM/UF que outra conta (não recusada) já tem vira 'pendente', sem fonte — alguém com os
-# dados de um médico não abre uma 2ª conta verificada enquanto o médico ainda está no passo do código.
-_CRM_DECISAO = """with dec as (select case when %(st)s::text = 'verificado' and exists(
+# 30 min): 'verificado' de um CRM/UF que outra conta (não recusada nem excluída) já tem vira 'pendente', sem fonte —
+# alguém com os dados de um médico não abre uma 2ª conta verificada enquanto o médico ainda está no passo do código.
+def _crm_decisao(conn):
+    return f"""with dec as (select case when %(st)s::text = 'verificado' and exists(
                       select 1 from users where crm = %(crm)s::text and crm_uf = %(uf)s::text
-                        and coalesce(crm_status, '') <> 'recusado' and lower(email) <> %(email)s::text)
+                        and coalesce(crm_status, '') <> 'recusado' and lower(email) <> %(email)s::text{_viva(conn)})
                     then 'pendente' else %(st)s::text end as st)"""
 _CRM_COLS = "crm, crm_uf, crm_status, crm_fonte, crm_situacao, crm_verificado_em, crm_pedido_em"
 _CRM_VALS = """%(crm)s::text, %(uf)s::text, dec.st, case when dec.st = 'verificado' then %(fonte)s::text end,
                %(sit)s::text, case when dec.st = 'verificado' then now() end, case when dec.st = 'pendente' then now() end"""
 
 
-def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
+def upsert_user(email, name=None, picture=None, google_sub=None, crm=None, so_existente=False):
     """Cria ou atualiza o usuário pela conta Google; devolve o dict do usuário.
     E-mail sempre em minúsculas — o mesmo do login por código, para não duplicar a conta.
     O nome do Google só preenche um nome vazio: o que o médico corrigiu em Configurações (vai na receita) fica.
-    `crm`: a decisão do Registro profissional (conta nova); numa conta que já existe, o CRM dela não muda."""
+    `crm`: a decisão do Registro profissional (conta nova); numa conta que já existe, o CRM dela não muda.
+    `so_existente`: a entrada numa conta que já existia — só atualiza; se ela não existe mais (excluída no meio do
+    caminho), devolve None em vez de criar uma conta sem o Registro profissional."""
     email = (email or "").strip().lower()
+    if so_existente:
+        with connection() as conn:
+            cols = _user_cols(conn)
+            row = conn.execute(
+                f"""update users set name = coalesce(nullif(name, ''), %(name)s), picture = coalesce(%(pic)s, picture),
+                                     google_sub = coalesce(%(sub)s, google_sub), last_login = now()
+                    where lower(email) = %(email)s{_viva(conn)} returning {cols}""",
+                dict(email=email, name=name, pic=picture, sub=google_sub)).fetchone()
+            conn.commit()
+        return _row_to_user(row)
     with connection() as conn:
         cols = _user_cols(conn)
         with conn.cursor() as cur:
             _crm_trava(cur, crm)
             cur.execute(
                 f"""
-                {_CRM_DECISAO}
+                {_crm_decisao(conn)}
                 insert into users (email, name, picture, google_sub, terms_accepted_at, last_login, {_CRM_COLS})
                 select %(email)s, %(name)s, %(pic)s, %(sub)s, now(), now(), {_CRM_VALS} from dec
                 on conflict (email) do update set
@@ -248,9 +281,10 @@ def upsert_user(email, name=None, picture=None, google_sub=None, crm=None):
 
 
 def get_user(user_id):
+    """A conta pelo id (a da sessão) — a excluída não volta: nenhuma sessão, tíquete ou retorno do Google vale nela."""
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"select {_user_cols(conn)} from users where id = %s", (user_id,))
+            cur.execute(f"select {_user_cols(conn)} from users where id = %s{_viva(conn)}", (user_id,))
             return _row_to_user(cur.fetchone())
 
 
@@ -268,7 +302,7 @@ CODE_MAX_WRONG_PER_DAY = 50
 def user_by_email(email):
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"select {_user_cols(conn)} from users where lower(email) = lower(%s)", (email,))
+            cur.execute(f"select {_user_cols(conn)} from users where lower(email) = lower(%s){_viva(conn)}", (email,))
             return _row_to_user(cur.fetchone())
 
 
@@ -278,7 +312,7 @@ def user_by_google_sub(sub):
         return None
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(f"select {_user_cols(conn)} from users where google_sub = %s", (str(sub),))
+            cur.execute(f"select {_user_cols(conn)} from users where google_sub = %s{_viva(conn)}", (str(sub),))
             return _row_to_user(cur.fetchone())
 
 
@@ -286,19 +320,31 @@ LOCK_AFTER = 5               # senhas erradas seguidas até bloquear
 LOCK_MINUTES = 15
 
 
-def create_email_user(email, name, password_hash, crm=None):
+def create_email_user(email, name, password_hash, crm=None, so_existente=False):
     """Cadastro por e-mail, depois de confirmar o código: grava a senha, o aceite dos termos e o CRM com a decisão
     do cadastro (`crm`: {crm, uf, status, fonte, situacao}).
     Se o e-mail passou a existir no meio do caminho (entrou pelo Google), o dono do e-mail acabou de
     prová-lo com o código: só define a senha se a conta ainda não tinha uma (o CRM dela não muda).
-    CRM/UF que outra conta já tem: a conta nasce pendente mesmo que o tíquete diga 'verificado' (_CRM_DECISAO)."""
+    CRM/UF que outra conta já tem: a conta nasce pendente mesmo que o tíquete diga 'verificado' (_crm_decisao).
+    `so_existente`: a conta já existia — só atualiza; excluída no meio do caminho, devolve None (não cria uma conta
+    sem o CRM)."""
+    if so_existente:
+        with connection() as conn:
+            cols = _user_cols(conn)
+            row = conn.execute(
+                f"""update users set name = coalesce(name, %(name)s), password_hash = coalesce(password_hash, %(ph)s),
+                                     terms_accepted_at = coalesce(terms_accepted_at, now()), last_login = now()
+                    where lower(email) = %(email)s{_viva(conn)} returning {cols}""",
+                dict(email=(email or "").strip().lower(), name=name, ph=password_hash)).fetchone()
+            conn.commit()
+        return _row_to_user(row)
     with connection() as conn:
         cols = _user_cols(conn)
         with conn.cursor() as cur:
             _crm_trava(cur, crm)
             cur.execute(
                 f"""
-                {_CRM_DECISAO}
+                {_crm_decisao(conn)}
                 insert into users (email, name, password_hash, terms_accepted_at, last_login, {_CRM_COLS})
                 select %(email)s, %(name)s, %(ph)s, now(), now(), {_CRM_VALS} from dec
                 on conflict (email) do update set
@@ -319,7 +365,7 @@ def account(email):
     """O que a tela inicial precisa saber: a conta existe? tem senha? (None = não existe)"""
     with connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("select password_hash is not null from users where lower(email) = lower(%s)", (email,))
+            cur.execute(f"select password_hash is not null from users where lower(email) = lower(%s){_viva(conn)}", (email,))
             row = cur.fetchone()
     return None if row is None else {"password": bool(row[0])}
 
@@ -333,7 +379,7 @@ def password_login_info(email):
             cur.execute(
                 f"""select id, password_hash, session_version,
                            greatest(0, ceil(extract(epoch from locked_until - now())))::int, crm_status, crm_fonte{disp}
-                    from users where lower(email) = lower(%s)""", (email,))
+                    from users where lower(email) = lower(%s){_viva(conn)}""", (email,))
             row = cur.fetchone()
     if not row:
         return None
@@ -402,6 +448,10 @@ def cleanup_old_records():
         # recusa não viu (a agenda pedida logo depois do cadastro pelo Google)
         cur = conn.execute("delete from oauth_tokens where user_id in (select id from users where crm_status = 'recusado')")
         out["oauth_tokens_recusadas"] = cur.rowcount
+        # nem a conta excluída (a exclusão já apaga; isto cobre uma volta do Google que chegou depois)
+        if tem_exclusao(conn):
+            cur = conn.execute("delete from oauth_tokens where user_id in (select id from users where excluida_em is not null)")
+            out["oauth_tokens_excluidas"] = cur.rowcount
         conn.commit()
     return out
 
@@ -416,11 +466,44 @@ def set_password(user_id, password_hash, sv=None):
             cur.execute(
                 f"""update users set password_hash = %s, session_version = session_version + 1,
                                      failed_logins = 0, locked_until = null, last_login = now()
-                    where id = %s and (%s::int is null or session_version = %s) returning {_user_cols(conn)}""",
+                    where id = %s and (%s::int is null or session_version = %s){_viva(conn)} returning {_user_cols(conn)}""",
                 (password_hash, user_id, sv, sv))
             row = cur.fetchone()
         conn.commit()
     return _row_to_user(row) if row else None
+
+
+def excluir_conta(user_id, email):
+    """Exclui a conta a pedido do médico (Perfil, com o e-mail digitado). A linha NÃO é apagada: as tabelas do
+    prontuário apontam para users com on delete cascade, e prontuários, pacientes, receitas, gravações, exames e o
+    registro de acessos ficam pelo prazo legal (Lei 13.787/2018), sem acesso pelo app. Numa transação:
+    - o e-mail e a conta Google saem da linha (vão para email_excluido e google_sub_excluido; no lugar do e-mail fica
+      'excluida:<id>', que não é e-mail e nunca é achado): o mesmo médico pode criar uma conta nova, vazia;
+    - sem senha nem foto, e as sessões caem em todos os aparelhos (session_version + 1; get_user já não a acha);
+    - saem a agenda (tokens), os códigos de e-mail do endereço e o contador da confirmação no CFM;
+    - o encerramento fica no access_log (que nunca é limpo).
+    Nome, CRM/UF, especialidade e consultório ficam: são a autoria do prontuário e o cabeçalho das receitas.
+    Só exclui se o e-mail é o da conta e ela ainda não foi excluída (dois pedidos não excluem duas vezes).
+    Devolve {email, name} (para o aviso por e-mail) ou None. Sem a migração 0020: MigracaoPendente."""
+    email = (email or "").strip().lower()
+    with connection() as conn:
+        if not tem_exclusao(conn):
+            raise MigracaoPendente("0020_conta_excluida.sql")
+        r = conn.execute(
+            """update users set excluida_em = now(), email_excluido = email, email = 'excluida:' || id::text,
+                                google_sub_excluido = google_sub, google_sub = null, password_hash = null, picture = null,
+                                session_version = session_version + 1, failed_logins = 0, locked_until = null
+               where id = %s and lower(email) = %s and excluida_em is null returning email_excluido, name""",
+            (user_id, email)).fetchone()
+        if not r:
+            conn.rollback()
+            return None
+        conn.execute("delete from oauth_tokens where user_id = %s", (user_id,))
+        conn.execute("delete from login_codes where lower(email) = %s", (email,))
+        conn.execute("delete from cfm_tentativas where chave = %s", ("conf:" + str(user_id),))
+        conn.execute("insert into access_log (user_id, action) values (%s, 'conta_excluida')", (user_id,))
+        conn.commit()
+    return {"email": r[0], "name": r[1]}
 
 
 def new_login_code(email, code_hash, teto=True):
@@ -508,14 +591,16 @@ def check_login_code(email, code_hash, soma=True):
 
 def set_token(user_id, provider, *, access_token, refresh_token, expires_at, scope, account_email):
     """Grava/atualiza o token de calendário do usuário. Não apaga o refresh_token
-    existente se o provedor não mandar um novo nesta troca."""
+    existente se o provedor não mandar um novo nesta troca. Na conta excluída não grava (a volta do Google que chega
+    depois da exclusão)."""
     with connection() as conn:
+        viva = "where not exists (select 1 from users where id = %s and excluida_em is not null)" if tem_exclusao(conn) else ""
         with conn.cursor() as cur:
             cur.execute(
-                """
+                f"""
                 insert into oauth_tokens
                   (user_id, provider, access_token, refresh_token, expires_at, scope, account_email, updated_at)
-                values (%s,%s,%s,%s,%s,%s,%s, now())
+                select %s,%s,%s,%s,%s,%s,%s, now() {viva}
                 on conflict (user_id, provider) do update set
                   access_token = excluded.access_token,
                   refresh_token = coalesce(excluded.refresh_token, oauth_tokens.refresh_token),
@@ -524,7 +609,7 @@ def set_token(user_id, provider, *, access_token, refresh_token, expires_at, sco
                   account_email = coalesce(excluded.account_email, oauth_tokens.account_email),
                   updated_at = now()
                 """,
-                (user_id, provider, access_token, refresh_token, expires_at, scope, account_email),
+                (user_id, provider, access_token, refresh_token, expires_at, scope, account_email) + ((user_id,) if viva else ()),
             )
         conn.commit()
 
@@ -1312,10 +1397,11 @@ def update_medico(user_id, campos):
 # --- conferência do CRM (cadastro de médicos; página de cadastros dos administradores) ---
 
 def crm_in_use(crm, uf):
-    """Outra conta (que não foi recusada) já tem este CRM/UF? Inclui as contas antigas, que o puseram em Configurações."""
+    """Outra conta (que não foi recusada nem excluída) já tem este CRM/UF? Inclui as contas antigas, que o puseram em
+    Configurações."""
     with connection() as conn:
-        r = conn.execute("""select exists(select 1 from users where crm = %s and crm_uf = %s
-                                          and coalesce(crm_status, '') <> 'recusado')""", (crm, uf)).fetchone()
+        r = conn.execute(f"""select exists(select 1 from users where crm = %s and crm_uf = %s
+                                           and coalesce(crm_status, '') <> 'recusado'{_viva(conn)})""", (crm, uf)).fetchone()
     return bool(r[0])
 
 
@@ -1324,10 +1410,10 @@ def pending_doctors(limit=200):
     outras contas têm o mesmo CRM/UF (sinal de alerta)."""
     with connection() as conn:
         rows = conn.execute(
-            """select u.id, u.name, u.crm, u.crm_uf, coalesce(u.crm_pedido_em, u.created_at), u.crm_situacao,
+            f"""select u.id, u.name, u.crm, u.crm_uf, coalesce(u.crm_pedido_em, u.created_at), u.crm_situacao,
                       (select count(*) from users o where o.id <> u.id and o.crm = u.crm and o.crm_uf = u.crm_uf
-                                                    and coalesce(o.crm_status, '') <> 'recusado'), u.email
-               from users u where u.crm_status = 'pendente'
+                                                    and coalesce(o.crm_status, '') <> 'recusado'{_viva(conn, "o.")}), u.email
+               from users u where u.crm_status = 'pendente'{_viva(conn, "u.")}
                order by coalesce(u.crm_pedido_em, u.created_at) limit %s""", (limit,)).fetchall()
     return [{"id": str(r[0]), "name": r[1], "email": r[7], "crm": r[2], "crm_uf": r[3],
              "pedido_em": r[4].isoformat() if r[4] else None, "situacao": r[5], "outras_contas": int(r[6] or 0)}
@@ -1345,7 +1431,7 @@ def manual_doctors(janela_s, limit=200):
             f"""select u.id, u.name, u.email, u.crm, u.crm_uf, u.crm_verificado_em,
                        (select count(*) from cfm_tentativas t where t.chave = 'conf:' || u.id::text
                                                              and t.created_at > now() - %s * interval '1 second')
-                from users u where u.crm_status = 'verificado' and u.crm_fonte = 'manual'
+                from users u where u.crm_status = 'verificado' and u.crm_fonte = 'manual'{_viva(conn, "u.")}
                 {"and u.crm_dispensado_em is null" if disp else ""}
                 order by u.crm_verificado_em nulls first limit %s""", (float(janela_s), limit)).fetchall()
     return [{"id": str(r[0]), "name": r[1], "email": r[2], "crm": r[3], "crm_uf": r[4],
@@ -1366,8 +1452,8 @@ def crm_dispensa(user_id):
         if not tem_dispensa(conn):
             raise MigracaoPendente("0019_crm_dispensado.sql")
         r = conn.execute(
-            """update users set crm_dispensado_em = coalesce(crm_dispensado_em, now())
-               where id = %s and crm_status = 'verificado' and crm_fonte = 'manual' returning id, email, name""",
+            f"""update users set crm_dispensado_em = coalesce(crm_dispensado_em, now())
+               where id = %s and crm_status = 'verificado' and crm_fonte = 'manual'{_viva(conn)} returning id, email, name""",
             (user_id,)).fetchone()
         conn.commit()
     return {"id": str(r[0]), "email": r[1], "name": r[2]} if r else None
@@ -1378,9 +1464,9 @@ def decide_crm(user_id, aprovado):
     administradores juntos não decidem duas vezes). Devolve {id, email, name} ou None."""
     with connection() as conn:
         r = conn.execute(
-            """update users set crm_status = %s, crm_fonte = 'manual',
+            f"""update users set crm_status = %s, crm_fonte = 'manual',
                                 crm_verificado_em = case when %s then now() else crm_verificado_em end
-               where id = %s and crm_status = 'pendente' returning id, email, name""",
+               where id = %s and crm_status = 'pendente'{_viva(conn)} returning id, email, name""",
             ("verificado" if aprovado else "recusado", bool(aprovado), user_id)).fetchone()
         conn.commit()
     return {"id": str(r[0]), "email": r[1], "name": r[2]} if r else None
@@ -1420,8 +1506,9 @@ def crm_confirmed(user_id):
     """Conta aprovada à mão confirmou o CPF e a data de nascimento no CFM (Validar): a fonte passa a ser o CFM."""
     with connection() as conn:
         r = conn.execute(
-            """update users set crm_fonte = 'cfm', crm_verificado_em = now()
-               where id = %s and crm_status = 'verificado' and crm_fonte = 'manual' returning id""", (user_id,)).fetchone()
+            f"""update users set crm_fonte = 'cfm', crm_verificado_em = now()
+               where id = %s and crm_status = 'verificado' and crm_fonte = 'manual'{_viva(conn)} returning id""",
+            (user_id,)).fetchone()
         conn.commit()
     return bool(r)
 

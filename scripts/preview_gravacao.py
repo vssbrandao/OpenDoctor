@@ -240,6 +240,8 @@ db.update_patient = lambda uid, pid, fields: (PATS[pid].update({k: v for k, v in
 RX = FakeReceitas({UID: {"name": "Dra. Teste"}})
 RX.install(setattr)
 db.get_note = lambda uid, nid: dict(_note_out(NOTES[nid]), patient_id=NOTES[nid]["pid"]) if nid in NOTES else None
+# Excluir conta (Perfil): simulada — confere o e-mail e não muda nada (o login do preview é sempre a Dra. Teste)
+db.excluir_conta = lambda uid, email: {"email": email, "name": "Dra. Teste"} if email == "teste@example.invalid" else None
 
 
 def _add_addendum(uid, nid, content):            # adendo em memória (como db.add_addendum: só em evolução finalizada)

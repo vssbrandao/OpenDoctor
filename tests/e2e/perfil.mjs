@@ -7,7 +7,9 @@
 // que muda em Configurações; o que a conta não tem some; enquanto carrega e no erro não aparece campo vazio; erro ao
 // carregar (e o banco fora do ar: /me 503 com /me/medico 401, em qualquer ordem) avisa e tenta de novo; a sessão que
 // acabou leva ao login, que volta ao Perfil; o
-// Sair vai a /auth/logout e cai no login; o menu lateral de todas as telas tem o Perfil logo depois de Configurações (e
+// Sair vai a /auth/logout e cai no login; Excluir conta abre a confirmação, que só acende com o e-mail da conta (sem
+// diferença de maiúsculas e espaços), fecha sem pedir nada (Cancelar, Esc, fora da janela), avisa quando o servidor
+// recusa e, confirmada, manda só o e-mail num POST JSON e sai pelo /auth/logout; o menu lateral de todas as telas tem o Perfil logo depois de Configurações (e
 // leva a ele), aberto e recolhido.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
@@ -49,11 +51,12 @@ const certo = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 // ----- a conta fictícia -----
 const CONTA = { id: 'u-teste', email: 'ana.souza@example.invalid', name: 'Ana Souza', picture: null, crm_status: 'verificado', crm_fonte: 'cfm' };
-let MEDICO, CONFERIDO, FALHA_MEDICO, SEM_SESSAO, BANCO_FORA, LENTO_ME, LENTO_MEDICO;
+let MEDICO, CONFERIDO, FALHA_MEDICO, SEM_SESSAO, BANCO_FORA, LENTO_ME, LENTO_MEDICO, EXCLUIR;
 function zera() {
   MEDICO = { name: 'Dra. Ana Souza', crm: '123456', crm_uf: 'SP', especialidade: 'Clínica médica', consultorio_endereco: 'Rua A, 1',
              consultorio_telefone: '(11) 3333-4444', receita_papel: 'A4' };
   CONFERIDO = true; FALHA_MEDICO = 0; SEM_SESSAO = false; BANCO_FORA = false; LENTO_ME = 0; LENTO_MEDICO = 0; pedidos.length = 0;
+  EXCLUIR = [200, { ok: true }];                            // a resposta do POST /me/excluir
 }
 zera();
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
@@ -70,6 +73,7 @@ function rota(method, path) {
     if (FALHA_MEDICO > 0) { FALHA_MEDICO--; return [500, { error: 'erro' }]; }
     return [200, { medico: MEDICO, faltam: [], crm_conferido: CONFERIDO }];
   }
+  if (path === '/me/excluir' && method === 'POST') { if (EXCLUIR[0] === 200) SEM_SESSAO = true; return EXCLUIR; }
   if (path === '/calendar/events' && method === 'GET') return [200, { logged_in: true, connected: null, events: [] }];
   if (path === '/patients' && method === 'GET') return [200, { patients: [], more: false }];
   if (path === '/integrations/status') return [200, { logged_in: true, providers: {} }];
@@ -78,7 +82,9 @@ function rota(method, path) {
 async function responde(p) {
   const u = new URL(p.request.url), method = p.request.method;
   if (u.origin !== ORIG) return send('Fetch.failRequest', { requestId: p.requestId, errorReason: 'BlockedByClient' });
-  pedidos.push({ method, path: u.pathname, search: u.search, tipo: p.resourceType });
+  pedidos.push({ method, path: u.pathname, search: u.search, tipo: p.resourceType, corpo: p.request.postData || null,
+                 ct: p.request.headers['Content-Type'] || p.request.headers['content-type'] || '' });
+  if (u.pathname === '/me/excluir' && EXCLUIR === 'rede') return send('Fetch.failRequest', { requestId: p.requestId, errorReason: 'ConnectionReset' });
   if (u.pathname === '/auth/logout') {                     // como o servidor: apaga a sessão e manda ao login
     SEM_SESSAO = true;
     return send('Fetch.fulfillRequest', { requestId: p.requestId, responseCode: 307,
@@ -128,7 +134,7 @@ const cenarios = [
     certo(await ev(vis('#pfEspF')) && await val('#pfEsp') === 'Clínica médica', 'especialidade');
     certo(await txt('#pfSub') === 'A especialidade muda em Configurações', 'subtítulo da conta conferida: ' + await txt('#pfSub'));
     certo(await ev(`document.querySelector('#pfSub a').getAttribute('href')`) === 'opendoctor-configuracoes.html', 'link do subtítulo');
-    certo(await ev(`[...document.querySelectorAll('.fl-input')].every((i) => i.readOnly)`), 'campo editável no Perfil');
+    certo(await ev(`[...document.querySelectorAll('#pfCampos .fl-input')].every((i) => i.readOnly)`), 'dado da conta editável no Perfil');
     certo(await ev(`document.getElementById('pfFoot').hidden`), 'o rodapé do status ficou depois de carregar');
     // o menu: Perfil marcado, logo depois de Configurações, que leva a Configurações
     const menu = await ev(`(() => { const p = document.querySelector('.nav .item[title="Perfil"]'), c = p && p.previousElementSibling;
@@ -203,6 +209,73 @@ const cenarios = [
       await ate(`document.getElementById('pfFoot').hidden`, 4000, 'carregar com o banco de volta');
     }
     return vistos.join(' e ') + ': "Não foi possível carregar seus dados." + Tentar de novo, que carrega com o banco de volta';
+  }],
+  ['Excluir conta: apagado até os dados chegarem; a janela só acende com o e-mail da conta e fecha sem pedir nada', async () => {
+    zera(); LENTO_MEDICO = 1200;
+    await abre('opendoctor-perfil.html');
+    certo(await ev(`document.getElementById('pfExAbre').disabled`), 'Excluir conta aceso antes dos dados');
+    await ate(carregou, 4000, 'dados do Perfil');
+    certo(!(await ev(`document.getElementById('pfExAbre').disabled`)), 'Excluir conta apagado depois dos dados');
+    const digita = (t) => ev(`(() => { const i = document.getElementById('pfExEmail'); i.value = ${JSON.stringify(t)};
+      i.dispatchEvent(new Event('input', { bubbles: true })); return document.getElementById('pfExGo').disabled; })()`);
+    const aberta = () => ev(`!document.getElementById('pfExModal').hidden`);
+    await clica('#pfExAbre');
+    certo(await aberta() && await ev(`document.activeElement.id`) === 'pfExEmail', 'a janela não abriu com o foco no e-mail');
+    certo(await ev(`document.getElementById('pfExGo').disabled`), 'botão aceso sem e-mail');
+    certo(await digita('outra@example.invalid') && await digita('ana.souza@example') && await digita(''), 'acendeu com e-mail errado');
+    certo(!(await digita('  ANA.Souza@Example.INVALID ')), 'não acendeu com o e-mail da conta em maiúsculas e com espaços');
+    await foto('perfil-excluir.png');
+    await clica('#pfExNao');
+    certo(!(await aberta()) && await ev(`document.activeElement.id`) === 'pfExAbre', 'Cancelar não fechou');
+    await clica('#pfExAbre');
+    certo(await ev(`document.getElementById('pfExEmail').value`) === '' && await ev(`document.getElementById('pfExGo').disabled`), 'reabriu com o e-mail anterior');
+    await ev(`(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1; })()`);
+    certo(!(await aberta()), 'Esc não fechou');
+    await clica('#pfExAbre');
+    await ev(`(() => { const m = document.getElementById('pfExModal'); m.dispatchEvent(new MouseEvent('click', { bubbles: true })); return 1; })()`);
+    certo(!(await aberta()), 'o clique fora da janela não fechou');
+    await clica('#pfExAbre'); await digita('ana.souza@example.invalid');
+    await ev(`(() => { document.getElementById('pfExEmail').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1; })()`);
+    certo(!pedidos.some((r) => r.path === '/me/excluir'), 'pediu a exclusão sem confirmar');
+    return 'apagado enquanto carrega; acende só com o e-mail da conta (maiúsculas e espaços valem); Cancelar, Esc e fora fecham sem pedir';
+  }],
+  ['Excluir conta: o servidor recusa (e-mail, limite, sessão, erro, rede) — avisa, não sai e deixa tentar de novo', async () => {
+    const casos = [[[400, { error: 'email_nao_confere' }], 'O e-mail não confere com o da conta.'],
+                   [[429, { error: 'limite_ip' }], 'Muitas tentativas. Aguarde um pouco e tente de novo.'],
+                   [[401, { error: 'não autenticado' }], 'Sua sessão terminou. Entre de novo para excluir a conta.'],
+                   [[503, { error: 'indisponivel' }], 'Não foi possível excluir agora. Tente de novo.'],
+                   [[500, { error: 'erro' }], 'Não foi possível excluir agora. Tente de novo.'],
+                   ['rede', 'Não foi possível excluir agora. Tente de novo.']];
+    for (const [resp, msg] of casos) {
+      const rot = resp === 'rede' ? 'rede' : resp[0];
+      zera(); EXCLUIR = resp;
+      await abre('opendoctor-perfil.html');
+      await ate(carregou, 4000, 'dados do Perfil');
+      await clica('#pfExAbre');
+      await ev(`(() => { const i = document.getElementById('pfExEmail'); i.value = 'ana.souza@example.invalid'; i.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+      await ev(`(() => { document.getElementById('pfExForm').requestSubmit(); return 1; })()`);
+      await ate(`!document.getElementById('pfExSt').hidden`, 4000, 'aviso de ' + rot);
+      certo(await txt('#pfExSt') === msg, `${rot}: "${await txt('#pfExSt')}"`);
+      certo(await ev(`location.pathname`) === '/opendoctor-perfil.html' && !(await ev(`document.getElementById('pfExModal').hidden`)), `${rot}: saiu da página`);
+      certo(!(await ev(`document.getElementById('pfExGo').disabled`)) && await txt('#pfExGo') === 'Excluir conta', `${rot}: não deixa tentar de novo`);
+      certo(pedidos.filter((r) => r.path === '/auth/logout').length === 0, `${rot}: foi ao logout`);
+    }
+    return casos.map((c) => c[0] === 'rede' ? 'rede' : c[0][0]).join(', ') + ': aviso na janela, na mesma página, botão de volta';
+  }],
+  ['Excluir conta: confirmada, manda só o e-mail num POST JSON e sai pelo /auth/logout', async () => {
+    zera();
+    await abre('opendoctor-perfil.html');
+    await ate(carregou, 4000, 'dados do Perfil');
+    await clica('#pfExAbre');
+    await ev(`(() => { const i = document.getElementById('pfExEmail'); i.value = 'Ana.Souza@example.invalid'; i.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await ev(`(() => { document.getElementById('pfExForm').requestSubmit(); return 1; })()`);
+    await ate(`location.pathname === '/opendoctor-login.html'`, 4000, 'login depois de excluir');
+    const ex = pedidos.filter((r) => r.path === '/me/excluir'), saiu = pedidos.filter((r) => r.path === '/auth/logout');
+    certo(ex.length === 1 && ex[0].method === 'POST' && /application\/json/.test(ex[0].ct), 'pedido: ' + JSON.stringify(ex));
+    certo(JSON.stringify(JSON.parse(ex[0].corpo)) === JSON.stringify({ email: 'Ana.Souza@example.invalid' }), 'corpo: ' + ex[0].corpo);
+    certo(!ex[0].search, 'algo na URL da exclusão: ' + ex[0].search);
+    certo(saiu.length === 1 && saiu[0].tipo === 'Document', 'não saiu pelo /auth/logout: ' + JSON.stringify(saiu));
+    return 'POST /me/excluir {email} (JSON, nada na URL) → /auth/logout → login';
   }],
   ['sessão que acabou: "Entrar de novo" leva ao login, que volta ao Perfil', async () => {
     zera(); SEM_SESSAO = true;

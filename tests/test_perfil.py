@@ -54,13 +54,17 @@ def test_perfil_no_menu_de_todas_as_telas():
             assert href == PAGINA and not ativo, (f, itens[i])
 
 
-def test_perfil_tem_o_sair_e_so_le():
+def test_perfil_tem_o_sair_e_so_grava_a_exclusao():
+    """Os dados da conta só se veem (quem grava é Configurações). A única escrita do Perfil é Excluir conta: um POST a
+    /me/excluir, com o único campo editável, o e-mail digitado na confirmação (decisão do dono, 2026-11-05)."""
     html = _html(PAGINA)
     assert re.search(r'<button class="cfg-btn" type="button" id="pfLogout" data-href="/auth/logout">Sair</button>', html)
     scripts = "\n".join(re.findall(r"<script>(.*?)</script>", html, re.S))
     assert set(re.findall(r"pede\('([^']+)'\)", scripts)) == {"/me", "/me/medico"}
-    assert "method" not in scripts and "<form" not in html, "o Perfil só lê: quem grava é Configurações"
-    assert not re.search(r"<input(?![^>]*\breadonly\b)[^>]*>", html), "campo editável no Perfil"
+    assert re.findall(r"fetch\('([^']+)'", scripts) == ["/me/excluir"] and re.findall(r"method: '(\w+)'", scripts) == ["POST"]
+    assert re.findall(r"<form\b[^>]*\bid=\"(\w+)\"", html) == ["pfExForm"] and html.count("<form") == 1
+    editaveis = re.findall(r"<input(?![^>]*\breadonly\b)[^>]*\bid=\"(\w+)\"", html)
+    assert editaveis == ["pfExEmail"], editaveis
 
 
 def test_dados_que_o_perfil_le(monkeypatch):

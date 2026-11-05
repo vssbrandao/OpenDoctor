@@ -81,11 +81,38 @@
       background:none;border-radius:999px;box-shadow:inset 0 0 0 1px var(--card-border);cursor:pointer;
       font-family:var(--disp);font-weight:700;font-size:14px;letter-spacing:.01em;color:#000}
     .cfg-btn:hover{background:var(--active)}
+    .cfg-btn[disabled]{opacity:.45;cursor:not-allowed;background:none}
     .cfg-st{min-width:0;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
     .cfg-st.err{color:#C0151D}
     .cfg-back{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;text-decoration:underline;
       text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer}
-    .fl[hidden],.cfg-fields[hidden],.cfg-fld[hidden],.cfg-foot[hidden],.cfg-help[hidden],.cfg-back[hidden]{display:none}
+    .fl[hidden],.cfg-fields[hidden],.cfg-fld[hidden],.cfg-foot[hidden],.cfg-help[hidden],.cfg-back[hidden],.cfg-st[hidden]{display:none}
+
+    /* ===== confirmação da exclusão: a janela da sessão expirada da agenda (.od-modal/.od-card/.od-btn), com o campo de
+       Configurações para digitar o e-mail (vazio cinza com o rótulo no meio; no foco, branco com borda #7D7D82) e o botão
+       vermelho (#C0151D, o vermelho dos avisos de erro) que só acende com o e-mail da conta ===== */
+    .od-modal{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
+    .od-modal[hidden]{display:none}
+    .od-card{width:454px;max-width:100%;background:#fff;border-radius:24px;padding:40px;display:flex;flex-direction:column;gap:12px;font-family:var(--disp)}
+    .od-card h2{margin:0;font-weight:500;font-size:24px;line-height:1.15;color:#0C0C0D}
+    .od-card p{margin:0;font-weight:500;font-size:14px;line-height:1.4;color:#7D7D82}
+    .od-card .fl{margin-top:16px}
+    .od-card .od-acts{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+    .od-btn{height:64px;border:0;border-radius:999px;background:#0B0B0C;color:#fff;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4}
+    .od-btn:hover{background:#2A2A2D}
+    .od-btn.ghost{background:none;color:#0C0C0D;height:48px}
+    .od-btn.ghost:hover{background:#F4F4F6}
+    .od-btn.perigo{background:#C0151D}
+    .od-btn.perigo:hover{background:#A01218}
+    .od-btn[disabled],.od-btn[disabled]:hover{opacity:.45;cursor:not-allowed;background:#C0151D}
+    .fl.edit{background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent;transition:background-color .12s,box-shadow .12s}
+    .fl.edit:focus-within{background:#fff;box-shadow:inset 0 0 0 1px #7D7D82}
+    .fl.edit.cheio:not(:focus-within){background:#fff;box-shadow:inset 0 0 0 1px var(--card-border)}
+    .fl.edit .fl-input{cursor:text}
+    .fl.edit .fl-input::placeholder{color:transparent}
+    .fl.edit .fl-label{top:32.2px;font-size:14px;color:#6B6B70;transition:top .12s,font-size .12s,color .12s}
+    .fl.edit .fl-input:focus + .fl-label,.fl.edit .fl-input:not(:placeholder-shown) + .fl-label{top:24.6px;font-size:12px;color:#7D7D82}
   </style>
 </head>
 <body>
@@ -155,10 +182,38 @@
               <button class="cfg-btn" type="button" id="pfLogout" data-href="/auth/logout">Sair</button>
             </div>
           </div>
+
+          <!-- excluir a conta (POST /me/excluir, com o e-mail digitado): ela é encerrada; o prontuário fica pelo prazo legal -->
+          <div class="cfg-card" id="pfExcluir">
+            <div>
+              <div class="cfg-name">Excluir conta</div>
+              <div class="cfg-sub">A conta deixa de funcionar; os prontuários ficam guardados pelo prazo legal</div>
+            </div>
+            <div class="cfg-foot">
+              <button class="cfg-btn" type="button" id="pfExAbre" disabled>Excluir conta</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
+  </div>
+
+  <!-- confirmação da exclusão: o botão só acende com o e-mail da conta digitado -->
+  <div class="od-modal" id="pfExModal" role="dialog" aria-modal="true" aria-labelledby="pfExT" hidden>
+    <form class="od-card" id="pfExForm" novalidate autocomplete="off">
+      <h2 id="pfExT">Excluir sua conta?</h2>
+      <p>A conta deixa de funcionar em todos os aparelhos e a agenda do Google é desconectada. Os prontuários ficam
+        guardados pelo prazo legal, sem acesso pelo app: se precisar de uma cópia, imprima antes. Depois, você pode criar
+        uma conta nova com este e-mail.</p>
+      <div class="fl edit"><input class="fl-input" id="pfExEmail" type="email" placeholder=" " autocomplete="off"
+        spellcheck="false" autocapitalize="off"><label class="fl-label" for="pfExEmail">Digite seu e-mail para confirmar</label></div>
+      <span class="cfg-st" id="pfExSt" role="status" hidden></span>
+      <div class="od-acts">
+        <button class="od-btn perigo" id="pfExGo" type="submit" disabled>Excluir conta</button>
+        <button class="od-btn ghost" id="pfExNao" type="button">Cancelar</button>
+      </div>
+    </form>
   </div>
   <script>
     // itens do menu que levam a outra tela (data-href: a política de segurança não aceita onclick no HTML)
@@ -223,6 +278,7 @@
           sub(!!r[1].crm_conferido);
           campo('pfCampos').hidden = false;
           status('');
+          if (window.__pfConta) window.__pfConta(u.email);   // o Excluir conta acende com o e-mail da conta
         }).catch(function (e) {
           sessao = !!e && e.message === 'sessao';
           status(sessao ? 'Sua sessão terminou.' : 'Não foi possível carregar seus dados.', sessao ? 'Entrar de novo' : 'Tentar de novo');
@@ -233,6 +289,60 @@
         else carrega();
       });
       carrega();
+    })();
+  </script>
+  <script>
+    // ===== excluir a conta: a janela pede o e-mail da conta; o botão vermelho só acende com ele (o servidor confere de
+    // novo). Excluída, a página passa pelo /auth/logout (apaga a sessão e o que o app guardou neste navegador) =====
+    (function () {
+      var abre = document.getElementById('pfExAbre'), modal = document.getElementById('pfExModal'), form = document.getElementById('pfExForm');
+      var email = document.getElementById('pfExEmail'), go = document.getElementById('pfExGo'), nao = document.getElementById('pfExNao');
+      var st = document.getElementById('pfExSt'), conta = '', enviando = false;
+      var ERROS = { email_nao_confere: 'O e-mail não confere com o da conta.', limite_ip: 'Muitas tentativas. Aguarde um pouco e tente de novo.' };
+      function norm(v) { return String(v || '').trim().toLowerCase(); }
+      function aviso(t) { st.textContent = t || ''; st.hidden = !t; st.className = 'cfg-st' + (t ? ' err' : ''); }
+      function sync() {
+        email.closest('.fl').classList.toggle('cheio', !!email.value);
+        go.disabled = enviando || !conta || norm(email.value) !== conta;
+      }
+      // o e-mail da conta chega com os dados do Perfil: até lá, o Excluir conta fica apagado
+      window.__pfConta = function (e) { conta = norm(e); abre.disabled = !conta; };
+      function fecha() {
+        if (enviando) return;
+        modal.hidden = true; abre.focus();
+      }
+      abre.addEventListener('click', function () {
+        if (!conta) return;
+        email.value = ''; aviso(''); go.textContent = 'Excluir conta'; sync();
+        modal.hidden = false; email.focus();
+      });
+      nao.addEventListener('click', fecha);
+      modal.addEventListener('click', function (e) { if (e.target === modal) fecha(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) fecha(); });
+      email.addEventListener('input', function () { aviso(''); sync(); });
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        sync();
+        if (go.disabled) return;
+        enviando = true; go.textContent = 'Excluindo…'; sync(); nao.disabled = true;
+        fetch('/me/excluir', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                               body: JSON.stringify({ email: email.value }) })
+          .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
+          .then(function (res) {
+            if (res.ok && res.j.ok) {
+              go.textContent = 'Conta excluída';
+              location.href = '/auth/logout';
+              return;
+            }
+            enviando = false; nao.disabled = false; go.textContent = 'Excluir conta'; sync();
+            aviso(res.status === 401 ? 'Sua sessão terminou. Entre de novo para excluir a conta.'
+                  : ERROS[res.j.error] || 'Não foi possível excluir agora. Tente de novo.');
+          })
+          .catch(function () {
+            enviando = false; nao.disabled = false; go.textContent = 'Excluir conta'; sync();
+            aviso('Não foi possível excluir agora. Tente de novo.');
+          });
+      });
     })();
   </script>
 </body>

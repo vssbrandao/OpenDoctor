@@ -688,7 +688,7 @@ def test_cadastro_verificado_no_cfm_e_google_sem_trocar_o_crm(novo_usuario):
 
 def test_crm_repetido_decidido_na_hora_de_criar_a_conta(novo_usuario):
     """Dois cadastros do mesmo CRM/UF começados antes de qualquer conta existir: os dois tíquetes dizem 'verificado',
-    mas quem decide é o banco, na hora de criar (db._CRM_DECISAO) — o 2º nasce pendente e sem fonte."""
+    mas quem decide é o banco, na hora de criar (db._crm_decisao) — o 2º nasce pendente e sem fonte."""
     n = _crm_novo()
     dec = {"crm": n, "uf": "SP", "status": "verificado", "fonte": "cfm", "situacao": "A"}
     a = novo_usuario("Ana Lima", crm=dec)
@@ -845,3 +845,77 @@ def test_erradas_somadas_por_email_e_o_teto_do_aparelho_conhecido(test_db):
         with db.connection() as c:
             c.execute("delete from login_codes where email = %s", (email,))
             c.commit()
+
+
+def test_excluir_conta_encerra_sem_apagar_o_prontuario_e_libera_o_email(novo_usuario):
+    """Excluir a conta (Perfil): a linha não é apagada — o prontuário e o registro de acessos ficam pelo id antigo, com o
+    nome e o CRM (autoria) — mas a conta não entra mais por e-mail, senha, Google, sessão ou tíquete; saem a agenda, os
+    códigos de e-mail e o contador do CFM; e o mesmo e-mail, a mesma conta Google e o mesmo CRM criam uma conta nova,
+    vazia e verificada. Uma segunda exclusão não muda nada, e a volta do Google depois dela não grava a agenda."""
+    n = _crm_novo()
+    dec = {"crm": n, "uf": "SP", "status": "verificado", "fonte": "cfm", "situacao": "A"}
+    u = novo_usuario("Ana Souza", crm=dec)
+    uid, email, sub = u["id"], u["email"], "sub-" + uuid.uuid4().hex
+    db.upsert_user(email, None, None, sub)                       # entrou também pelo Google
+    p = db.create_patient(uid, "Paciente Fictícia")
+    db.log_access(uid, "view", p["id"])
+    agora = datetime.datetime.now(datetime.timezone.utc)
+    token = dict(access_token="a", refresh_token="r", expires_at=agora + datetime.timedelta(hours=1),
+                 scope="calendar.events", account_email="ana@gmail.com")
+    db.set_token(uid, "google", **token)
+    assert db.new_login_code(email, "h" * 64)[0] == "ok"
+    db.cfm_tentativa_registra("conf:" + uid)
+    assert db.crm_in_use(n, "SP")
+
+    assert db.excluir_conta(uid, "  " + email.upper()) == {"email": email, "name": "Ana Souza"}
+    assert db.excluir_conta(uid, email) is None                  # já excluída
+    # não entra mais
+    assert db.get_user(uid) is None and db.user_by_email(email) is None and db.account(email) is None
+    assert db.password_login_info(email) is None and db.user_by_google_sub(sub) is None
+    assert db.set_password(uid, "outro-hash") is None
+    assert db.upsert_user(email, None, None, sub, so_existente=True) is None
+    assert db.create_email_user(email, "Ana", "z", so_existente=True) is None
+    # o prontuário e a autoria ficam; o que era da conta sai
+    assert [x["id"] for x in db.list_patients(uid)] == [p["id"]]
+    with db.connection() as c:
+        linha = c.execute("""select email, email_excluido, google_sub, google_sub_excluido, password_hash,
+                                    excluida_em is not null, name, crm, crm_uf from users where id = %s""", (uid,)).fetchone()
+        assert linha == ("excluida:" + uid, email, None, sub, None, True, "Ana Souza", n, "SP")
+        acessos = dict(c.execute("select action, count(*) from access_log where user_id = %s group by action",
+                                 (uid,)).fetchall())
+        assert acessos == {"view": 1, "conta_excluida": 1}
+        assert c.execute("select count(*) from oauth_tokens where user_id = %s", (uid,)).fetchone()[0] == 0
+        assert c.execute("select count(*) from login_codes where lower(email) = %s", (email,)).fetchone()[0] == 0
+        assert c.execute("select count(*) from cfm_tentativas where chave = %s", ("conf:" + uid,)).fetchone()[0] == 0
+    db.set_token(uid, "google", **token)                         # a volta do Google que chegou depois
+    assert db.get_token(uid, "google") is None
+    assert not db.crm_in_use(n, "SP")                            # o CRM não conta mais como de outra conta
+    db.cleanup_old_records()
+    assert [x["id"] for x in db.list_patients(uid)] == [p["id"]]
+    # a conta nova do mesmo médico: outro id, vazia, verificada (o CRM da excluída não a deixa pendente)
+    nova = db.create_email_user(email, "Ana Souza", "y", crm=dec)
+    try:
+        assert nova["id"] != uid and nova["crm_status"] == "verificado" and db.list_patients(nova["id"]) == []
+        assert db.user_by_email(email)["id"] == nova["id"]
+        assert db.upsert_user(email, None, None, sub, so_existente=True)["id"] == nova["id"]
+        assert db.user_by_google_sub(sub)["id"] == nova["id"]   # a mesma conta Google entra na nova
+    finally:
+        with db.connection() as c:
+            c.execute("delete from patients where user_id = %s", (nova["id"],))
+            c.execute("delete from users where id = %s", (nova["id"],))
+            c.commit()
+
+
+def test_conta_excluida_some_das_listas_dos_administradores(novo_usuario):
+    """A aprovada à mão que se excluiu sai da lista de confirmação e não pode mais ser liberada; o CRM dela não aparece
+    como "outra conta" no cadastro pendente do mesmo CRM."""
+    n = _crm_novo()
+    manual = novo_usuario("Bia Souza", crm={"crm": n, "uf": "RJ", "status": "pendente"})
+    assert db.decide_crm(manual["id"], True)
+    assert manual["id"] in [x["id"] for x in db.manual_doctors(86400)[0]]
+    pendente = novo_usuario("Bia Souza", crm={"crm": n, "uf": "RJ", "status": "pendente"})
+    assert next(x for x in db.pending_doctors() if x["id"] == pendente["id"])["outras_contas"] == 1
+    assert db.excluir_conta(manual["id"], manual["email"])
+    assert manual["id"] not in [x["id"] for x in db.manual_doctors(86400)[0]]
+    assert db.crm_dispensa(manual["id"]) is None and db.crm_confirmed(manual["id"]) is False
+    assert next(x for x in db.pending_doctors() if x["id"] == pendente["id"])["outras_contas"] == 0

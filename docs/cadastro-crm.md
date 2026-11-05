@@ -309,6 +309,33 @@ O `scripts/preview_login.py` roda o servidor de verdade contra o banco de testes
   editam como sempre.
 - **Especialidade:** não é pedida no cadastro. O médico preenche depois em Configurações.
 
+## Excluir a conta (Perfil, desde 05/11/2026)
+Decisões do dono: a conta é **encerrada** e o prontuário fica pelo prazo legal; confirma-se **digitando o e-mail**; o
+**mesmo e-mail pode criar uma conta nova**, que começa vazia.
+- **Na tela:** Perfil → cartão "Excluir conta" → janela com o aviso e o campo do e-mail. O botão vermelho só acende com o
+  e-mail da conta (maiúsculas e espaços não importam). Excluída, a página passa por `/auth/logout`.
+- **Rota `POST /me/excluir`** (privada; a conta pendente, recusada ou a confirmar não chega a ela): só JSON (`_body`),
+  `Sec-Fetch-Site` diferente de `same-origin` → 403, o servidor confere o e-mail de novo (`email_nao_confere`), 5 por
+  hora por conta (`excluir_conta`), um pedido de cada vez com o login e a nova senha (`_na_vez`). A resposta apaga a sessão
+  e os cookies de conexão e manda `Clear-Site-Data`. Aviso por e-mail (`mailer.send_account_deleted`); a falha não desfaz.
+- **No banco (`db.excluir_conta`, migração `0020_conta_excluida.sql`):** a linha de `users` **não é apagada** — todas as
+  tabelas do prontuário apontam para ela com `on delete cascade`. Numa transação:
+  - `excluida_em = now()`; o e-mail vai para `email_excluido` e, no lugar, fica `excluida:<id>` (não é e-mail, nunca é
+    achado); `google_sub` vai para `google_sub_excluido`; sem senha nem foto; `session_version + 1`;
+  - saem `oauth_tokens` da conta, os `login_codes` do e-mail e o contador `conf:<id>` do CFM;
+  - fica uma linha `conta_excluida` no `access_log` (nunca é limpo).
+  - Ficam nome, CRM/UF, especialidade e consultório (autoria do prontuário e cabeçalho das receitas), e prontuários,
+    pacientes, receitas, gravações, exames e o registro de acessos.
+- **A conta excluída não volta:** `get_user`, as buscas por e-mail e pelo Google, `set_password`, a decisão e a
+  liberação dos administradores e `set_token` ignoram `excluida_em` (só com a 0020: `db.tem_exclusao`, como a 0019). O
+  CRM dela não deixa a conta nova pendente (`_crm_decisao`, `crm_in_use`) nem conta como "outra conta" na página de
+  cadastros. A limpeza diária apaga a agenda que voltar do Google depois.
+- **Entrada numa conta que já existia** (Google, cadastro por e-mail de conta que existe): `so_existente=True` só
+  atualiza; se a conta foi excluída no meio do caminho, nenhuma conta nasce sem o Registro profissional.
+- **Sem a 0020 em produção:** tudo funciona como antes; só a exclusão responde "Não foi possível excluir agora" (503).
+- **Fica para depois:** revogar o acesso no Google (hoje, como no Desconectar, os tokens só são apagados); exportar os
+  prontuários antes de excluir; conta pendente ou recusada excluir a si mesma.
+
 ## O web service do CFM (manual v3.0, 08/2026)
 - **Pedido:**
   - `POST https://ws.cfm.org.br:8080/WebServiceConsultaMedicos/ServicoConsultaMedicos`;
