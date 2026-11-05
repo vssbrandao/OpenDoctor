@@ -140,7 +140,7 @@ _SECURITY_HEADERS = {
 # inclua aqui com o motivo — o teste tests/test_security.py exige que a lista bata com a dele, então
 # abrir algo é sempre uma decisão consciente (veja CLAUDE.md).
 PUBLIC_PATHS = {
-    "/": "redireciona para a agenda (logado) ou para o login",
+    "/": "site de apresentação da OpenDoctor (web/site.html)",
     "/health": "verificação de saúde do Render",
     "/me": "diz se há sessão (a tela de login e o aviso de sessão expirada perguntam)",
     "/opendoctor-login.html": "tela de entrar / criar conta",
@@ -203,10 +203,19 @@ async def _no_cache_html(request: Request, call_next):
     return resp
 
 
+# o site de apresentação (web/site.html) usa fotos e vídeos de bancos de imagem (Unsplash/Pexels) enquanto não tem os
+# próprios: só a raiz libera esses domínios, como imagem e vídeo; o resto do app segue com a política fechada
+_CSP_SITE = _CSP.replace("img-src 'self' data: blob:",
+                         "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com") \
+    + "; media-src 'self' https://videos.pexels.com"
+
+
 @app.get("/")
 def root(request: Request):
-    # raiz do site: agenda (home do app) para quem já entrou; senão, a tela de login
-    return RedirectResponse("/opendoctor-agenda.html" if auth.current_user(request) else "/opendoctor-login.html")
+    # raiz: o site de apresentação da OpenDoctor, para todos (Entrar e Criar conta levam ao login)
+    resp = FileResponse(os.path.join(WEB_DIR, "site.html"), media_type="text/html")
+    resp.headers["Content-Security-Policy"] = _CSP_SITE
+    return resp
 
 
 @app.get("/health")
