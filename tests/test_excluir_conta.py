@@ -139,6 +139,26 @@ def test_texto_do_aviso():
     assert "{" not in text and "Ana" in text
 
 
+def test_agenda_que_volta_do_google_depois_da_exclusao_nao_fica(monkeypatch):
+    """O médico estava na tela do Google conectando a agenda e excluiu a conta noutra aba: a troca grava o token, mas a
+    releitura já não acha a conta (excluída) e a agenda é desconectada na hora — não espera a limpeza diária."""
+    import urllib.parse as up
+    from app import integrations
+    gravou, tirou = [], []
+    monkeypatch.setattr(integrations, "configured", lambda p: True)
+    monkeypatch.setattr(integrations, "_cid", lambda p: "cid")
+    monkeypatch.setattr(integrations, "exchange_and_store", lambda prov, code, uid: gravou.append((prov, uid)))
+    monkeypatch.setattr(integrations, "disconnect", lambda uid, prov: tirou.append((uid, prov)))
+    monkeypatch.setattr(auth, "current_user", lambda request: dict(CONTA))     # a sessão ainda valia na volta
+    monkeypatch.setattr(db, "get_user", lambda uid: None)                       # excluída durante a troca
+    c = TestClient(server.app)
+    r = c.get("/integrations/google/connect", follow_redirects=False)
+    state = up.parse_qs(up.urlparse(r.headers["location"]).query)["state"][0]
+    r = c.get("/auth/google/callback?code=x&state=" + up.quote(state), follow_redirects=False)
+    assert gravou == [("google", "u1")] and tirou == [("u1", "google")]
+    assert r.headers["location"].endswith("?erro=sessao")
+
+
 def test_login_pelo_google_de_conta_excluida_no_meio_nao_cria_outra(monkeypatch):
     """Achou a conta pelo e-mail, mas ela foi excluída antes de entrar: não nasce uma conta nova sem o Registro
     profissional (o upsert só atualiza a que existe e devolve None) — volta ao login com o erro de conexão."""

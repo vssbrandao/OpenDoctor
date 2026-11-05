@@ -61,7 +61,10 @@ def test_perfil_tem_o_sair_e_so_grava_a_exclusao():
     assert re.search(r'<button class="cfg-btn" type="button" id="pfLogout" data-href="/auth/logout">Sair</button>', html)
     scripts = "\n".join(re.findall(r"<script>(.*?)</script>", html, re.S))
     assert set(re.findall(r"pede\('([^']+)'\)", scripts)) == {"/me", "/me/medico"}
-    assert re.findall(r"fetch\('([^']+)'", scripts) == ["/me/excluir"] and re.findall(r"method: '(\w+)'", scripts) == ["POST"]
+    # um fetch para ler (pede) e outro, o único com método, para excluir — qualquer outra escrita aparece aqui
+    assert scripts.count("fetch(") == 2 and re.findall(r"fetch\('([^']+)'", scripts) == ["/me/excluir"]
+    assert scripts.count("method") == 1 and "method: 'POST'" in scripts
+    assert not re.search(r"XMLHttpRequest|sendBeacon|\.submit\(|formaction|action=", scripts + html)
     assert re.findall(r"<form\b[^>]*\bid=\"(\w+)\"", html) == ["pfExForm"] and html.count("<form") == 1
     editaveis = re.findall(r"<input(?![^>]*\breadonly\b)[^>]*\bid=\"(\w+)\"", html)
     assert editaveis == ["pfExEmail"], editaveis

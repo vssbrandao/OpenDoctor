@@ -105,7 +105,8 @@
     .od-btn.ghost:hover{background:#F4F4F6}
     .od-btn.perigo{background:#C0151D}
     .od-btn.perigo:hover{background:#A01218}
-    .od-btn[disabled],.od-btn[disabled]:hover{opacity:.45;cursor:not-allowed;background:#C0151D}
+    .od-btn.perigo[disabled],.od-btn.perigo[disabled]:hover{opacity:.45;cursor:not-allowed;background:#C0151D}
+    .od-btn.ghost[disabled],.od-btn.ghost[disabled]:hover{opacity:.45;cursor:not-allowed;background:none}
     .fl.edit{background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent;transition:background-color .12s,box-shadow .12s}
     .fl.edit:focus-within{background:#fff;box-shadow:inset 0 0 0 1px #7D7D82}
     .fl.edit.cheio:not(:focus-within){background:#fff;box-shadow:inset 0 0 0 1px var(--card-border)}
@@ -307,18 +308,31 @@
       }
       // o e-mail da conta chega com os dados do Perfil: até lá, o Excluir conta fica apagado
       window.__pfConta = function (e) { conta = norm(e); abre.disabled = !conta; };
+      var fundo = document.querySelector('.stage'), apertouFora = false;
+      // aberta, a página de trás fica inerte (nem o Tab nem o leitor de tela chegam a ela)
+      function mostra(on) { modal.hidden = !on; fundo.inert = on; }
       function fecha() {
         if (enviando) return;
-        modal.hidden = true; abre.focus();
+        mostra(false); abre.focus();
       }
       abre.addEventListener('click', function () {
         if (!conta) return;
         email.value = ''; aviso(''); go.textContent = 'Excluir conta'; sync();
-        modal.hidden = false; email.focus();
+        mostra(true); email.focus();
       });
       nao.addEventListener('click', fecha);
-      modal.addEventListener('click', function (e) { if (e.target === modal) fecha(); });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) fecha(); });
+      // fecha só no clique que começa e termina fora do cartão (arrastar a seleção do e-mail até fora não fecha)
+      modal.addEventListener('mousedown', function (e) { apertouFora = e.target === modal; });
+      modal.addEventListener('click', function (e) { if (e.target === modal && apertouFora) fecha(); apertouFora = false; });
+      document.addEventListener('keydown', function (e) {
+        if (modal.hidden) return;
+        if (e.key === 'Escape') { fecha(); return; }
+        if (e.key !== 'Tab') return;
+        // o Tab dá a volta dentro da janela
+        var foc = [email, go, nao].filter(function (b) { return !b.disabled; });
+        var i = foc.indexOf(document.activeElement);
+        if (e.shiftKey ? i <= 0 : i === foc.length - 1) { e.preventDefault(); foc[e.shiftKey ? foc.length - 1 : 0].focus(); }
+      });
       email.addEventListener('input', function () { aviso(''); sync(); });
       form.addEventListener('submit', function (e) {
         e.preventDefault();

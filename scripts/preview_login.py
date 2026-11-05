@@ -91,13 +91,15 @@ db._pool = None
 
 
 def limpa():
-    """Apaga as contas fictícias deste preview (e-mail @preview-login.invalid) e o que é delas."""
-    alvo = "(select id from users where email like %s)"
+    """Apaga as contas fictícias deste preview (e-mail @preview-login.invalid) e o que é delas — também as excluídas no
+    Perfil, cujo e-mail foi para email_excluido (migração 0020)."""
     pat = "%@" + DOM
     with db.connection() as c:
+        dono = "email like %(p)s" + (" or email_excluido like %(p)s" if db.tem_exclusao(c) else "")
+        alvo = f"(select id from users where {dono})"
         for t in ("note_addenda", "patient_files", "clinical_notes", "patients"):
-            c.execute(f"delete from {t} where user_id in {alvo}", (pat,))
-        n = c.execute("delete from users where email like %s", (pat,)).rowcount
+            c.execute(f"delete from {t} where user_id in {alvo}", {"p": pat})
+        n = c.execute(f"delete from users where {dono}", {"p": pat}).rowcount
         c.execute("delete from login_codes where email like %s", (pat,))
         c.commit()
     return n

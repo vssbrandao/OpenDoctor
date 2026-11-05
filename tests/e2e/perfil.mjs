@@ -51,12 +51,12 @@ const certo = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 // ----- a conta fictícia -----
 const CONTA = { id: 'u-teste', email: 'ana.souza@example.invalid', name: 'Ana Souza', picture: null, crm_status: 'verificado', crm_fonte: 'cfm' };
-let MEDICO, CONFERIDO, FALHA_MEDICO, SEM_SESSAO, BANCO_FORA, LENTO_ME, LENTO_MEDICO, EXCLUIR;
+let MEDICO, CONFERIDO, FALHA_MEDICO, SEM_SESSAO, BANCO_FORA, LENTO_ME, LENTO_MEDICO, EXCLUIR, LENTO_EXCLUIR;
 function zera() {
   MEDICO = { name: 'Dra. Ana Souza', crm: '123456', crm_uf: 'SP', especialidade: 'Clínica médica', consultorio_endereco: 'Rua A, 1',
              consultorio_telefone: '(11) 3333-4444', receita_papel: 'A4' };
   CONFERIDO = true; FALHA_MEDICO = 0; SEM_SESSAO = false; BANCO_FORA = false; LENTO_ME = 0; LENTO_MEDICO = 0; pedidos.length = 0;
-  EXCLUIR = [200, { ok: true }];                            // a resposta do POST /me/excluir
+  EXCLUIR = [200, { ok: true }]; LENTO_EXCLUIR = 0;         // a resposta do POST /me/excluir (e a demora dela)
 }
 zera();
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
@@ -96,6 +96,7 @@ async function responde(p) {
   else {
     if (LENTO_ME && u.pathname === '/me') await sleep(LENTO_ME);
     if (LENTO_MEDICO && u.pathname === '/me/medico') await sleep(LENTO_MEDICO);
+    if (LENTO_EXCLUIR && u.pathname === '/me/excluir') await sleep(LENTO_EXCLUIR);
     const r = rota(method, u.pathname);
     if (r === null) status = 404; else status = r[0];
     dado = Buffer.from(JSON.stringify(r ? r[1] : {}));
@@ -221,18 +222,32 @@ const cenarios = [
     const aberta = () => ev(`!document.getElementById('pfExModal').hidden`);
     await clica('#pfExAbre');
     certo(await aberta() && await ev(`document.activeElement.id`) === 'pfExEmail', 'a janela não abriu com o foco no e-mail');
+    certo(await ev(`document.querySelector('.stage').inert`), 'a página de trás não ficou inerte');
+    const tab = (shift) => ev(`(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: ${shift}, bubbles: true, cancelable: true })); return document.activeElement.id; })()`);
+    await ev(`document.getElementById('pfExNao').focus(), 1`);
+    certo(await tab(false) === 'pfExEmail', 'o Tab saiu da janela depois do Cancelar');
+    certo(await tab(true) === 'pfExNao', 'o Shift+Tab saiu da janela antes do e-mail');
     certo(await ev(`document.getElementById('pfExGo').disabled`), 'botão aceso sem e-mail');
     certo(await digita('outra@example.invalid') && await digita('ana.souza@example') && await digita(''), 'acendeu com e-mail errado');
     certo(!(await digita('  ANA.Souza@Example.INVALID ')), 'não acendeu com o e-mail da conta em maiúsculas e com espaços');
     await foto('perfil-excluir.png');
+    // clique dentro do cartão e a seleção arrastada até fora não fecham
+    await ev(`(() => { document.querySelector('#pfExForm p').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      document.querySelector('#pfExForm p').dispatchEvent(new MouseEvent('click', { bubbles: true })); return 1; })()`);
+    certo(await aberta(), 'o clique dentro da janela fechou');
+    await ev(`(() => { document.getElementById('pfExEmail').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      document.getElementById('pfExModal').dispatchEvent(new MouseEvent('click', { bubbles: true })); return 1; })()`);
+    certo(await aberta() && await ev(`document.getElementById('pfExEmail').value`) !== '', 'arrastar a seleção do e-mail até fora fechou');
     await clica('#pfExNao');
     certo(!(await aberta()) && await ev(`document.activeElement.id`) === 'pfExAbre', 'Cancelar não fechou');
+    certo(!(await ev(`document.querySelector('.stage').inert`)), 'a página de trás ficou inerte depois de fechar');
     await clica('#pfExAbre');
     certo(await ev(`document.getElementById('pfExEmail').value`) === '' && await ev(`document.getElementById('pfExGo').disabled`), 'reabriu com o e-mail anterior');
     await ev(`(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1; })()`);
     certo(!(await aberta()), 'Esc não fechou');
     await clica('#pfExAbre');
-    await ev(`(() => { const m = document.getElementById('pfExModal'); m.dispatchEvent(new MouseEvent('click', { bubbles: true })); return 1; })()`);
+    await ev(`(() => { const m = document.getElementById('pfExModal'); m.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+      m.dispatchEvent(new MouseEvent('click', { bubbles: true })); return 1; })()`);
     certo(!(await aberta()), 'o clique fora da janela não fechou');
     await clica('#pfExAbre'); await digita('ana.souza@example.invalid');
     await ev(`(() => { document.getElementById('pfExEmail').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1; })()`);
@@ -263,12 +278,17 @@ const cenarios = [
     return casos.map((c) => c[0] === 'rede' ? 'rede' : c[0][0]).join(', ') + ': aviso na janela, na mesma página, botão de volta';
   }],
   ['Excluir conta: confirmada, manda só o e-mail num POST JSON e sai pelo /auth/logout', async () => {
-    zera();
+    zera(); LENTO_EXCLUIR = 1200;
     await abre('opendoctor-perfil.html');
     await ate(carregou, 4000, 'dados do Perfil');
     await clica('#pfExAbre');
     await ev(`(() => { const i = document.getElementById('pfExEmail'); i.value = 'Ana.Souza@example.invalid'; i.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
     await ev(`(() => { document.getElementById('pfExForm').requestSubmit(); return 1; })()`);
+    await ate(`document.getElementById('pfExGo').textContent === 'Excluindo…'`, 1000, 'Excluindo…');
+    const durante = await ev(`(() => { const n = getComputedStyle(document.getElementById('pfExNao')); return { fundo: n.backgroundColor, go: document.getElementById('pfExGo').disabled, nao: document.getElementById('pfExNao').disabled }; })()`);
+    certo(durante.go && durante.nao && durante.fundo === 'rgba(0, 0, 0, 0)', 'durante o envio: ' + JSON.stringify(durante));
+    await ev(`(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); return 1; })()`);
+    certo(!(await ev(`document.getElementById('pfExModal').hidden`)), 'o Esc fechou a janela durante o envio');
     await ate(`location.pathname === '/opendoctor-login.html'`, 4000, 'login depois de excluir');
     const ex = pedidos.filter((r) => r.path === '/me/excluir'), saiu = pedidos.filter((r) => r.path === '/auth/logout');
     certo(ex.length === 1 && ex[0].method === 'POST' && /application\/json/.test(ex[0].ct), 'pedido: ' + JSON.stringify(ex));

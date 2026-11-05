@@ -1718,9 +1718,14 @@ def auth_callback(provider: str, request: Request, code: str = "", state: str = 
         pendente = u.get("crm_status") == "pendente"
         try:
             integrations.exchange_and_store(provider, code, u["id"])
-            if pendente and (db.get_user(u["id"]) or {}).get("crm_status") == "recusado":
-                # recusada durante a troca (só a pendente pode ser): a recusa grava a decisão antes de apagar a agenda,
-                # então ou ela apagou o que foi gravado aqui, ou esta releitura já a vê — a agenda não fica na recusada
+            try:
+                atual = db.get_user(u["id"])                # excluída durante a troca: None (get_user não a acha)
+            except Exception:
+                atual = u                                    # sem conferir agora: a limpeza diária cobre a excluída
+            if atual is None or (pendente and atual.get("crm_status") == "recusado"):
+                # recusada (só a pendente pode ser) ou excluída durante a troca: a recusa e a exclusão gravam a decisão
+                # antes de apagar a agenda, e o token gravado aqui espera a exclusão terminar (a linha da conta fica
+                # travada) — então ou ela apagou o que foi gravado aqui, ou esta releitura já a vê
                 integrations.disconnect(u["id"], provider)
                 resp = _agenda_volta(payload, u) if ap else RedirectResponse(dest + "?erro=sessao")
             else:
