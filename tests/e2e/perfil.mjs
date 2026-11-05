@@ -3,8 +3,10 @@
 //
 //     node tests/e2e/perfil.mjs                 (SHOT=/pasta salva o Perfil em 1440×780; CHROME=/caminho para outro Chrome)
 //
-// Confere: o Perfil mostra nome, e-mail, CRM | UF (com "Conferido no cadastro") e especialidade, só para ver; o que a
-// conta não tem some; erro ao carregar avisa e tenta de novo; a sessão que acabou leva ao login, que volta ao Perfil; o
+// Confere: o Perfil mostra nome, e-mail, CRM | UF (com "Conferido no cadastro") e especialidade, só para ver, e diz só o
+// que muda em Configurações; o que a conta não tem some; enquanto carrega e no erro não aparece campo vazio; erro ao
+// carregar (e o banco fora do ar: /me 503 com /me/medico 401, em qualquer ordem) avisa e tenta de novo; a sessão que
+// acabou leva ao login, que volta ao Perfil; o
 // Sair vai a /auth/logout e cai no login; o menu lateral de todas as telas tem o Perfil logo depois de Configurações (e
 // leva a ele), aberto e recolhido.
 import { spawn } from 'node:child_process';
@@ -47,17 +49,20 @@ const certo = (cond, msg) => { if (!cond) throw new Error(msg); };
 
 // ----- a conta fictícia -----
 const CONTA = { id: 'u-teste', email: 'ana.souza@example.invalid', name: 'Ana Souza', picture: null, crm_status: 'verificado', crm_fonte: 'cfm' };
-let MEDICO, CONFERIDO, FALHA_MEDICO, SEM_SESSAO;
+let MEDICO, CONFERIDO, FALHA_MEDICO, SEM_SESSAO, BANCO_FORA, LENTO_ME, LENTO_MEDICO;
 function zera() {
   MEDICO = { name: 'Dra. Ana Souza', crm: '123456', crm_uf: 'SP', especialidade: 'Clínica médica', consultorio_endereco: 'Rua A, 1',
              consultorio_telefone: '(11) 3333-4444', receita_papel: 'A4' };
-  CONFERIDO = true; FALHA_MEDICO = 0; SEM_SESSAO = false; pedidos.length = 0;
+  CONFERIDO = true; FALHA_MEDICO = 0; SEM_SESSAO = false; BANCO_FORA = false; LENTO_ME = 0; LENTO_MEDICO = 0; pedidos.length = 0;
 }
 zera();
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml',
   '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.json': 'application/json', '.ico': 'image/x-icon' };
 // [status, corpo]; null = 404
 function rota(method, path) {
+  // banco fora do ar, como o servidor: o /me não sabe da sessão (503) e o guarda das rotas não acha o usuário (401)
+  if (path === '/me' && BANCO_FORA) return [503, { error: 'indisponivel' }];
+  if (path === '/me/medico' && BANCO_FORA) return [401, { error: 'não autenticado' }];
   if (path === '/me') return [200, SEM_SESSAO ? { logged_in: false, user: null, scribe: false, bloqueio: null, boas_vindas: false }
                                               : { logged_in: true, user: CONTA, scribe: false, bloqueio: null, boas_vindas: false }];
   if (path === '/me/medico' && method === 'GET') {
@@ -83,6 +88,8 @@ async function responde(p) {
   let status = 200, tipo = 'application/json', dado;
   if (arq.startsWith(WEB) && extname(arq) && existsSync(arq)) { dado = readFileSync(arq); tipo = TIPOS[extname(arq)] || 'application/octet-stream'; }
   else {
+    if (LENTO_ME && u.pathname === '/me') await sleep(LENTO_ME);
+    if (LENTO_MEDICO && u.pathname === '/me/medico') await sleep(LENTO_MEDICO);
     const r = rota(method, u.pathname);
     if (r === null) status = 404; else status = r[0];
     dado = Buffer.from(JSON.stringify(r ? r[1] : {}));
@@ -119,6 +126,8 @@ const cenarios = [
     certo(await val('#pfCrm') === '123456' && await val('#pfUf') === 'SP', 'CRM/UF');
     certo(await ev(vis('#pfCrmH')) && await txt('#pfCrmH') === 'Conferido no cadastro', 'sem "Conferido no cadastro"');
     certo(await ev(vis('#pfEspF')) && await val('#pfEsp') === 'Clínica médica', 'especialidade');
+    certo(await txt('#pfSub') === 'A especialidade muda em Configurações', 'subtítulo da conta conferida: ' + await txt('#pfSub'));
+    certo(await ev(`document.querySelector('#pfSub a').getAttribute('href')`) === 'opendoctor-configuracoes.html', 'link do subtítulo');
     certo(await ev(`[...document.querySelectorAll('.fl-input')].every((i) => i.readOnly)`), 'campo editável no Perfil');
     certo(await ev(`document.getElementById('pfFoot').hidden`), 'o rodapé do status ficou depois de carregar');
     // o menu: Perfil marcado, logo depois de Configurações, que leva a Configurações
@@ -141,6 +150,15 @@ const cenarios = [
     await ate(carregou, 4000, 'dados do Perfil');
     certo(!(await ev(vis('#pfEspF'))), 'especialidade vazia aparece');
     certo(await ev(vis('#pfCrmF')) && !(await ev(vis('#pfCrmH'))), 'CRM não conferido com "Conferido no cadastro"');
+    certo(await txt('#pfSub') === 'Nome, CRM e especialidade mudam em Configurações', 'subtítulo da conta não conferida: ' + await txt('#pfSub'));
+    certo(!(await ev(`document.getElementById('pfUfC').classList.contains('vazio')`)), 'UF preenchida com cara de vazia');
+    MEDICO.crm_uf = '';                                      // conta antiga com o CRM sem a UF: a metade vazia é a de Configurações
+    await abre('opendoctor-perfil.html');
+    await ate(carregou, 4000, 'dados do Perfil');
+    const uf = await ev(`(() => { const b = document.getElementById('pfUfC'), l = b.querySelector('.fl-label'), s = getComputedStyle(b), sl = getComputedStyle(l);
+      return { vazio: b.classList.contains('vazio'), fundo: s.backgroundColor, topo: sl.top, letra: sl.fontSize, crm: document.getElementById('pfCrmC').classList.contains('vazio') }; })()`);
+    certo(uf.vazio && uf.fundo === 'rgb(244, 244, 246)' && uf.topo === '32.2px' && uf.letra === '14px' && !uf.crm, 'UF vazia: ' + JSON.stringify(uf));
+    await foto('perfil-crm-sem-uf.png');
     MEDICO.crm = ''; MEDICO.crm_uf = ''; MEDICO.name = '';
     await abre('opendoctor-perfil.html');
     await ate(carregou, 4000, 'dados do Perfil');
@@ -154,10 +172,37 @@ const cenarios = [
     await abre('opendoctor-perfil.html');
     await ate(`document.getElementById('pfSt').classList.contains('err')`, 4000, 'aviso de erro');
     certo(await txt('#pfSt') === 'Não foi possível carregar seus dados.' && await txt('#pfRetry') === 'Tentar de novo', 'aviso: ' + await txt('#pfSt'));
+    certo(!(await ev(vis('#pfCampos'))), 'no erro aparecem campos vazios');
     await clica('#pfRetry');
     await ate(`document.getElementById('pfFoot').hidden`, 4000, 'carregar de novo');
     certo(await val('#pfNome') === 'Dra. Ana Souza', 'não carregou na 2ª vez');
     return '"Não foi possível carregar seus dados." + Tentar de novo, que carrega';
+  }],
+  ['enquanto carrega, só o "Carregando…" (nenhum campo vazio); o cartão Sair já está lá', async () => {
+    zera(); LENTO_MEDICO = 1500;
+    await abre('opendoctor-perfil.html');
+    await ate(`document.getElementById('pfSt').textContent === 'Carregando…'`, 1000, 'Carregando…');
+    certo(!(await ev(vis('#pfCampos'))) && await ev(vis('#pfLogout')), 'carregando: campos à vista ou sem o Sair');
+    await foto('perfil-carregando.png');
+    await ate(carregou, 4000, 'dados do Perfil');
+    certo(await ev(vis('#pfCampos')) && await val('#pfNome') === 'Dra. Ana Souza', 'depois de carregar');
+    return 'carregando: só o status e o Sair; depois, os dados';
+  }],
+  ['banco fora do ar (/me 503 e /me/medico 401, em qualquer ordem): "Não foi possível", nunca "sessão terminou"', async () => {
+    const vistos = [];
+    for (const [lentoMe, lentoMed] of [[0, 600], [600, 0]]) {
+      zera(); BANCO_FORA = true; LENTO_ME = lentoMe; LENTO_MEDICO = lentoMed;
+      await abre('opendoctor-perfil.html');
+      await ate(`document.getElementById('pfSt').classList.contains('err')`, 4000, 'aviso de erro');
+      await sleep(800);                                      // a outra resposta também chegou
+      certo(await txt('#pfSt') === 'Não foi possível carregar seus dados.' && await txt('#pfRetry') === 'Tentar de novo',
+        `${lentoMe ? '/me depois' : '/me antes'}: ` + await txt('#pfSt'));
+      vistos.push(lentoMe ? '401 antes do 503' : '503 antes do 401');
+      BANCO_FORA = false;                                    // o banco voltou: Tentar de novo carrega
+      await clica('#pfRetry');
+      await ate(`document.getElementById('pfFoot').hidden`, 4000, 'carregar com o banco de volta');
+    }
+    return vistos.join(' e ') + ': "Não foi possível carregar seus dados." + Tentar de novo, que carrega com o banco de volta';
   }],
   ['sessão que acabou: "Entrar de novo" leva ao login, que volta ao Perfil', async () => {
     zera(); SEM_SESSAO = true;

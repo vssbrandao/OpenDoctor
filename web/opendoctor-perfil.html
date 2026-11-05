@@ -71,6 +71,9 @@
       line-height:18px;letter-spacing:-.2px;color:#000;cursor:default;text-overflow:ellipsis}
     .fl-label{position:absolute;left:32px;right:32px;top:24.6px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
       font-family:var(--disp);font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
+    /* metade vazia do par CRM | UF (conta antiga): o campo vazio de Configurações (cinza, rótulo 14px no meio) */
+    .fl.vazio{background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent}
+    .fl.vazio .fl-label{top:32.2px;font-size:14px;color:#6B6B70}
     .cfg-help{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
     /* rodapé do cartão: o botão de Integrações (h 64, padding 16 48, pílula, borda fina, 14 Bold) e o status ao lado */
     .cfg-foot{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
@@ -82,7 +85,7 @@
     .cfg-st.err{color:#C0151D}
     .cfg-back{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;text-decoration:underline;
       text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer}
-    .fl[hidden],.cfg-fld[hidden],.cfg-foot[hidden],.cfg-help[hidden],.cfg-back[hidden]{display:none}
+    .fl[hidden],.cfg-fields[hidden],.cfg-fld[hidden],.cfg-foot[hidden],.cfg-help[hidden],.cfg-back[hidden]{display:none}
   </style>
 </head>
 <body>
@@ -117,19 +120,20 @@
       <div class="cfg">
         <div class="cfg-title">Perfil</div>
         <div class="cfg-list">
-          <!-- os dados da conta, só para ver (/me e /me/medico): quem muda é Configurações -->
+          <!-- os dados da conta, só para ver (/me e /me/medico): o que muda, muda em Configurações (o e-mail não muda; na
+               conta com o CRM conferido no cadastro, nome, CRM e UF também não) -->
           <div class="cfg-card" id="pfDados">
             <div>
               <div class="cfg-name">Seus dados</div>
-              <div class="cfg-sub">Para mudar, vá em <a class="cfg-back" href="opendoctor-configuracoes.html">Configurações</a></div>
+              <div class="cfg-sub" id="pfSub">Os dados da sua conta</div>
             </div>
-            <div class="cfg-fields">
+            <div class="cfg-fields" id="pfCampos" hidden>   <!-- só com os dados carregados -->
               <div class="fl" id="pfNomeF"><input class="fl-input" id="pfNome" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfNome">Nome</label></div>
               <div class="fl" id="pfEmailF"><input class="fl-input" id="pfEmail" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfEmail">E-mail</label></div>
               <div class="cfg-fld" id="pfCrmF">
                 <div class="cfg-row">
-                  <div class="fl"><input class="fl-input" id="pfCrm" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfCrm">CRM</label></div>
-                  <div class="fl"><input class="fl-input" id="pfUf" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfUf">UF do CRM</label></div>
+                  <div class="fl" id="pfCrmC"><input class="fl-input" id="pfCrm" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfCrm">CRM</label></div>
+                  <div class="fl" id="pfUfC"><input class="fl-input" id="pfUf" readonly tabindex="-1" aria-readonly="true"><label class="fl-label" for="pfUf">UF do CRM</label></div>
                 </div>
                 <span class="cfg-help" id="pfCrmH" hidden>Conferido no cadastro</span>
               </div>
@@ -186,24 +190,38 @@
         st.textContent = t || ''; st.className = 'cfg-st' + (botao ? ' err' : '');
         retry.textContent = botao || ''; retry.hidden = !botao; foot.hidden = !t;
       }
+      // a resposta, ou o erro no lugar dela: 'sessao' (401) ou 'falha'
       function pede(url) {
         return fetch(url, { credentials: 'same-origin', cache: 'no-store' }).then(function (r) {
           if (r.status === 401) throw new Error('sessao');
           if (!r.ok) throw new Error('falha');
           return r.json();
-        });
+        }).catch(function (e) { return e instanceof Error && e.message === 'sessao' ? 'sessao' : 'falha'; });
+      }
+      // o subtítulo diz só o que muda em Configurações, com o link para lá
+      function sub(conferido) {
+        var s = campo('pfSub'), a = document.createElement('a');
+        s.textContent = conferido ? 'A especialidade muda em ' : 'Nome, CRM e especialidade mudam em ';
+        a.className = 'cfg-back'; a.href = 'opendoctor-configuracoes.html'; a.textContent = 'Configurações';
+        s.appendChild(a);
       }
       function carrega() {
         status('Carregando…');
         Promise.all([pede('/me'), pede('/me/medico')]).then(function (r) {
-          var u = r[0] && r[0].user, m = (r[1] && r[1].medico) || {};
-          if (!u) throw new Error('sessao');
+          // o /me diz se há sessão (com o banco fora ele dá 503 e o /me/medico 401: é falha, não sessão acabada)
+          if (typeof r[0] === 'string') throw new Error('falha');
+          if (!r[0].user) throw new Error('sessao');
+          if (typeof r[1] === 'string') throw new Error(r[1]);
+          var u = r[0].user, m = r[1].medico || {};
           poe('pfNome', m.name || u.name);
           poe('pfEmail', u.email);
           campo('pfCrm').value = m.crm || ''; campo('pfUf').value = m.crm_uf || '';
           campo('pfCrmF').hidden = !(m.crm || m.crm_uf);
+          campo('pfCrmC').classList.toggle('vazio', !m.crm); campo('pfUfC').classList.toggle('vazio', !m.crm_uf);
           campo('pfCrmH').hidden = !r[1].crm_conferido;        // CRM conferido no cadastro (CFM ou à mão)
           poe('pfEsp', m.especialidade);
+          sub(!!r[1].crm_conferido);
+          campo('pfCampos').hidden = false;
           status('');
         }).catch(function (e) {
           sessao = !!e && e.message === 'sessao';
