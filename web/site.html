@@ -2865,6 +2865,31 @@ header .brand span{-webkit-text-stroke:.45px currentColor}
 .mat-t:not(#_):not(#__){font-size:28px!important;line-height:30px!important;letter-spacing:-.6px!important}
 #ps .ps-txt .tag:not(#_):not(#__),#ps .ps-txt h2:not(#_):not(#__){font-size:28px!important;line-height:30px!important;letter-spacing:-1px!important}
 @media (max-width:767px){.mat-t:not(#_):not(#__){font-size:24px!important;line-height:26px!important;letter-spacing:-.5px!important}#ps .ps-txt .tag:not(#_):not(#__),#ps .ps-txt h2:not(#_):not(#__){font-size:24px!important;line-height:26px!important;letter-spacing:-.8px!important}}
+
+/* todo o texto do site em Medium (500) */
+html body *:not(svg):not(path):not(#_){font-weight:500!important}
+.hb-sec:not(#_):not(#__){font-weight:500!important}
+
+/* header: "Entrar" vira link de texto (como os do menu); "Criar conta" fica só com contorno */
+.nav-cta .nav-login:not(#_):not(#__){background:transparent!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-size:16px!important;line-height:18px!important;color:#0B0B0C!important}
+.nav-cta .nav-login:not(#_):not(#__):hover{background:transparent!important;opacity:.6}
+.nav-cta .nav-signup:not(#_):not(#__){background:transparent!important;color:#0B0B0C!important;box-shadow:inset 0 0 0 1px rgba(11,11,12,.85)!important}
+.nav-cta .nav-signup:not(#_):not(#__):hover{background:#0B0B0C!important;color:#fff!important}
+@media (min-width:992px){.nav-cta:not(#_):not(#__){gap:28px!important}}
+
+/* header: todos os links juntos à direita (Plataforma · Dados · Especialidades · Entrar) e depois o Criar conta */
+@media (min-width:992px){
+  .nav-in .nav-links:not(#_):not(#__){position:static!important;transform:none!important;margin:0 0 0 auto!important;gap:28px!important}
+  .nav-in .nav-cta:not(#_):not(#__){margin-left:14px!important}
+}
+
+/* header entre 992 e 1199 px: menos espaço e letra 15 para os seis links caberem com o logo */
+@media (min-width:992px) and (max-width:1199px){
+  .nav-in .nav-links:not(#_):not(#__){gap:18px!important}
+  .nav-in .nav-links .nav-link:not(#_):not(#__),.nav-cta .nav-login:not(#_):not(#__){font-size:15px!important}
+  .nav-in .nav-cta:not(#_):not(#__){margin-left:4px!important;gap:18px!important}
+  .nav-cta .nav-signup:not(#_):not(#__){padding:0 22px 2px!important;font-size:15px!important}
+}
 </style>
 </head>
 <body>
@@ -2882,6 +2907,7 @@ header .brand span{-webkit-text-stroke:.45px currentColor}
     <a class="brand" href="#" aria-label="OpenDoctor, início"><svg><use href="#od"/></svg><span>OpenDoctor</span></a>
     <nav class="nav-links" aria-label="Principal">
       <a class="nav-link" href="#detalhes">Plataforma</a>
+      <a class="nav-link" href="#" data-pagina="ia">IA</a>
       <a class="nav-link" href="#ps">Dados</a>
       <a class="nav-link" href="#momentos">Especialidades</a>
     </nav>
@@ -2893,7 +2919,7 @@ header .brand span{-webkit-text-stroke:.45px currentColor}
   </div>
 </header>
 <div class="mmenu" id="mmenu">
-  <a href="#detalhes">Plataforma</a><a href="#ps">Dados</a><a href="#momentos">Especialidades</a><a href="/opendoctor-login.html">Entrar</a>
+  <a href="#detalhes">Plataforma</a><a href="#" data-pagina="ia">IA</a><a href="#ps">Dados</a><a href="#momentos">Especialidades</a><a href="/opendoctor-login.html">Entrar</a>
   <a class="btn" href="/opendoctor-login.html?origem=site&amp;secao=menu">Criar conta <svg class="arr"><use href="#arr"/></svg></a>
 </div>
 
