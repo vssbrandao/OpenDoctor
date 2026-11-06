@@ -2894,6 +2894,58 @@ html body *:not(svg):not(path):not(#_){font-weight:500!important}
 /* botões e textos pequenos: o Medium em corpo pequeno parece Regular na tela; reforço do traço (como no logo) */
 .hb,.nav-link,.nav-signup,.ct-b1,.dm-bt,.mo-prev,.mo-next,
 p,li,.mc-t,.mc-d,.faq-q span,.faq-a,.of a,.of h6,.of-copy,.of-cookies,.of-lang,.mo-q h5,.mo-q p,.lz-sc span,.lz-sc dt,.lz-sc dd{-webkit-text-stroke:.016em currentColor}
+
+/* TESTE: cards do #detalhes em 2 colunas (como a Ramp); o 3º desce para a linha de baixo */
+@media (min-width:768px){
+  .mc-row:not(#_):not(#__){grid-template-columns:repeat(2,minmax(0,1fr))!important;row-gap:64px!important}
+}
+
+@media (min-width:768px){
+  .mc-row:not(#_):not(#__){column-gap:24px!important}
+  .mc-row .mc-img:not(#_):not(#__){aspect-ratio:644/515!important}
+}
+
+/* ilustrações dos cards: textos em Regular, sem o reforço de traço */
+.lz-sc *:not(#_):not(#__){font-weight:400!important;-webkit-text-stroke:0!important}
+
+/* topo: "AI Clinical Operating System" sem o reforço de traço, mesmo peso do título */
+.hero-title .hero-eyebrow:not(#_):not(#__),.hero-title .hero-eyebrow *{-webkit-text-stroke:0!important}
+
+/* cards: título e frase um pouco maiores (15 → 17 px) */
+@media (min-width:768px){
+  .mc-t:not(#_):not(#__){font-size:17px!important;line-height:23px!important}
+  .mc-d:not(#_):not(#__){font-size:17px!important;line-height:23px!important}
+}
+
+/* peso entre Regular e Medium em tudo, menos no menu e nas ilustrações dos cards
+   (Regular com um traço fino da própria cor, proporcional ao corpo) */
+html body *:not(svg):not(path):not(#_):not(#__){font-weight:400!important;-webkit-text-stroke:.012em currentColor!important}
+.nav *:not(#_):not(#__):not(#___),.mmenu *:not(#_):not(#__):not(#___){font-weight:500!important;-webkit-text-stroke:0!important}
+header .brand span:not(#_):not(#__):not(#___){font-weight:500!important;-webkit-text-stroke:.45px currentColor!important}
+.lz-sc *:not(#_):not(#__):not(#___){font-weight:400!important;-webkit-text-stroke:0!important}
+#perguntas .faq-q:not(#_):not(#__) span,#perguntas .faq-q:not(#_):not(#__){font-weight:400!important}
+
+/* título do #detalhes: coluna mais larga para cada frase caber numa linha */
+@media (min-width:768px){.mat-t:not(#_):not(#__){grid-column:1/span 9!important;max-width:none!important}}
+
+/* #detalhes: mais espaço entre o título e os cards (133 → ~200 px; 80 → ~120 no celular) */
+.mat-in:not(#_):not(#__){row-gap:176px!important}
+@media (max-width:767px){.mat-in:not(#_):not(#__){row-gap:56px!important}}
+@media (max-width:1023px){.mat-t .mt-br{display:none}}
+
+
+
+/* #detalhes: mais distância entre a foto do topo e o título (91 → 160 px; 64 → 96 no celular) */
+.mat:not(#_):not(#__){padding-top:160px!important}
+@media (max-width:767px){.mat:not(#_):not(#__){padding-top:96px!important}}
+
+/* título do #detalhes: entrelinha um pouco maior (30 → 33 px) */
+@media (min-width:768px){.mat-t:not(#_):not(#__):not(#___){line-height:33px!important}}
+@media (max-width:767px){.mat-t:not(#_):not(#__):not(#___){line-height:28px!important}}
+
+/* "Inteligência de dados" e "Fundamentação em evidências" (os dois textos da animação) com a mesma tipografia do título de #detalhes */
+@media (min-width:768px){#ps .ps-txt .tag:not(#_):not(#__):not(#___),#ps .ps-txt h2:not(#_):not(#__):not(#___){font-size:28px!important;line-height:33px!important;letter-spacing:-.6px!important}}
+@media (max-width:767px){#ps .ps-txt .tag:not(#_):not(#__):not(#___),#ps .ps-txt h2:not(#_):not(#__):not(#___){font-size:24px!important;line-height:28px!important;letter-spacing:-.5px!important}}
 </style>
 </head>
 <body>
@@ -2942,7 +2994,7 @@ p,li,.mc-t,.mc-d,.faq-q span,.faq-a,.of a,.of h6,.of-copy,.of-cookies,.of-lang,.
     <div class="hero-right rv" style="--d:.15s">
       <img class="hero-photo" src="/assets/site/hero.jpg" alt="Paciente sorrindo durante a consulta, com o médico de costas em primeiro plano">
       <div class="hero-ov">
-        <div class="hero-card dm-card"><i class="dm-dot" aria-hidden="true"></i><span class="dm-tx"><span class="dm-h">Demonstração</span><span class="dm-s">Veja a OpenDoctor numa consulta real</span></span><a class="dm-bt" href="#" data-pagina="agendar-demonstracao">Agendar</a></div>
+        <div class="hero-card dm-card"><i class="dm-dot" aria-hidden="true"></i><span class="dm-tx"><span class="dm-h">Demonstração</span><span class="dm-s">Veja a OpenDoctor em uma consulta real</span></span><a class="dm-bt" href="#" data-pagina="agendar-demonstracao">Agendar</a></div>
         <div class="hero-title"><p class="hero-eyebrow">AI Clinical Operating System</p><h1 class="h1">Infraestrutura médica,<br>construída com IA.</h1></div>
         <div class="hero-main">
           <div class="hero-bts"><a class="hb hb-ink" href="/opendoctor-login.html?origem=site&amp;secao=topo">Criar conta</a><a class="hb hb-sec" href="#" data-pagina="agendar-demonstracao">Demonstração</a></div></div>
@@ -2992,7 +3044,7 @@ p,li,.mc-t,.mc-d,.faq-q span,.faq-a,.of a,.of h6,.of-copy,.of-cookies,.of-lang,.
 <!-- ================= DETALHES (no padrão "materials" do Polestar 2) ================= -->
 <section class="mat" id="detalhes" aria-label="Detalhes">
   <div class="mat-in">
-    <h2 class="mat-t">Uma só inteligência para toda a&nbsp;consulta.<br>Conectamos a&nbsp;conversa, o&nbsp;prontuário, os&nbsp;exames e a&nbsp;evidência científica em um&nbsp;sistema operacional&nbsp;único.</h2>
+    <h2 class="mat-t">Uma só inteligência para toda a&nbsp;consulta.<br>Conectamos a&nbsp;conversa, o&nbsp;prontuário, os&nbsp;exames<br class="mt-br">e a&nbsp;evidência científica em um só&nbsp;sistema.</h2>
     <div class="mc-row">
       <article class="mc">
       <div class="mc-img lz"><div class="lz-sc">
@@ -3009,12 +3061,12 @@ p,li,.mc-t,.mc-d,.faq-q span,.faq-a,.of a,.of h6,.of-copy,.of-cookies,.of-lang,.
   </div>
 </div></div>
       <h3 class="mc-t">Documentação clínica a partir da conversa.</h3>
-      <p class="mc-d">A OpenDoctor escuta a conversa e entrega a evolução pronta, para você só revisar e assinar.</p>
+      <p class="mc-d">A OpenDoctor escuta a conversa e entrega a evolução pronta para revisar.</p>
     </article>
       <article class="mc">
       <div class="mc-img lz"><div class="lz-sc">
   <div class="lz-p lz-w">
-    <div class="lz-r"><span class="lz-ic lz-icg"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 10.75l3.5-3.5 2.5 2.5 5-5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lz-tt">Pressão arterial<small>Últimos 6 meses</small></span><span class="lz-mono lz-g lz-top">128/82</span></div>
+    <div class="lz-r"><span class="lz-ic lz-icg"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 10.75l3.5-3.5 2.5 2.5 5-5" fill="none" stroke="currentColor" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span class="lz-tt">Pressão arterial<small>Últimos 6 meses</small></span><span class="lz-mono lz-g lz-top">128/82</span></div>
     <div class="lz-chart"><svg viewBox="0 0 220 56" preserveAspectRatio="none" aria-hidden="true">
 <path d="M0 28H220" stroke="#C9CCCC" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>
 <path d="M4 12 C30 13 44 15 62 14 S98 11 114 20 S150 32 168 34 S200 38 216 40" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
@@ -3030,23 +3082,7 @@ p,li,.mc-t,.mc-d,.faq-q span,.faq-a,.of a,.of h6,.of-copy,.of-cookies,.of-lang,.
       <h3 class="mc-t">Cada paciente acompanhado em métricas.</h3>
       <p class="mc-d">Exames e sinais vitais viram métricas, comparadas de uma consulta para a outra.</p>
     </article>
-      <article class="mc">
-      <div class="mc-img lz"><div class="lz-sc">
-  <div class="lz-p lz-n lz-n3">
-    <div class="lz-r"><span class="lz-ic lz-ico"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5c.5 3.3 2.2 5 5.5 5.5-3.3.5-5 2.2-5.5 5.5-.5-3.3-2.2-5-5.5-5.5 3.3-.5 5-2.2 5.5-5.5z" fill="currentColor"/></svg></span><span class="lz-tt">Metformina com TFG 38?<small>Pergunta na consulta</small></span></div>
-    <div class="lz-r lz-ctx"><span>Paciente com diabetes tipo 2</span><span class="lz-ctxv">TFG 38 mL/min</span></div>
-  </div>
-  <div class="lz-link"><span class="lz-chip"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8l5 1.9v4c0 3.2-2.1 5.5-5 6.5-2.9-1-5-3.3-5-6.5v-4z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5.8 8l1.6 1.6 2.9-3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>Evidência qualificada</span></div>
-  <div class="lz-p lz-w">
-    <div class="lz-r lz-hd"><span>Resposta</span><span class="lz-btn"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v7.5M4.8 7l3.2 3.2L11.2 7M3 12.8h10" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>2 fontes</span></div>
-    <div class="lz-kv"><span>Conduta</span><span>Manter metformina</span></div>
-    <div class="lz-kv"><span>Dose máxima</span><span>1.000 mg/dia</span></div>
-    <div class="lz-r lz-ft"><span class="lz-mono lz-g lz-blue">KDIGO 2022 · SBD 2024</span><svg class="lz-ck" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8"/><path d="M4.8 8.1l2.2 2.2 4.3-4.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-  </div>
-</div></div>
-      <h3 class="mc-t">Decisões clínicas apoiadas em evidência.</h3>
-      <p class="mc-d">Responde dúvidas clínicas com a conduta e as diretrizes que a sustentam.</p>
-    </article>
+      
     </div>
   </div>
 </section>
