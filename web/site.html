@@ -2946,6 +2946,68 @@ header .brand span:not(#_):not(#__):not(#___){font-weight:500!important;-webkit-
 /* "Inteligência de dados" e "Fundamentação em evidências" (os dois textos da animação) com a mesma tipografia do título de #detalhes */
 @media (min-width:768px){#ps .ps-txt .tag:not(#_):not(#__):not(#___),#ps .ps-txt h2:not(#_):not(#__):not(#___){font-size:28px!important;line-height:33px!important;letter-spacing:-.6px!important}}
 @media (max-width:767px){#ps .ps-txt .tag:not(#_):not(#__):not(#___),#ps .ps-txt h2:not(#_):not(#__):not(#___){font-size:24px!important;line-height:28px!important;letter-spacing:-.5px!important}}
+
+/* carrossel mais igual à referência (medidas a 1512 px): título 30/36, cards 464 × 440, título → cards 40 px,
+   setas alinhadas ao topo do título */
+#momentos h2:not(#_):not(#__){font-size:30px!important;line-height:36px!important;letter-spacing:-.6px!important}
+@media (min-width:768px){
+  #momentos .mo-view:not(#_):not(#__){margin-top:40px!important}
+  #momentos .mo-media:not(#_):not(#__){aspect-ratio:464/440;height:auto!important}
+}
+@media (max-width:767px){#momentos h2:not(#_):not(#__){font-size:24px!important;line-height:29px!important}}
+
+/* carrossel como a referência: vídeo limpo (sem escurecer nem filtro de cor), frase só ao passar o mouse,
+   e embaixo de cada vídeo a especialidade, como o logo do cliente na referência */
+#momentos .mo-media .mo-vid:not(#_),#momentos .mo-media img:not(#_){filter:none!important}
+#momentos .mo-ov:not(#_):not(#__){background:transparent!important;transition:background .35s ease}
+#momentos .mo-card:hover .mo-ov:not(#_):not(#__),#momentos .mo-card:focus-visible .mo-ov:not(#_):not(#__){background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.55))!important}
+#momentos .mo-q:not(#_):not(#__){opacity:0!important;transform:translateY(8px)!important;transition:opacity .35s ease,transform .35s ease}
+#momentos .mo-card:hover .mo-q:not(#_):not(#__),#momentos .mo-card:focus-visible .mo-q:not(#_):not(#__){opacity:1!important;transform:none!important}
+#momentos .mo-q h5:not(#_):not(#__){font-size:20px!important;line-height:24px!important;letter-spacing:-.4px!important}
+#momentos .mo-foot:not(#_):not(#__){display:flex!important;align-items:center;height:20px;margin-top:34px}
+#momentos .mo-foot span:not(#_):not(#__){opacity:1;color:#FAFAFA;font-size:18px;line-height:20px;letter-spacing:-.3px}
+@media (hover:none){#momentos .mo-q:not(#_):not(#__){opacity:1!important;transform:none!important}#momentos .mo-ov:not(#_):not(#__){background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.55))!important}}
+
+/* carrossel como a referência (medidas a 1512 px):
+   seção mais alta (240 px acima do título, 280 abaixo da linha dos vídeos), título a 236 px da borda,
+   setas pretas e quadradas a 50 px da borda direita, linha embaixo dos vídeos com especialidade e frase,
+   fundo que escurece junto com a rolagem (sem atraso de tempo) */
+#momentos.mo:not(#_):not(#__){padding:240px 0 280px!important}
+@media (min-width:1300px){#momentos .mo-head:not(#_):not(#__){padding-left:calc((100vw - 1040px)/2)!important;padding-right:50px!important}}
+#momentos .mo-prev:not(#_):not(#__):not(#___),#momentos .mo-next:not(#_):not(#__):not(#___){background:#000!important;border-radius:0!important;color:#fff!important}
+#momentos .mo-prev:not(#_):not(#__):not(#___):hover,#momentos .mo-next:not(#_):not(#__):not(#___):hover{background:#1A1A1A!important}
+#momentos .mo-foot:not(#_):not(#__){justify-content:space-between!important;gap:16px}
+#momentos .mo-foot span:not(#_):not(#__){font-size:18px;line-height:20px;color:#FAFAFA;white-space:nowrap}
+#momentos .mo-foot em:not(#_):not(#__){font-style:normal;font-size:14px;line-height:20px;color:rgba(250,250,250,.5);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body:not(#_){--mo-a:0;background-color:color-mix(in srgb,#070606 calc(var(--mo-a) * 100%),#fff)!important;transition:none!important}
+@media (max-width:767px){#momentos.mo:not(#_):not(#__){padding:120px 0 140px!important}#momentos .mo-foot em:not(#_):not(#__){display:none}}
+@media (min-width:1300px){#momentos .mo-arrows:not(#_):not(#__){right:50px!important}}
+
+/* carrossel: sem a especialidade dentro do vídeo (ela já aparece embaixo) */
+#momentos .mo-q p:not(#_):not(#__){display:none!important}
+
+/* carrossel: as setas aparecem junto com o título (que surge conforme o fundo escurece) */
+#momentos .mo-arrows:not(#_):not(#__){opacity:var(--mo-a,1)}
+
+/* setas: fundo cinza-escuro para aparecer sobre o fundo escuro (continuam quadradas) */
+#momentos .mo-prev:not(#_):not(#__):not(#___):not(#____),#momentos .mo-next:not(#_):not(#__):not(#___):not(#____){background:#262628!important}
+#momentos .mo-prev:not(#_):not(#__):not(#___):not(#____):hover,#momentos .mo-next:not(#_):not(#__):not(#___):not(#____):hover{background:#333336!important}
+#momentos .mo-prev:not(#_):not(#__):not(#___):not(#____),#momentos .mo-next:not(#_):not(#__):not(#___):not(#____){border-radius:4px!important}
+
+/* menu fixo no topo: some ao rolar para baixo e volta ao rolar para cima */
+header.nav:not(#_):not(#__){position:sticky!important;top:0;z-index:60;background:#fff!important;transform:none!important;transition:transform .35s cubic-bezier(.2,.7,.2,1)!important}
+header.nav.hide:not(#_):not(#__){transform:translateY(-100%)!important}
+/* com o menu fixo, os links do menu param a seção logo abaixo dele */
+section[id]{scroll-margin-top:72px}
+@media (max-width:991px){section[id]{scroll-margin-top:56px}}
+
+/* setas do carrossel só com contorno */
+#momentos .mo-prev:not(#_):not(#__):not(#___):not(#____):not(#_____),#momentos .mo-next:not(#_):not(#__):not(#___):not(#____):not(#_____){background:transparent!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.35)!important}
+#momentos .mo-prev:not(#_):not(#__):not(#___):not(#____):not(#_____):hover,#momentos .mo-next:not(#_):not(#__):not(#___):not(#____):not(#_____):hover{background:rgba(255,255,255,.08)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7)!important}
+
+/* "Assistir vídeo": só contorno branco sobre a foto */
+.ct-b1:not(#_):not(#__):not(#___){background:transparent!important;color:#fff!important;border:0!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)!important}
+.ct-b1:not(#_):not(#__):not(#___):hover{background:rgba(255,255,255,.1)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.85)!important}
 </style>
 </head>
 <body>
@@ -3118,40 +3180,40 @@ header .brand span:not(#_):not(#__):not(#___){font-weight:500!important;-webkit-
   </div>
   <div class="mo-view"><div class="mo-track">
       <a class="mo-card" href="#detalhes">
-        <div class="mo-media"><img src="https://images.unsplash.com/photo-1764173039107-707cdf0df299?w=900&amp;h=900&amp;fit=crop&amp;crop=faces&amp;q=80" alt="Mulher falando e gesticulando, sentada" loading="lazy"><video class="mo-vid" src="https://videos.pexels.com/video-files/7953518/7953518-hd_1280_720_30fps.mp4" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>
+        <div class="mo-media"><img src="https://images.unsplash.com/photo-1764173039107-707cdf0df299?w=900&amp;h=900&amp;fit=crop&amp;crop=faces&amp;q=80" alt="Mulher falando e gesticulando, sentada" loading="lazy"><video class="mo-vid" data-src="https://videos.pexels.com/video-files/7953518/7953518-hd_1280_720_30fps.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
           <div class="mo-ov"><div class="mo-top"><span class="mo-read">Ver</span></div>
             <div class="mo-q"><h5>“Saio da consulta com a evolução pronta. Só reviso e assino.”</h5><p>Clínica geral</p></div></div></div>
-        <div class="mo-foot"><span>Clínica médica</span></div>
+        <div class="mo-foot"><span>Clínica médica</span><em>Evolução pronta ao fim da consulta</em></div>
       </a>
       <a class="mo-card" href="#detalhes">
-        <div class="mo-media"><img src="/assets/site/esp-cardiologia.jpg" alt="Médico de cabelo grisalho e blazer azul falando durante uma entrevista" loading="lazy"><video class="mo-vid" src="https://videos.pexels.com/video-files/5683854/5683854-hd_1280_720_25fps.mp4" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>
+        <div class="mo-media"><img src="/assets/site/esp-cardiologia.jpg" alt="Médico de cabelo grisalho e blazer azul falando durante uma entrevista" loading="lazy"><video class="mo-vid" data-src="https://videos.pexels.com/video-files/5683854/5683854-hd_1280_720_25fps.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
           <div class="mo-ov"><div class="mo-top"><span class="mo-read">Ver</span></div>
             <div class="mo-q"><h5>“Vejo a pressão e os exames do paciente de uma consulta para a outra, sem procurar.”</h5><p>Cardiologista</p></div></div></div>
-        <div class="mo-foot"><span>Cardiologia</span></div>
+        <div class="mo-foot"><span>Cardiologia</span><em>Pressão e exames lado a lado</em></div>
       </a>
       <a class="mo-card" href="#detalhes">
         <div class="mo-media"><img src="/assets/site/esp-endocrinologia.jpg" alt="Médico de óculos e paletó cinza explicando durante uma entrevista" loading="lazy">
           <div class="mo-ov"><div class="mo-top"><span class="mo-read">Ver</span></div>
             <div class="mo-q"><h5>“HbA1c e TFG lado a lado na hora de ajustar a dose. E o aviso chega antes da receita.”</h5><p>Endocrinologista</p></div></div></div>
-        <div class="mo-foot"><span>Endocrinologia</span></div>
+        <div class="mo-foot"><span>Endocrinologia</span><em>HbA1c e TFG em cada retorno</em></div>
       </a>
       <a class="mo-card" href="#detalhes">
         <div class="mo-media"><img src="/assets/site/esp-pediatria.jpg" alt="Médica rindo enquanto fala durante uma entrevista" loading="lazy">
           <div class="mo-ov"><div class="mo-top"><span class="mo-read">Ver</span></div>
             <div class="mo-q"><h5>“Consigo olhar para a criança, não para a tela. A conversa com os pais vira registro.”</h5><p>Pediatra</p></div></div></div>
-        <div class="mo-foot"><span>Pediatria</span></div>
+        <div class="mo-foot"><span>Pediatria</span><em>Atenção na criança, não na tela</em></div>
       </a>
       <a class="mo-card" href="#detalhes">
-        <div class="mo-media"><img src="https://images.pexels.com/photos/36766005/pexels-photo-36766005.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900&amp;h=900&amp;fit=crop" alt="Homem de terno sentado em uma poltrona, conversando" loading="lazy"><video class="mo-vid" src="https://videos.pexels.com/video-files/7735868/7735868-hd_1280_720_25fps.mp4" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>
+        <div class="mo-media"><img src="https://images.pexels.com/photos/36766005/pexels-photo-36766005.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900&amp;h=900&amp;fit=crop" alt="Homem de terno sentado em uma poltrona, conversando" loading="lazy"><video class="mo-vid" data-src="https://videos.pexels.com/video-files/7735868/7735868-hd_1280_720_25fps.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
           <div class="mo-ov"><div class="mo-top"><span class="mo-read">Ver</span></div>
             <div class="mo-q"><h5>“A escuta ficou inteira. Não preciso mais digitar enquanto o paciente fala.”</h5><p>Psiquiatra</p></div></div></div>
-        <div class="mo-foot"><span>Psiquiatria</span></div>
+        <div class="mo-foot"><span>Psiquiatria</span><em>Escuta inteira, registro completo</em></div>
       </a>
       <a class="mo-card" href="#detalhes">
-        <div class="mo-media"><img src="https://images.pexels.com/photos/36766004/pexels-photo-36766004.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900&amp;h=900&amp;fit=crop" alt="Homem de camisa e gravata sentado em uma poltrona, conversando" loading="lazy"><video class="mo-vid" src="https://videos.pexels.com/video-files/8375486/8375486-hd_1366_720_25fps.mp4" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video>
+        <div class="mo-media"><img src="https://images.pexels.com/photos/36766004/pexels-photo-36766004.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=900&amp;h=900&amp;fit=crop" alt="Homem de camisa e gravata sentado em uma poltrona, conversando" loading="lazy"><video class="mo-vid" data-src="https://videos.pexels.com/video-files/8375486/8375486-hd_1366_720_25fps.mp4" muted loop playsinline preload="none" aria-hidden="true"></video>
           <div class="mo-ov"><div class="mo-top"><span class="mo-read">Ver</span></div>
             <div class="mo-q"><h5>“Os remédios que eu cito já entram na receita, com os avisos de interação.”</h5><p>Ginecologista</p></div></div></div>
-        <div class="mo-foot"><span>Ginecologia</span></div>
+        <div class="mo-foot"><span>Ginecologia</span><em>Receita a partir da conversa</em></div>
       </a>
   </div></div>
 </section>
@@ -3382,7 +3444,7 @@ function Cloud(cv,o){
     }
     ctx.fillStyle=o.color;
     for(let b=0;b<B;b++){const L=buckets[b];if(!L.length)continue;ctx.globalAlpha=(b+.5)/B;ctx.beginPath();
-      for(let j=0;j<L.length;j+=3){ctx.moveTo(L[j]+L[j+2],L[j+1]);ctx.arc(L[j],L[j+1],L[j+2],0,6.2832)}ctx.fill()}
+      for(let j=0;j<L.length;j+=3){const r=L[j+2];if(r<1.6){ctx.rect(L[j]-r,L[j+1]-r,r*2,r*2)}else{ctx.moveTo(L[j]+r,L[j+1]);ctx.arc(L[j],L[j+1],r,0,6.2832)}}ctx.fill()}
     ctx.globalAlpha=1;
     return {ox,oy,sc};
   }
@@ -3440,7 +3502,7 @@ const spin=time=>RM?0:time*.00009;   // uma volta lenta, como no vídeo
 function frame(time){
   const y=scrollY;
   const pin=[psEl,prodEl].filter(Boolean).some(s=>{const r=s.getBoundingClientRect();return r.top<=0&&r.bottom>=innerHeight&&(s===psEl||innerWidth>991)});
-  if(Math.abs(y-lastY)>6||pin){nav.classList.toggle('hide',(pin||y>lastY&&y>420)&&!document.body.classList.contains('menu-open'));lastY=y}
+  if(Math.abs(y-lastY)>6||pin){nav.classList.toggle('hide',(pin||y>lastY&&y>80)&&!document.body.classList.contains('menu-open'));lastY=y}
   nav.classList.toggle('lift',y>8);
 
   if(vis(roll.parentElement)&&!RM){
@@ -3553,11 +3615,11 @@ place(false);start()})();
 <script>
 /* momentos: liga o fundo preto quando a seção cruza o meio da tela */
 (()=>{const sec=document.getElementById('momentos');if(!sec)return;
-let raf=0;const upd=()=>{raf=0;const r=sec.getBoundingClientRect(),h=innerHeight;document.body.classList.toggle('mo-dark',r.top<h*.35&&r.bottom>h*.88)};addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(upd)},{passive:true});addEventListener('resize',upd);upd()})();
+const hd=sec.querySelector('h2');const cl=v=>Math.max(0,Math.min(1,v));let raf=0;const upd=()=>{raf=0;const h=innerHeight,t=hd.getBoundingClientRect().top/h;const a=cl((.4-t)/.2)*(1-cl((-.7-t)/.3));document.body.style.setProperty('--mo-a',a.toFixed(3));document.body.classList.toggle('mo-dark',a>.02)};addEventListener('scroll',()=>{if(!raf)raf=requestAnimationFrame(upd)},{passive:true});addEventListener('resize',upd);upd()})();
 </script>
 <script>(()=>{/* momentos: vídeos de marcação tocam só quando aparecem na tela */
 const RMv=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const io=new IntersectionObserver(es=>es.forEach(e=>{const v=e.target;if(RMv){v.pause();return}if(e.isIntersecting){v.muted=true;const p=v.play();p&&p.catch(()=>{})}else v.pause()}),{threshold:.15});
+const io=new IntersectionObserver(es=>es.forEach(e=>{const v=e.target;if(e.isIntersecting&&!v.src&&v.dataset.src){v.src=v.dataset.src}if(RMv){v.pause();return}if(e.isIntersecting){v.muted=true;const p=v.play();p&&p.catch(()=>{})}else v.pause()}),{threshold:0,rootMargin:'300px 0px'});
 const watch=()=>document.querySelectorAll('#momentos .mo-vid').forEach(v=>{if(!v.dataset.w){v.dataset.w=1;io.observe(v)}});
 watch();new MutationObserver(watch).observe(document.getElementById('momentos'),{childList:true,subtree:true});})();</script>
 </body>
