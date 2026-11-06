@@ -2973,7 +2973,6 @@ header .brand span:not(#_):not(#__):not(#___){font-weight:500!important;-webkit-
    setas pretas e quadradas a 50 px da borda direita, linha embaixo dos vídeos com especialidade e frase,
    fundo que escurece junto com a rolagem (sem atraso de tempo) */
 #momentos.mo:not(#_):not(#__){padding:240px 0 280px!important}
-@media (min-width:1300px){#momentos .mo-head:not(#_):not(#__){padding-left:calc((100vw - 1040px)/2)!important;padding-right:50px!important}}
 #momentos .mo-prev:not(#_):not(#__):not(#___),#momentos .mo-next:not(#_):not(#__):not(#___){background:#000!important;border-radius:0!important;color:#fff!important}
 #momentos .mo-prev:not(#_):not(#__):not(#___):hover,#momentos .mo-next:not(#_):not(#__):not(#___):hover{background:#1A1A1A!important}
 #momentos .mo-foot:not(#_):not(#__){justify-content:space-between!important;gap:16px}
@@ -2981,7 +2980,6 @@ header .brand span:not(#_):not(#__):not(#___){font-weight:500!important;-webkit-
 #momentos .mo-foot em:not(#_):not(#__){font-style:normal;font-size:14px;line-height:20px;color:rgba(250,250,250,.5);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body:not(#_){--mo-a:0;background-color:color-mix(in srgb,#070606 calc(var(--mo-a) * 100%),#fff)!important;transition:none!important}
 @media (max-width:767px){#momentos.mo:not(#_):not(#__){padding:120px 0 140px!important}#momentos .mo-foot em:not(#_):not(#__){display:none}}
-@media (min-width:1300px){#momentos .mo-arrows:not(#_):not(#__){right:50px!important}}
 
 /* carrossel: sem a especialidade dentro do vídeo (ela já aparece embaixo) */
 #momentos .mo-q p:not(#_):not(#__){display:none!important}
@@ -3008,6 +3006,10 @@ section[id]{scroll-margin-top:72px}
 /* "Assistir vídeo": só contorno branco sobre a foto */
 .ct-b1:not(#_):not(#__):not(#___){background:transparent!important;color:#fff!important;border:0!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)!important}
 .ct-b1:not(#_):not(#__):not(#___):hover{background:rgba(255,255,255,.1)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.85)!important}
+
+/* "Cada especialidade" com a mesma tipografia dos outros títulos de seção (28/33, −0,6) */
+#momentos h2:not(#_):not(#__):not(#___){font-size:28px!important;line-height:33px!important;letter-spacing:-.6px!important}
+@media (max-width:767px){#momentos h2:not(#_):not(#__):not(#___){font-size:24px!important;line-height:28px!important;letter-spacing:-.5px!important}}
 </style>
 </head>
 <body>
