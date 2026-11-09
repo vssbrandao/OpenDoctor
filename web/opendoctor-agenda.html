@@ -1897,8 +1897,9 @@
       font-size:14px;line-height:18px;white-space:nowrap;pointer-events:none;opacity:0;visibility:hidden;
       transition:opacity .12s,visibility 0s .12s}
     .nav-tip.on{opacity:1;visibility:visible;transition:opacity .12s}
-    .nav-tip kbd{display:flex;align-items:center;height:18px;padding:0 7px;border-radius:6px;background:#4B4B4B;
+    .nav-tip kbd{display:flex;align-items:center;height:18px;padding:0 7px;border-radius:9px;background:#4B4B4B;
       font:inherit;font-size:13px}
+    /* a etiqueta acompanha o canto da pílula: 15 de raio - 6 de margem = 9 (com 18 de altura, uma pílula) */
     .nav-tip.sem-atalho{padding-right:14px}                /* sem atalho: 14 px dos dois lados */
     .nav-tip.sem-atalho kbd{display:none}
     @media (prefers-reduced-motion:reduce){.nav-tip,.nav-tip.on{transition:none}}
