@@ -139,8 +139,8 @@ const cenarios = [
     certo(await ev(`[...document.querySelectorAll('#pfCampos .fl-input')].every((i) => i.readOnly)`), 'dado da conta editável no Perfil');
     certo(await ev(`document.getElementById('pfFoot').hidden`), 'o rodapé do status ficou depois de carregar');
     // o menu: Perfil marcado, logo depois de Configurações, que leva a Configurações
-    const menu = await ev(`(() => { const p = document.querySelector('.nav .item[title="Perfil"]'), c = p && p.previousElementSibling;
-      return { ativo: p.classList.contains('active'), href: p.getAttribute('data-href'), antes: c && c.title, cfg: c && c.getAttribute('data-href'),
+    const menu = await ev(`(() => { const p = document.querySelector('.nav .item[data-tip="Perfil"]'), c = p && p.previousElementSibling;
+      return { ativo: p.classList.contains('active'), href: p.getAttribute('data-href'), antes: c && c.getAttribute('data-tip'), cfg: c && c.getAttribute('data-href'),
                ativos: document.querySelectorAll('.nav .item.active').length }; })()`);
     certo(menu.ativo && !menu.href && menu.antes === 'Configurações' && menu.cfg === 'opendoctor-configuracoes.html' && menu.ativos === 1,
       'menu: ' + JSON.stringify(menu));
@@ -328,15 +328,15 @@ const cenarios = [
       zera();
       await ev(`localStorage.setItem('od_nav_collapsed', '${recolhido ? 1 : 0}'); 1`);
       await abre(pagina);
-      const m = await ev(`(() => { const p = document.querySelectorAll('.nav .item[title="Perfil"]'), c = p[0] && p[0].previousElementSibling;
+      const m = await ev(`(() => { const p = document.querySelectorAll('.nav .item[data-tip="Perfil"]'), c = p[0] && p[0].previousElementSibling;
         const r = p[0] && p[0].getBoundingClientRect(), rc = c && c.getBoundingClientRect(), ic = p[0] && p[0].querySelector('.ico svg').getBoundingClientRect();
-        return { n: p.length, antes: c && c.title, href: p[0] && p[0].getAttribute('data-href'), ativo: p[0] && p[0].classList.contains('active'),
+        return { n: p.length, antes: c && c.getAttribute('data-tip'), href: p[0] && p[0].getAttribute('data-href'), ativo: p[0] && p[0].classList.contains('active'),
                  rotulo: p[0] && getComputedStyle(p[0].lastElementChild).display, h: r && r.height, hc: rc && rc.height, w: r && r.width,
                  x: r && r.x, xc: rc && rc.x, ico: ic && [ic.width, ic.height], vao: r && rc && r.top - rc.bottom }; })()`);
       certo(m.n === 1 && m.antes === 'Configurações' && m.href === 'opendoctor-perfil.html' && !m.ativo, `${pagina}: ` + JSON.stringify(m));
       certo(m.h === m.hc && m.x === m.xc && m.vao === 4 && m.ico[0] === 16 && m.ico[1] === 16, `${pagina}: tamanho no menu ` + JSON.stringify(m));
       certo(recolhido ? (m.rotulo === 'none' && m.w === 40) : m.rotulo !== 'none', `${pagina} ${recolhido ? 'recolhido' : 'aberto'}: ` + JSON.stringify(m));
-      await clica('.nav .item[title="Perfil"]');
+      await clica('.nav .item[data-tip="Perfil"]');
       await ate(`location.pathname === '/opendoctor-perfil.html'`, 4000, `${pagina} → Perfil`);
       await ate(carregou, 4000, 'dados do Perfil');
       if (recolhido) certo(await ev(`document.querySelector('.nav').classList.contains('collapsed')`), 'o Perfil abriu o menu recolhido');
@@ -372,6 +372,7 @@ const cenarios = [
       for (const fechado of [false, true]) {
         const onde = `${pagina} ${fechado ? 'recolhido' : 'aberto'}`;
         await ate(`getComputedStyle(document.querySelector('.nav-tip')).visibility === 'hidden'`, 1000, `${onde}: dica escondida`);
+        await sleep(350);                                         // passou a janela em que a dica vem sem espera (do vizinho)
         let d = await ev(dica);
         certo(d.n === 1 && !d.on && d.vis === 'hidden' && d.title === null, `${onde}: antes do mouse ` + JSON.stringify(d));
         await mouse(d.bx, d.by);
@@ -421,6 +422,55 @@ const cenarios = [
     await ev(`localStorage.setItem('od_nav_collapsed', '0'); 1`);
     return vistas.join(', ') + ' (aberto e recolhido); clique, Esc e a janela aberta';
   }],
+  ['menu retraído: cada ícone mostra a dica escura com o nome, à direita do menu; aberto, nenhuma (o nome já está escrito)', async () => {
+    const mouse = (x, y) => send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none' });
+    const ligada = `document.querySelector('.nav-tip').classList.contains('on')`;
+    const NOMES = ['Consultas', 'Search', 'Pacientes', 'Prescrições', 'Integrações', 'Configurações', 'Perfil'];
+    const item = (nome) => ev(`(() => { const b = document.querySelector('.nav .item[data-tip=${JSON.stringify(nome)}]'), r = b.getBoundingClientRect(),
+        n = document.querySelector('.nav').getBoundingClientRect(), p = document.querySelector('.nav-tip'), t = p.getBoundingClientRect(), cs = getComputedStyle(p);
+      return { on: p.classList.contains('on'), texto: p.querySelector('span').textContent, title: b.getAttribute('title'),
+               atalho: getComputedStyle(p.querySelector('kbd')).display, pad: [cs.paddingLeft, cs.paddingRight], h: t.height,
+               vao: Math.round(t.left - n.right), meio: Math.round(t.top + t.height / 2 - (r.top + r.height / 2)),
+               bx: r.left + r.width / 2, by: r.top + r.height / 2 }; })()`);
+    const vistas = [];
+    for (const pagina of ['opendoctor-agenda.html', 'opendoctor-integracao.html', 'opendoctor-configuracoes.html', 'opendoctor-perfil.html']) {
+      zera();
+      await ev(`localStorage.setItem('od_nav_collapsed', '1'); 1`);
+      await abre(pagina);
+      await mouse(900, 500);
+      certo(await ev(`document.querySelector('.nav').classList.contains('collapsed')`), `${pagina}: o menu não abriu retraído`);
+      certo(await ev(`document.querySelectorAll('.nav .item[data-tip]').length === 7 && !document.querySelector('.nav .item[title]')`),
+            `${pagina}: itens do menu sem data-tip ou ainda com title`);
+      for (const [i, nome] of NOMES.entries()) {
+        let d = await item(nome);
+        await mouse(d.bx, d.by);
+        if (i === 0) await ate(ligada, 2000, `${pagina}: dica do ${nome}`);
+        else {                                                    // de um ícone ao vizinho: sem a espera
+          await sleep(120);
+          certo(await ev(ligada), `${pagina}: a dica do ${nome} esperou`);
+        }
+        d = await item(nome);
+        certo(d.texto === nome && d.title === null && d.atalho === 'none' && d.pad.join() === '14px,14px' && d.h === 30 &&
+              d.vao === 6 && Math.abs(d.meio) <= 1, `${pagina} ${nome}: ` + JSON.stringify(d));
+      }
+      if (pagina === 'opendoctor-perfil.html' && process.env.SHOT) {
+        const r = await send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, width: 260, height: 400, scale: 2 } });
+        writeFileSync(join(process.env.SHOT, 'dica-menu-retraido.png'), Buffer.from(r.data, 'base64'));
+      }
+      await mouse(900, 500);
+      await ate(`!(${ligada})`, 1000, `${pagina}: a dica some ao sair`);
+      // aberto: o nome está escrito, nenhuma dica
+      await ev(`localStorage.setItem('od_nav_collapsed', '0'); 1`);
+      await abre(pagina);
+      const d = await item('Perfil');
+      await mouse(d.bx, d.by);
+      await sleep(700);
+      certo(!(await ev(ligada)), `${pagina}: dica com o menu aberto`);
+      await mouse(900, 500);
+      vistas.push(pagina.replace('opendoctor-', '').replace('.html', ''));
+    }
+    return vistas.join(', ') + ': 7 ícones com o nome à direita; do vizinho sem espera; aberto, nada';
+  }],
   ['no Perfil, "Configurações" (no texto e no menu) leva a Configurações', async () => {
     zera();
     await abre('opendoctor-perfil.html');
@@ -428,7 +478,7 @@ const cenarios = [
     await clica('.cfg-sub a.cfg-back');
     await ate(`location.pathname === '/opendoctor-configuracoes.html'`, 4000, 'Configurações pelo texto');
     await abre('opendoctor-perfil.html');
-    await clica('.nav .item[title="Configurações"]');
+    await clica('.nav .item[data-tip="Configurações"]');
     await ate(`location.pathname === '/opendoctor-configuracoes.html'`, 4000, 'Configurações pelo menu');
     return 'pelo texto e pelo menu';
   }],

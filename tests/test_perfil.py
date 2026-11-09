@@ -18,10 +18,10 @@ def _html(nome):
 
 
 def _itens_do_menu(html):
-    """Os itens do menu lateral, na ordem: (title, data-href, ativo)."""
+    """Os itens do menu lateral, na ordem: (nome — o data-tip, a dica do menu retraído —, data-href, ativo)."""
     nav = re.search(r'<aside class="nav">(.*?)</aside>', html, re.S).group(1)
     return [(t, h, "active" in c) for c, h, t in
-            re.findall(r'<div class="(item[^"]*)"(?: data-href="([^"]*)")? title="([^"]*)"', nav)]
+            re.findall(r'<div class="(item[^"]*)"(?: data-href="([^"]*)")? data-tip="([^"]*)"', nav)]
 
 
 def test_perfil_so_com_login():
