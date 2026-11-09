@@ -10,7 +10,10 @@
 // no campo Paciente, a de exemplo fica por último e o Enter nunca a escolhe (só a seta ou o mouse); com a lista de
 // pacientes cortada (more), o campo Paciente e a tela Pacientes acham no servidor quem ficou de fora; o Dia não mostra
 // consulta nenhuma que não seja da agenda (nem enquanto ela carrega, nem sem a agenda conectada, nem com ela vazia); a
-// agenda sempre abre no Dia (a Semana escolhida não volta ao recarregar, e a escolha guardada pela versão anterior sai).
+// agenda sempre abre no Dia (a Semana escolhida não volta ao recarregar, e a escolha guardada pela versão anterior sai);
+// os 8 botões de cima (Agenda e Assistente) mostram no mouseover a dica escura com o que fazem e o atalho (⇧⌘ + letra),
+// sem a dica do navegador, e cada atalho aperta o seu botão (como o clique: fecha a janela do evento), nunca o escondido;
+// o Expandir agenda volta ao nome certo quando o assistente reaparece pelo prontuário.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -129,6 +132,11 @@ async function abreEvento(sel) {
   await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento');
 }
 async function fecha() { await tecla('Escape'); await sleep(300); }
+
+// os botões das barras de cima da agenda: o texto da dica (o aria-label) e a letra do atalho (⇧⌘ + letra, Ctrl+Shift fora do Mac)
+const BOTOES = [['agCreate', 'Criar evento', 'E'], ['calBtn', 'Escolher data', 'D'], ['viewSel', 'Mudar para Semana', 'U'],
+                ['agSearch', 'Buscar consultas', 'F'], ['agExpand', 'Expandir agenda', 'A'], ['raNew', 'Nova conversa', 'O'],
+                ['raHist', 'Histórico', 'H'], ['raExpand', 'Expandir', 'X']];
 
 const cenarios = [
   ['dia inteiro aparece no Dia, entre a data e a linha', async () => {
@@ -716,7 +724,7 @@ const cenarios = [
   }],
   ['a agenda sempre abre no Dia: a Semana escolhida não volta ao recarregar (nem a guardada pela versão anterior)', async () => {
     const dia = `(() => { const st = document.querySelector('.stage'), b = document.getElementById('viewSel');
-      return !st.classList.contains('week') && b.title === 'Mudar para Semana' && /agenda-day\.svg/.test(document.getElementById('viewIcon').src); })()`;
+      return !st.classList.contains('week') && b.getAttribute('aria-label') === 'Mudar para Semana' && /agenda-day\.svg/.test(document.getElementById('viewIcon').src); })()`;
     const abre = async (q) => {
       await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
       await ate(`location.search === ${JSON.stringify(q)} && document.readyState === 'complete'`, 8000, 'agenda ' + q);
@@ -731,6 +739,143 @@ const cenarios = [
     await abre('?visao=2');
     certo(await ev(dia), 'depois de escolher a Semana, recarregar abriu na Semana');
     return 'abre no Dia com a Semana guardada; a Semana do botão não volta ao recarregar; nada guardado';
+  }],
+  ['os botões de cima (Agenda e Assistente) mostram a dica escura com o que fazem e o atalho no mouseover, sem a do navegador', async () => {
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?dica=1' });
+    await ate(`location.search === '?dica=1' && document.readyState === 'complete'`, 8000, 'agenda');
+    const mouse = (x, y, type = 'mouseMoved') => send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: 1 });
+    const tecla = async (key, code, vk) => {
+      await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key, code, windowsVirtualKeyCode: vk });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: vk });
+    };
+    const mac = await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`);
+    const ligada = `document.querySelector('.nav-tip').classList.contains('on')`;
+    const longe = async () => { await mouse(700, 600); await ate(`!(${ligada})`, 1000, 'a dica some ao sair'); };
+    const dica = (id) => ev(`(() => { const b = document.getElementById(${JSON.stringify(id)}), t = b.getBoundingClientRect(),
+        p = document.querySelector('.nav-tip'), r = p.getBoundingClientRect(), cs = getComputedStyle(p);
+      return { on: p.classList.contains('on'), texto: p.querySelector('span').textContent, label: b.getAttribute('aria-label'),
+               title: b.getAttribute('title'), atalho: getComputedStyle(p.querySelector('kbd')).display, h: r.height,
+               kbd: p.querySelector('kbd').textContent, ks: b.getAttribute('aria-keyshortcuts'),
+               kdir: Math.round(r.right - p.querySelector('kbd').getBoundingClientRect().right),
+               pad: [cs.paddingLeft, cs.paddingRight], vao: Math.round(r.top - t.bottom), esq: Math.round(r.left), dir: Math.round(innerWidth - r.right),
+               centro: Math.round(r.left + r.width / 2 - (t.left + t.width / 2)), bx: t.left + t.width / 2, by: t.top + t.height / 2 }; })()`);
+    const passa = async (id, texto, letra) => {
+      let d = await dica(id);
+      await mouse(d.bx, d.by);
+      await ate(ligada, 2000, `dica do ${id}`);
+      d = await dica(id);
+      certo(d.texto === texto && d.label === texto && d.title === null && d.h === 30 && d.vao === 6 && d.esq >= 8 && d.dir >= 8,
+            `${id}: ` + JSON.stringify(d));
+      // o atalho na etiqueta cinza, a 6 px da beira, e anunciado ao leitor de tela
+      certo(d.atalho === 'flex' && d.kbd === (mac ? '⇧⌘' : 'Ctrl+Shift+') + letra && d.pad.join() === '14px,6px' && d.kdir === 6 &&
+            d.ks === (mac ? 'Meta+Shift+' : 'Control+Shift+') + letra, `${id}: atalho ` + JSON.stringify(d));
+      // centrada no botão, a não ser que encoste na beira da tela (o último do Assistente)
+      certo(Math.abs(d.centro) <= 1 || d.dir === 8, `${id}: posição ` + JSON.stringify(d));
+      return d;
+    };
+    const vistos = [];
+    for (const [id, texto, letra] of BOTOES) {
+      await longe();
+      const d = await passa(id, texto, letra);
+      if (id === 'raExpand') await foto('dica-barras.png');
+      vistos.push(texto + ' ' + d.kbd + (d.dir === 8 ? ' (na beira)' : ''));
+    }
+    await longe();
+    // o nome muda com o estado: o clique esconde a dica, e a próxima já diz o novo
+    let d = await dica('viewSel');
+    await mouse(d.bx, d.by); await ate(ligada, 2000, 'dica do Dia/Semana');
+    await mouse(d.bx, d.by, 'mousePressed'); await mouse(d.bx, d.by, 'mouseReleased');
+    await ate(`document.querySelector('.stage').classList.contains('week') && !(${ligada})`, 2000, 'Semana pelo clique, sem a dica');
+    await longe(); await passa('viewSel', 'Mudar para Dia', 'U');
+    await clica('#viewSel');
+    await ate(`!document.querySelector('.stage').classList.contains('week')`, 2000, 'de volta ao Dia');
+    // o calendário: o clique abre o calendário e esconde a dica; o Esc fecha e a dica não volta sozinha
+    await longe();
+    d = await dica('calBtn');
+    await mouse(d.bx, d.by); await ate(ligada, 2000, 'dica do calendário');
+    await mouse(d.bx, d.by, 'mousePressed'); await mouse(d.bx, d.by, 'mouseReleased');
+    await ate(`!document.getElementById('calPop').hidden && !(${ligada})`, 2000, 'calendário aberto, sem a dica');
+    await tecla('Escape', 'Escape', 27);
+    await ate(`document.getElementById('calPop').hidden`, 2000, 'o Esc fecha o calendário');
+    await sleep(500);
+    certo(!(await ev(ligada)), 'a dica voltou depois do Esc');
+    // pelo teclado: o Tab que chega ao botão mostra a dica dele
+    await longe();
+    await ev(`document.getElementById('agCreate').focus(); 1`);
+    await tecla('Tab', 'Tab', 9);
+    await ate(`document.activeElement && document.activeElement.id === 'calBtn' && ${ligada}`, 2000, 'dica pelo Tab');
+    certo((await dica('calBtn')).texto === 'Escolher data', 'texto da dica pelo Tab');
+    await ev(`document.activeElement.blur(); 1`);
+    await ate(`!(${ligada})`, 1000, 'a dica some ao sair do botão');
+    return vistos.join(', ') + '; o nome que muda (Dia/Semana); clique e Esc não deixam a dica; Tab mostra';
+  }],
+  ['cada atalho aperta o seu botão; com o botão escondido não faz nada; letra sem botão e digitar sem ⌘ ficam como estão', async () => {
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    const mac = await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`);
+    const mods = (mac ? 4 : 2) + 8;                              // ⌘ (ou Ctrl) + Shift
+    let n = 0;
+    const nova = async () => {                                   // agenda do zero, contando os cliques nos botões
+      const q = '?atalho=' + (++n);
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await ate(`location.search === ${JSON.stringify(q)} && document.readyState === 'complete'`, 8000, 'agenda ' + q);
+      await ate(`!!window.__calConnected`, 8000, 'agenda conectada');
+      await ev(`window.__cliques = []; document.addEventListener('click', (e) => {
+        const b = e.target.closest && e.target.closest('#navToggle, .hd-btn'); if (b) window.__cliques.push(b.id); }, true); 1`);
+    };
+    const atalho = async (letra, m = mods) => {
+      const p = { modifiers: m, key: m & 8 ? letra : letra.toLowerCase(), code: 'Key' + letra, windowsVirtualKeyCode: letra.charCodeAt(0) };
+      await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...p });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', ...p });
+    };
+    const efeito = {
+      calBtn: `!document.getElementById('calPop').hidden`,
+      viewSel: `document.querySelector('.stage').classList.contains('week')`,
+      agSearch: `!document.getElementById('srchPop').hidden`,
+      agExpand: `document.querySelector('.right').classList.contains('collapsed')`,
+      raHist: `document.querySelector('.stage').classList.contains('expanded')`,
+      raExpand: `document.querySelector('.stage').classList.contains('expanded')`,
+    };
+    const feitos = [];
+    for (const [id, , letra] of BOTOES) {
+      await nova();
+      await atalho(letra);
+      await ate(`window.__cliques.join() === ${JSON.stringify(id)}`, 2000, `${id} pelo atalho ${letra}`);
+      if (efeito[id]) await ate(efeito[id], 2000, `o que o ${id} faz`);
+      feitos.push(letra + ' → ' + id);
+    }
+    // o atalho é um clique de verdade: com a janela do evento aberta (⇧⌘E), o ⇧⌘D fecha ela (fecha ao clicar fora) e abre o calendário
+    await nova();
+    await atalho('E');
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela do evento pelo atalho');
+    await atalho('D');
+    await ate(`document.getElementById('evPop').hidden && !document.getElementById('calPop').hidden`, 2000, 'o ⇧⌘D fecha o evento e abre o calendário');
+    // o assistente que volta pelo prontuário ("Perguntar ao assistente" aperta o #showChat): o Expandir agenda volta ao nome dele
+    await nova();
+    await atalho('A');
+    await ate(`document.querySelector('.right').classList.contains('collapsed') && document.getElementById('agExpand').getAttribute('aria-label') === 'Mostrar assistente'`, 2000, 'assistente escondido');
+    await clica('#showChat');
+    await ate(`!document.querySelector('.right').classList.contains('collapsed') && document.getElementById('agExpand').getAttribute('aria-label') === 'Expandir agenda'`, 2000, 'o nome do Expandir agenda depois do assistente voltar');
+    // com o Assistente na tela toda, a barra da agenda some: o atalho dela não aperta o botão escondido
+    await nova();
+    await atalho('X');
+    await ate(efeito.raExpand + ` && !document.getElementById('agCreate').getClientRects().length`, 2000, 'Assistente na tela toda');
+    await ev(`window.__cliques = []; 1`);
+    await atalho('E');
+    await sleep(300);
+    certo(await ev(`window.__cliques.length === 0`), 'o atalho apertou o botão escondido: ' + await ev(`window.__cliques.join()`));
+    // letra sem botão: o navegador fica com ela (não é bloqueada)
+    const livre = await ev(`(() => { const e = new KeyboardEvent('keydown', { key: 'G', code: 'KeyG', shiftKey: true, metaKey: ${mac},
+      ctrlKey: ${!mac}, bubbles: true, cancelable: true }); document.body.dispatchEvent(e); return !e.defaultPrevented; })()`);
+    certo(livre, '⇧⌘G foi bloqueado sem ter botão');
+    // digitar no Assistente sem ⌘: as letras vão para o texto, nenhum botão é apertado
+    await nova();
+    await ev(`document.getElementById('biInput').focus(); 1`);
+    await send('Input.insertText', { text: 'edufahox' });
+    for (const l of ['E', 'D', 'U']) await atalho(l, 8);         // só Shift: letra maiúscula, sem atalho
+    await sleep(200);
+    certo(await ev(`window.__cliques.length === 0`), 'digitar apertou botão: ' + await ev(`window.__cliques.join()`));
+    return feitos.join(', ') + '; botão escondido não; ⇧⌘G livre; digitar não';
   }],
 ];
 

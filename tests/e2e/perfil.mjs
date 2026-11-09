@@ -10,7 +10,8 @@
 // Sair vai a /auth/logout e cai no login; Excluir conta abre a confirmação, que só acende com o e-mail da conta (sem
 // diferença de maiúsculas e espaços), fecha sem pedir nada (Cancelar, Esc, fora da janela), avisa quando o servidor
 // recusa e, confirmada, manda só o e-mail num POST JSON e sai pelo /auth/logout; o menu lateral de todas as telas tem o Perfil logo depois de Configurações (e
-// leva a ele), aberto e recolhido.
+// leva a ele), aberto e recolhido; o botão do menu mostra a dica "Alternar barra lateral" com o atalho (⇧⌘S) no
+// mouseover, sem sair da tela, e o atalho recolhe e abre o menu (menos com uma janela aberta).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -343,6 +344,82 @@ const cenarios = [
     }
     await ev(`localStorage.setItem('od_nav_collapsed', '0'); 1`);
     return vistas.join(', ') + ' → Perfil';
+  }],
+  ['o botão do menu mostra "Alternar barra lateral" com o atalho no mouseover, e o atalho recolhe e abre o menu', async () => {
+    const mac = await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`);
+    const mods = (mac ? 4 : 2) + 8;                              // ⌘ (ou Ctrl) + Shift
+    const tecla = async (key, code, vk, m = 0) => {
+      await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', modifiers: m, key, code, windowsVirtualKeyCode: vk });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: m, key, code, windowsVirtualKeyCode: vk });
+    };
+    const atalho = () => tecla('S', 'KeyS', 83, mods);
+    const mouse = (x, y, type = 'mouseMoved') => send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: 1 });
+    const recolhido = () => ev(`document.querySelector('.nav').classList.contains('collapsed')`);
+    const ligada = `document.querySelector('.nav-tip').classList.contains('on')`;
+    const dica = `(() => { const b = document.getElementById('navToggle'), t = b.getBoundingClientRect(), p = document.querySelector('.nav-tip'),
+        r = p.getBoundingClientRect(), k = p.querySelector('kbd').getBoundingClientRect(), s = p.querySelector('span').getBoundingClientRect();
+      return { on: p.classList.contains('on'), vis: getComputedStyle(p).visibility, n: document.querySelectorAll('.nav-tip').length,
+               title: b.getAttribute('title'), texto: s && p.querySelector('span').textContent, atalho: p.querySelector('kbd').textContent,
+               h: r.height, kh: k.height, kdir: Math.round(r.right - k.right), vao: Math.round(r.top - t.bottom),
+               centro: Math.round(r.left + r.width / 2 - (t.left + t.width / 2)), esq: Math.round(r.left), dir: Math.round(innerWidth - r.right),
+               fundo: getComputedStyle(p).backgroundColor, bx: t.left + t.width / 2, by: t.top + t.height / 2 }; })()`;
+    const vistas = [];
+    for (const pagina of ['opendoctor-agenda.html', 'opendoctor-integracao.html', 'opendoctor-configuracoes.html', 'opendoctor-perfil.html']) {
+      zera();
+      await ev(`localStorage.setItem('od_nav_collapsed', '0'); 1`);
+      await abre(pagina);
+      await mouse(700, 400);
+      for (const fechado of [false, true]) {
+        const onde = `${pagina} ${fechado ? 'recolhido' : 'aberto'}`;
+        await ate(`getComputedStyle(document.querySelector('.nav-tip')).visibility === 'hidden'`, 1000, `${onde}: dica escondida`);
+        let d = await ev(dica);
+        certo(d.n === 1 && !d.on && d.vis === 'hidden' && d.title === null, `${onde}: antes do mouse ` + JSON.stringify(d));
+        await mouse(d.bx, d.by);
+        await sleep(150);
+        certo(!(await ev(ligada)), `${onde}: a dica apareceu sem a espera`);
+        await ate(ligada, 2000, `${onde}: dica no mouseover`);
+        d = await ev(dica);
+        certo(d.texto === 'Alternar barra lateral' && d.atalho === (mac ? '⇧⌘S' : 'Ctrl+Shift+S') && d.fundo === 'rgb(15, 15, 15)',
+              `${onde}: texto ` + JSON.stringify(d));
+        certo(d.h === 30 && d.kh === 18 && d.kdir === 6 && d.vao === 6 && d.esq >= 8 && d.dir >= 8, `${onde}: medidas ` + JSON.stringify(d));
+        // aberto, centrada no botão; recolhido, o botão fica na beira e a dica encosta a 8 px da tela
+        certo(fechado ? d.esq === 8 : Math.abs(d.centro) <= 1, `${onde}: posição ` + JSON.stringify(d));
+        await mouse(700, 400);
+        await ate(`!(${ligada})`, 1000, `${onde}: a dica some ao sair`);
+        await atalho();
+        await ate(`document.querySelector('.nav').classList.contains('collapsed') === ${!fechado}`, 1000, `${onde}: o atalho`);
+        certo(await ev(`localStorage.getItem('od_nav_collapsed')`) === (fechado ? '0' : '1'), `${onde}: o atalho guarda a escolha`);
+      }
+      vistas.push(pagina.replace('opendoctor-', '').replace('.html', ''));
+    }
+    // no Perfil: clicar esconde a dica (o botão muda de lugar); Esc esconde; com a janela de excluir aberta, o atalho não mexe
+    await ate(carregou, 4000, 'dados do Perfil');
+    let d = await ev(dica);
+    await mouse(d.bx, d.by);
+    await ate(ligada, 2000, 'dica antes do clique');
+    if (process.env.SHOT) {
+      const r = await send('Page.captureScreenshot', { format: 'png', clip: { x: d.bx - 130, y: 0, width: 260, height: 100, scale: 2 } });
+      writeFileSync(join(process.env.SHOT, 'dica-menu.png'), Buffer.from(r.data, 'base64'));
+    }
+    await mouse(d.bx, d.by, 'mousePressed'); await mouse(d.bx, d.by, 'mouseReleased');
+    await ate(`!(${ligada})`, 1000, 'a dica some no clique');
+    certo(await recolhido(), 'o clique recolheu o menu');
+    d = await ev(dica);
+    await mouse(700, 400); await mouse(d.bx, d.by);
+    await ate(ligada, 2000, 'dica de novo');
+    await tecla('Escape', 'Escape', 27);
+    await ate(`!(${ligada})`, 1000, 'Esc esconde a dica');
+    await mouse(700, 400);
+    await clica('#pfExAbre');
+    await ate(`!document.getElementById('pfExModal').hidden`, 2000, 'janela de excluir');
+    await atalho();
+    await sleep(200);
+    certo(await recolhido() && !(await ev(`document.getElementById('pfExModal').hidden`)), 'o atalho mexeu no menu com a janela aberta');
+    await clica('#pfExNao');
+    await atalho();
+    await ate(`!document.querySelector('.nav').classList.contains('collapsed')`, 1000, 'o atalho depois de fechar a janela');
+    await ev(`localStorage.setItem('od_nav_collapsed', '0'); 1`);
+    return vistas.join(', ') + ' (aberto e recolhido); clique, Esc e a janela aberta';
   }],
   ['no Perfil, "Configurações" (no texto e no menu) leva a Configurações', async () => {
     zera();

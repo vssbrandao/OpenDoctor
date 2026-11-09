@@ -40,6 +40,19 @@
     .nav.collapsed{width:52px}
     .nav.collapsed .nav-top svg.nav-logo{visibility:hidden}
     .nav.collapsed .nav-toggle{left:8px;right:auto}
+    /* dica dos botões de ícone (mouseover): pílula escura de 30 px, 6 px abaixo do botão e centrada nele; a do menu
+       tem também o atalho */
+    .nav-tip{position:fixed;left:0;top:0;z-index:1000;display:flex;align-items:center;gap:9px;height:30px;
+      padding:0 6px 0 14px;border-radius:15px;background:#0F0F0F;color:#fff;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;font-weight:500;   /* a do sistema, como a referência */
+      font-size:14px;line-height:18px;white-space:nowrap;pointer-events:none;opacity:0;visibility:hidden;
+      transition:opacity .12s,visibility 0s .12s}
+    .nav-tip.on{opacity:1;visibility:visible;transition:opacity .12s}
+    .nav-tip kbd{display:flex;align-items:center;height:18px;padding:0 7px;border-radius:6px;background:#4B4B4B;
+      font:inherit;font-size:13px}
+    .nav-tip.sem-atalho{padding-right:14px}                /* sem atalho: 14 px dos dois lados */
+    .nav-tip.sem-atalho kbd{display:none}
+    @media (prefers-reduced-motion:reduce){.nav-tip,.nav-tip.on{transition:none}}
     .nav.collapsed .item>span:not(.ico){display:none}
     .nav.collapsed .item{width:40px}
     .nav-main{padding:0 6px;display:flex;flex-direction:column;gap:42px}
@@ -126,7 +139,7 @@
           <svg x="17" y="16" width="20" height="20" viewBox="0 0 1000 1000"><path fill="#0D0D0D" fill-rule="evenodd" d="M489.304 340.358 A160.000 160.000 0 0 1 504.085 340.052 L408.739 51.064 L395.532 11.035 A500.000 500.000 0 0 0 304.474 39.816 L313.108 56.600 A330.000 330.000 0 0 1 375.759 49.816 L489.304 340.358Z M249.547 67.249 A500.000 500.000 0 0 0 215.073 89.127 L418.745 362.168 A160.000 160.000 0 0 1 435.135 353.738 L249.547 67.249Z M128.077 165.824 A500.000 500.000 0 0 0 107.828 189.837 L369.905 406.858 A160.000 160.000 0 0 1 378.665 395.704 L128.077 165.824Z M43.015 297.110 A500.000 500.000 0 0 0 28.447 333.755 L341.930 475.225 A160.000 160.000 0 0 1 345.658 457.828 L43.015 297.110Z M2.685 448.257 A500.000 500.000 0 0 0 0.019 495.637 L299.766 541.363 A330.000 330.000 0 0 1 305.976 519.419 L2.685 448.257Z M11.035 604.468 A500.000 500.000 0 0 0 25.617 657.990 L290.223 623.385 A330.000 330.000 0 0 1 291.181 594.892 L11.035 604.468Z M419.180 638.087 A160.000 160.000 0 0 1 418.927 637.939 L295.222 677.516 L67.249 750.453 A500.000 500.000 0 0 0 102.475 803.272 L303.326 712.327 A330.000 330.000 0 0 1 295.289 677.896 L419.180 638.087Z M480.657 658.827 A160.000 160.000 0 0 1 477.486 658.408 L323.226 764.089 L165.824 871.923 A500.000 500.000 0 0 0 222.287 915.783 L345.608 803.223 A330.000 330.000 0 0 1 325.608 768.904 L480.657 658.827Z M533.337 656.488 A160.000 160.000 0 0 1 528.762 657.394 L381.407 847.966 L297.110 956.985 A500.000 500.000 0 0 0 372.108 983.367 L424.238 885.718 A330.000 330.000 0 0 1 389.644 856.302 L533.337 656.488Z M568.755 644.474 A160.000 160.000 0 0 1 564.456 646.443 L475.005 916.546 L448.257 997.315 A500.000 500.000 0 0 0 535.749 998.720 L542.603 940.953 A330.000 330.000 0 0 1 493.083 924.739 L568.755 644.474Z M561.850 352.438 A160.000 160.000 0 0 1 571.898 357.064 L557.372 101.646 L551.744 2.685 A500.000 500.000 0 0 0 464.251 1.280 L477.324 64.534 A330.000 330.000 0 0 1 535.774 88.983 L561.850 352.438Z M620.440 394.671 A160.000 160.000 0 0 1 625.075 400.219 L665.500 214.652 L702.890 43.015 A500.000 500.000 0 0 0 627.892 16.633 L617.706 151.107 A330.000 330.000 0 0 1 656.787 200.422 L620.440 394.671Z M653.350 454.351 A160.000 160.000 0 0 1 654.290 457.639 L709.028 357.356 L834.176 128.077 A500.000 500.000 0 0 0 777.713 84.217 L697.803 291.650 A330.000 330.000 0 0 1 708.396 349.476 L653.350 454.351Z M659.494 512.711 A160.000 160.000 0 0 1 659.477 512.930 L694.459 479.214 L932.751 249.547 A500.000 500.000 0 0 0 897.525 196.728 L705.025 435.682 A330.000 330.000 0 0 1 694.593 478.787 L659.494 512.711Z M988.965 395.532 A500.000 500.000 0 0 0 974.383 342.010 L654.551 541.401 A160.000 160.000 0 0 1 650.592 554.055 L988.965 395.532Z M997.315 551.744 A500.000 500.000 0 0 0 999.981 504.363 L641.975 573.777 A160.000 160.000 0 0 1 638.235 580.568 L997.315 551.744Z M956.985 702.890 A500.000 500.000 0 0 0 971.553 666.245 L629.321 594.213 A160.000 160.000 0 0 1 626.441 598.044 L956.985 702.890Z M871.923 834.176 A500.000 500.000 0 0 0 892.172 810.163 L617.396 608.712 A160.000 160.000 0 0 1 615.109 611.130 L871.923 834.176Z M750.453 932.751 A500.000 500.000 0 0 0 784.927 910.873 L606.214 619.660 A160.000 160.000 0 0 1 602.817 622.592 L750.453 932.751Z M590.930 631.650 A160.000 160.000 0 0 1 587.244 634.121 L602.564 949.736 L604.468 988.965 A500.000 500.000 0 0 0 695.526 960.184 L690.360 942.665 A330.000 330.000 0 0 1 632.273 949.988 L590.930 631.650Z"/></svg>
           <path d="M249 18C251.209 18 253 19.7909 253 22V29C253 31.2091 251.209 33 249 33H240C237.791 33 236 31.2091 236 29V22C236 19.7909 237.791 18 240 18H249ZM240 19.5C238.619 19.5 237.5 20.6193 237.5 22V29C237.5 30.3807 238.619 31.5 240 31.5H249C250.381 31.5 251.5 30.3807 251.5 29V22C251.5 20.6193 250.381 19.5 249 19.5H240ZM241.75 22C242.164 22 242.5 22.3358 242.5 22.75V28.25C242.5 28.6642 242.164 29 241.75 29C241.336 29 241 28.6642 241 28.25V22.75C241 22.3358 241.336 22 241.75 22Z" fill="#8B8B8B"/>
         </svg>
-        <button class="nav-toggle" id="navToggle" aria-label="Recolher menu" title="Recolher menu"><svg width="20" height="20" viewBox="234 16 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M249 18C251.209 18 253 19.7909 253 22V29C253 31.2091 251.209 33 249 33H240C237.791 33 236 31.2091 236 29V22C236 19.7909 237.791 18 240 18H249ZM240 19.5C238.619 19.5 237.5 20.6193 237.5 22V29C237.5 30.3807 238.619 31.5 240 31.5H249C250.381 31.5 251.5 30.3807 251.5 29V22C251.5 20.6193 250.381 19.5 249 19.5H240ZM241.75 22C242.164 22 242.5 22.3358 242.5 22.75V28.25C242.5 28.6642 242.164 29 241.75 29C241.336 29 241 28.6642 241 28.25V22.75C241 22.3358 241.336 22 241.75 22Z" fill="#8B8B8B"/></svg></button>
+        <button class="nav-toggle" id="navToggle" aria-label="Recolher menu"><svg width="20" height="20" viewBox="234 16 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M249 18C251.209 18 253 19.7909 253 22V29C253 31.2091 251.209 33 249 33H240C237.791 33 236 31.2091 236 29V22C236 19.7909 237.791 18 240 18H249ZM240 19.5C238.619 19.5 237.5 20.6193 237.5 22V29C237.5 30.3807 238.619 31.5 240 31.5H249C250.381 31.5 251.5 30.3807 251.5 29V22C251.5 20.6193 250.381 19.5 249 19.5H240ZM241.75 22C242.164 22 242.5 22.3358 242.5 22.75V28.25C242.5 28.6642 242.164 29 241.75 29C241.336 29 241 28.6642 241 28.25V22.75C241 22.3358 241.336 22 241.75 22Z" fill="#8B8B8B"/></svg></button>
       </div>
       <div class="nav-main">
         <div class="nav-sec">
@@ -221,13 +234,73 @@
     document.querySelectorAll('[data-href]').forEach(function (el) {
       el.addEventListener('click', function () { location.href = el.getAttribute('data-href'); });
     });
+    // dica dos botões de ícone (mouseover): o que o botão faz e o atalho (⇧⌘ + letra no Mac, Ctrl+Shift + letra nos
+    // outros), que aperta o botão. O do menu diz "Alternar barra lateral"; os das barras de cima (.hd-btn), o aria-label,
+    // que muda com o estado. Letras fora das que o navegador reserva (N, T, W, R) e do ⇧⌘V (colar sem formatação).
+    (function () {
+      var ATALHO = { navToggle: 'S', agCreate: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', agExpand: 'A',
+                     raNew: 'O', raHist: 'H', raExpand: 'X' };
+      var mac = /Mac|iPhone|iPad/.test(navigator.platform || '');
+      var tip = document.createElement('div'), txt = document.createElement('span'), kbd = document.createElement('kbd');
+      tip.className = 'nav-tip'; tip.setAttribute('aria-hidden', 'true');
+      tip.appendChild(txt); tip.appendChild(kbd); document.body.appendChild(tip);
+      var espera = 0, peloTab = false;
+      function mostra(b) {                      // centrada no botão, 6 px abaixo, sem sair da tela
+        var r = b.getBoundingClientRect(), k = ATALHO[b.id] || '';
+        txt.textContent = b.id === 'navToggle' ? 'Alternar barra lateral' : (b.getAttribute('aria-label') || '');
+        if (!txt.textContent || !r.width) return;     // sem texto ou botão escondido
+        kbd.textContent = k ? (mac ? '\u21e7\u2318' + k : 'Ctrl+Shift+' + k) : '';
+        tip.classList.toggle('sem-atalho', !k);
+        var w = tip.offsetWidth;
+        tip.style.left = Math.round(Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))) + 'px';
+        tip.style.top = Math.round(r.bottom + 6) + 'px';
+        tip.classList.add('on');
+      }
+      function esconde() { clearTimeout(espera); tip.classList.remove('on'); }
+      function liga(b) {
+        if (ATALHO[b.id]) b.setAttribute('aria-keyshortcuts', (mac ? 'Meta+Shift+' : 'Control+Shift+') + ATALHO[b.id]);
+        b.addEventListener('mouseenter', function () { clearTimeout(espera); espera = setTimeout(function () { mostra(b); }, 400); });
+        b.addEventListener('mouseleave', esconde);
+        // pelo teclado (Tab); não quando o foco volta sozinho ao botão (ao fechar o calendário ou a busca)
+        b.addEventListener('focus', function () { if (peloTab && b.matches(':focus-visible')) mostra(b); });
+        b.addEventListener('blur', esconde);
+        b.addEventListener('click', esconde);   // abre um painel ou o botão muda de lugar
+      }
+      [].forEach.call(document.querySelectorAll('#navToggle, .hd-btn'), liga);
+      document.addEventListener('pointerdown', function () { peloTab = false; }, true);
+      window.addEventListener('resize', esconde);
+      window.addEventListener('blur', esconde);
+      function janelaAberta() {
+        return [].some.call(document.querySelectorAll('[aria-modal="true"]'), function (d) { return d.getClientRects().length > 0; });
+      }
+      function aVista(b) { return b.getClientRects().length > 0 && getComputedStyle(b).visibility !== 'hidden'; }
+      document.addEventListener('keydown', function (e) {
+        peloTab = e.key === 'Tab';
+        if (e.key === 'Escape') { esconde(); return; }
+        if (e.isComposing || e.keyCode === 229) return;   // acento ou caractere ainda sendo montado pelo teclado
+        if (!e.shiftKey || e.altKey || (mac ? !e.metaKey || e.ctrlKey : !e.ctrlKey || e.metaKey)) return;
+        var k = (e.key || '').toUpperCase(), id = null;
+        // teclado em outro alfabeto (cirílico, grego…): vale a posição da tecla; nos latinos, só a letra que ela escreve
+        if (/^[^\u0000-\u024f]$/.test(e.key || '') && /^Key[A-Z]$/.test(e.code || '')) k = e.code.slice(3);
+        Object.keys(ATALHO).forEach(function (i) { if (ATALHO[i] === k) id = i; });
+        var b = id && document.getElementById(id);
+        if (!b) return;                         // a tela não tem esse botão: o atalho fica com o navegador
+        e.preventDefault();
+        // como o clique: só com o botão à vista e livre (sem janela aberta por cima)
+        if (e.repeat || b.disabled || !aVista(b) || b.closest('[inert]') || janelaAberta()) return;
+        esconde();
+        // como o clique de verdade: o aperto fecha o que fecha ao clicar fora (a janela do evento, a busca de remédio)
+        b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
+        b.click();
+      }, true);
+    })();
     // menu lateral: recolher / abrir (lembra a escolha entre as telas)
     (function () {
       var nav = document.querySelector('.nav'), t = document.getElementById('navToggle');
       if (!nav || !t) return;
       function setNav(c) {
         nav.classList.toggle('collapsed', c);
-        t.title = c ? 'Abrir menu' : 'Recolher menu'; t.setAttribute('aria-label', t.title);
+        t.setAttribute('aria-label', c ? 'Abrir menu' : 'Recolher menu');   // a dica do mouseover é a .nav-tip
         try { localStorage.setItem('od_nav_collapsed', c ? '1' : '0'); } catch (_) {}
       }
       t.addEventListener('click', function () { setNav(!nav.classList.contains('collapsed')); });
