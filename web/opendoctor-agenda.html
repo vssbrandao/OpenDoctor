@@ -1698,7 +1698,7 @@
     .nv-btn:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
-       calha das horas 84px, colunas >= 158px, 142px por hora, cabeçalho dos dias 51px */
+       calha das horas 84px, colunas >= 158px, 103px por hora (142 do Figma, -20% e -10%), cabeçalho dos dias 51px */
     .wk{display:none;position:absolute;top:90px;left:0;right:0;bottom:0;overflow:auto;scrollbar-width:none}   /* dias em 105, linha da grade em 141 (Figma) */
     .wk::-webkit-scrollbar{display:none}
     .stage.week .wk{display:block}
@@ -1716,7 +1716,7 @@
     .wk-lbl{position:absolute;left:24px;white-space:nowrap;margin-top:-18px;
       font-family:var(--disp);font-weight:400;font-size:12px;line-height:24px;color:#1F1F1F}
     .wk-col{position:relative;cursor:pointer;box-shadow:inset 1px 0 0 rgba(26,26,26,.08);
-      background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 141px,rgba(26,26,26,.08) 141px,rgba(26,26,26,.08) 142px);
+      background-image:repeating-linear-gradient(to bottom,transparent 0,transparent 102px,rgba(26,26,26,.08) 102px,rgba(26,26,26,.08) 103px);
       background-position:0 1px}
     .wk-col.first{box-shadow:none}
     .wk-col.first:last-child{box-shadow:inset -1px 0 0 rgba(26,26,26,.08)}
@@ -1768,7 +1768,7 @@
       padding:0 0 0 24px;scrollbar-width:thin}
     .cal-inner{position:relative;padding-bottom:40px}
 
-    .hr-row{position:relative;height:158px;box-shadow:inset 0 1px 0 var(--line)}
+    .hr-row{position:relative;height:113px;box-shadow:inset 0 1px 0 var(--line)}   /* 158 do Figma, -20% e -10% (= HOUR_PX) */
     .hr-row.h0{box-shadow:none}            /* a linha do 0h é a fixa abaixo da data (.ag-head::after): não rola junto */
     .hr-label{position:absolute;left:0;top:0;font-family:var(--disp);font-weight:400;font-size:12px;
       line-height:24px;color:var(--ink2)}
@@ -1790,6 +1790,8 @@
       padding:20px 24px;overflow:hidden;z-index:2;display:flex;flex-direction:column;
       justify-content:space-between}
     .ev-real:hover{background:var(--ev-bg-hover)}
+    /* card baixo (até ~35 min): os 20 de cima e de baixo não cabem com o título e o horário e o texto descia; fica no meio */
+    .ev-real.short{padding-top:0;padding-bottom:0;justify-content:center}
     .er-title{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .er-sub{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:var(--muted)}
@@ -1844,6 +1846,10 @@
     /* lista de pacientes (escolher um existente ou criar um novo), logo abaixo do campo */
     .evpop-pl{display:flex;flex-direction:column;gap:2px;margin:0 12px;padding:2px 0 4px;max-height:220px;overflow-y:auto;scrollbar-width:thin}
     .evpop-pl[hidden]{display:none}
+    /* lista aberta: uma linha entre os nomes e o Local (8 em cima e embaixo, de ponta a ponta como os traços dos grupos) */
+    .evpop-pl:not([hidden]){padding-bottom:8px}
+    .evpop-pl:not([hidden]) + .evpop-row{margin-top:7px}
+    .evpop-pl:not([hidden]) + .evpop-row::before{content:"";position:absolute;left:-11px;right:-12px;top:-9px;height:1px;background:var(--line)}
     .evpop-po{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 12px;border:0;background:none;
       border-radius:12px;cursor:pointer;text-align:left;width:100%;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
@@ -2834,8 +2840,8 @@
     })();
 
     // position the orange "now" marker according to the local time
-    // linha do tempo: 0h no topo, cada hora = 158px → top = H*158 + (M/60)*158
-    var HOUR_PX = 158, FIRST_HOUR = 0, LAST_HOUR = 23;   // dia inteiro: linhas de 0h a 23h (até 24h)
+    // linha do tempo: 0h no topo, cada hora = 113px (158 do Figma, -20% e -10%) → top = H*113 + (M/60)*113
+    var HOUR_PX = 113, FIRST_HOUR = 0, LAST_HOUR = 23;   // dia inteiro: linhas de 0h a 23h (até 24h)
     function placeNow() {
       var el = document.getElementById('nowMarker');
       if (!el) return;
@@ -2857,6 +2863,20 @@
     window.__selEv = null;
     window.__evData = {};                                  // chave → evento (p/ preencher a janela)
     function evKey(ev) { return ev.id || ((ev.title || '') + '|' + ev.start); }
+    // consultas que se cruzam na agenda ficam lado a lado (senão uma cobre a outra): itens com a (topo) e b (fim) em px;
+    // cada grupo de itens que se cruzam ganha n colunas e cada item a primeira coluna livre (col); ordem: quem começa antes
+    function ladoALado(itens) {
+      itens.sort(function (x, y) { return x.a - y.a || y.b - x.b; });
+      var grupo = [], fim = -Infinity, fins = [];
+      function fecha() { grupo.forEach(function (it) { it.n = fins.length; }); grupo = []; fins = []; }
+      itens.forEach(function (it) {
+        if (grupo.length && it.a >= fim) fecha();
+        var c = 0; while (c < fins.length && fins[c] > it.a) c++;
+        fins[c] = it.b; it.col = c; grupo.push(it); fim = Math.max(fim, it.b);
+      });
+      if (grupo.length) fecha();
+      return itens;
+    }
     // evento de dia inteiro (férias, congresso, "Dia todo") neste dia: AAAA-MM-DD, fim exclusivo (Microsoft manda T00:00)
     function allDayOn(ev, d) {
       if (!ev.allDay || !ev.start) return false;
@@ -2942,6 +2962,7 @@
         inner.querySelectorAll('.ev-real').forEach(function (n) { n.remove(); });
         var strip = document.getElementById('calAllDay'), ad = events.filter(function (ev) { return allDayOn(ev, dayStart); });
         if (strip) { strip.innerHTML = ''; ad.forEach(function (ev) { strip.appendChild(allDayPill(ev)); }); strip.hidden = !ad.length; }
+        var itens = [];                                      // primeiro as posições; depois, lado a lado as que se cruzam
         events.forEach(function (ev) {
           if (ev.allDay || !ev.start) return;
           var s = new Date(ev.start), e = ev.end ? new Date(ev.end) : new Date(s.getTime() + 18e5);
@@ -2953,10 +2974,14 @@
           if (eh <= FIRST_HOUR || sh >= LAST_HOUR + 1) return;   // fora da faixa visível
           sh = Math.max(sh, FIRST_HOUR);
           var top = (sh - FIRST_HOUR) * HOUR_PX + 8;
-          var height = Math.max((eh - sh) * HOUR_PX - 16, 44);
+          itens.push({ ev: ev, s: s, e: e, a: top, b: top + Math.max((eh - sh) * HOUR_PX - 16, 44) });
+        });
+        ladoALado(itens).forEach(function (it) {
+          var ev = it.ev, s = it.s, e = it.e, top = it.a, height = it.b - it.a;
           var tall = height >= 110;
+          var short = height < 40 + 38;                             // os 20 de cima e de baixo + título e horário (20 + 18)
           var card = document.createElement('div');
-          card.className = 'ev-real';
+          card.className = 'ev-real' + (short ? ' short' : '');
           if (ev._rascunho) card.classList.add('draft');
           else { card.setAttribute('data-evkey', evKey(ev)); window.__evData[evKey(ev)] = ev; }
           if (!ev._rascunho && evKey(ev) === window.__selEv) card.classList.add('sel');
@@ -2968,6 +2993,10 @@
           card.querySelector('.er-sub').textContent = fmtTime(s) + '–' + fmtTime(e);
           // avatar = iniciais do paciente ("Consulta — Luíza Nonato" → LN), não do título
           if (tall) card.querySelector('.avatar').textContent = initials((ev.title || '').split(' — ').slice(1).join(' ') || ev.title);
+          if (it.n > 1) {                                      // no mesmo horário: cada uma na sua parte da largura, 4 entre elas
+            card.style.left = 'calc(86px + (100% - 110px) * ' + it.col + ' / ' + it.n + ')';
+            card.style.width = 'calc((100% - 110px) / ' + it.n + ' - 4px)'; card.style.right = 'auto';
+          }
           inner.appendChild(card);
         });
         if (firstRender) { scrollToFirst(); firstRender = false; }
@@ -3188,9 +3217,6 @@
           .map(function (p, i) { return [peso(p), i, p]; }).sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; })
           .map(function (x) { return x[2]; }).slice(0, q ? 6 : 5));
         var hits = ord.list; plFirst = ord.first;
-        if (!q && hits.length) {
-          var h = document.createElement('div'); h.className = 'evpop-pmsg'; h.textContent = 'Pacientes recentes'; elPList.appendChild(h);
-        }
         hits.forEach(function (p) {
           option('', initialsOf(p.name), p.name + (p.example ? ' (exemplo)' : '') + (p.birth_date ? ' · ' + ptAge(p.birth_date) : ''), function () { setPatient(p); }, p.id);
         });
@@ -4082,7 +4108,7 @@
       var wk = document.getElementById('wk');
       if (!stage || !sel || !grid) return;
       var ICON_V = 3;                                     // versão dos ícones (= ?v= no HTML): muda quando um ícone muda
-      var WK_PX = 142, WK_FIRST = 0, WK_LAST = 24;         // semana: 142px por hora; rótulo centralizado na linha da hora (Figma 1018:11546)
+      var WK_PX = 103, WK_FIRST = 0, WK_LAST = 24;         // semana: 103px por hora (142 do Figma, -20% e -10%; = .wk-col); rótulo centralizado na linha da hora (Figma 1018:11546)
       var WK_HEAD = 51;                                    // altura do cabeçalho dos dias (= .wk-h)
       var DOWS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
       var events = [], weekStart = null, timer = null, head = WK_HEAD;
@@ -4142,6 +4168,7 @@
           });
           return c;
         });
+        var porDia = days.map(function () { return []; });   // primeiro as posições; depois, lado a lado as que se cruzam
         evs.forEach(function (ev) {
           if (ev.allDay || !ev.start) return;
           var s = new Date(ev.start), e = ev.end ? new Date(ev.end) : new Date(s.getTime() + 18e5);
@@ -4151,8 +4178,14 @@
             var a = Math.max(s.getTime(), d0.getTime()), b = Math.min(e.getTime(), d1.getTime());
             if (b <= a) return;
             // 1px de folga das linhas da grade em cima e embaixo (como nas laterais): a linha da hora fica no
-            // pixel 142*h da coluna → evento começa 2px abaixo dela e termina 2px antes da linha seguinte
-            var top = (a - d0.getTime()) / 36e5 * WK_PX + 2, hgt = Math.max((b - a) / 36e5 * WK_PX - 3, 24);
+            // pixel 103*h da coluna → evento começa 2px abaixo dela e termina 2px antes da linha seguinte
+            var top = (a - d0.getTime()) / 36e5 * WK_PX + 2;
+            porDia[i].push({ ev: ev, s: s, e: e, a: top, b: top + Math.max((b - a) / 36e5 * WK_PX - 3, 24) });
+          });
+        });
+        porDia.forEach(function (itens, i) {
+          ladoALado(itens).forEach(function (it) {
+            var ev = it.ev, s = it.s, e = it.e, top = it.a, hgt = it.b - it.a;
             var box = el('div', 'wk-ev' + (hgt < 60 ? ' short' : '') + (ev._rascunho ? ' draft' : '')); box.style.top = top + 'px'; box.style.height = hgt + 'px';
             if (!ev._rascunho) { box.setAttribute('data-evkey', evKey(ev)); window.__evData[evKey(ev)] = ev; }
             if (!ev._rascunho && evKey(ev) === window.__selEv) box.classList.add('sel');
@@ -4164,6 +4197,10 @@
               var who = (parts.length > 1 ? parts.slice(1).join(' ') : full).split(/\s+/).filter(function (w) { return /[\p{L}\p{N}]/u.test(w); });
               var ini = ((who[0] ? Array.from(who[0])[0] : '') + (who.length > 1 ? Array.from(who[who.length - 1])[0] : '')).toUpperCase() || '•';
               var foot = el('div', 'wk-ev-foot'); foot.appendChild(el('span', 'avatar', ini)); box.appendChild(foot);
+            }
+            if (it.n > 1) {                                    // no mesmo horário: cada uma na sua parte da coluna, 2 entre elas
+              box.style.left = 'calc(2px + (100% - 3px) * ' + it.col + ' / ' + it.n + ')';
+              box.style.width = 'calc((100% - 3px) / ' + it.n + ' - 2px)'; box.style.right = 'auto';
             }
             cols[i].appendChild(box);
           });

@@ -218,11 +218,24 @@ const cenarios = [
     await ev(`(() => { const t = document.getElementById('evTitle'); t.value = 'Retorno'; t.dispatchEvent(new Event('input', { bubbles: true }));
       const s = document.getElementById('evStart'); s.value = '11:00'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
     certo(await pv() === 'Retorno|11h–11h30|false', 'a prévia anda com o título e o horário: ' + await pv());
+    // card de 30 min (baixo): o título e o horário no meio, na vertical (vale para os cards de verdade também)
+    const meio = await ev(`(() => { const d = document.querySelector('.cal-inner .ev-real.draft'), c = d.getBoundingClientRect(), t = d.firstElementChild.getBoundingClientRect();
+      return [d.classList.contains('short'), Math.round(t.top - c.top), Math.round(c.bottom - t.bottom)].join(); })()`);
+    certo((() => { const [sh, a, b] = meio.split(','); return sh === 'true' && Math.abs(+a - +b) <= 1; })(), 'o texto no meio do card de 30 min: ' + meio);
     await clica('#evAllDay');
     certo(await ev(`!!document.querySelector('#calAllDay .wk-ev.draft') && !document.querySelector('.cal-inner .ev-real.draft') && document.querySelector('#calAllDay .wk-ev.draft').textContent === 'Retorno'`),
           'dia todo: a prévia vai para a faixa de dia inteiro');
     await clica('#evAllDay');
     certo(await pv() === 'Retorno|11h–11h30|false', 'de volta ao horário: ' + await pv());
+    // duas consultas no mesmo horário ficam lado a lado (a prévia às 19h com o Plantão das 19h): nenhuma cobre a outra
+    await ev(`(() => { const s = document.getElementById('evStart'); s.value = '19:00'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+    const ld = await ev(`(() => { const a = document.querySelector('.cal-inner .ev-real[data-evkey="plantao"]').getBoundingClientRect(), b = document.querySelector('.cal-inner .ev-real.draft').getBoundingClientRect(),
+      i = document.querySelector('.cal-inner').getBoundingClientRect();
+      return { separadas: a.right <= b.left || b.right <= a.left, metade: [a.width, b.width].every((w) => Math.abs(w - ((i.width - 110) / 2 - 4)) < 1.5),
+               mesmoTopo: Math.abs(a.top - b.top) < 1 }; })()`);
+    certo(ld.separadas && ld.metade && ld.mesmoTopo, 'duas no mesmo horário, lado a lado: ' + JSON.stringify(ld));
+    await ev(`(() => { const s = document.getElementById('evStart'); s.value = '11:00'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+    certo(await ev(`document.querySelector('.cal-inner .ev-real.draft').style.width`) === '', 'sozinha (às 11h): a largura inteira');
     // a lista de pacientes sem o espaço das iniciais: o nome começa na borda do item
     await ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = 'Jo'; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
     await ate(`document.querySelectorAll('#evPList .evpop-po').length > 0`, 2000, 'a lista de pacientes');
@@ -414,7 +427,7 @@ const cenarios = [
     certo(n.includes('Férias') && n.includes('Aniversário da Ana') && n.includes('Congresso'), 'pílulas: ' + n.join(' | '));
     certo(await ev(`document.querySelectorAll('.wk-ad').length`) === 8, 'uma célula por dia + a da calha');
     const agora = await ev(`(() => { const l = document.querySelector('.wk-now'); if (!l) return null; const n = new Date();
-      return parseFloat(l.style.top) - document.querySelector('.wk-col').offsetTop - (n.getHours() + n.getMinutes() / 60) * 142; })()`);
+      return parseFloat(l.style.top) - document.querySelector('.wk-col').offsetTop - (n.getHours() + n.getMinutes() / 60) * 103; })()`);
     certo(agora === null || Math.abs(agora) < 2, 'o traço da hora continua na hora certa: ' + agora);
     await ev(`document.getElementById('wk').scrollLeft = 1e4`);   // a foto mostra o fim da semana (onde estão as férias)
     await foto('agenda-semana.png');
@@ -581,7 +594,9 @@ const cenarios = [
     await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);      // campo vazio: o Enter não escolhe o mais recente
     await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
     await poe('');
-    await ate(`[...document.querySelectorAll('#evPList .evpop-pmsg')].some((m) => m.textContent === 'Pacientes recentes')`, 3000, 'recentes');
+    // campo vazio: os mais recentes, sem o título "Pacientes recentes", e a linha entre os nomes e o Local
+    await ate(`!document.getElementById('evPList').hidden && document.querySelectorAll('#evPList .evpop-po').length > 0 && !document.querySelector('#evPList .evpop-pmsg')`, 3000, 'recentes');
+    certo(await ev(`(() => { const l = getComputedStyle(document.getElementById('evLocation').closest('.evpop-row'), '::before'); return l.content !== 'none' && l.height === '1px'; })()`), 'a linha entre os nomes e o Local');
     await enter(); await sleep(300);
     certo(await val('#evPatient') === '' && await ev(`document.getElementById('evPClear').hidden`), 'Enter no campo vazio escolheu: ' + await val('#evPatient'));
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
