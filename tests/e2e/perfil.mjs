@@ -165,7 +165,7 @@ const cenarios = [
     await ate(carregou, 4000, 'dados do Perfil');
     const uf = await ev(`(() => { const b = document.getElementById('pfUfC'), l = b.querySelector('.fl-label'), s = getComputedStyle(b), sl = getComputedStyle(l);
       return { vazio: b.classList.contains('vazio'), fundo: s.backgroundColor, topo: sl.top, letra: sl.fontSize, crm: document.getElementById('pfCrmC').classList.contains('vazio') }; })()`);
-    certo(uf.vazio && uf.fundo === 'rgb(244, 244, 246)' && uf.topo === '32.2px' && uf.letra === '14px' && !uf.crm, 'UF vazia: ' + JSON.stringify(uf));
+    certo(uf.vazio && uf.fundo === 'rgb(247, 248, 248)' && uf.topo === '32.2px' && uf.letra === '14px' && !uf.crm, 'UF vazia: ' + JSON.stringify(uf));
     await foto('perfil-crm-sem-uf.png');
     MEDICO.crm = ''; MEDICO.crm_uf = ''; MEDICO.name = '';
     await abre('opendoctor-perfil.html');

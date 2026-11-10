@@ -1917,6 +1917,7 @@ def delete_calendar_event(event_id: str, request: Request):
 MAX_NOTE_CHARS = 50000          # evolução maior é recusada (413) — nunca cortada em silêncio
 MAX_DATA_CHARS = 60000
 _SEX = {"F", "M", "O"}
+_COVERAGE = {"particular", "convenio"}                   # o atendimento do paciente (0021)
 _VITALS = ("pa_s", "pa_d", "fc", "fr", "temp", "spo2", "peso", "altura", "glicemia")
 # exames laboratoriais registrados na evolução (a TFG é calculada na tela a partir da creatinina)
 _UUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -2030,6 +2031,23 @@ def _patient_fields(payload, partial=True):
         f["cpf"] = cpf or None
     if "phone" in payload:
         f["phone"] = " ".join(str(payload.get("phone") or "").split())[:40] or None
+    if "email" in payload:
+        em = str(payload.get("email") or "").strip().lower()
+        if em and (len(em) > 254 or not _EMAIL.fullmatch(em)):   # longo demais: recusa (cortar daria outro endereço)
+            return None, "e-mail inválido"
+        f["email"] = em or None
+    if "coverage" in payload:
+        cv = payload.get("coverage") or None
+        if cv is not None and (not isinstance(cv, str) or cv not in _COVERAGE):
+            return None, "escolha particular ou convênio"
+        f["coverage"] = cv
+    if "health_plan" in payload:
+        f["health_plan"] = " ".join(str(payload.get("health_plan") or "").split())[:120] or None
+    if "coverage" in f:                                   # o plano é do convênio: particular (ou sem escolha) não tem plano
+        if f["coverage"] != "convenio":
+            f["health_plan"] = None
+        elif not f.get("health_plan") and ("health_plan" in payload or not partial):
+            return None, "informe o plano do convênio"
     for k in ("allergies", "problems", "medications"):
         if k in payload:
             f[k] = _clean_text(payload.get(k), 5000)
@@ -3320,7 +3338,14 @@ def _patients_create(u, payload):
         return JSONResponse({"error": "já existe paciente com esse nome", "duplicates":
                              [{"id": x["id"], "name": x["name"], "birth_date": x["birth_date"]} for x in same]},
                             status_code=409)
-    p = db.create_patient(u["id"], f["name"], f.get("birth_date"), f.get("sex"), f.get("cpf"), f.get("phone"))
+    try:
+        p = db.create_patient(u["id"], f["name"], f.get("birth_date"), f.get("sex"), f.get("cpf"), f.get("phone"),
+                              email=f.get("email"), coverage=f.get("coverage"), health_plan=f.get("health_plan"))
+    except db.MigracaoPendente:
+        return JSONResponse({"error": "o cadastro com e-mail e convênio ainda não está disponível"}, status_code=503)
+    except Exception as e:                               # o erro do banco traz a linha (nome, e-mail, plano): só o tipo no log
+        print("patients_create:", type(e).__name__)
+        return JSONResponse({"error": "não foi possível criar o paciente"}, status_code=500)
     db.log_access(u["id"], "patient_create", p["id"])
     return {"ok": True, "patient": {k: v for k, v in p.items() if k != "key"}, "created": True}
 
@@ -3341,7 +3366,13 @@ def _patients_update(u, patient_id, payload):
     other = db.find_by_cpf(u["id"], f.get("cpf"), exclude_id=patient_id)
     if other:
         return JSONResponse({"error": f"CPF já cadastrado para {other['name']}"}, status_code=409)
-    p = db.update_patient(u["id"], patient_id, f)
+    try:
+        p = db.update_patient(u["id"], patient_id, f)
+    except db.MigracaoPendente:
+        return JSONResponse({"error": "o cadastro com e-mail e convênio ainda não está disponível"}, status_code=503)
+    except Exception as e:                               # o erro do banco traz a linha (nome, e-mail, plano): só o tipo no log
+        print("patients_update:", type(e).__name__)
+        return JSONResponse({"error": "não foi possível salvar o paciente"}, status_code=500)
     if not p:
         return JSONResponse({"error": "paciente não encontrado"}, status_code=404)
     db.log_access(u["id"], "patient_update", patient_id)

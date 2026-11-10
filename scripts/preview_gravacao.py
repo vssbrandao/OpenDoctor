@@ -40,7 +40,7 @@ WEB = pathlib.Path(server.WEB_DIR)
 NOW = dt.datetime.now().replace(second=0, microsecond=0)
 
 # ----- pacientes e evoluções FICTÍCIOS -----
-BASE = {"cpf": None, "phone": None, "sex": "F", "birth_date": "1968-03-14", "allergies": "", "problems": "", "medications": ""}
+BASE = {"cpf": None, "phone": None, "email": None, "coverage": None, "health_plan": None, "sex": "F", "birth_date": "1968-03-14", "allergies": "", "problems": "", "medications": ""}
 PATS = {9001: dict(BASE, id=9001, name="Maria Silva", key=" exemplo", example=True, allergies="Dipirona\nPenicilina",
                    problems="Hipertensão arterial\nDiabetes tipo 2", medications="Losartana 50 mg 12/12h\nMetformina 850 mg 2x/dia\nAtorvastatina 20 mg à noite"),
         9003: dict(BASE, id=9003, name="Ana Clara Ribeiro", key="ana clara ribeiro", example=False, birth_date="1990-07-02", problems="Asma",
@@ -161,7 +161,10 @@ async def _finalize(nid: int, request: Request):
 
 @mock.get("/patients")
 def _patients():
-    return {"patients": [dict({k: v for k, v in p.items() if k != "key"}, notes=0, last=None) for p in PATS.values()]}
+    def conta(pid):                     # como o db.list_patients: as evoluções com texto e a data da última
+        ns = [n for n in NOTES.values() if n["pid"] == pid and n.get("content")]
+        return {"notes": len(ns), "last": max((n.get("event_start") or n["updated_at"] for n in ns), default=None)}
+    return {"patients": [dict({k: v for k, v in p.items() if k != "key"}, **conta(p["id"])) for p in PATS.values()]}
 
 
 @mock.get("/calendar/events")
@@ -234,6 +237,19 @@ db.event_note_other_patient = lambda uid, eid, pid, key: bool(eid) and any(
     n["event_id"] == eid and n["pid"] != pid and (n["signed_at"] or n["content"]) for n in NOTES.values())
 # resumo clínico (Suspender e "Atualizar as medicações em uso" na aba Prescrições): grava no paciente em memória
 db.find_by_cpf = lambda uid, cpf, exclude_id=None: None
+# novo paciente (tela Pacientes → +): em memória, como o db (homônimos pela chave do nome)
+db.find_patients = lambda uid, name: [dict(x) for x in PATS.values() if x["key"] == db.patient_key(name)]
+
+
+def _create_patient(uid, name, birth_date=None, sex=None, cpf=None, phone=None, key=None, email=None, coverage=None,
+                    health_plan=None):
+    i = max(PATS) + 1
+    PATS[i] = dict(BASE, id=i, name=name, key=key or db.patient_key(name), example=False, birth_date=birth_date, sex=sex,
+                   cpf=cpf, phone=phone, email=email, coverage=coverage, health_plan=health_plan)
+    return dict(PATS[i])
+
+
+db.create_patient = _create_patient
 db.update_patient = lambda uid, pid, fields: (PATS[pid].update({k: v for k, v in fields.items() if k in db._PATIENT_FIELDS}) or dict(PATS[pid])) if pid in PATS else None
 # receitas e dados do médico em memória (os mesmos contratos de app/db.py); o médico do preview começa sem CRM, para o
 # "Emitir receita" mostrar o caminho de completar os dados em Configurações

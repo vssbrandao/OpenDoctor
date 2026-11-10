@@ -78,15 +78,15 @@
     .cfg-fields{display:flex;flex-direction:column;gap:16px}
     .cfg-row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:16px}
     .cfg-fld{display:flex;flex-direction:column;gap:8px;min-width:0}
-    /* dados da conta, só leitura: o campo preenchido de Configurações (branco, contorno fino, rótulo 12px em cima, texto 15px) */
-    .fl{position:relative;width:100%;height:84px;border-radius:24px;background:#fff;box-shadow:inset 0 0 0 1px var(--card-border)}
+    /* dados da conta, só leitura: o campo preenchido de Configurações (cinza #F7F8F8, contorno fino, rótulo 12px em cima, texto 15px) */
+    .fl{position:relative;width:100%;height:84px;border-radius:24px;background:#F7F8F8;box-shadow:inset 0 0 0 1px var(--card-border)}
     .fl-input{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:24px;outline:none;background:transparent;
       padding:41.4px 32px 24.6px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:400;font-size:15px;
       line-height:18px;letter-spacing:-.2px;color:#000;cursor:default;text-overflow:ellipsis}
     .fl-label{position:absolute;left:32px;right:32px;top:24.6px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
       font-family:var(--disp);font-weight:500;font-size:12px;line-height:1.4;color:#7D7D82}
     /* metade vazia do par CRM | UF (conta antiga): o campo vazio de Configurações (cinza, rótulo 14px no meio) */
-    .fl.vazio{background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent}
+    .fl.vazio{background:#F7F8F8;box-shadow:inset 0 0 0 1px transparent}
     .fl.vazio .fl-label{top:32.2px;font-size:14px;color:#6B6B70}
     .cfg-help{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
     /* rodapé do cartão: o botão de Integrações (h 64, padding 16 48, pílula, borda fina, 14 Bold) e o status ao lado */
@@ -121,9 +121,9 @@
     .od-btn.perigo:hover{background:#A01218}
     .od-btn.perigo[disabled],.od-btn.perigo[disabled]:hover{opacity:.45;cursor:not-allowed;background:#C0151D}
     .od-btn.ghost[disabled],.od-btn.ghost[disabled]:hover{opacity:.45;cursor:not-allowed;background:none}
-    .fl.edit{background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent;transition:background-color .12s,box-shadow .12s}
+    .fl.edit{background:#F7F8F8;box-shadow:inset 0 0 0 1px transparent;transition:background-color .12s,box-shadow .12s}
     .fl.edit:focus-within{background:#fff;box-shadow:inset 0 0 0 1px #7D7D82}
-    .fl.edit.cheio:not(:focus-within){background:#fff;box-shadow:inset 0 0 0 1px var(--card-border)}
+    .fl.edit.cheio:not(:focus-within){background:#F7F8F8;box-shadow:inset 0 0 0 1px var(--card-border)}
     .fl.edit .fl-input{cursor:text}
     .fl.edit .fl-input::placeholder{color:transparent}
     .fl.edit .fl-label{top:32.2px;font-size:14px;color:#6B6B70;transition:top .12s,font-size .12s,color .12s}
@@ -239,7 +239,7 @@
     // outros), que aperta o botão. O do menu diz "Alternar barra lateral"; os das barras de cima (.hd-btn), o aria-label,
     // que muda com o estado; os ícones do menu retraído, o nome (data-tip), sem atalho. Letras fora das que o navegador reserva (N, T, W, R) e do ⇧⌘V (colar sem formatação).
     (function () {
-      var ATALHO = { navToggle: 'S', agCreate: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', agExpand: 'A',
+      var ATALHO = { navToggle: 'S', agCreate: 'E', ptNew: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', ptBusca: 'F', agExpand: 'A',
                      raNew: 'O', raHist: 'H', raExpand: 'X' };
       var mac = /Mac|iPhone|iPad/.test(navigator.platform || '');
       var tip = document.createElement('div'), txt = document.createElement('span'), kbd = document.createElement('kbd');
@@ -288,15 +288,17 @@
         if (e.key === 'Escape') { esconde(); return; }
         if (e.isComposing || e.keyCode === 229) return;   // acento ou caractere ainda sendo montado pelo teclado
         if (!e.shiftKey || e.altKey || (mac ? !e.metaKey || e.ctrlKey : !e.ctrlKey || e.metaKey)) return;
-        var k = (e.key || '').toUpperCase(), id = null;
+        var k = (e.key || '').toUpperCase();
         // teclado em outro alfabeto (cirílico, grego…): vale a posição da tecla; nos latinos, só a letra que ela escreve
         if (/^[^\u0000-\u024f]$/.test(e.key || '') && /^Key[A-Z]$/.test(e.code || '')) k = e.code.slice(3);
-        Object.keys(ATALHO).forEach(function (i) { if (ATALHO[i] === k) id = i; });
-        var b = id && document.getElementById(id);
-        if (!b) return;                         // a tela não tem esse botão: o atalho fica com o navegador
+        var bs = Object.keys(ATALHO).filter(function (i) { return ATALHO[i] === k; })
+          .map(function (i) { return document.getElementById(i); }).filter(Boolean);
+        if (!bs.length) return;                 // a tela não tem esse botão: o atalho fica com o navegador
         e.preventDefault();
-        // como o clique: só com o botão à vista e livre (sem janela aberta por cima)
-        if (e.repeat || b.disabled || !aVista(b) || b.closest('[inert]') || janelaAberta()) return;
+        // como o clique: só com o botão à vista e livre (sem janela aberta por cima); a mesma letra em dois botões
+        // (o + e a lupa da agenda e os de Pacientes): vale o que está à vista
+        var b = bs.filter(aVista)[0];
+        if (e.repeat || !b || b.disabled || b.closest('[inert]') || janelaAberta()) return;
         esconde();
         // como o clique de verdade: o aperto fecha o que fecha ao clicar fora (a janela do evento, a busca de remédio)
         b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));

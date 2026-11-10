@@ -65,7 +65,7 @@
     .hd-btn.on{background:rgba(0,0,0,.05)}
     /* menus da agenda (abrem abaixo do ícone, alinhados à direita dele; posição calculada no JS) */
     /* campo de busca do Histórico e das receitas (a busca geral é a janela .bs, no fim da página) */
-    .srch-in{height:40px;border:0;border-radius:10px;background:#F3F3F3;padding:0 12px;outline:none;
+    .srch-in{height:40px;border:0;border-radius:10px;background:#F7F8F8;padding:0 12px;outline:none;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .srch-in::placeholder{color:#8B8B8B}
 
@@ -252,7 +252,7 @@
        lista das apresentações abre embaixo, num cartão branco (canto 12, linhas cinza ao passar) */
     .fz{position:relative}
     .fz[hidden]{display:none}
-    .fz-bar{display:flex;align-items:center;gap:14px;height:44px;box-sizing:border-box;padding:0 16px;border-radius:12px;background:var(--rxc-cz);color:#76757A;cursor:text}
+    .fz-bar{display:flex;align-items:center;gap:14px;height:44px;box-sizing:border-box;padding:0 16px;border-radius:12px;background:var(--pill);color:#76757A;cursor:text}
     .fz:focus-within .fz-bar{box-shadow:inset 0 0 0 1px var(--rxc-bd)}
     .fz.off .fz-bar{opacity:.6}
     .fz-bar svg{flex:none;width:16px;height:16px}
@@ -357,7 +357,7 @@
     .pr-field{display:flex;flex-direction:column;gap:6px;min-width:0}
     .pr-field.wide{grid-column:1 / -1}
     .pr-field span{font-family:var(--disp);font-weight:400;font-size:13px;line-height:18px;color:#5F6368}
-    .pr-in{height:36px;border:1px solid #DADCE0;border-radius:10px;background:#fff;padding:0 12px;outline:none;width:100%;
+    .pr-in{height:36px;border:1px solid #DADCE0;border-radius:10px;background:#F7F8F8;padding:0 12px;outline:none;width:100%;
       font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#1F1F1F}
     .pr-in:focus{border-color:#0B57D0;box-shadow:0 0 0 1px #0B57D0}
     .pr-in.bad{border-color:#D93025;background:#FFF7F6}
@@ -403,7 +403,7 @@
       display:flex;align-items:center;justify-content:center}
     .pr-roundbtn:disabled{cursor:default;opacity:.6}
     .pr-note,.pr-soapf textarea{display:block;width:100%;min-height:220px;resize:vertical;border:1px solid #E8EAED;border-radius:12px;
-      padding:14px 16px;outline:none;background:#fff;
+      padding:14px 16px;outline:none;background:#F7F8F8;
       font-family:var(--disp);font-weight:400;font-size:15px;line-height:24px;color:#1F1F1F}
     .pr-note::placeholder,.pr-soapf textarea::placeholder{color:#9AA0A6}
     .pr-note:focus,.pr-soapf textarea:focus{border-color:#0B57D0;box-shadow:0 0 0 1px #0B57D0}
@@ -449,7 +449,7 @@
     .pr-add-b{font-family:var(--disp);font-weight:400;font-size:14px;line-height:22px;color:#1F1F1F;white-space:pre-wrap;word-wrap:break-word}
     .pr-addbox{display:flex;flex-direction:column;gap:8px}
     .pr-addbox[hidden]{display:none}
-    .pr-addbox textarea{width:100%;min-height:80px;resize:vertical;border:1px solid #DADCE0;border-radius:12px;padding:10px 14px;outline:none;background:#fff;
+    .pr-addbox textarea{width:100%;min-height:80px;resize:vertical;border:1px solid #DADCE0;border-radius:12px;padding:10px 14px;outline:none;background:#F7F8F8;
       font-family:var(--disp);font-weight:400;font-size:14px;line-height:22px;color:#1F1F1F}
     .pr-addbox textarea:focus{border-color:#0B57D0;box-shadow:0 0 0 1px #0B57D0}
     .pr-addbox .pr-foot{justify-content:flex-end}
@@ -659,7 +659,7 @@
     .pr-rec-chip{height:24px;display:inline-flex;align-items:center;padding:4px 10px;border-radius:8px;background:#E9EBF0;font-size:12px;line-height:16px;font-weight:500;color:#444746}
     .pr-rec-s{font-size:12px;line-height:16px;color:#56595E}
     .pr-roundbtn{width:40px;height:40px;background:#fff}
-    .pr-note,.pr-soapf textarea{border:1px solid #DADCE0;border-radius:12px;padding:12px 16px;font-size:14px;line-height:22px;color:#0A0A0A;background:#fff}
+    .pr-note,.pr-soapf textarea{border:1px solid #DADCE0;border-radius:12px;padding:12px 16px;font-size:14px;line-height:22px;color:#0A0A0A;background:#F7F8F8}
     .pr-soapf textarea{min-height:96px}
     .pr-soap{gap:24px}
     .pr-soapf{gap:8px}
@@ -713,7 +713,7 @@
     /* histórico (linhas de 16px, busca em pílula de 40px) */
     .pr-histbar{gap:16px}
     .pr-label{font-weight:500;font-size:20px;line-height:28px;color:#0A0A0A}
-    .pr-histq{width:280px;height:40px;border:0;border-radius:20px;background:#F0F2F5;padding:0 16px;font-size:14px}
+    .pr-histq{width:280px;height:40px;border:0;border-radius:20px;background:#F7F8F8;padding:0 16px;font-size:14px}
     .pr-item{padding:16px 0;border-top:0;border-bottom:1px solid #F0F2F5;gap:8px}
     .pr-item:first-child{padding-top:16px;border-top:1px solid #F0F2F5}
     .pr-item-head{gap:12px}
@@ -1572,81 +1572,119 @@
       .pr-bigcard,.pr-sumcol{background:none!important;padding:0!important;border-radius:0!important}
       .pr-sumcol,.pr-allergy,.pr-item,.pr-trow,.ov-chart,.ov-dxrow,.ov-post{break-inside:avoid}
     }
-    /* ===== PACIENTES (estilo "Configurações": título grande, seções com rótulo, cartões brancos com
-       borda fina e linhas com divisória; ações à direita) — medidas em px reais (referência 2x) ===== */
+    /* ===== PACIENTES (referência do usuário): a busca e "+ Novo paciente" em cima, os números em um cartão, a tabela com
+       as linhas de uma margem à outra (o texto para dentro, alinhado com a busca) e as páginas presas embaixo da tela.
+       Cores e pesos medidos na referência: cinza #6B6B6E (médio), texto #171717, linhas #EEEEEE ===== */
     .pt-view{display:none;position:absolute;inset:0;overflow-y:auto;flex-direction:column;align-items:center;
       background:#fff;z-index:4;scrollbar-width:thin;container-type:inline-size;container-name:pt}
     .stage.pacientes .pt-view{display:flex}
+    .stage.prontuario .pt-view{visibility:hidden}   /* o prontuário por cima: os botões de baixo saem do atalho, do Tab e da dica */
     .stage.pacientes .ag-head,.stage.pacientes .cal,.stage.pacientes .wk{display:none}
-    .pt{width:100%;max-width:840px;padding:20px 40px 96px;height:max-content;   /* 760px de conteúdo */display:flex;flex-direction:column;font-family:var(--disp);color:#0D0D0D}
+    /* o conteúdo alinhado com a barra de cima: à esquerda com a palavra "Pacientes" (24), à direita com o desenho da lupa
+       (8 da barra + 10,8 do desenho dentro do botão de 36 = 19) */
+    .pt{flex:1 0 auto;width:100%;padding:0 19px 0 24px;display:flex;flex-direction:column;font-family:var(--disp);color:#0D0D0D}   /* ocupa a altura: o rodapé vai para baixo */
     /* barra do título igual à do Assistente AI (.rp-head/.rp-title): 24px da esquerda, 14px bold, 52px de altura */
     .pt-head{position:sticky;top:0;z-index:2;align-self:stretch;flex:none;display:flex;align-items:center;gap:8px;
       min-height:52px;padding:8px 8px 8px 24px;background:#fff}
     .pt-title{margin:0;font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    .pt-tools{display:flex;align-items:center;gap:8px}
-    .pt-searchbox{flex:1;min-width:0;height:36px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid #E5E5E5;border-radius:10px;background:#fff}
-    .pt-searchbox:focus-within{border-color:#B5B5B5}
-    .pt-searchbox img{flex:none;display:block;opacity:.8}
-    .pt-search{flex:1;min-width:0;height:34px;border:0;outline:none;background:none;
-      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#0D0D0D}
-    .pt-search::placeholder{color:#8F8F8F}
-    .pt-btn{height:36px;padding:0 14px;border:0;border-radius:10px;background:#F2F2F2;cursor:pointer;white-space:nowrap;flex:none;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0D0D0D}
-    .pt-btn:hover{background:#E9E9E9}
-    .pt-btn.dark{background:#0D0D0D;color:#fff}
-    .pt-btn.dark:hover{background:#000}
-    .pt-btn:disabled{opacity:.5;cursor:default}
-    .pt-ghost{height:36px;padding:0 12px;border:0;border-radius:10px;background:none;cursor:pointer;
-      font-family:var(--disp);font-weight:500;font-size:14px;color:#6E6E6E}
-    .pt-ghost:hover{background:#F2F2F2;color:#0D0D0D}
+    .pt-head .hd-actions{margin-left:auto}           /* o + e a lupa no alto, como no calendário */
     .pt-err{margin-top:16px;font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#D93025}
     .pt-err[hidden]{display:none}
-    .pt-sec{margin-top:36px;display:flex;flex-direction:column;gap:12px}
-    .pt-sec[hidden]{display:none}
-    .pt-label{font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#0D0D0D}
-    .pt-card{border:1px solid #E5E5E5;border-radius:16px;background:#fff;padding:0 16px}
-    .pt-row{display:flex;align-items:center;gap:24px;padding:16px 0;min-height:72px}
-    .pt-row + .pt-row{border-top:1px solid #EDEDED}
-    .pt-row.link{cursor:pointer}
-    .pt-row.link:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px;border-radius:8px}
-    .pt-info{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-    .pt-name{font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#0D0D0D;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .pt-row.link:hover .pt-name{text-decoration:underline;text-underline-offset:3px;text-decoration-color:#C4C4C4}
-    .pt-sub{font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#6E6E6E}
-    .pt-acts{display:flex;align-items:center;gap:4px;flex:none}
-    .pt-icon{width:32px;height:32px;border:0;border-radius:8px;background:none;cursor:pointer;padding:0;
-      display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s ease}
-    .pt-icon:hover{background:#F2F2F2}
-    .pt-row:hover .pt-icon,.pt-row:focus-within .pt-icon{opacity:1}
-    @media (hover:none){.pt-icon{opacity:1}}             /* toque (iPad/celular): ações sempre visíveis */
-    .pt-rename{width:100%;height:30px;border:1px solid #B5B5B5;border-radius:8px;outline:none;background:#fff;padding:0 8px;margin-left:-9px;
-      font-family:var(--disp);font-weight:500;font-size:15px;line-height:20px;color:#0D0D0D}
-    .pt-field{width:260px;flex:none;height:36px;border:1px solid #E5E5E5;border-radius:10px;background:#fff;padding:0 12px;outline:none;
-      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#0D0D0D}
-    .pt-field:focus{border-color:#B5B5B5}
-    .pt-field::placeholder{color:#8F8F8F}
-    .pt-select{position:relative;flex:none}
-    .pt-select select{appearance:none;-webkit-appearance:none;height:36px;min-width:160px;border:1px solid #E5E5E5;border-radius:10px;background:#fff;
-      padding:0 36px 0 12px;outline:none;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0D0D0D}
-    .pt-select select:focus{border-color:#B5B5B5}
-    .pt-select svg{position:absolute;right:12px;top:50%;margin-top:-4px;pointer-events:none}
-    .pt-rowfoot{justify-content:flex-end;gap:8px;min-height:0}
     .pt-empty{padding:24px 0;font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#6E6E6E}
     .pt-empty a{color:#0B57D0}
-    @container pt (max-width:640px){
-      .pt-row{flex-wrap:wrap;gap:12px}
-      .pt-info{flex-basis:100%}
-      .pt-field,.pt-select,.pt-select select{width:100%;min-width:0}
-      .pt-acts{width:100%;justify-content:flex-end}
-      .pt-rowfoot .pt-ghost,.pt-rowfoot .pt-btn{flex:1}
-    }
-    @container pt (max-width:420px){                     /* coluna estreita (agenda + assistente lado a lado) */
-      .pt{padding:16px 16px 64px}
-      .pt-tools{flex-wrap:wrap}
-      .pt-searchbox{flex-basis:100%}
-      .pt-tools .pt-btn{flex:1}
-    }
+    .pt-stats{margin-top:32px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #EBEBEB;border-radius:12px;background:#fff}
+    .pt-stats[hidden]{display:none}
+    .pt-stat{min-width:0;padding:16px 20px;display:flex;flex-direction:column;gap:8px}
+    .pt-stat + .pt-stat{border-left:1px solid #EBEBEB}
+    .pt-stat span{font-weight:500;font-size:13px;line-height:18px;color:#6B6B6E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pt-stat b{font-weight:500;font-size:26px;line-height:32px;color:#161616}
+    #ptList{padding-bottom:24px}
+    /* a lista no tamanho dos Diagnósticos (Visão geral, .ov-dxrow): nome (e a etiqueta Exemplo) e a linha de baixo
+       (idade) | o número de consultas | a última consulta (as duas em duas linhas, como o nome e a idade), as 3 da mesma
+       largura | ⋯;
+       18 px em cima e embaixo, 24 entre as colunas, a divisória clara dentro da margem */
+    .pt-lista{margin-top:40px;display:flex;flex-direction:column}
+    .pt-linha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 32px;align-items:center;gap:24px;padding:18px 0;
+      border-bottom:1px solid #F0F2F5;cursor:pointer;font-family:var(--disp)}
+    .pt-linha:focus-visible{outline:2px solid #0B57D0;outline-offset:2px;border-radius:8px}
+    .pt-desc{display:flex;flex-direction:column;gap:4px;min-width:0}
+    .pt-desc small{min-height:16px;font-size:12px;line-height:16px;color:#36373A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pt-nm{display:flex;align-items:center;gap:8px;min-width:0}
+    .pt-name{min-width:0;font-family:var(--disp);font-weight:500;font-size:14px;line-height:18px;color:#0A0A0A;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .pt-linha:hover .pt-name{text-decoration:underline;text-underline-offset:3px;text-decoration-color:#C4C4C4}
+    .pt-linha .pt-mais{grid-column:4;justify-self:end}   /* no fim da linha */
+    .pt-linha .pt-ex{height:22px;line-height:22px;border-radius:11px;padding:0 10px}   /* 22 de altura (a fonte é a mesma), as pontas redondas e 10 de cada lado */
+    .pt-linha .pt-nm .pt-ex{margin:-2px 0}   /* ao lado do nome, não aumenta a linha (fica igual às sem etiqueta) */
+    /* a última consulta e o número de consultas: em duas linhas como o nome (o título na linha do nome, o valor na da
+       idade); as 3 colunas da mesma largura, a distância entre as 3 informações equilibrada */
+    .pt-ultc{display:flex;flex-direction:column;gap:4px;white-space:nowrap;min-width:0}
+    .pt-ultc b{font-weight:500;font-size:14px;line-height:18px;color:#0A0A0A}
+    .pt-ultc small{font-size:12px;line-height:16px;color:#36373A}
+    .pt-rename{width:100%;height:30px;border:1px solid #B5B5B5;border-radius:8px;outline:none;background:#F7F8F8;padding:0 8px;margin-left:-9px;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0D0D0D}
+    .pt-ex{flex:none;height:20px;padding:0 6px;border-radius:6px;background:#F2F2F2;font-weight:500;font-size:12px;line-height:20px;color:#6C6C6F;white-space:nowrap}
+    .pt-mais{width:32px;height:32px;border:0;border-radius:8px;background:none;cursor:pointer;display:inline-flex;align-items:center;
+      justify-content:center;color:#8F8F8F;vertical-align:middle}
+    .pt-mais:hover,.pt-mais[aria-expanded="true"]{background:#F2F2F2;color:#0D0D0D}
+    .pt-menu{position:fixed;z-index:50;min-width:184px;padding:6px;display:flex;flex-direction:column;background:#fff;
+      border:1px solid #E5E5E5;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.12)}
+    .pt-menu[hidden]{display:none}
+    .pt-menu button{height:36px;padding:0 10px;border:0;border-radius:8px;background:none;text-align:left;cursor:pointer;
+      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#0D0D0D}
+    .pt-menu button:hover,.pt-menu button:focus-visible{background:#F2F2F2;outline:none}
+    .pt-menu button.perigo{color:#D93025}
+    /* as páginas: presas embaixo da tela (com poucos pacientes, no fim dela; com muitos, à vista enquanto a lista rola) */
+    .pt-pag{position:sticky;bottom:0;z-index:3;margin:auto -19px 0 -24px;padding:14px 19px 14px 24px;display:flex;align-items:center;gap:16px;
+      background:#fff;font-weight:500;font-size:13px;line-height:18px;color:#6B6B6E}
+    .pt-pag[hidden]{display:none}
+    .pt-pag{transition:box-shadow .15s}
+    .pt-pag.linha{box-shadow:0 -1px 0 #EEEEEE}      /* a lista encostou nas páginas (passa por baixo): a linha divide */
+    .pt-cont{flex:1;min-width:0}
+    .pt-nav{display:flex;padding:1px;border:1px solid #E5E5E5;border-radius:8px}
+    .pt-nav button{width:30px;height:28px;border:0;border-radius:6px;background:none;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;color:#0D0D0D}
+    .pt-nav button:hover:not(:disabled){background:#F2F2F2}
+    .pt-nav button:disabled{opacity:.4;cursor:default}
+    /* coluna estreita (o assistente ao lado): os números menores; as margens ficam as da barra de cima */
+    @container pt (max-width:520px){ .pt-linha{grid-template-columns:minmax(0,1fr) 32px;gap:16px} .pt-ultc{display:none} .pt-linha .pt-mais{grid-column:2} .pt-stat{padding:12px 14px} .pt-stat b{font-size:20px;line-height:26px} }
+    /* novo paciente: no lugar do assistente (a conversa fica por baixo, guardada: fora do Tab, dos atalhos e da dica),
+       com o visual do login (web/opendoctor-login.html): campos .fl de 84 com o rótulo dentro, 8 px entre eles, pares lado
+       a lado e o botão preto de 84; o título no alto como o do assistente; fecha pelo × */
+    .right.novo > :not(.rp-novo){visibility:hidden}
+    .rp-novo{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;background:#fff;font-family:var(--disp);
+      box-shadow:inset 1px 0 0 var(--sb-border)}   /* a linha que divide a agenda e o assistente (a do .right) continua */
+    .rp-novo[hidden]{display:none}
+    .rp-novo h2.rp-title{margin:0}                     /* o título do tamanho de "Assistente AI" */
+    .rp-novo-corpo{flex:1;min-height:0;overflow-y:auto;padding:16px 24px 24px;display:flex;flex-direction:column}
+    .rp-novo-pe{flex:none;display:flex;flex-direction:column;gap:12px;padding:0 24px 24px}   /* o botão preso embaixo (sem fundo: não cobre a linha que divide) */
+    .nv-form{display:flex;flex-direction:column;gap:16px}
+    .nv-campos{display:flex;flex-direction:column;gap:8px}
+    .nv-linha{display:flex;gap:8px;align-items:flex-start}
+    .nv-linha > .fl{flex:1 1 0;min-width:0}
+    .rp-novo .fl{position:relative;width:100%;height:84px;border-radius:24px;background:#F7F8F8;box-shadow:inset 0 0 0 1px transparent;
+      transition:background-color .12s,box-shadow .12s}
+    .rp-novo .fl[hidden]{display:none}
+    .rp-novo .fl:focus-within{background:#fff;box-shadow:inset 0 0 0 1px #7D7D82}
+    .rp-novo .fl.bad{box-shadow:inset 0 0 0 1px #D93025}
+    .rp-novo .fl-input{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:24px;outline:none;background:transparent;
+      padding:41.4px 32px 24.6px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:500;font-size:15px;
+      line-height:18px;letter-spacing:-.2px;color:#000}
+    .rp-novo .fl-input::placeholder{color:transparent}
+    .rp-novo .fl-label{position:absolute;left:32px;right:32px;top:32.2px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;color:#6B6B70;transition:top .12s,font-size .12s,color .12s}
+    .rp-novo .fl-input:focus + .fl-label,.rp-novo .fl-input:not(:placeholder-shown) + .fl-label,.rp-novo .fl-sel .fl-label{
+      top:24.6px;font-size:12px;color:#7D7D82}
+    .rp-novo .fl-sel select{appearance:none;-webkit-appearance:none;padding-right:56px;cursor:pointer}
+    .rp-novo .fl-sel svg{position:absolute;right:32px;top:50%;margin-top:-3px;pointer-events:none}
+    .nv-err{padding:0 32px;font-weight:500;font-size:14px;line-height:1.4;color:#D93025}
+    .nv-err[hidden]{display:none}
+    .nv-btn{width:100%;height:84px;padding:0 48px;border-radius:999px;display:flex;align-items:center;justify-content:center;
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;white-space:nowrap}
+    .nv-dark{border:0;background:#0B0B0C;color:#fff}
+    .nv-dark:hover{background:#2A2A2D}
+    .nv-btn:disabled{opacity:.6;cursor:default}
+    .nv-btn:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
        calha das horas 84px, colunas >= 158px, 142px por hora, cabeçalho dos dias 51px */
@@ -1770,7 +1808,7 @@
       display:flex;align-items:center;justify-content:center}
     .evpop-close:hover{background:rgba(0,0,0,.05)}
     .evpop-close[hidden]{display:none}
-    .evpop-card{background:#F6F6F6;border-radius:16px;padding:4px;display:flex;flex-direction:column}
+    .evpop-card{background:#F7F8F8;border-radius:16px;padding:4px;display:flex;flex-direction:column}
     .evpop-row{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;
       transition:background .12s ease}
     .evpop-row.click{cursor:pointer}
@@ -2441,31 +2479,22 @@
       <div class="pt-view" id="ptView">
         <div class="pt-head">
           <h1 class="pt-title">Pacientes</h1>
+          <div class="hd-actions">
+            <button class="hd-btn" id="ptNew" type="button" aria-label="Novo paciente" aria-controls="ptNewRow" aria-expanded="false"><img src="assets/icons/agenda-add.svg?v=3" width="36" height="36" alt=""></button>
+            <button class="hd-btn" id="ptBusca" type="button" aria-label="Buscar pacientes" aria-haspopup="dialog"><img src="assets/icons/agenda-search.svg?v=3" width="36" height="36" alt=""></button>
+          </div>
         </div>
         <div class="pt">
-          <div class="pt-tools">
-            <label class="pt-searchbox"><img src="assets/icons/agenda-search.svg?v=3" width="32" height="32" alt="" style="margin:-8px -6px -8px -10px">
-              <input class="pt-search" id="ptSearch" type="search" placeholder="Buscar paciente" autocomplete="off" spellcheck="false"></label>
-            <button class="pt-btn" id="ptNew" type="button">Novo paciente</button>
-          </div>
           <div class="pt-err" id="ptErr" hidden></div>
-          <section class="pt-sec" id="ptNewRow" hidden>
-            <div class="pt-label">Novo paciente</div>
-            <div class="pt-card">
-              <label class="pt-row"><span class="pt-info"><span class="pt-name">Nome completo</span><span class="pt-sub">Como aparece na agenda e no prontuário</span></span>
-                <input class="pt-field" id="ptNewName" type="text" placeholder="Nome e sobrenome" autocomplete="off" spellcheck="false"></label>
-              <label class="pt-row"><span class="pt-info"><span class="pt-name">Data de nascimento</span><span class="pt-sub">Diferencia pacientes com o mesmo nome</span></span>
-                <input class="pt-field" id="ptNewBirth" type="date"></label>
-              <label class="pt-row"><span class="pt-info"><span class="pt-name">Sexo</span><span class="pt-sub">Opcional</span></span>
-                <span class="pt-select"><select id="ptNewSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option></select><svg width="10" height="7" viewBox="0 0 10 7" fill="none"><path d="M1 1.2l4 4 4-4" stroke="#6E6E6E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></label>
-              <div class="pt-row pt-rowfoot">
-                <button class="pt-ghost" id="ptNewCancel" type="button">Cancelar</button>
-                <button class="pt-btn dark" id="ptNewSave" type="button">Criar paciente</button>
-              </div>
-            </div>
-          </section>
+          <div class="pt-stats" id="ptStats" hidden>
+            <div class="pt-stat"><span>Pacientes</span><b id="ptStTotal"></b></div>
+            <div class="pt-stat"><span>Atendidos em 30 dias</span><b id="ptSt30"></b></div>
+            <div class="pt-stat"><span>Total de consultas</span><b id="ptStCons"></b></div>
+          </div>
           <div id="ptList"></div>
+          <div class="pt-pag" id="ptPag" hidden></div>
         </div>
+        <div class="pt-menu" id="ptMenu" role="menu" hidden></div>
       </div>
       <div class="wk" id="wk"><div class="wk-grid" id="wkGrid"></div></div>
       <div class="cal-pop" id="calPop" hidden>
@@ -2541,6 +2570,34 @@
       </div>
 
       <div class="bi-note">Apoio à decisão — verifique sempre.</div>
+
+      <!-- novo paciente (tela Pacientes → +): no lugar do assistente, que fica por baixo com a conversa guardada -->
+      <section class="rp-novo" id="ptNewRow" aria-labelledby="ptNewT" hidden>
+        <div class="rp-head">
+          <h2 class="rp-title" id="ptNewT">Novo paciente</h2>
+          <div class="hd-actions"><button class="hd-btn" id="ptNewX" type="button" aria-label="Fechar"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M13 13l10 10M23 13L13 23" stroke="#879196" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+        </div>
+        <div class="rp-novo-corpo">
+          <div class="nv-form">
+            <div class="nv-campos">
+              <div class="fl"><input class="fl-input" id="ptNewName" type="text" placeholder=" " autocomplete="off" spellcheck="false" autocapitalize="words" enterkeyhint="next"><label class="fl-label" for="ptNewName">Nome completo</label></div>
+              <div class="fl"><input class="fl-input" id="ptNewCpf" type="text" placeholder=" " autocomplete="off" inputmode="numeric" enterkeyhint="next"><label class="fl-label" for="ptNewCpf">CPF</label></div>
+              <div class="nv-linha">
+                <div class="fl"><input class="fl-input" id="ptNewBirth" type="text" placeholder=" " autocomplete="off" inputmode="numeric" enterkeyhint="next"><label class="fl-label" for="ptNewBirth">Nascimento</label></div>
+                <div class="fl fl-sel"><select class="fl-input" id="ptNewSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option></select><label class="fl-label" for="ptNewSex">Sexo</label><svg width="10" height="7" viewBox="0 0 10 7" fill="none" aria-hidden="true"><path d="M1 1.2l4 4 4-4" stroke="#6E6E6E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </div>
+              <div class="fl"><input class="fl-input" id="ptNewEmail" type="email" inputmode="email" maxlength="254" placeholder=" " autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next"><label class="fl-label" for="ptNewEmail">E-mail</label></div>
+              <div class="fl"><input class="fl-input" id="ptNewPhone" type="tel" inputmode="tel" placeholder=" " autocomplete="off" enterkeyhint="next"><label class="fl-label" for="ptNewPhone">Telefone</label></div>
+              <div class="fl fl-sel"><select class="fl-input" id="ptNewCov"><option value="">Não informado</option><option value="particular">Particular</option><option value="convenio">Convênio</option></select><label class="fl-label" for="ptNewCov">Tipo de atendimento</label><svg width="10" height="7" viewBox="0 0 10 7" fill="none" aria-hidden="true"><path d="M1 1.2l4 4 4-4" stroke="#6E6E6E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              <div class="fl" id="ptNewPlanoBox" hidden><input class="fl-input" id="ptNewPlano" type="text" placeholder=" " autocomplete="off" spellcheck="false" enterkeyhint="go"><label class="fl-label" for="ptNewPlano">Plano do convênio</label></div>
+            </div>
+          </div>
+        </div>
+        <div class="rp-novo-pe">                            <!-- preso no pé do painel; o erro logo acima do botão -->
+          <div class="nv-err" id="ptNewErr" role="status" hidden></div>
+          <button class="nv-btn nv-dark" id="ptNewSave" type="button">Criar paciente</button>
+        </div>
+      </section>
     </div>
 
     <!-- Popover: criar evento (abre ao clicar num espaço vazio da agenda) -->
@@ -2652,7 +2709,7 @@
     // outros), que aperta o botão. O do menu diz "Alternar barra lateral"; os das barras de cima (.hd-btn), o aria-label,
     // que muda com o estado; os ícones do menu retraído, o nome (data-tip), sem atalho. Letras fora das que o navegador reserva (N, T, W, R) e do ⇧⌘V (colar sem formatação).
     (function () {
-      var ATALHO = { navToggle: 'S', agCreate: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', agExpand: 'A',
+      var ATALHO = { navToggle: 'S', agCreate: 'E', ptNew: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', ptBusca: 'F', agExpand: 'A',
                      raNew: 'O', raHist: 'H', raExpand: 'X' };
       var mac = /Mac|iPhone|iPad/.test(navigator.platform || '');
       var tip = document.createElement('div'), txt = document.createElement('span'), kbd = document.createElement('kbd');
@@ -2701,15 +2758,17 @@
         if (e.key === 'Escape') { esconde(); return; }
         if (e.isComposing || e.keyCode === 229) return;   // acento ou caractere ainda sendo montado pelo teclado
         if (!e.shiftKey || e.altKey || (mac ? !e.metaKey || e.ctrlKey : !e.ctrlKey || e.metaKey)) return;
-        var k = (e.key || '').toUpperCase(), id = null;
+        var k = (e.key || '').toUpperCase();
         // teclado em outro alfabeto (cirílico, grego…): vale a posição da tecla; nos latinos, só a letra que ela escreve
         if (/^[^\u0000-\u024f]$/.test(e.key || '') && /^Key[A-Z]$/.test(e.code || '')) k = e.code.slice(3);
-        Object.keys(ATALHO).forEach(function (i) { if (ATALHO[i] === k) id = i; });
-        var b = id && document.getElementById(id);
-        if (!b) return;                         // a tela não tem esse botão: o atalho fica com o navegador
+        var bs = Object.keys(ATALHO).filter(function (i) { return ATALHO[i] === k; })
+          .map(function (i) { return document.getElementById(i); }).filter(Boolean);
+        if (!bs.length) return;                 // a tela não tem esse botão: o atalho fica com o navegador
         e.preventDefault();
-        // como o clique: só com o botão à vista e livre (sem janela aberta por cima)
-        if (e.repeat || b.disabled || !aVista(b) || b.closest('[inert]') || janelaAberta()) return;
+        // como o clique: só com o botão à vista e livre (sem janela aberta por cima); a mesma letra em dois botões
+        // (o + e a lupa da agenda e os de Pacientes): vale o que está à vista
+        var b = bs.filter(aVista)[0];
+        if (e.repeat || !b || b.disabled || b.closest('[inert]') || janelaAberta()) return;
         esconde();
         // como o clique de verdade: o aperto fecha o que fecha ao clicar fora (a janela do evento, a busca de remédio)
         b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
@@ -8726,10 +8785,9 @@
     (function () {
       var stage = document.querySelector('.stage');
       var $ = function (id) { return document.getElementById(id); };
-      var list = $('ptList'), search = $('ptSearch'), err = $('ptErr');
+      var list = $('ptList'), err = $('ptErr');   // buscar é pela lupa no alto (a janela de busca, na aba Pacientes)
       var navC = $('navConsultas'), navP = $('navPacientes');
       if (!stage || !list) return;
-      var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
       var all = [], more = false, loaded = false, denied = false;   // more: a lista veio cortada nos mais recentes
       function norm(v) { return (v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
       function initials(n) {
@@ -8742,71 +8800,113 @@
                             body: body ? JSON.stringify(body) : undefined })
           .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); });
       }
-      function sub(p) {
-        var d = p.last ? new Date(p.last) : null;
-        var notes = !p.notes ? 'Sem anotações no prontuário' : p.notes + (p.notes === 1 ? ' anotação' : ' anotações') +
-                    (d ? ' · última em ' + d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear() : '');
-        return (p.example ? 'Exemplo (dados fictícios) · ' : '') + (p.birth_date ? ptAge(p.birth_date) + ' · ' : 'Sem data de nascimento · ') + notes;
-      }
-      function iconBtn(title, svg, onClick) {
-        var b = document.createElement('button'); b.type = 'button'; b.className = 'pt-icon';
-        b.title = title; b.setAttribute('aria-label', title); b.innerHTML = svg;
-        b.addEventListener('click', function (e) { e.stopPropagation(); onClick(); });
-        return b;
-      }
-      var PEN = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10.6 2.6l2.8 2.8M2.5 13.5l.6-3.1 7.5-7.5a1.4 1.4 0 0 1 2 0l.8.8a1.4 1.4 0 0 1 0 2l-7.5 7.5-3.4.3z" stroke="#6E6E6E" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      var BIN = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 4h11M6.2 4V2.6h3.6V4M4 4l.7 9.2a1 1 0 0 0 1 .9h4.6a1 1 0 0 0 1-.9L12 4M6.6 6.6v4.6M9.4 6.6v4.6" stroke="#6E6E6E" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
-      function letter(name) { var c = norm(name).trim().charAt(0).toUpperCase(); return /[A-Z]/.test(c) ? c : '#'; }
 
-      // lista em seções; ao buscar, uma seção só com os resultados
+      // atendido nos últimos 30 dias: a última consulta (com anotação) foi há até 30 dias
+      function recente(p) { return !!(p.notes && p.last) && (Date.now() - new Date(p.last).getTime()) / 864e5 <= 30; }
+      var MAIS = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.5" cy="8" r="1.25" fill="currentColor"/></svg>';
+      var SETA = { primeira: 'M11 4L7 8l4 4M5 4v8', anterior: 'M10 4L6 8l4 4', proxima: 'M6 4l4 4-4 4', ultima: 'M5 4l4 4-4 4M11 4v8' };
+      var pagina = 1, porPag = 30;                          // 30 por página (sem o "Linhas por página")
+      // os números de cima: de todos os pacientes lidos (a lista cortada mostra "1000+")
+      function numeros() {
+        var st = $('ptStats');
+        st.hidden = !loaded || denied;
+        if (st.hidden) return;
+        var n30 = all.filter(recente).length, cons = all.reduce(function (n, p) { return n + (p.notes || 0); }, 0);   // consultas: as registradas no prontuário
+        $('ptStTotal').textContent = all.length + (more ? '+' : ''); $('ptStCons').textContent = cons + (more ? '+' : ''); $('ptSt30').textContent = n30;
+      }
       function render() {
-        var q = norm(search.value.trim());
-        var rows = all.filter(function (p) { return !q || norm(p.name).indexOf(q) >= 0; })
-                      .sort(function (a, b) { return a.name.localeCompare(b.name, 'pt-BR'); });
-        list.innerHTML = '';
+        var rows = all.slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'pt-BR'); });
+        list.innerHTML = ''; fechaMenu(); numeros(); pag.hidden = true;
         if (loaded && !rows.length) {
           list.appendChild(el('div', 'pt-empty', all.length ? 'Nenhum paciente encontrado.' : 'Nenhum paciente ainda. Crie um aqui ou ao marcar uma consulta na agenda.'));
           return;
         }
-        var groups = [], cur = null;
-        rows.forEach(function (p) {
-          // até 15 pacientes: um cartão só; acima disso, seções pela inicial (ajuda a achar)
-          var k = q ? 'Resultados' : all.length <= 15 ? 'Todos os pacientes' : letter(p.name);
-          if (!cur || cur.k !== k) { cur = { k: k, items: [] }; groups.push(cur); }
-          cur.items.push(p);
-        });
-        groups.forEach(function (g) {
-          var sec = el('section', 'pt-sec'), card = el('div', 'pt-card');
-          sec.appendChild(el('div', 'pt-label', g.k)); sec.appendChild(card);
-          g.items.forEach(function (p) { card.appendChild(row(p)); });
-          list.appendChild(sec);
-        });
-        if (more && !q) list.appendChild(el('div', 'pt-empty', 'Aqui estão os pacientes usados mais recentemente. Busque pelo nome para achar os outros.'));
+        var tot = Math.max(1, Math.ceil(rows.length / porPag));
+        if (pagina > tot) pagina = tot;
+        var lista = el('div', 'pt-lista');
+        rows.slice((pagina - 1) * porPag, pagina * porPag).forEach(function (p) { lista.appendChild(row(p)); });
+        list.appendChild(lista);
+        paginas(rows.length, tot);
+        if (more) list.appendChild(el('div', 'pt-empty', 'Aqui estão os pacientes usados mais recentemente. Busque pelo nome (na lupa) para achar os outros.'));
+        linhaRodape();
       }
-      // lista cortada: o servidor procura o nome entre todos e o que vier entra na lista
-      function remote() {
-        var v = search.value.trim();
-        if (!more || !norm(v).trim()) return;
-        api('POST', '/patients/search', { q: v }).then(function (res) {
-          if (!res.ok || search.value.trim() !== v) return;
-          var tem = {}; all.forEach(function (p) { tem[p.id] = 1; });
-          all = all.concat(((res.j && res.j.patients) || []).filter(function (p) { return !tem[p.id]; }));
-          render();
-        }).catch(function () {});
+      var pag = $('ptPag');
+      // a linha em cima das páginas: só quando a lista chega perto delas (a menos de 16 px, ou passando por baixo);
+      // com espaço entre as duas (poucos pacientes, o fim da rolagem), sem linha
+      var linhaRaf = 0;
+      function linhaRodape() {
+        cancelAnimationFrame(linhaRaf);
+        linhaRaf = requestAnimationFrame(function () {
+          var ult = list.lastElementChild;
+          if (pag.hidden || !ult) { pag.classList.remove('linha'); return; }
+          pag.classList.toggle('linha', pag.getBoundingClientRect().top - ult.getBoundingClientRect().bottom < 16);
+        });
       }
-      function row(p) {
-        var r = el('div', 'pt-row link'); r.tabIndex = 0;
-        var info = el('div', 'pt-info'), nm = el('div', 'pt-name', p.name);
-        info.appendChild(nm); info.appendChild(el('div', 'pt-sub', sub(p)));
-        var acts = el('div', 'pt-acts');
-        acts.appendChild(iconBtn('Renomear', PEN, function () { rename(p, info, nm); }));
-        if (!p.notes || p.example) acts.appendChild(iconBtn('Excluir', BIN, function () { del(p); }));   // a de exemplo sai com os dados fictícios
-        var open = el('button', 'pt-btn', 'Abrir prontuário'); open.type = 'button';
-        open.addEventListener('click', function (e) { e.stopPropagation(); openPr(p); });
-        acts.appendChild(open);
-        r.appendChild(info); r.appendChild(acts);
-        r.addEventListener('click', function (e) { if (!e.target.closest('.pt-rename')) openPr(p); });
+      $('ptView').addEventListener('scroll', linhaRodape, { passive: true });
+      if (window.ResizeObserver) new ResizeObserver(linhaRodape).observe($('ptView'));   // a janela ou o assistente mudam a altura
+      function paginas(n, tot) {                           // embaixo, preso: quantos, a página e as setas
+        pag.innerHTML = ''; pag.hidden = false;
+        pag.appendChild(el('span', 'pt-cont', n + (n === 1 ? ' paciente' : ' pacientes')));
+        pag.appendChild(el('span', null, 'Página ' + pagina + ' de ' + tot));
+        var nav = el('div', 'pt-nav');
+        [['primeira', 'Primeira página', 1], ['anterior', 'Página anterior', pagina - 1], ['proxima', 'Próxima página', pagina + 1], ['ultima', 'Última página', tot]].forEach(function (b) {
+          var x = el('button'); x.type = 'button'; x.setAttribute('aria-label', b[1]);
+          x.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="' + SETA[b[0]] + '" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          x.disabled = b[2] < 1 || b[2] > tot || b[2] === pagina;
+          x.addEventListener('click', function () { pagina = b[2]; render(); $('ptView').scrollTop = 0; });
+          nav.appendChild(x);
+        });
+        pag.appendChild(nav);
+      }
+      // o ⋯ da linha: Abrir prontuário, Renomear e Excluir (só quem pode sair: sem prontuário, ou a de exemplo)
+      var menu = $('ptMenu'), menuDe = null;
+      function fechaMenu() { if (!menu || menu.hidden) return; menu.hidden = true; if (menuDe) menuDe.setAttribute('aria-expanded', 'false'); menuDe = null; }
+      function abreMenu(btn, p, nmBox, nm) {
+        if (menuDe === btn) { fechaMenu(); return; }
+        fechaMenu(); menu.innerHTML = '';
+        var itens = [['Abrir prontuário', function () { openPr(p); }], ['Renomear', function () { rename(p, nmBox, nm); }]];
+        if (!p.notes || p.example) itens.push(['Excluir', function () { del(p); }, 'perigo']);   // a de exemplo sai com os dados fictícios
+        itens.forEach(function (it) {
+          var b = el('button', it[2] || null, it[0]); b.type = 'button'; b.setAttribute('role', 'menuitem');
+          b.addEventListener('click', function (e) { e.stopPropagation(); fechaMenu(); it[1](); });
+          menu.appendChild(b);
+        });
+        menu.hidden = false; menuDe = btn; btn.setAttribute('aria-expanded', 'true');
+        var r = btn.getBoundingClientRect(), h = menu.offsetHeight, w = menu.offsetWidth;
+        menu.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px';
+        menu.style.top = (r.bottom + 4 + h > innerHeight - 8 ? r.top - 4 - h : r.bottom + 4) + 'px';
+        menu.firstChild.focus();
+      }
+      document.addEventListener('click', function (e) { if (menu && !menu.hidden && !menu.contains(e.target)) fechaMenu(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && menu && !menu.hidden) { var b = menuDe; fechaMenu(); if (b) b.focus(); } });
+      $('ptView').addEventListener('scroll', fechaMenu);
+      var MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      function dataCurta(v) {                              // 26 Out de 2026
+        var d = v ? new Date(v) : null;
+        return d && !isNaN(d.getTime()) ? d.getDate() + ' ' + MESES[d.getMonth()] + ' de ' + d.getFullYear() : '';
+      }
+      function row(p) {                                    // nome (e Exemplo) e a idade | consultas | última consulta | ⋯
+        var r = el('div', 'pt-linha'); r.tabIndex = 0;
+        var ds = el('span', 'pt-desc'), box = el('span', 'pt-nm'), nm = el('span', 'pt-name', p.name);
+        box.appendChild(nm);
+        if (p.example) box.appendChild(el('span', 'pt-ex', 'Exemplo'));
+        ds.appendChild(box);
+        ds.appendChild(el('small', null, p.birth_date ? ptAge(p.birth_date) : ''));   // vazia sem a data de nascimento (a linha fica)
+        r.appendChild(ds);
+        var n = p.notes || 0, nc = el('span', 'pt-ultc pt-numc');
+        nc.appendChild(el('b', null, 'Consultas'));
+        nc.appendChild(el('small', null, n ? n + (n === 1 ? ' consulta' : ' consultas') : 'Nenhuma consulta'));
+        r.appendChild(nc);
+        var u = dataCurta(p.last), uc = el('span', 'pt-ultc');            // sem consulta: "Nenhuma consulta"
+        uc.appendChild(el('b', null, 'Última')); uc.appendChild(el('small', null, u || 'Nenhuma consulta'));
+        r.appendChild(uc);
+        var mb = el('button', 'pt-mais'); mb.type = 'button';
+        mb.setAttribute('aria-label', 'Ações de ' + p.name); mb.setAttribute('aria-haspopup', 'menu'); mb.setAttribute('aria-expanded', 'false');
+        mb.innerHTML = MAIS;
+        mb.addEventListener('click', function (e) { e.stopPropagation(); abreMenu(mb, p, box, nm); });
+        r.appendChild(mb);
+        r.addEventListener('click', function (e) { if (!e.target.closest('.pt-rename, .pt-mais')) openPr(p); });
         r.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target === r) openPr(p); });
         return r;
       }
@@ -8819,7 +8919,7 @@
             list.innerHTML = '<div class="pt-empty"><a href="/opendoctor-login.html">Entre na sua conta</a> para ver seus pacientes.</div>';
             return;
           }
-          all = (res.j && res.j.patients) || []; more = !!(res.j && res.j.more); render(); remote();
+          all = (res.j && res.j.patients) || []; more = !!(res.j && res.j.more); render();
         }).catch(function () { loaded = true; list.innerHTML = '<div class="pt-empty">Não foi possível carregar os pacientes.</div>'; });
       }
       function openPr(p) {
@@ -8854,34 +8954,107 @@
                        : 'Este paciente tem prontuário e não pode ser excluído.');
         });
       }
-      // novo paciente
-      var newRow = $('ptNewRow'), newName = $('ptNewName');
-      function toggleNew(on) {
-        newRow.hidden = !on; showErr('');
-        if (on) { newName.value = search.value.trim(); $('ptNewBirth').value = ''; $('ptNewSex').value = ''; $('ptNewBirth').max = new Date().toISOString().slice(0, 10); newName.focus(); }
+      // novo paciente: no lugar do assistente (a tela não fica inerte e o Tab não fica preso; Esc e o × fecham)
+      var newRow = $('ptNewRow'), newName = $('ptNewName'), newErr = $('ptNewErr'), btnNovo = $('ptNew'),
+          painel = document.querySelector('.right'), plBox = $('ptNewPlanoBox'), plano = $('ptNewPlano'),
+          recolhido = false, salvando = false, geracao = 0;   // geracao: cada abrir e fechar (a resposta velha não mexe no novo)
+      function errNovo(t, campo) {                         // o erro embaixo e, se for de um campo, a borda vermelha nele
+        newErr.textContent = t || ''; newErr.hidden = !t;
+        [].forEach.call(newRow.querySelectorAll('.fl.bad'), function (x) { x.classList.remove('bad'); });
+        if (t && campo) { campo.closest('.fl').classList.add('bad'); campo.focus(); }
       }
-      $('ptNew').addEventListener('click', function () { toggleNew(newRow.hidden); });
-      $('ptNewCancel').addEventListener('click', function () { toggleNew(false); });
+      // CPF: só dígitos, com os pontos e o traço (000.000.000-00); o servidor confere os dígitos e o CPF de outro paciente
+      $('ptNewCpf').addEventListener('input', function () {
+        var d = this.value.replace(/\D/g, '').slice(0, 11);
+        this.value = d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2');
+      });
+      // nascimento como no login: só dígitos, com as barras (dd/mm/aaaa); vai ao servidor como aaaa-mm-dd
+      $('ptNewBirth').addEventListener('input', function () {
+        var d = this.value.replace(/\D/g, '').slice(0, 8);
+        this.value = d.length > 4 ? d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4) : d.length > 2 ? d.slice(0, 2) + '/' + d.slice(2) : d;
+      });
+      function nascimento() {                              // '' (vazio), 'aaaa-mm-dd', ou null (inválida)
+        var v = $('ptNewBirth').value.trim(), m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v);
+        if (!v) return '';
+        if (!m) return null;
+        var d = new Date(+m[3], +m[2] - 1, +m[1]);
+        if (d.getFullYear() !== +m[3] || d.getMonth() !== +m[2] - 1 || d.getDate() !== +m[1] || +m[3] < 1900 || d > new Date()) return null;
+        return m[3] + '-' + m[2] + '-' + m[1];
+      }
+      function cobertura() { return $('ptNewCov').value || null; }
+      function mostraPlano() { var conv = cobertura() === 'convenio'; plBox.hidden = !conv; if (!conv) plano.value = ''; }
+      function toggleNew(on, semFoco) {
+        if (!on && newRow.hidden) return;                  // já fechado (a resposta do cadastro chegou depois): não mexe no foco
+        if (on && !newRow.hidden) { newName.focus(); return; }   // o + (ou ⇧⌘E) de novo: não apaga o que foi digitado
+        geracao++; salvando = false; $('ptNewSave').disabled = false;
+        errNovo(''); showErr('');
+        if (on) {
+          if (stage.classList.contains('expanded') && $('raExpand')) $('raExpand').click();   // o assistente em tela cheia esconde a lista
+          recolhido = !!painel && painel.classList.contains('collapsed');
+          if (recolhido && $('showChat')) $('showChat').click();                              // o assistente recolhido abre para o formulário
+          ['ptNewName', 'ptNewCpf', 'ptNewBirth', 'ptNewEmail', 'ptNewPhone', 'ptNewPlano'].forEach(function (i) { $(i).value = ''; });
+          $('ptNewSex').value = ''; $('ptNewCov').value = ''; mostraPlano();
+          newRow.hidden = false; if (painel) painel.classList.add('novo');
+          btnNovo.setAttribute('aria-expanded', 'true'); btnNovo.classList.add('on');
+          newRow.querySelector('.rp-novo-corpo').scrollTop = 0; newName.focus();
+        } else {
+          newRow.hidden = true; if (painel) painel.classList.remove('novo');
+          btnNovo.setAttribute('aria-expanded', 'false'); btnNovo.classList.remove('on');
+          if (recolhido && $('agExpand')) $('agExpand').click();                              // volta a recolher o assistente
+          recolhido = false;
+          if (!semFoco) btnNovo.focus();
+        }
+      }
+      btnNovo.addEventListener('click', function () { toggleNew(true); });
+      $('ptNewX').addEventListener('click', function () { toggleNew(false); });
+      $('ptNewCov').addEventListener('change', function () { mostraPlano(); errNovo(''); if (cobertura() === 'convenio') plano.focus(); });
+      newRow.addEventListener('keydown', function (e) {
+        if (e.isComposing || e.keyCode === 229) return;   // acento ou caractere ainda sendo montado pelo teclado
+        var sess = $('odSession'); if (sess && !sess.hidden) return;   // o aviso de sessão está por cima: as teclas são dele
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); toggleNew(false); return; }
+        if (e.key === 'Enter' && e.target.matches('input.fl-input')) { e.preventDefault(); createNew(false); }
+      });
+      // sair de Pacientes (o menu, o voltar do navegador) ou abrir um prontuário fecha o formulário
+      new MutationObserver(function () {
+        if (!newRow.hidden && (!stage.classList.contains('pacientes') || stage.classList.contains('prontuario'))) toggleNew(false, true);
+      }).observe(stage, { attributes: true, attributeFilter: ['class'] });
       function createNew(force) {
+        if (salvando) return;                              // Enter duas vezes: um cadastro só
         var v = newName.value.split(/\s+/).filter(Boolean).join(' ');
         if (!v) { newName.focus(); return; }
-        var body = { name: v, birth_date: $('ptNewBirth').value || null, sex: $('ptNewSex').value || null, force: !!force };
+        var cv = cobertura(), pl = plano.value.split(/\s+/).filter(Boolean).join(' ');
+        if (cv === 'convenio' && !pl) { errNovo('Informe o plano do convênio.', plano); return; }
+        var cpf = $('ptNewCpf').value.replace(/\D/g, '');
+        if (cpf && cpf.length !== 11) { errNovo('CPF incompleto.', $('ptNewCpf')); return; }
+        var nasc = nascimento();
+        if (nasc === null) { errNovo('Data de nascimento inválida.', $('ptNewBirth')); return; }
+        // o nome e os contatos vão só no corpo do POST (nunca na URL)
+        var body = { name: v, cpf: cpf || null, birth_date: nasc || null, sex: $('ptNewSex').value || null,
+                     email: $('ptNewEmail').value.trim() || null, phone: $('ptNewPhone').value.trim() || null,
+                     coverage: cv, health_plan: cv === 'convenio' ? pl : null, force: !!force };
+        var g = geracao;
+        salvando = true; $('ptNewSave').disabled = true;
         api('POST', '/patients', body).then(function (res) {
+          if (g !== geracao) { if (res.ok && res.j && res.j.ok) load(); return; }   // o formulário já fechou (ou é outro)
+          salvando = false; $('ptNewSave').disabled = false;
           if (res.ok && res.j.ok) {
-            toggleNew(false); search.value = '';
+            toggleNew(false);
             load();
           } else if (res.status === 409 && res.j.duplicates) {   // homônimo: mostra quem já existe e confirma
             var who = res.j.duplicates.map(function (d) { return d.name + (d.birth_date ? ' (' + ptAge(d.birth_date) + ', nasc. ' + d.birth_date.split('-').reverse().join('/') + ')' : ' (sem data de nascimento)'); }).join('\n');
             if (confirm('Já existe paciente com esse nome:\n' + who + '\n\nÉ outra pessoa? Criar um novo cadastro?')) createNew(true);
-          } else showErr(res.status === 401 ? 'Entre na sua conta para cadastrar pacientes.' : (res.j && res.j.error ? res.j.error.charAt(0).toUpperCase() + res.j.error.slice(1) + '.' : 'Não foi possível criar o paciente.'));
-        });
+          } else if (res.status === 503) {                 // sem a migração 0021: cria sem e-mail e atendimento
+            $('ptNewEmail').value = ''; $('ptNewCov').value = ''; mostraPlano();
+            errNovo('E-mail e atendimento ainda não podem ser salvos. Clique em Criar paciente para cadastrar sem eles.');
+          } else {
+            var er = res.j && res.j.error ? String(res.j.error) : '';
+            var campo = { 'e-mail inválido': $('ptNewEmail'), 'data de nascimento inválida': $('ptNewBirth'), 'informe o plano do convênio': plano, 'nome obrigatório': newName }[er]
+              || (/^CPF /.test(er) ? $('ptNewCpf') : null);   // "CPF inválido" ou "CPF já cadastrado para …"
+            errNovo(res.status === 401 ? 'Entre na sua conta para cadastrar pacientes.' : (er ? er.charAt(0).toUpperCase() + er.slice(1) + '.' : 'Não foi possível criar o paciente.'), campo);
+          }
+        }, function () { if (g !== geracao) return; salvando = false; $('ptNewSave').disabled = false; errNovo('Não foi possível criar o paciente.'); });
       }
       $('ptNewSave').addEventListener('click', function () { createNew(false); });
-      newName.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); createNew(false); }
-        else if (e.key === 'Escape') { e.stopPropagation(); toggleNew(false); }
-      });
-      search.addEventListener('input', function () { render(); remote(); });
 
       // navegação: Pacientes ↔ Consultas (agenda), com o botão voltar do navegador
       function setNav(which) {
@@ -9341,14 +9514,15 @@
         aba = a;
         abas.forEach(function (b) { var sim = b.getAttribute('data-aba') === a; b.classList.toggle('on', sim); b.setAttribute('aria-selected', sim ? 'true' : 'false'); });
       }
-      function abre(inicial) {                               // inicial: a aba em que a janela abre
+      var aceso = null;                                      // o botão que abriu (fica marcado enquanto a janela está aberta)
+      function abre(inicial, botao) {                        // inicial: a aba em que a janela abre
         if (!ov.hidden) { input.focus(); return; }
         antes = document.activeElement;
         document.querySelectorAll('.cal-pop').forEach(function (p) { p.hidden = true; });   // o calendário aberto fecha
         document.querySelectorAll('.ag-actions .hd-btn.on').forEach(function (b) { b.classList.remove('on'); });   // e o ícone dele apaga
         pacsAt = 0;                                          // os pacientes são lidos de novo a cada abertura
         ov.hidden = false; stage.inert = true;
-        if (btn) btn.classList.add('on');
+        aceso = botao || null; if (aceso) aceso.classList.add('on');
         input.value = ''; poeAba(inicial || 'tudo'); items = []; active = -1;
         input.focus(); mostra();
       }
@@ -9356,7 +9530,7 @@
         if (ov.hidden) return;
         clearTimeout(espera);
         ov.hidden = true; stage.inert = false;
-        if (btn) btn.classList.remove('on');
+        if (aceso) aceso.classList.remove('on'); aceso = null;
         rxs = {}; pacsServ = {};                             // o termo e o que ele achou não ficam
         list.innerHTML = ''; items = []; active = -1;
         if (!escolheu && antes && antes.focus && document.contains(antes)) antes.focus();
@@ -9386,7 +9560,9 @@
         }
       }, true);
       // a lupa da agenda (e o ⇧⌘F, que aperta ela) já abre nas consultas; o Buscar do menu abre em Tudo
-      if (btn) btn.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) abre('consultas'); else fecha(); });
+      if (btn) btn.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) abre('consultas', btn); else fecha(); });
+      var ptB = $('ptBusca');                                // a lupa de Pacientes: já no filtro de pacientes
+      if (ptB) ptB.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) abre('pacientes', ptB); else fecha(); });
       if (navB) navB.addEventListener('click', function () { abre('tudo'); });
       // as outras telas levam a agenda#buscar: abre a busca e o endereço volta ao normal (recarregar não reabre)
       if (location.hash === '#buscar') { history.replaceState(history.state, '', location.pathname + location.search); abre('tudo'); }

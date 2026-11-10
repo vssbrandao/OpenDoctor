@@ -1,7 +1,9 @@
 """Testes contra um banco de verdade — o de TESTES (fixture test_db, ver conftest.py). Sem
 TEST_DATABASE_URL eles são pulados; nunca tocam produção. Cada teste cria os próprios usuários e
 apaga tudo no fim."""
+import contextlib
 import datetime
+import re
 import uuid
 
 import pytest
@@ -962,3 +964,54 @@ def test_conta_excluida_some_das_listas_dos_administradores(novo_usuario):
     assert manual["id"] not in [x["id"] for x in db.manual_doctors(86400)[0]]
     assert db.crm_dispensa(manual["id"]) is None and db.crm_confirmed(manual["id"]) is False
     assert next(x for x in db.pending_doctors() if x["id"] == pendente["id"])["outras_contas"] == 0
+
+
+def test_paciente_com_email_convenio_e_plano(novo_usuario):
+    """Migração 0021: e-mail, particular/convênio e plano gravados, lidos e trocados; só com o nome ficam vazios."""
+    uid = novo_usuario()["id"]
+    p = db.create_patient(uid, "Joana Teste", phone="(11) 91234-5678", email="joana@exemplo.invalid",
+                          coverage="convenio", health_plan="Plano Teste")
+    g = db.get_patient(uid, p["id"])
+    assert (g["phone"], g["email"], g["coverage"], g["health_plan"]) == (
+        "(11) 91234-5678", "joana@exemplo.invalid", "convenio", "Plano Teste")
+    u = db.update_patient(uid, p["id"], {"coverage": "particular", "health_plan": None})
+    assert (u["coverage"], u["health_plan"], u["email"]) == ("particular", None, "joana@exemplo.invalid")
+    s = db.create_patient(uid, "Só Nome Teste")
+    assert (s["email"], s["coverage"], s["health_plan"]) == (None, None, None)
+    with pytest.raises(Exception):                     # o banco também só aceita particular ou convênio
+        db.create_patient(uid, "Outro Teste", coverage="sus")
+
+
+def test_sem_a_migracao_0021_o_cadastro_segue(novo_usuario, monkeypatch):
+    """Sem a 0021 (db.tem_contato falso): criar e editar sem os campos novos funciona; com eles, MigracaoPendente."""
+    uid = novo_usuario()["id"]
+    monkeypatch.setattr(db, "tem_contato", lambda conn: False)
+    # o banco de testes já tem a 0021: o que prova é o SQL que sai (nenhuma consulta pode citar as colunas novas)
+    vistos, real = [], db.connection
+
+    class _Grava:
+        def __init__(self, c):
+            self.c = c
+
+        def execute(self, sql, *a, **k):
+            vistos.append(str(sql))
+            return self.c.execute(sql, *a, **k)
+
+        def __getattr__(self, nome):
+            return getattr(self.c, nome)
+
+    @contextlib.contextmanager
+    def grava():
+        with real() as c:
+            yield _Grava(c)
+    monkeypatch.setattr(db, "connection", grava)
+    p = db.create_patient(uid, "Só Nome Teste")
+    assert p["email"] is None and db.get_patient(uid, p["id"])["name"] == "Só Nome Teste"
+    with pytest.raises(db.MigracaoPendente):
+        db.create_patient(uid, "Com Email Teste", email="a@exemplo.invalid")
+    with pytest.raises(db.MigracaoPendente):
+        db.update_patient(uid, p["id"], {"email": "a@exemplo.invalid"})
+    assert db.update_patient(uid, p["id"], {"name": "Outro Nome Teste", "email": None})["name"] == "Outro Nome Teste"
+    assert db.find_patients(uid, "Outro Nome Teste") and vistos
+    citam = [q for q in vistos if re.search(r"\b(email|coverage|health_plan)\b", q)]
+    assert not citam, citam

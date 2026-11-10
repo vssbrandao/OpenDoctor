@@ -182,8 +182,8 @@ def test_pagina_exemplo_e_troca_de_paciente():
     html = _html()
     # a lista do campo Paciente marca a fictícia
     assert re.search(r"option\('', initialsOf\(p\.name\), p\.name \+ \(p\.example \? ' \(exemplo\)' : ''\)", html)
-    # Pacientes: a de exemplo tem a lixeira, mesmo com o histórico fictício
-    assert re.search(r"if \(!p\.notes \|\| p\.example\) acts\.appendChild\(iconBtn\('Excluir'", html)
+    # Pacientes: a de exemplo tem o Excluir (no ⋯ da linha), mesmo com o histórico fictício
+    assert re.search(r"if \(!p\.notes \|\| p\.example\) itens\.push\(\['Excluir'", html)
     # 409 de outro paciente: mensagem própria, sem recarregar (recarregar reenviava o rascunho e dava 409 de novo)
     ramo = re.search(r"res\.j\.other_patient\) \{(.*?)\} else if \(res\.status === 409\) \{\n([^\n]*)", html, re.S)
     assert ramo and "load()" not in ramo.group(1) and "outro paciente" in ramo.group(1)
@@ -193,9 +193,11 @@ def test_pagina_exemplo_e_troca_de_paciente():
     assert html.count("experimente na paciente de exemplo") == 1
     assert "(temExemplo ? ': experimente na paciente de exemplo.' : '.')" in html
     assert "temExemplo = !!res.j.has_example;" in html
-    # lista cortada (more): a busca do campo Paciente e a da tela Pacientes perguntam ao servidor, com o nome no corpo
+    # lista cortada (more): a busca do campo Paciente e a da janela de busca (que a tela Pacientes abre pela lupa, já na
+    # aba Pacientes) perguntam ao servidor, com o nome no corpo
     assert "fetch('/patients/search', { method: 'POST'" in html and "body: JSON.stringify({ q: raw })" in html
-    assert "api('POST', '/patients/search', { q: v })" in html and "/patients/search?" not in html
+    assert "fetch('/patients/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: raw.trim() }) })" in html
+    assert "/patients/search?" not in html
 
 
 

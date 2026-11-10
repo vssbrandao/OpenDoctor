@@ -211,7 +211,7 @@
     // outros), que aperta o botão. O do menu diz "Alternar barra lateral"; os das barras de cima (.hd-btn), o aria-label,
     // que muda com o estado; os ícones do menu retraído, o nome (data-tip), sem atalho. Letras fora das que o navegador reserva (N, T, W, R) e do ⇧⌘V (colar sem formatação).
     (function () {
-      var ATALHO = { navToggle: 'S', agCreate: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', agExpand: 'A',
+      var ATALHO = { navToggle: 'S', agCreate: 'E', ptNew: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', ptBusca: 'F', agExpand: 'A',
                      raNew: 'O', raHist: 'H', raExpand: 'X' };
       var mac = /Mac|iPhone|iPad/.test(navigator.platform || '');
       var tip = document.createElement('div'), txt = document.createElement('span'), kbd = document.createElement('kbd');
@@ -260,15 +260,17 @@
         if (e.key === 'Escape') { esconde(); return; }
         if (e.isComposing || e.keyCode === 229) return;   // acento ou caractere ainda sendo montado pelo teclado
         if (!e.shiftKey || e.altKey || (mac ? !e.metaKey || e.ctrlKey : !e.ctrlKey || e.metaKey)) return;
-        var k = (e.key || '').toUpperCase(), id = null;
+        var k = (e.key || '').toUpperCase();
         // teclado em outro alfabeto (cirílico, grego…): vale a posição da tecla; nos latinos, só a letra que ela escreve
         if (/^[^\u0000-\u024f]$/.test(e.key || '') && /^Key[A-Z]$/.test(e.code || '')) k = e.code.slice(3);
-        Object.keys(ATALHO).forEach(function (i) { if (ATALHO[i] === k) id = i; });
-        var b = id && document.getElementById(id);
-        if (!b) return;                         // a tela não tem esse botão: o atalho fica com o navegador
+        var bs = Object.keys(ATALHO).filter(function (i) { return ATALHO[i] === k; })
+          .map(function (i) { return document.getElementById(i); }).filter(Boolean);
+        if (!bs.length) return;                 // a tela não tem esse botão: o atalho fica com o navegador
         e.preventDefault();
-        // como o clique: só com o botão à vista e livre (sem janela aberta por cima)
-        if (e.repeat || b.disabled || !aVista(b) || b.closest('[inert]') || janelaAberta()) return;
+        // como o clique: só com o botão à vista e livre (sem janela aberta por cima); a mesma letra em dois botões
+        // (o + e a lupa da agenda e os de Pacientes): vale o que está à vista
+        var b = bs.filter(aVista)[0];
+        if (e.repeat || !b || b.disabled || b.closest('[inert]') || janelaAberta()) return;
         esconde();
         // como o clique de verdade: o aperto fecha o que fecha ao clicar fora (a janela do evento, a busca de remédio)
         b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));

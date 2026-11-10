@@ -698,12 +698,32 @@ class NoteOtherPatient(Exception):
 
 
 _PCOLS = "id, name, patient_key, birth_date, sex, cpf, phone, allergies, problems, medications"
+CONTATO = ("email", "coverage", "health_plan")            # migração 0021: e-mail, particular/convênio e o plano
+_CONTATO = {"ok": None, "t": 0.0}
+
+
+def tem_contato(conn):
+    """A migração 0021 (patients.email, coverage, health_plan) já foi aplicada? Sem ela o cadastro segue como antes e
+    só o paciente criado ou editado com esses campos espera (MigracaoPendente). Guardado como tem_dispensa."""
+    if _CONTATO["ok"] or (_CONTATO["ok"] is False and time.monotonic() - _CONTATO["t"] < DISPENSA_RECHECA_S):
+        return _CONTATO["ok"]
+    ok = bool(conn.execute("""select exists(select 1 from pg_attribute where attrelid = to_regclass('patients')
+                                            and attname = 'health_plan' and not attisdropped)""").fetchone()[0])
+    _CONTATO.update(ok=ok, t=time.monotonic())
+    return ok
+
+
+def _pcols(conn):
+    """As colunas do paciente; com a 0021, também o e-mail, particular/convênio e o plano (no fim: _patient lê por posição)."""
+    return _PCOLS + (", " + ", ".join(CONTATO) if tem_contato(conn) else "")
 
 
 def _patient(r):
     return {"id": r[0], "name": r[1], "key": r[2], "example": r[2] == EXAMPLE_KEY,
             "birth_date": r[3].isoformat() if r[3] else None, "sex": r[4], "cpf": r[5], "phone": r[6],
-            "allergies": r[7] or "", "problems": r[8] or "", "medications": r[9] or ""}
+            "allergies": r[7] or "", "problems": r[8] or "", "medications": r[9] or "",
+            "email": r[10] if len(r) > 10 else None, "coverage": r[11] if len(r) > 11 else None,
+            "health_plan": r[12] if len(r) > 12 else None}
 
 
 def list_patients(user_id, limit=1000, q=None):
@@ -735,7 +755,7 @@ def list_patients(user_id, limit=1000, q=None):
 def find_patients(user_id, name):
     """Pacientes com o mesmo nome normalizado (homônimos)."""
     with connection() as conn:
-        rows = conn.execute(f"select {_PCOLS} from patients where user_id = %s and patient_key = %s order by id",
+        rows = conn.execute(f"select {_pcols(conn)} from patients where user_id = %s and patient_key = %s order by id",
                             (user_id, patient_key(name))).fetchall()
     return [_patient(r) for r in rows]
 
@@ -745,7 +765,7 @@ def find_by_cpf(user_id, cpf, exclude_id=None):
     if not cpf:
         return None
     with connection() as conn:
-        r = conn.execute(f"""select {_PCOLS} from patients where user_id = %s and cpf = %s
+        r = conn.execute(f"""select {_pcols(conn)} from patients where user_id = %s and cpf = %s
                              and (%s::bigint is null or id <> %s) limit 1""",
                          (user_id, cpf, exclude_id, exclude_id)).fetchone()
     return _patient(r) if r else None
@@ -783,12 +803,22 @@ def example_state(user_id):
                             {"u": user_id, "k": EXAMPLE_KEY, "a": EXAMPLE_DELETED, "f": EXAMPLE_FILE}).fetchone()
 
 
-def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None, key=None):
+def create_patient(user_id, name, birth_date=None, sex=None, cpf=None, phone=None, key=None,
+                   email=None, coverage=None, health_plan=None):
+    """Cria o paciente. E-mail, particular/convênio e plano só com a migração 0021 (sem ela: MigracaoPendente se algum
+    vier preenchido; vazios, cria como antes)."""
     with connection() as conn:
+        extra = (email, coverage, health_plan)
+        if tem_contato(conn):
+            cols, marks = ", " + ", ".join(CONTATO), ",%s,%s,%s"
+        elif any(extra):
+            raise MigracaoPendente("0021_paciente_contato.sql")
+        else:
+            cols, marks, extra = "", "", ()
         r = conn.execute(
-            f"""insert into patients (user_id, patient_key, name, birth_date, sex, cpf, phone)
-                values (%s,%s,%s,%s,%s,%s,%s) returning {_PCOLS}""",
-            (user_id, key or patient_key(name), name, birth_date, sex, cpf, phone)).fetchone()
+            f"""insert into patients (user_id, patient_key, name, birth_date, sex, cpf, phone{cols})
+                values (%s,%s,%s,%s,%s,%s,%s{marks}) returning {_pcols(conn)}""",
+            (user_id, key or patient_key(name), name, birth_date, sex, cpf, phone, *extra)).fetchone()
         conn.commit()
     return _patient(r)
 
@@ -811,7 +841,7 @@ def ensure_patient(user_id, name):
 def get_patient(user_id, patient_id):
     """Paciente do médico pelo id (cadastro completo) ou None (inclusive se for de outro médico)."""
     with connection() as conn:
-        r = conn.execute(f"select {_PCOLS} from patients where user_id = %s and id = %s",
+        r = conn.execute(f"select {_pcols(conn)} from patients where user_id = %s and id = %s",
                          (user_id, patient_id)).fetchone()
     return _patient(r) if r else None
 
@@ -832,7 +862,7 @@ def patient_id_exists(patient_id):
         return conn.execute("select 1 from patients where id = %s", (patient_id,)).fetchone() is not None
 
 
-_PATIENT_FIELDS = ("name", "birth_date", "sex", "cpf", "phone", "allergies", "problems", "medications")
+_PATIENT_FIELDS = ("name", "birth_date", "sex", "cpf", "phone", "allergies", "problems", "medications") + CONTATO
 
 
 def update_patient(user_id, patient_id, fields):
@@ -843,6 +873,12 @@ def update_patient(user_id, patient_id, fields):
         cur_p = get_patient(user_id, patient_id)
         if cur_p and cur_p["name"] == fields["name"]:
             fields = {k: v for k, v in fields.items() if k != "name"}
+    if any(k in fields for k in CONTATO):                 # sem a 0021: vazios não mudam nada; preenchido espera a migração
+        with connection() as conn:
+            if not tem_contato(conn):
+                if any(fields.get(k) for k in CONTATO):
+                    raise MigracaoPendente("0021_paciente_contato.sql")
+                fields = {k: v for k, v in fields.items() if k not in CONTATO}
     sets, vals = [], []
     for k in _PATIENT_FIELDS:
         if k in fields:
@@ -854,7 +890,7 @@ def update_patient(user_id, patient_id, fields):
         return get_patient(user_id, patient_id)
     with connection() as conn:
         r = conn.execute(f"update patients set {', '.join(sets)}, updated_at = now() "
-                         f"where user_id = %s and id = %s returning {_PCOLS}",
+                         f"where user_id = %s and id = %s returning {_pcols(conn)}",
                          (*vals, user_id, patient_id)).fetchone()
         if r and "name" in fields:                        # r[2]: a chave que ficou (a de exemplo não muda)
             conn.execute("""update clinical_notes set patient_name = %s, patient_key = %s

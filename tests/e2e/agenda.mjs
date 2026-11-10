@@ -79,6 +79,7 @@ let MAIS = false;                                          // a lista veio corta
 let LENTA = 0;                                             // ms de espera da busca no servidor
 let LENTA_RX = 0;                                          // ms de espera da busca de receitas
 let LENTO_PAC = 0;                                         // ms de espera do cadastro de paciente (POST /patients)
+let FALTA_0021 = false;                                    // produção sem a migração 0021: e-mail/atendimento dão 503
 const ANTIGOS = [{ id: 900, name: 'Otávio Antigo', notes: 3, last: '2025-01-10T12:00:00+00:00' }];
 const sem = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 // receitas que a busca acha (POST /prontuario/receitas/busca: o termo no corpo; vazio, as recentes)
@@ -94,6 +95,7 @@ function rota(method, path, q, body) {
   if (path === '/me/boas-vindas' && method === 'POST') { BOAS_VINDAS = false; return { ok: true }; }
   if (path === '/patients' && method === 'GET') return { patients: PACS, more: MAIS };
   if (path === '/patients/search' && method === 'POST') return { patients: ANTIGOS.filter((p) => sem(p.name).includes(sem(body.q).trim())) };
+  if (path === '/patients' && method === 'POST' && FALTA_0021 && (body.email || body.coverage)) return { __status: 503, error: 'o cadastro com e-mail e convênio ainda não está disponível' };
   if (path === '/patients' && method === 'POST') { const p = { id: 40 + PACS.length, name: body.name }; PACS.push(p); return { ok: true, patient: p }; }
   if (path === '/calendar/events' && method === 'GET' && SEM_AGENDA) return { logged_in: true, connected: null, events: [] };
   if (path === '/calendar/events' && method === 'GET' && AGENDA_VAZIA) return { logged_in: true, connected: 'google', events: [] };
@@ -126,6 +128,7 @@ async function responde(p) {
     const j = rota(method, u.pathname, u.searchParams, body);
     pedidos.push({ method, path: u.pathname, q: Object.fromEntries(u.searchParams), body });
     if (j === null) status = 404;
+    if (j && j.__status) { status = j.__status; delete j.__status; }
     dado = Buffer.from(JSON.stringify(j || {}));
   }
   return send('Fetch.fulfillRequest', { requestId: p.requestId, responseCode: status,
@@ -140,6 +143,9 @@ const clica = (s) => ev(`(() => { document.querySelector(${JSON.stringify(s)}).c
 const patches = (idEv) => pedidos.filter((r) => r.method === 'PATCH' && r.path === '/calendar/events/' + idEv);
 async function foto(nome) {
   if (!process.env.SHOT) return;
+  // sem janela, o Chrome só desenha quando pede a foto: a 1ª começa as animações (o rótulo que sobe), a 2ª sai com elas no fim
+  await send('Page.captureScreenshot', { format: 'png' });
+  await sleep(250);
   const r = await send('Page.captureScreenshot', { format: 'png' });
   writeFileSync(join(process.env.SHOT, nome), Buffer.from(r.data, 'base64'));
 }
@@ -411,10 +417,13 @@ const cenarios = [
     await ate(`document.getElementById('evPop').hidden`, 3000, 'fechou sozinha');
     await clica('#navPacientes');                              // a tela Pacientes
     await ate(`[...document.querySelectorAll('#ptList .pt-empty')].some((e) => e.textContent.startsWith('Aqui estão os pacientes usados mais recentemente'))`, 3000, 'aviso da lista cortada');
-    await ev(`(() => { const s = document.getElementById('ptSearch'); s.value = 'Otá'; s.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
-    await ate(`[...document.querySelectorAll('#ptList .pt-name')].map((e) => e.textContent).join() === 'Otávio Antigo'`, 3000,
-      'achou na tela Pacientes: ' + await ev(`document.getElementById('ptList').textContent`));
-    await ev(`(() => { const s = document.getElementById('ptSearch'); s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    // a lupa de Pacientes abre a busca já em Pacientes, e ela pergunta ao servidor por quem ficou de fora da lista cortada
+    await clica('#ptBusca');
+    await ate(`!document.getElementById('busca').hidden && document.querySelector('#bsAbas .on').dataset.aba === 'pacientes'`, 3000, 'a busca em Pacientes');
+    await ev(`(() => { const s = document.getElementById('bsIn'); s.value = 'Otá'; s.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await ate(`[...document.querySelectorAll('#bsList .bs-it .bs-r')].map((e) => e.textContent).join() === 'Otávio Antigo'`, 3000,
+      'achou pela busca de Pacientes: ' + await ev(`document.getElementById('bsList').textContent`));
+    await ev(`(() => { document.getElementById('bsX').click(); return 1; })()`);
     await clica('#navConsultas');
     MAIS = false;
     return 'campo Paciente e tela Pacientes acharam o Otávio no servidor; a consulta ficou com o cadastro dele';
@@ -1067,6 +1076,371 @@ const cenarios = [
     await key('Escape', 'Escape', 27);
     await ate(`!(${aberta})`, 2000, 'o Esc fecha');
     return 'menu, lupa, ⇧⌘F e #buscar; 780×572 no meio; Tudo/Consultas/Pacientes/Receitas; negrito; nome só no corpo; Enter, setas, Tab, ×, fora, Esc';
+  }],
+  ['Pacientes no tamanho dos Diagnósticos: os 3 números, nome com a etiqueta da última consulta e idade · consultas embaixo | ⋯, alinhado com o título e a lupa, as páginas presas embaixo e o novo paciente (com contato e convênio) no lugar do assistente pelo + no alto', async () => {
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    const dias = (n) => new Date(Date.now() - n * 864e5).toISOString();
+    PACS.splice(0, PACS.length,
+      { id: 7, name: 'Maria Silva', example: true, notes: 11, last: dias(20), birth_date: '1972-03-10', sex: 'F' },
+      { id: 5, name: 'Joana Prado', notes: 3, last: dias(100), birth_date: '1988-06-01', sex: 'F' },
+      { id: 11, name: 'Carlos Nunes', notes: 1, last: dias(400), birth_date: '1955-01-20', sex: 'M' },
+      { id: 12, name: 'Ana Clara Ribeiro', notes: 0 });
+    for (let i = 1; i <= 35; i++) PACS.push({ id: 100 + i, name: 'Paciente ' + String(i).padStart(2, '0'), notes: i % 3, last: i % 3 ? dias(i * 9) : null });
+    MAIS = false;
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?pacientes=1' });
+    await ate(`location.search === '?pacientes=1' && document.readyState === 'complete'`, 8000, 'agenda');
+    await ev(`window.__abriu = []; window.__openProntuario = (c) => { window.__abriu.push(c); }; 1`);
+    await clica('#navPacientes');
+    await ate(`document.querySelectorAll('#ptList .pt-lista .pt-linha').length === 30`, 5000, 'a lista');
+    const t = await ev(`(() => ({
+      nums: ['ptStTotal', 'ptStCons', 'ptSt30'].map((i) => document.getElementById(i).textContent), cards: document.querySelectorAll('#ptStats .pt-stat').length,
+      rotulos: [...document.querySelectorAll('#ptStats .pt-stat span')].map((x) => x.textContent),
+      cab: document.querySelectorAll('#ptList table, #ptList th').length,
+      pag: document.getElementById('ptPag').textContent,
+      maria: (() => { const r = [...document.querySelectorAll('#ptList .pt-linha')].find((x) => x.querySelector('.pt-name').textContent === 'Maria Silva');
+        return r && { ini: !!r.querySelector('.pt-ini'), barra: !!r.querySelector('.pt-bar, .pt-cons i'), nome: r.querySelector('.pt-nm').textContent,
+                      sub: r.querySelector('.pt-desc small').textContent, dir: r.children.length,
+                      tags: [...r.querySelectorAll('.pt-nm .pt-ex, .pt-tag')].map((x) => x.textContent + '|' + Math.round(x.getBoundingClientRect().height) + '|' + getComputedStyle(x).backgroundColor + '|' + getComputedStyle(x).borderTopLeftRadius + '|' + getComputedStyle(x).paddingLeft + ',' + getComputedStyle(x).paddingRight + '|' + getComputedStyle(x).fontSize),
+                      num: [...r.querySelectorAll('.pt-numc b, .pt-numc small')].map((x) => x.textContent).join('|'),
+                      pos: (() => { const c = r.querySelector('.pt-ultc:not(.pt-numc)'), b = c.querySelector('b'), s = c.querySelector('small'), m = r.querySelector('.pt-mais').getBoundingClientRect();
+                        const n = r.querySelector('.pt-name'), i = r.querySelector('.pt-desc small'), st = (x) => getComputedStyle(x), fs = (x) => st(x).fontSize + '/' + st(x).fontWeight + '/' + st(x).color;
+                        return { b: b && b.textContent, s: s && s.textContent, linhas: [Math.round(b.getBoundingClientRect().top - n.getBoundingClientRect().top), Math.round(s.getBoundingClientRect().top - i.getBoundingClientRect().top)],
+                                 estilo: [fs(b) === fs(n), fs(s) === fs(i)], dx: Math.round(c.getBoundingClientRect().left - r.getBoundingClientRect().left),
+                                 fim: Math.round(r.getBoundingClientRect().right - m.right) }; })(),
+                      alt: Math.round(r.getBoundingClientRect().height), cols: getComputedStyle(r).gridTemplateColumns }; })(),
+      ana: (() => { const r = [...document.querySelectorAll('#ptList .pt-linha')].find((x) => x.querySelector('.pt-name').textContent === 'Ana Clara Ribeiro');
+        return r && { sub: r.querySelector('.pt-desc small').textContent, tags: r.querySelectorAll('.pt-tag').length, ult: r.querySelector('.pt-ultc:not(.pt-numc)').textContent,
+                      num: [...r.querySelectorAll('.pt-numc b, .pt-numc small')].map((x) => x.textContent).join('|') }; })(),
+      sits: document.querySelectorAll('#ptList .pt-st').length,
+      alts: [...new Set([...document.querySelectorAll('#ptList .pt-linha')].map((r) => Math.round(r.getBoundingClientRect().height)))].join(),
+    }))()`);
+    // 39 pacientes; consultas: a soma das registradas (11 + 3 + 1 + 0 e as dos 35); nos últimos 30 dias: a Maria (20) e os de 9 e 18 dias
+    const n30 = 1 + [1, 2, 3].filter((i) => i % 3).length, cons = 15 + Array.from({ length: 35 }, (_, k) => (k + 1) % 3).reduce((a, b) => a + b, 0);
+    certo(t.cards === 3 && t.rotulos.join() === 'Pacientes,Atendidos em 30 dias,Total de consultas' && t.nums.join() === ['39', String(cons), String(n30)].join(),
+          'os números: ' + JSON.stringify(t));
+    certo(t.cab === 0, 'a lista não tem cabeçalho nem tabela');
+    // no tamanho dos Diagnósticos: nome | 128 | ⋯, 18 em cima e embaixo (18 + 4 + 16 de texto + 36 + 1 da divisória = 75); sem iniciais e sem barra
+    // a etiqueta Exemplo (pontas redondas, 22 de altura, 10 de cada lado, a fonte de 12) ao lado do nome; à direita, a 12 px do ⋯,
+    // "Última consulta" na linha e no estilo do nome e a data ("26 Out de 2026") na linha e no estilo da idade
+    const [ex] = (t.maria && t.maria.tags) || [];
+    certo(t.maria && t.maria.tags.length === 1 && /^Exemplo\|22\|/.test(ex) && ex.split('|')[3] === '11px' && ex.split('|')[4] === '10px,10px' && ex.split('|')[5] === '12px',
+          'a etiqueta da Maria: ' + JSON.stringify(t.maria && t.maria.tags));
+    const pz = t.maria && t.maria.pos;
+    certo(pz && pz.b === 'Última' && /^\d{1,2} (Jan|Fev|Mar|Abr|Mai|Jun|Jul|Ago|Set|Out|Nov|Dez) de \d{4}$/.test(pz.s) && pz.linhas.every((x) => Math.abs(x) <= 1) &&
+          pz.estilo.every(Boolean) && Math.abs(pz.dx - 2 * (parseFloat(t.maria.cols) + 24)) <= 1 && pz.fim === 0, 'a última consulta na 3ª coluna (depois das consultas), nas linhas do nome e da idade; o ⋯ no fim: ' + JSON.stringify(pz));
+    certo(t.maria.num === 'Consultas|11 consultas', 'a coluna do número de consultas: ' + t.maria.num);
+    // as colunas começam no mesmo lugar em todas as linhas (também nas sem última consulta), nas linhas do nome e da idade
+    const cols = await ev(`(() => { const u = (sel) => [...new Set([...document.querySelectorAll('#ptList .pt-linha')].map((r) => { const x = r.querySelector(sel); return x && x.textContent ? Math.round(x.getBoundingClientRect().left) : null; }).filter((x) => x != null))];
+      const r = [...document.querySelectorAll('#ptList .pt-linha')].find((x) => x.querySelector('.pt-name').textContent === 'Ana Clara Ribeiro');
+      const nb = r.querySelector('.pt-numc b').getBoundingClientRect(), ns = r.querySelector('.pt-numc small').getBoundingClientRect(),
+            n = r.querySelector('.pt-name').getBoundingClientRect(), i = r.querySelector('.pt-desc small').getBoundingClientRect();
+      return { ult: u('.pt-ultc:not(.pt-numc) b'), num: u('.pt-numc b'), linhas: [Math.round(nb.top - n.top), Math.round(ns.top - i.top)] }; })()`);
+    const larg = parseFloat(t.maria.cols);
+    certo(cols.ult.length === 1 && cols.num.length === 1 && Math.abs(cols.ult[0] - cols.num[0] - larg - 24) <= 1 && cols.linhas.every((x) => Math.abs(x) <= 1),
+          'as colunas alinhadas (Consultas logo depois do nome, a Última uma coluna depois): ' + JSON.stringify(cols));
+    const esq = await ev(`[...new Set([...document.querySelectorAll('#ptList .pt-linha')].map((r) => { const c = r.querySelector('.pt-ultc:not(.pt-numc) b'); return c ? Math.round(c.getBoundingClientRect().left) : null; }).filter((x) => x != null))].join()`);
+    const fins = await ev(`[...new Set([...document.querySelectorAll('#ptList .pt-linha .pt-mais')].map((m) => Math.round(m.getBoundingClientRect().right)))].join()`);
+    certo(!/,/.test(esq) && !/,/.test(fins), 'a última consulta começa no mesmo lugar em todas as linhas e o ⋯ termina no mesmo: ' + esq + ' / ' + fins);
+    certo(t.maria && !t.maria.ini && !t.maria.barra && t.maria.nome === 'Maria SilvaExemplo' && /^\d+ anos$/.test(t.maria.sub) &&
+          t.maria.dir === 4 && t.maria.alt === 75 && t.alts === '75' && ((v) => v.length === 4 && v[3] === 32 && Math.abs(v[0] - v[1]) < 1 && Math.abs(v[1] - v[2]) < 1)(t.maria.cols.split(' ').map(parseFloat)),
+          'a linha da Maria (e todas com 75): ' + JSON.stringify(t.maria) + ' ' + t.alts);
+    certo(t.ana && t.ana.sub === '' && t.ana.tags === 0 && t.ana.ult === 'ÚltimaNenhuma consulta' && t.ana.num === 'Consultas|Nenhuma consulta',
+          'sem consultas (e sem idade): a linha de baixo vazia; a última e o número com "Nenhuma consulta": ' + JSON.stringify(t.ana));
+    certo(t.sits === 0, 'ainda há selo de situação');
+    const alto = await ev(`(() => { const h = document.querySelector('.pt-head'), st = document.getElementById('ptStats'), b = document.getElementById('ptNew');
+      return { ids: [...h.querySelectorAll('.hd-actions .hd-btn')].map((x) => x.id).join(), hd: b.classList.contains('hd-btn'), img: b.querySelector('img').getAttribute('src'),
+               label: b.getAttribute('aria-label'), pop: b.getAttribute('aria-controls') + '|' + b.getAttribute('aria-expanded') + '|' + b.getAttribute('aria-haspopup'), velho: document.querySelectorAll('.pt-tools, .pt-acao').length,
+               vao: Math.round(st.getBoundingClientRect().top - h.getBoundingClientRect().bottom) }; })()`);
+    certo(alto.ids === 'ptNew,ptBusca' && alto.hd && alto.img === 'assets/icons/agenda-add.svg?v=3' && alto.label === 'Novo paciente' && alto.pop === 'ptNewRow|false|null' && alto.velho === 0 && alto.vao === 32,
+          'o + no alto, antes da lupa (como o do calendário), e os números 32 abaixo: ' + JSON.stringify(alto));
+    // o conteúdo começa com a palavra "Pacientes" e termina com o desenho da lupa (10,8 para dentro do botão de 36), nas duas larguras;
+    // da lista aos números, 40
+    const alinha = async () => ev(`(() => { const tit = document.querySelector('.pt-title'), rg = document.createRange(); rg.selectNodeContents(tit);
+      const esq = rg.getBoundingClientRect().left, lupa = document.getElementById('ptBusca').getBoundingClientRect().right - 10.771;
+      const st = document.getElementById('ptStats').getBoundingClientRect(), li = document.querySelector('#ptList .pt-linha').getBoundingClientRect(),
+            nav = document.querySelector('#ptPag .pt-nav').getBoundingClientRect(), cont = document.querySelector('#ptPag .pt-cont').getBoundingClientRect();
+      const d = (x) => Math.round(x * 10) / 10;
+      return { st: [d(st.left - esq), d(st.right - lupa)], li: [d(li.left - esq), d(li.right - lupa)], pag: [d(cont.left - esq), d(nav.right - lupa)],
+               lista: Math.round(li.top - st.bottom) }; })()`);
+    for (const larga of [false, true]) {
+      if (larga) { await ev(`document.querySelector('.right').classList.add('collapsed'); 1`); await sleep(200); }
+      const al = await alinha();
+      certo(await ev(`((v) => v.length === 4 && v[3] === 32 && Math.abs(v[0] - v[1]) < 1 && Math.abs(v[1] - v[2]) < 1)(getComputedStyle(document.querySelector('#ptList .pt-linha')).gridTemplateColumns.split(' ').map(parseFloat))`),
+            (larga ? 'sem' : 'com') + ' o assistente, as 3 colunas iguais: ' + await ev(`getComputedStyle(document.querySelector('#ptList .pt-linha')).gridTemplateColumns`));
+      certo([...al.st, ...al.li, ...al.pag].every((x) => Math.abs(x) <= 1) && al.lista === 40,
+            (larga ? 'sem o assistente' : 'com o assistente') + ': alinhado com o título e a lupa, e 40 até a lista: ' + JSON.stringify(al));
+      if (larga) { await ev(`document.querySelector('.right').classList.remove('collapsed'); 1`); await sleep(200); }
+    }
+    // o rodapé sem a linha de cima e sem o "Linhas por página"
+    const rod = await ev(`(() => { const p = document.getElementById('ptPag'); return { linha: getComputedStyle(p).borderTopWidth, sel: p.querySelectorAll('select, .pt-pp').length,
+      txt: /Linhas por página/.test(p.textContent) }; })()`);
+    certo(rod.linha === '0px' && rod.sel === 0 && !rod.txt, 'o rodapé: ' + JSON.stringify(rod));
+    // a linha em cima do rodapé só quando a lista encosta nele: com os 30 passando por baixo, sim; no fim da rolagem
+    // (24 de espaço), não; com poucos na tela (a página 2 em uma tela alta), não
+    const linha = `document.getElementById('ptPag').classList.contains('linha') && getComputedStyle(document.getElementById('ptPag')).boxShadow !== 'none'`;
+    await ate(linha, 2000, 'a linha com a lista passando por baixo do rodapé');
+    await ev(`(() => { const v = document.getElementById('ptView'); v.scrollTop = v.scrollHeight; return 1; })()`);
+    await ate(`!(${linha})`, 2000, 'sem a linha no fim da rolagem');
+    await foto('pacientes-fim.png');
+    await ev(`(() => { const v = document.getElementById('ptView'); v.scrollTop = v.scrollHeight - v.clientHeight - 40; return 1; })()`);
+    await ate(linha, 2000, 'a linha volta ao subir um pouco');
+    await ev(`document.getElementById('ptView').scrollTop = 0; 1`);
+    certo(/39 pacientes/.test(t.pag) && /Página 1 de 2/.test(t.pag), 'o rodapé: ' + t.pag);
+    await foto('pacientes.png');
+    if (process.env.SHOT) { await ev(`document.querySelector('.right').classList.add('collapsed'); 1`); await sleep(200); await foto('pacientes-larga.png');
+      await ev(`document.querySelector('.right').classList.remove('collapsed'); 1`); }   // a agenda larga (sem o assistente): todas as colunas
+    // páginas: 30 por página; a próxima tem os 9 que faltam
+    await ev(`document.querySelector('#ptPag .pt-nav [aria-label="Próxima página"]').click(); 1`);
+    await ate(`document.querySelectorAll('#ptList .pt-linha').length === 9 && /Página 2 de 2/.test(document.getElementById('ptPag').textContent)`, 2000, 'a página 2');
+    certo(await ev(`document.querySelector('#ptPag .pt-nav [aria-label="Próxima página"]').disabled && document.querySelector('#ptPag .pt-nav [aria-label="Última página"]').disabled`), 'na última, as setas para a frente apagam');
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1600, deviceScaleFactor: 1, mobile: false });
+    await ate(`!document.getElementById('ptPag').classList.contains('linha')`, 2000, 'com espaço até o rodapé (9 em uma tela alta), sem a linha');
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await ate(`document.getElementById('ptPag').classList.contains('linha')`, 2000, 'a tela volta a 900: os 9 encostam no rodapé');
+    await ev(`document.querySelector('#ptPag .pt-nav [aria-label="Primeira página"]').click(); 1`);
+    await ate(`document.querySelectorAll('#ptList .pt-linha').length === 30 && /Página 1 de 2/.test(document.getElementById('ptPag').textContent)`, 2000, 'de volta à página 1');
+    // o ⋯: abrir, renomear; o Excluir só para quem pode (sem anotações, ou a de exemplo)
+    const menu = async (nome) => {
+      await ev(`(() => { const r = [...document.querySelectorAll('#ptList .pt-linha')].find((x) => x.querySelector('.pt-name').textContent === ${JSON.stringify(nome)}); r.querySelector('.pt-mais').click(); return 1; })()`);
+      await ate(`!document.getElementById('ptMenu').hidden`, 2000, 'o menu de ' + nome);
+      const itens = await ev(`[...document.querySelectorAll('#ptMenu button')].map((b) => b.textContent).join()`);
+      await tecla('Escape');
+      await ate(`document.getElementById('ptMenu').hidden`, 2000, 'o Esc fecha o menu');
+      return itens;
+    };
+    certo((await menu('Ana Clara Ribeiro')) === 'Abrir prontuário,Renomear,Excluir', 'sem anotações: pode excluir');
+    certo((await menu('Carlos Nunes')) === 'Abrir prontuário,Renomear', 'com prontuário: não exclui');
+    // buscar é pela lupa no alto, como no calendário: abre a busca já em Pacientes (o clique e o ⇧⌘F); a página não tem campo
+    certo(await ev(`!document.getElementById('ptSearch') && !!document.querySelector('.pt-head #ptBusca')`), 'a lupa no alto, sem o campo na página');
+    await clica('#ptBusca');
+    await ate(`!document.getElementById('busca').hidden && document.querySelector('#bsAbas .on').dataset.aba === 'pacientes'`, 2000, 'a lupa abre em Pacientes');
+    await ev(`(() => { document.getElementById('bsX').click(); return 1; })()`);
+    await ate(`document.getElementById('busca').hidden`, 2000, 'fecha');
+    const modsF = (await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`)) ? 4 + 8 : 2 + 8;
+    await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', modifiers: modsF, key: 'F', code: 'KeyF', windowsVirtualKeyCode: 70 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: modsF, key: 'F', code: 'KeyF', windowsVirtualKeyCode: 70 });
+    await ate(`!document.getElementById('busca').hidden && document.querySelector('#bsAbas .on').dataset.aba === 'pacientes'`, 2000, 'o ⇧⌘F em Pacientes');
+    await ev(`(() => { document.getElementById('bsX').click(); return 1; })()`);
+    await ate(`document.getElementById('busca').hidden`, 2000, 'fecha');
+    // as páginas ficam presas embaixo da tela
+    const fundo = await ev(`(() => { const p = document.getElementById('ptPag').getBoundingClientRect(), v = document.getElementById('ptView').getBoundingClientRect();
+      return { pag: Math.round(p.bottom), view: Math.round(v.bottom), larg: Math.round(p.width), vl: Math.round(v.width) }; })()`);
+    certo(Math.abs(fundo.pag - fundo.view) <= 1 && Math.abs(fundo.larg - fundo.vl) <= 16, 'o rodapé embaixo, de margem a margem: ' + JSON.stringify(fundo));
+    await foto('pacientes-rodape.png');
+    await ev(`[...document.querySelectorAll('#ptList .pt-linha')].find((r) => r.querySelector('.pt-name').textContent === 'Joana Prado').querySelector('.pt-desc small').click(); 1`);
+    await ate(`window.__abriu.length === 1`, 2000, 'a linha abre o prontuário');
+    const a = await ev(`window.__abriu[0]`);
+    certo(a.patient_id === 5 && a.patient === 'Joana Prado' && a.from === 'pacientes', 'o prontuário: ' + JSON.stringify(a));
+    // o + tem a dica escura do calendário: "Novo paciente" e o ⇧⌘E (o mesmo do Criar evento)
+    const macN = await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`);
+    const centro = await ev(`(() => { const r = document.getElementById('ptNew').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: centro.x, y: centro.y, button: 'none' });
+    await ate(`document.querySelector('.nav-tip').classList.contains('on')`, 2000, 'a dica do +');
+    const dicaN = await ev(`(() => ({ txt: document.querySelector('.nav-tip span').textContent, kbd: document.querySelector('.nav-tip kbd').textContent,
+      ks: document.getElementById('ptNew').getAttribute('aria-keyshortcuts') }))()`);
+    certo(dicaN.txt === 'Novo paciente' && dicaN.kbd === (macN ? '⇧⌘E' : 'Ctrl+Shift+E') && dicaN.ks === (macN ? 'Meta+Shift+E' : 'Control+Shift+E'),
+          'a dica do +: ' + JSON.stringify(dicaN));
+    await foto('pacientes-dica-mais.png');
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 700, y: 600, button: 'none' });
+    await ate(`!document.querySelector('.nav-tip').classList.contains('on')`, 2000, 'a dica some');
+    const modsE = (macN ? 4 : 2) + 8;
+    await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', modifiers: modsE, key: 'E', code: 'KeyE', windowsVirtualKeyCode: 69 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: modsE, key: 'E', code: 'KeyE', windowsVirtualKeyCode: 69 });
+    await ate(`!document.getElementById('ptNewRow').hidden && document.activeElement.id === 'ptNewName'`, 2000, 'o ⇧⌘E abre o novo paciente');
+    certo(await ev(`document.getElementById('evPop').hidden`), 'o ⇧⌘E em Pacientes abriu o evento da agenda');
+    // com o formulário aberto, o ⇧⌘E só volta ao nome (não apaga o que foi digitado, nem abre outra coisa por cima)
+    await send('Input.insertText', { text: 'Digitado' });
+    await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', modifiers: modsE, key: 'E', code: 'KeyE', windowsVirtualKeyCode: 69 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: modsE, key: 'E', code: 'KeyE', windowsVirtualKeyCode: 69 });
+    await sleep(200);
+    certo(await ev(`!document.getElementById('ptNewRow').hidden && document.getElementById('evPop').hidden && document.activeElement.id === 'ptNewName' && document.getElementById('ptNewName').value === 'Digitado'`), 'o ⇧⌘E com o formulário aberto');
+    await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await ate(`document.getElementById('ptNewRow').hidden && document.activeElement.id === 'ptNew'`, 2000, 'o Esc fecha e volta ao +');
+    // com o prontuário aberto por cima de Pacientes (o Voltar volta a ela), o ⇧⌘E e o ⇧⌘F não apertam os botões de baixo
+    await ev(`document.querySelector('.stage').classList.add('prontuario'); 1`);
+    certo(await ev(`getComputedStyle(document.getElementById('ptNew')).visibility === 'hidden'`), 'Pacientes à vista embaixo do prontuário');
+    for (const [k, vk] of [['E', 69], ['F', 70]]) {
+      await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', modifiers: modsE, key: k, code: 'Key' + k, windowsVirtualKeyCode: vk });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: modsE, key: k, code: 'Key' + k, windowsVirtualKeyCode: vk });
+    }
+    await sleep(200);
+    certo(await ev(`document.getElementById('ptNewRow').hidden && document.getElementById('busca').hidden`), 'o ⇧⌘E/⇧⌘F apertou um botão escondido atrás do prontuário');
+    await ev(`document.querySelector('.stage').classList.remove('prontuario'); 1`);
+    // o aviso de sessão por cima do novo paciente: o Tab fica com o aviso (o formulário de baixo não puxa o foco)
+    await clica('#ptNew');
+    await ate(`document.activeElement.id === 'ptNewName'`, 2000, 'a janela do novo paciente (para o aviso)');
+    await ev(`document.getElementById('odSession').hidden = false; document.getElementById('odSessionGo').focus(); 1`);
+    await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    await sleep(100);
+    certo(await ev(`!document.activeElement.closest('#ptNewRow') && !document.getElementById('ptNewRow').hidden`), 'o Tab do aviso de sessão foi para a janela de baixo: ' + await ev(`document.activeElement.id`));
+    await ev(`document.getElementById('odSession').hidden = true; 1`);
+    await clica('#ptNewX');
+    await ate(`document.getElementById('ptNewRow').hidden && document.activeElement.id === 'ptNew'`, 2000, 'fecha');
+    // fechar de novo o formulário já fechado (a resposta atrasada do cadastro) não tira o foco de quem está digitando
+    await ev(`document.getElementById('biInput').focus(); 1`);
+    await clica('#ptNewX');
+    await sleep(100);
+    certo(await ev(`document.activeElement.id === 'biInput' && document.getElementById('ptNewRow').hidden`), 'fechar o já fechado puxou o foco: ' + await ev(`document.activeElement.id`));
+    // novo paciente no lugar do assistente: ocupa a coluna dele (a conversa fica por baixo, fora do Tab e dos atalhos), a
+    // tela de Pacientes continua viva (sem inert, sem janela por cima); Esc e o × fecham e devolvem o foco ao +
+    await ev(`document.getElementById('biInput').value = 'pergunta guardada'; 1`);
+    await clica('#ptNew');
+    await ate(`!document.getElementById('ptNewRow').hidden && document.activeElement.id === 'ptNewName'`, 2000, 'o novo paciente');
+    const lugar = await ev(`(() => { const f = document.getElementById('ptNewRow').getBoundingClientRect(), r = document.querySelector('.right').getBoundingClientRect();
+      const st = (sel) => getComputedStyle(document.querySelector(sel)).visibility;
+      return { mesmo: [f.left - r.left, f.top - r.top, f.width - r.width, f.height - r.height].every((x) => Math.abs(x) <= 1), dentro: !!document.getElementById('ptNewRow').closest('.right'),
+               inerte: document.querySelector('.stage').inert, modal: document.getElementById('ptNewRow').getAttribute('aria-modal'),
+               baixo: [st('.right > .rp-head'), st('#biInput'), st('#rpMsgs')].join(), titulo: document.getElementById('ptNewT').textContent,
+               mais: document.getElementById('ptNew').getAttribute('aria-expanded') + '|' + document.getElementById('ptNew').classList.contains('on'),
+               auto: ['ptNewName', 'ptNewEmail', 'ptNewPhone', 'ptNewPlano'].map((i) => document.getElementById(i).getAttribute('autocomplete')).join(),
+               tipos: [document.getElementById('ptNewEmail').type, document.getElementById('ptNewPhone').type].join(),
+               plano: document.getElementById('ptNewPlanoBox').getClientRects().length === 0 }; })()`);
+    certo(lugar.mesmo && lugar.dentro && !lugar.inerte && lugar.modal === null && lugar.baixo === 'hidden,hidden,hidden' && lugar.titulo === 'Novo paciente' &&
+          lugar.mais === 'true|true' && lugar.auto === 'off,off,off,off' && lugar.tipos === 'email,tel' && lugar.plano,
+          'o formulário no lugar do assistente: ' + JSON.stringify(lugar));
+    await foto('pacientes-novo.png');
+    await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await ate(`document.getElementById('ptNewRow').hidden && document.activeElement.id === 'ptNew' && !document.querySelector('.right').classList.contains('novo')`, 2000, 'o Esc fecha');
+    certo(await ev(`getComputedStyle(document.getElementById('biInput')).visibility === 'visible' && document.getElementById('biInput').value === 'pergunta guardada' && document.getElementById('ptNew').getAttribute('aria-expanded') === 'false'`),
+          'o assistente volta como estava');
+    // o × também fecha
+    await clica('#ptNew');
+    await ate(`document.activeElement.id === 'ptNewName'`, 2000, 'abre de novo');
+    await clica('#ptNewX');
+    await ate(`document.getElementById('ptNewRow').hidden && document.activeElement.id === 'ptNew'`, 2000, 'o × fecha');
+    // com o assistente recolhido, o + abre a coluna para o formulário e, ao fechar, recolhe de novo
+    await ev(`document.getElementById('agExpand').click(); 1`);
+    await ate(`document.querySelector('.right').classList.contains('collapsed')`, 2000, 'assistente recolhido');
+    await clica('#ptNew');
+    await ate(`!document.getElementById('ptNewRow').hidden && !document.querySelector('.right').classList.contains('collapsed') && document.activeElement.id === 'ptNewName'`, 2000, 'o + abre o assistente recolhido');
+    await clica('#ptNewX');
+    await ate(`document.getElementById('ptNewRow').hidden && document.querySelector('.right').classList.contains('collapsed')`, 2000, 'fechar recolhe de novo');
+    await ev(`document.getElementById('agExpand').click(); 1`);
+    await ate(`!document.querySelector('.right').classList.contains('collapsed')`, 2000, 'o assistente de volta');
+    // abrir um prontuário ou sair de Pacientes fecha o formulário sem chamar o foco do + e, se o assistente estava recolhido,
+    // recolhe de novo
+    await ev(`(() => { const b = document.getElementById('ptNew'); window.__foco = 0; b.focus = function () { window.__foco++; return HTMLElement.prototype.focus.apply(this, arguments); }; return 1; })()`);
+    for (const [saida, faz, volta] of [['o prontuário', `document.querySelector('.stage').classList.add('prontuario')`, `document.querySelector('.stage').classList.remove('prontuario')`],
+                                        ['Consultas', `document.getElementById('navConsultas').click()`, `document.getElementById('navPacientes').click()`]]) {
+      for (const recolher of [false, true]) {
+        if (recolher) { await ev(`document.getElementById('agExpand').click(); 1`); await ate(`document.querySelector('.right').classList.contains('collapsed')`, 2000, 'recolhido'); }
+        await clica('#ptNew');
+        await ate(`!document.getElementById('ptNewRow').hidden && !document.querySelector('.right').classList.contains('collapsed')`, 2000, 'aberto');
+        await ev(`window.__foco = 0; ${faz}; 1`);
+        await ate(`document.getElementById('ptNewRow').hidden && !document.querySelector('.right').classList.contains('novo')`, 2000, saida + ' fecha o formulário');
+        certo(await ev(`window.__foco === 0 && document.querySelector('.right').classList.contains('collapsed') === ${recolher}`),
+              saida + (recolher ? ' (assistente recolhido)' : '') + ': o foco foi ao + ou o assistente não voltou como estava');
+        await ev(`${volta}; 1`);
+        if (recolher) { await ev(`document.getElementById('agExpand').click(); 1`); await ate(`!document.querySelector('.right').classList.contains('collapsed')`, 2000, 'de volta'); }
+        await ate(`document.querySelector('.stage').classList.contains('pacientes') && !document.querySelector('.stage').classList.contains('prontuario')`, 2000, 'de volta a Pacientes');
+      }
+    }
+    await ev(`delete document.getElementById('ptNew').focus; 1`);
+    // a resposta atrasada de um cadastro não mexe no formulário aberto de novo para outro paciente
+    LENTO_PAC = 700;
+    try {
+      await clica('#ptNew');
+      await ate(`document.activeElement.id === 'ptNewName'`, 2000, 'aberto (lento)');
+      await send('Input.insertText', { text: 'Primeiro Lento' });
+      await clica('#ptNewSave');
+      await ate(`document.getElementById('ptNewSave').disabled`, 2000, 'enviando');
+      await clica('#ptNewX');
+      await clica('#ptNew');
+      await ate(`document.activeElement.id === 'ptNewName' && !document.getElementById('ptNewSave').disabled`, 2000, 'reaberto, o botão livre');
+      await send('Input.insertText', { text: 'Segundo' });
+      // o primeiro foi criado e a lista recarregou (ele pode estar na página 2: confere o GET depois da resposta)
+      let recarregou = false;
+      for (const t0 = Date.now(); Date.now() - t0 < 4000 && !recarregou; await sleep(50)) {
+        const i = pedidos.findIndex((x) => x.method === 'POST' && x.path === '/patients' && x.body && x.body.name === 'Primeiro Lento');
+        recarregou = i >= 0 && pedidos.slice(i + 1).some((x) => x.method === 'GET' && x.path === '/patients');
+      }
+      certo(recarregou, 'a resposta atrasada não recarregou a lista');
+      await sleep(150);
+      certo(await ev(`!document.getElementById('ptNewRow').hidden && document.getElementById('ptNewName').value === 'Segundo' && document.getElementById('ptNewErr').hidden`),
+            'a resposta atrasada fechou ou mexeu no formulário reaberto');
+      await clica('#ptNewX');
+    } finally { LENTO_PAC = 0; }
+    // sem a migração 0021 (503): o formulário limpa e-mail e atendimento e cria o paciente sem eles no clique seguinte
+    FALTA_0021 = true;
+    try {
+      await clica('#ptNew');
+      await ate(`document.activeElement.id === 'ptNewName'`, 2000, 'aberto (sem a 0021)');
+      await send('Input.insertText', { text: 'Sem Migracao' });
+      await ev(`(() => { document.getElementById('ptNewEmail').value = 'sem@exemplo.invalid'; const c = document.getElementById('ptNewCov'); c.value = 'particular'; c.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+      await clica('#ptNewSave');
+      await ate(`/ainda não podem ser salvos/.test(document.getElementById('ptNewErr').textContent) && document.getElementById('ptNewEmail').value === '' && document.getElementById('ptNewCov').value === ''`, 3000, 'o 503 limpa o que não dá para salvar');
+      await clica('#ptNewSave');
+      await ate(`document.getElementById('ptNewRow').hidden`, 3000, 'criou e fechou');   // (na página 2 da lista: confere o POST)
+      const sem = pedidos.filter((x) => x.method === 'POST' && x.path === '/patients' && x.body && x.body.name === 'Sem Migracao');
+      certo(sem.length === 2 && sem[0].body.email && sem[0].body.coverage === 'particular' && !sem[1].body.email && !sem[1].body.coverage && !sem[1].body.health_plan,
+            'o segundo envio sem e-mail e atendimento: ' + JSON.stringify(sem.map((x) => x.body)));
+    } finally { FALTA_0021 = false; }
+    // convênio: aparece o plano (e é obrigatório); particular: some o plano. Nada vai ao servidor sem o plano
+    await clica('#ptNew');
+    await ate(`document.activeElement.id === 'ptNewName'`, 2000, 'abre para criar');
+    await send('Input.insertText', { text: 'Beatriz Nova' });
+    await ev(`(() => { document.getElementById('ptNewEmail').value = 'beatriz.nova@exemplo.invalid'; document.getElementById('ptNewPhone').value = '(11) 91234-5678'; return 1; })()`);
+    // o CPF (fictício, com os dígitos certos): só números, com os pontos e o traço; incompleto não vai ao servidor
+    await ev(`document.getElementById('ptNewCpf').focus(); 1`);
+    await send('Input.insertText', { text: '5299822' });
+    certo(await ev(`document.getElementById('ptNewCpf').value`) === '529.982.2', 'a máscara do CPF pela metade: ' + await ev(`document.getElementById('ptNewCpf').value`));
+    const antesCpf = pedidos.filter((x) => x.method === 'POST' && x.path === '/patients').length;
+    await clica('#ptNewSave');
+    await ate(`document.getElementById('ptNewErr').textContent === 'CPF incompleto.' && document.activeElement.id === 'ptNewCpf' && document.getElementById('ptNewCpf').closest('.fl').classList.contains('bad')`, 2000, 'CPF incompleto');
+    certo(pedidos.filter((x) => x.method === 'POST' && x.path === '/patients').length === antesCpf, 'mandou ao servidor com o CPF incompleto');
+    await send('Input.insertText', { text: 'x4725' });
+    certo(await ev(`document.getElementById('ptNewCpf').value`) === '529.982.247-25', 'a máscara do CPF: ' + await ev(`document.getElementById('ptNewCpf').value`));
+    await ev(`(() => { const s = document.getElementById('ptNewCov'); s.value = 'convenio'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+    await ate(`document.getElementById('ptNewPlanoBox').getClientRects().length > 0 && document.activeElement.id === 'ptNewPlano'`, 2000, 'convênio: o plano aparece');
+    await foto('pacientes-novo-convenio.png');
+    const antes = pedidos.filter((x) => x.method === 'POST' && x.path === '/patients').length;
+    await clica('#ptNewSave');
+    await ate(`document.getElementById('ptNewErr').textContent === 'Informe o plano do convênio.' && document.activeElement.id === 'ptNewPlano' && document.getElementById('ptNewPlanoBox').classList.contains('bad')`, 2000, 'sem o plano não cria (e o campo fica vermelho)');
+    // o visual do login: campos de 84 com raio 24, cinza #F7F8F8 (o da caixa de texto do assistente), o rótulo dentro; o botão preto de 84
+    const vis = await ev(`(() => { const c = (i) => getComputedStyle(document.getElementById(i).closest('.fl')), b = getComputedStyle(document.getElementById('ptNewSave'));
+      const pe = (() => { const corpo = document.querySelector('#ptNewRow .rp-novo-corpo'), antes = document.getElementById('ptNewSave').getBoundingClientRect().bottom;
+        corpo.scrollTop = corpo.scrollHeight; const depois = document.getElementById('ptNewSave').getBoundingClientRect().bottom; corpo.scrollTop = 0;
+        return { fixo: Math.abs(antes - depois) < 1, baixo: Math.round(document.getElementById('ptNewRow').getBoundingClientRect().bottom - depois), fora: !corpo.contains(document.getElementById('ptNewSave')) }; })();
+      return { pe, cov: [...document.getElementById('ptNewCov').options].map((o) => o.value + ':' + o.textContent).join('|'), radios: document.querySelectorAll('#ptNewRow input[type=radio]').length,
+               alt: ['ptNewName', 'ptNewCpf', 'ptNewBirth', 'ptNewSex', 'ptNewEmail', 'ptNewPhone', 'ptNewCov'].map((i) => c(i).height).join(), raio: c('ptNewEmail').borderTopLeftRadius,
+               fundo: c('ptNewPhone').backgroundColor, rotulo: !!document.querySelector('#ptNewRow .fl label.fl-label[for="ptNewEmail"]'),
+               botao: [b.height, b.backgroundColor, b.borderTopLeftRadius].join('|'),
+               titulo: ['fontSize', 'fontWeight', 'color'].map((k) => getComputedStyle(document.getElementById('ptNewT'))[k]).join() === ['fontSize', 'fontWeight', 'color'].map((k) => getComputedStyle(document.querySelector('.right > .rp-head .rp-title'))[k]).join(),
+               linha: getComputedStyle(document.getElementById('ptNewRow')).boxShadow === getComputedStyle(document.querySelector('.right')).boxShadow && getComputedStyle(document.querySelector('.right')).boxShadow !== 'none' && ['.rp-head', '.rp-novo-corpo', '.rp-novo-pe'].every((x) => getComputedStyle(document.querySelector('#ptNewRow > ' + x)).backgroundColor === 'rgba(0, 0, 0, 0)'),
+               sobra: document.querySelectorAll('#ptNewCancel, #ptNewRow .nv-nota, #ptNewRow .nv-title').length,
+               xNoAlto: (() => { const x = document.getElementById('ptNewX').getBoundingClientRect(), r = document.getElementById('ptNewRow').getBoundingClientRect(); return x.top - r.top < 20 && r.right - x.right < 20; })() }; })()`);
+    certo(vis.pe.fixo && vis.pe.baixo === 24 && vis.pe.fora && vis.cov === ':Não informado|particular:Particular|convenio:Convênio' && vis.radios === 0 &&
+          vis.alt === '84px,84px,84px,84px,84px,84px,84px' && vis.raio === '24px' && vis.fundo === 'rgb(247, 248, 248)' && vis.rotulo &&
+          vis.botao === '84px|rgb(11, 11, 12)|999px' && vis.titulo && vis.linha && vis.sobra === 0 && vis.xNoAlto,
+          'o visual do login (o título do tamanho do do assistente, a linha que divide, só o × no alto, sem as dicas): ' + JSON.stringify(vis));
+    // nascimento como no login: só dígitos, as barras entram sozinhas; data impossível não vai ao servidor
+    await ev(`document.getElementById('ptNewBirth').focus(); 1`);
+    await send('Input.insertText', { text: '31021990' });
+    certo(await ev(`document.getElementById('ptNewBirth').value`) === '31/02/1990', 'a máscara do nascimento: ' + await ev(`document.getElementById('ptNewBirth').value`));
+    certo(pedidos.filter((x) => x.method === 'POST' && x.path === '/patients').length === antes, 'mandou ao servidor sem o plano');
+    await ev(`(() => { const s = document.getElementById('ptNewCov'); s.value = 'particular'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+    await ate(`document.getElementById('ptNewPlanoBox').getClientRects().length === 0 && document.getElementById('ptNewErr').getClientRects().length === 0`, 2000, 'particular: o plano some');
+    await ev(`(() => { const s = document.getElementById('ptNewCov'); s.value = 'convenio'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+    await ate(`document.getElementById('ptNewPlanoBox').getClientRects().length > 0 && document.getElementById('ptNewPlano').value === ''`, 2000, 'convênio de novo: o plano vazio');
+    await send('Input.insertText', { text: 'Plano Teste' });
+    await clica('#ptNewSave');
+    await ate(`document.getElementById('ptNewErr').textContent === 'Data de nascimento inválida.' && document.activeElement.id === 'ptNewBirth' && document.getElementById('ptNewBirth').closest('.fl').classList.contains('bad') && !document.getElementById('ptNewPlanoBox').classList.contains('bad')`, 2000, '31/02 não existe');
+    certo(pedidos.filter((x) => x.method === 'POST' && x.path === '/patients').length === antes, 'mandou ao servidor com a data inválida');
+    await ev(`(() => { const b = document.getElementById('ptNewBirth'); b.value = ''; b.focus(); return 1; })()`);
+    await send('Input.insertText', { text: 'ab15/03-1980' });
+    certo(await ev(`document.getElementById('ptNewBirth').value`) === '15/03/1980', 'a máscara tira o que não é número: ' + await ev(`document.getElementById('ptNewBirth').value`));
+    await ev(`document.getElementById('ptNewPlano').focus(); 1`);
+    await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
+    await ate(`document.getElementById('ptNewRow').hidden && [...document.querySelectorAll('#ptList .pt-name')].some((e) => e.textContent === 'Beatriz Nova')`, 3000, 'o Enter criou e a lista mostra');
+    const post = pedidos.filter((x) => x.method === 'POST' && x.path === '/patients').pop();
+    certo(post && post.body.name === 'Beatriz Nova' && post.body.email === 'beatriz.nova@exemplo.invalid' && post.body.phone === '(11) 91234-5678' &&
+          post.body.coverage === 'convenio' && post.body.health_plan === 'Plano Teste' && post.body.birth_date === '1980-03-15' && post.body.cpf === '52998224725' && !/Beatriz|beatriz|91234/.test(post.path),
+          'o POST do novo paciente (os dados só no corpo): ' + JSON.stringify(post && post.body));
+    return `39 pacientes, ${cons} consultas, ${n30} nos 30 dias; no tamanho dos Diagnósticos (3 colunas iguais: nome e idade, "Consultas" e o total, "Última" e a data ou "Nenhuma consulta"; o ⋯ no fim), alinhado com o título e a lupa, espaços 32 e 40; 30 por página, rodapé sem linha; o prontuário por cima, o aviso de sessão e a janela já fechada; páginas presas embaixo; ⋯ com o Excluir só para quem pode; linha abre o prontuário; novo paciente pelo + no alto (ao lado da lupa, dica e ⇧⌘E) no lugar do assistente, com e-mail, telefone e particular/convênio com o plano`;
   }],
 ];
 

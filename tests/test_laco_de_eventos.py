@@ -29,7 +29,7 @@ def fake(monkeypatch):
         "find_patients": lambda uid, name: [], "notes_by_event": lambda uid, ids: {}, "log_access": lambda *a, **k: None,
         "get_note": lambda uid, nid: {"id": nid, "patient_id": 7}, "add_addendum": lambda uid, nid, c: {"id": 1},
         "list_access": lambda uid, pid: [], "add_file": lambda *a: {"id": 1}, "list_files": lambda uid, pid: [],
-        "find_by_cpf": lambda *a, **k: None, "create_patient": lambda *a: dict(PAT), "update_patient": lambda *a: dict(PAT),
+        "find_by_cpf": lambda *a, **k: None, "create_patient": lambda *a, **k: dict(PAT), "update_patient": lambda *a: dict(PAT),
         "touch_patient": lambda *a: None, "record_login": lambda *a: False, "login_succeeded": lambda uid: None,
         "password_login_info": lambda e: {"id": "u1", "hash": "h", "sv": 0, "locked_s": 0}, "account": lambda e: None,
         "new_login_code": lambda e, h, teto=True: ("ok", 0), "discard_login_code": lambda e: None, "check_login_code": lambda e, h, soma=True: ("ok", 0), "device_known": lambda u, d: False,

@@ -77,18 +77,18 @@
     .cfg-card{padding:42px;border-radius:40px;border:1px solid var(--card-border);display:flex;flex-direction:column;gap:48px}
     .cfg-name{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .cfg-sub{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#666C6F}
-    /* campos: o mesmo componente do login (rótulo flutuante, Figma 1046-44738): vazio = cinza com o rótulo no meio;
-       digitando ou preenchido = branco, borda #7D7D82, rótulo 12px em cima e texto 15px embaixo */
+    /* campos: o mesmo componente do login (rótulo flutuante, Figma 1046-44738): vazio = cinza (#F7F8F8, o da caixa de texto do
+       assistente) com o rótulo no meio; digitando = branco, borda #7D7D82, rótulo 12px em cima e texto 15px embaixo */
     .cfg-fields{display:flex;flex-direction:column;gap:16px}
     .cfg-row{display:grid;grid-template-columns:minmax(0,1fr) 150px;gap:16px}
     .cfg-fld{display:flex;flex-direction:column;gap:8px;min-width:0}
-    .fl{position:relative;width:100%;height:84px;border-radius:24px;background:#F4F4F6;box-shadow:inset 0 0 0 1px transparent;
+    .fl{position:relative;width:100%;height:84px;border-radius:24px;background:#F7F8F8;box-shadow:inset 0 0 0 1px transparent;
       transition:background-color .12s,box-shadow .12s}
     .fl:focus-within{background:#fff;box-shadow:inset 0 0 0 1px #7D7D82}
     .fl.bad{box-shadow:inset 0 0 0 1px #D93025}
-    /* preenchido (fora do foco): branco com o contorno fino das linhas de Integrações, em vez do cinza do campo vazio */
+    /* preenchido (fora do foco): o mesmo cinza, com o contorno fino das linhas de Integrações */
     /* (a classe .cheio vem do script: o :has() não percebe valores postos por código) */
-    .fl.cheio:not(.bad):not(:focus-within),.fl.lock.cheio{background:#fff;box-shadow:inset 0 0 0 1px var(--card-border)}
+    .fl.cheio:not(.bad):not(:focus-within),.fl.lock.cheio{background:#F7F8F8;box-shadow:inset 0 0 0 1px var(--card-border)}
     .fl-input{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:24px;outline:none;background:transparent;
       padding:41.4px 32px 24.6px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:400;font-size:15px;
       line-height:18px;letter-spacing:-.2px;color:#000}
@@ -231,7 +231,7 @@
     // outros), que aperta o botão. O do menu diz "Alternar barra lateral"; os das barras de cima (.hd-btn), o aria-label,
     // que muda com o estado; os ícones do menu retraído, o nome (data-tip), sem atalho. Letras fora das que o navegador reserva (N, T, W, R) e do ⇧⌘V (colar sem formatação).
     (function () {
-      var ATALHO = { navToggle: 'S', agCreate: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', agExpand: 'A',
+      var ATALHO = { navToggle: 'S', agCreate: 'E', ptNew: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', ptBusca: 'F', agExpand: 'A',
                      raNew: 'O', raHist: 'H', raExpand: 'X' };
       var mac = /Mac|iPhone|iPad/.test(navigator.platform || '');
       var tip = document.createElement('div'), txt = document.createElement('span'), kbd = document.createElement('kbd');
@@ -280,15 +280,17 @@
         if (e.key === 'Escape') { esconde(); return; }
         if (e.isComposing || e.keyCode === 229) return;   // acento ou caractere ainda sendo montado pelo teclado
         if (!e.shiftKey || e.altKey || (mac ? !e.metaKey || e.ctrlKey : !e.ctrlKey || e.metaKey)) return;
-        var k = (e.key || '').toUpperCase(), id = null;
+        var k = (e.key || '').toUpperCase();
         // teclado em outro alfabeto (cirílico, grego…): vale a posição da tecla; nos latinos, só a letra que ela escreve
         if (/^[^\u0000-\u024f]$/.test(e.key || '') && /^Key[A-Z]$/.test(e.code || '')) k = e.code.slice(3);
-        Object.keys(ATALHO).forEach(function (i) { if (ATALHO[i] === k) id = i; });
-        var b = id && document.getElementById(id);
-        if (!b) return;                         // a tela não tem esse botão: o atalho fica com o navegador
+        var bs = Object.keys(ATALHO).filter(function (i) { return ATALHO[i] === k; })
+          .map(function (i) { return document.getElementById(i); }).filter(Boolean);
+        if (!bs.length) return;                 // a tela não tem esse botão: o atalho fica com o navegador
         e.preventDefault();
-        // como o clique: só com o botão à vista e livre (sem janela aberta por cima)
-        if (e.repeat || b.disabled || !aVista(b) || b.closest('[inert]') || janelaAberta()) return;
+        // como o clique: só com o botão à vista e livre (sem janela aberta por cima); a mesma letra em dois botões
+        // (o + e a lupa da agenda e os de Pacientes): vale o que está à vista
+        var b = bs.filter(aVista)[0];
+        if (e.repeat || !b || b.disabled || b.closest('[inert]') || janelaAberta()) return;
         esconde();
         // como o clique de verdade: o aperto fecha o que fecha ao clicar fora (a janela do evento, a busca de remédio)
         b.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window }));
@@ -335,7 +337,7 @@
       }
       // o Salvar de cada cartão só acende com os dados carregados e algo mudado (como no print de referência);
       // o status mostra, nesta ordem: erro, salvando, mudança pendente, salvo e o que falta para emitir receita
-      // campo preenchido = branco com o contorno de Integrações (classe .cheio no .fl)
+      // campo preenchido = o cinza com o contorno de Integrações (classe .cheio no .fl)
       function marca() { [].forEach.call(document.querySelectorAll('.fl'), function (b) { var i = b.querySelector('.fl-input'); b.classList.toggle('cheio', !!(i && i.value)); }); }
       function sync() {
         marca();
