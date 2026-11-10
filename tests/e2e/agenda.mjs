@@ -13,7 +13,10 @@
 // agenda sempre abre no Dia (a Semana escolhida não volta ao recarregar, e a escolha guardada pela versão anterior sai);
 // os 8 botões de cima (Agenda e Assistente) mostram no mouseover a dica escura com o que fazem e o atalho (⇧⌘ + letra),
 // sem a dica do navegador, e cada atalho aperta o seu botão (como o clique: fecha a janela do evento), nunca o escondido;
-// o Expandir agenda volta ao nome certo quando o assistente reaparece pelo prontuário.
+// o Expandir agenda volta ao nome certo quando o assistente reaparece pelo prontuário; a busca (lupa, ⇧⌘F, Buscar do
+// menu e agenda#buscar) abre no meio da tela com Tudo · Consultas · Pacientes · Receitas, o trecho em negrito, e o
+// termo nunca vai na URL (as receitas: no corpo do POST); escolher abre a consulta, o paciente ou a receita; a lupa
+// (e o ⇧⌘F) abre já em Consultas, o Buscar do menu em Tudo; sem agenda conectada, nada de pedir para conectar.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -74,9 +77,17 @@ const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '
 const PACS = [{ id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }];   // a de exemplo vem primeiro
 let MAIS = false;                                          // a lista veio cortada: há pacientes só na busca do servidor
 let LENTA = 0;                                             // ms de espera da busca no servidor
+let LENTA_RX = 0;                                          // ms de espera da busca de receitas
 let LENTO_PAC = 0;                                         // ms de espera do cadastro de paciente (POST /patients)
 const ANTIGOS = [{ id: 900, name: 'Otávio Antigo', notes: 3, last: '2025-01-10T12:00:00+00:00' }];
 const sem = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+// receitas que a busca acha (POST /prontuario/receitas/busca: o termo no corpo; vazio, as recentes)
+const RECEITAS = [
+  { id: '11111111-1111-4111-8111-111111111111', patient_id: 5, patient: 'Joana Prado', tipo: 'simples', status: 'emitida',
+    data: '2026-11-05T13:00:00+00:00', remedios: ['Losartana 50 mg'] },
+  { id: '22222222-2222-4222-8222-222222222222', patient_id: 7, patient: 'Maria Silva', tipo: 'especial', status: 'emitida',
+    data: '2026-10-21T13:00:00+00:00', remedios: ['Clonazepam 2 mg', 'Dipirona 500 mg'] },
+];
 function rota(method, path, q, body) {
   if (path === '/me' && ME_FORA) return null;      // 404: a agenda não sabe a conta
   if (path === '/me') return { logged_in: true, scribe: false, user: { id: UID }, boas_vindas: BOAS_VINDAS };
@@ -94,6 +105,10 @@ function rota(method, path, q, body) {
     EVS.push(e); return { ok: true, event: e };
   }
   if (path.startsWith('/calendar/events/') && method === 'PATCH') return { ok: true, event: {} };
+  if (path === '/prontuario/receitas/busca' && method === 'POST') {
+    const k = sem((body && body.q) || '').trim();
+    return { receitas: RECEITAS.filter((r) => !k || sem(r.patient + ' ' + r.remedios.join(' ')).includes(k)) };
+  }
   return null;
 }
 async function responde(p) {
@@ -107,6 +122,7 @@ async function responde(p) {
     if (LENTA && u.pathname === '/patients/search') await sleep(LENTA);
     if (LENTA_AGENDA && u.pathname === '/calendar/events' && method === 'GET') await sleep(LENTA_AGENDA);
     if (LENTO_PAC && u.pathname === '/patients' && method === 'POST') await sleep(LENTO_PAC);
+    if (LENTA_RX && u.pathname === '/prontuario/receitas/busca') await sleep(LENTA_RX);
     const j = rota(method, u.pathname, u.searchParams, body);
     pedidos.push({ method, path: u.pathname, q: Object.fromEntries(u.searchParams), body });
     if (j === null) status = 404;
@@ -135,7 +151,7 @@ async function fecha() { await tecla('Escape'); await sleep(300); }
 
 // os botões das barras de cima da agenda: o texto da dica (o aria-label) e a letra do atalho (⇧⌘ + letra, Ctrl+Shift fora do Mac)
 const BOTOES = [['agCreate', 'Criar evento', 'E'], ['calBtn', 'Escolher data', 'D'], ['viewSel', 'Mudar para Semana', 'U'],
-                ['agSearch', 'Buscar consultas', 'F'], ['agExpand', 'Expandir agenda', 'A'], ['raNew', 'Nova conversa', 'O'],
+                ['agSearch', 'Buscar', 'F'], ['agExpand', 'Expandir agenda', 'A'], ['raNew', 'Nova conversa', 'O'],
                 ['raHist', 'Histórico', 'H'], ['raExpand', 'Expandir', 'X']];
 
 const cenarios = [
@@ -289,17 +305,18 @@ const cenarios = [
   ['busca lê as próximas e o passado em separado, todas com o teto', async () => {
     const antes = pedidos.length;
     await clica('#agSearch');
-    await ate(`document.querySelectorAll('#srchList .srch-item').length > 0`, 5000, 'lista da busca');
+    await ate(`document.querySelectorAll('#bsList .bs-it[data-tipo="consulta"]').length > 0`, 5000, 'lista da busca');
     const lidas = pedidos.slice(antes).filter((r) => r.path === '/calendar/events' && r.method === 'GET' && r.q.limit === '2500');
     certo(lidas.length === 3, 'três leituras: ' + lidas.length);
     const hoje0 = utc(dia(0), '00:00');
     certo(lidas.some((r) => r.q.start === hoje0) && lidas.some((r) => r.q.end === hoje0), 'corte em hoje 0h: ' + JSON.stringify(lidas.map((r) => r.q)));
-    const itens = await ev(`[...document.querySelectorAll('#srchList .srch-item .srch-t')].map((t) => t.textContent)`);
+    const itens = await ev(`[...document.querySelectorAll('#bsList .bs-it[data-tipo="consulta"] .bs-r')].map((t) => t.textContent)`);
     certo(new Set(itens).size === itens.length, 'sem repetidos: ' + itens.join(' | '));
     return itens.length + ' próximas, sem repetir';
   }],
   ['reconectar: a faixa diz "sem permissão" ou "expirou", e some quando a agenda volta', async () => {
     await tecla('Escape');                                     // fecha a busca
+    certo(await ev(`document.getElementById('busca').hidden && !document.querySelector('.stage').inert`), 'o Esc não fechou a busca');
     const faixa = `(document.querySelector('#calReconnect b') || {}).textContent`;
     RECONECTAR = 'permissao';
     await ev(`window.__refreshAgenda(); 1`);
@@ -831,7 +848,7 @@ const cenarios = [
     const efeito = {
       calBtn: `!document.getElementById('calPop').hidden`,
       viewSel: `document.querySelector('.stage').classList.contains('week')`,
-      agSearch: `!document.getElementById('srchPop').hidden`,
+      agSearch: `!document.getElementById('busca').hidden`,
       agExpand: `document.querySelector('.right').classList.contains('collapsed')`,
       raHist: `document.querySelector('.stage').classList.contains('expanded')`,
       raExpand: `document.querySelector('.stage').classList.contains('expanded')`,
@@ -876,6 +893,180 @@ const cenarios = [
     await sleep(200);
     certo(await ev(`window.__cliques.length === 0`), 'digitar apertou botão: ' + await ev(`window.__cliques.join()`));
     return feitos.join(', ') + '; botão escondido não; ⇧⌘G livre; digitar não';
+  }],
+  ['a busca abre no meio da tela: Tudo · Consultas · Pacientes · Receitas, o trecho em negrito, o termo nunca na URL', async () => {
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    const abre = async (q) => {
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await ate(`location.pathname === '/opendoctor-agenda.html' && document.readyState === 'complete' && !!window.__calConnected`, 8000, 'agenda ' + q);
+      // o prontuário não abre de verdade aqui (as rotas dele não existem neste teste): guarda o que a busca pediu
+      await ev(`window.__abriu = []; window.__openProntuario = (c) => { window.__abriu.push(c); }; 1`);
+    };
+    const key = async (key, code, vk, m = 0) => {
+      await send('Input.dispatchKeyEvent', { type: 'rawKeyDown', modifiers: m, key, code, windowsVirtualKeyCode: vk });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: m, key, code, windowsVirtualKeyCode: vk });
+    };
+    const aberta = `!document.getElementById('busca').hidden`;
+    const linhas = () => ev(`[...document.querySelectorAll('#bsList .bs-it')].map((b) => ({ tipo: b.dataset.tipo, t: b.querySelector('.bs-r').textContent, k: b.querySelector('.bs-k').textContent,
+        b: [...b.querySelectorAll('.bs-r b')].map((x) => x.textContent).join('|'), s: (b.querySelector('.bs-s') || {}).textContent || '',
+        d: (b.querySelector('.bs-d') || {}).textContent || '', on: b.classList.contains('on') }))`);
+    const digita = async (t) => { await ev(`document.getElementById('bsIn').focus(); 1`); await send('Input.insertText', { text: t }); };
+    const aba = async (a) => { await clica(`#bsAbas [data-aba="${a}"]`); };
+    // os cenários anteriores criaram pacientes: volta à lista do começo (a de exemplo e a Joana)
+    PACS.splice(0, PACS.length, { id: 7, name: 'Maria Silva', example: true }, { id: 5, name: 'Joana Prado' }); MAIS = false;
+    await abre('?busca=1');
+    const antes = pedidos.length;
+
+    // o Buscar do menu abre a janela: 780 × 572 no meio da tela, a agenda atrás sem foco, o campo com o foco
+    await clica('#navBuscar');
+    await ate(`${aberta} && document.querySelectorAll('#bsList .bs-it').length > 0`, 5000, 'a busca pelo menu');
+    const g = await ev(`(() => { const r = document.getElementById('bsCard').getBoundingClientRect();
+      return { w: r.width, h: r.height, x: Math.round(r.left), y: Math.round(r.top), inert: document.querySelector('.stage').inert,
+               foco: document.activeElement && document.activeElement.id, abas: [...document.querySelectorAll('#bsAbas [data-aba]')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '')),
+               limpa: document.getElementById('bsLimpa').hidden, sep: getComputedStyle(document.querySelector('.bs-sep')).display }; })()`);
+    certo(g.w === 780 && g.h === 572 && g.x === 330 && g.y === 164 && g.inert && g.foco === 'bsIn' && g.limpa && g.sep === 'none' &&
+          g.abas.join() === 'Tudo*,Consultas,Pacientes,Receitas', 'janela: ' + JSON.stringify(g));
+    let L = await linhas();
+    certo(L[0].on && L.filter((x) => x.on).length === 1, 'a primeira linha vem marcada: ' + JSON.stringify(L));
+    certo(L.some((x) => x.tipo === 'consulta') && L.filter((x) => x.tipo === 'paciente').map((x) => x.t).join() === 'Joana Prado,Maria Silva',
+          'sem termo: as próximas consultas e os pacientes recentes (a de exemplo por último): ' + JSON.stringify(L));
+
+    // com termo (sem diferença de maiúsculas): pacientes, consultas e receitas, o trecho em negrito, a data à direita
+    await digita('JOANA');
+    await ate(`[...document.querySelectorAll('#bsList .bs-it')].some((b) => b.dataset.tipo === 'receita')`, 4000, 'a receita da Joana');
+    L = await linhas();
+    certo(L[0].tipo === 'paciente' && L[0].t === 'Joana Prado' && L[0].b === 'Joana' && L[0].on, 'o paciente primeiro: ' + JSON.stringify(L[0]));
+    // o tipo vem antes do achado: "Paciente · Joana Prado", "Consulta · …", "Receita · …"
+    certo(L.every((x) => x.k === { paciente: 'Paciente · ', consulta: 'Consulta · ', receita: 'Receita · ' }[x.tipo]), 'o tipo primeiro: ' + JSON.stringify(L.map((x) => x.k + x.t)));
+    certo(await ev(`document.querySelector('#bsList .bs-it .bs-t').textContent`) === 'Paciente · Joana Prado', 'a linha inteira');
+    const c = L.find((x) => x.tipo === 'consulta'), r = L.find((x) => x.tipo === 'receita');
+    certo(c && /Joana Prado$/.test(c.t) && c.b === 'Joana' && / de [a-z]{3}\./.test(c.d), 'a consulta: ' + JSON.stringify(c));
+    certo(r && r.t === 'Losartana 50 mg' && r.s === 'Joana Prado · Emitida' && r.d.startsWith('5 de nov.'), 'a receita: ' + JSON.stringify(r));
+    certo(!L.some((x) => x.t === 'Maria Silva'), 'quem não bate saiu');
+    await foto('busca.png');
+    certo(!(await ev(`document.getElementById('bsLimpa').hidden`)) && (await ev(`getComputedStyle(document.querySelector('.bs-sep')).display`)) !== 'none',
+          'o Limpar (e o divisor) aparecem com texto');
+    // o termo (pode ser um nome) nunca vai na URL; nas receitas, só no corpo do POST
+    const depois = pedidos.slice(antes);
+    certo(!depois.some((x) => /joana/i.test(x.path + JSON.stringify(x.q))), 'nome na URL: ' + JSON.stringify(depois.map((x) => x.path)));
+    const rx = depois.filter((x) => x.path === '/prontuario/receitas/busca');
+    certo(rx.length === 1 && rx[0].method === 'POST' && rx[0].body.q === 'JOANA' && !Object.keys(rx[0].q).length, 'busca das receitas: ' + JSON.stringify(rx));
+    // setas
+    await key('ArrowDown', 'ArrowDown', 40);
+    certo((await linhas())[1].on, 'a seta desce');
+    await key('ArrowUp', 'ArrowUp', 38);
+    certo((await linhas())[0].on, 'a seta sobe');
+
+    // cada aba mostra só o seu
+    await aba('receitas'); await ate(`[...document.querySelectorAll('#bsList .bs-it')].every((b) => b.dataset.tipo === 'receita')`, 2000, 'aba Receitas');
+    await aba('pacientes'); await ate(`[...document.querySelectorAll('#bsList .bs-it')].map((b) => b.dataset.tipo + ':' + b.querySelector('.bs-r').textContent).join() === 'paciente:Joana Prado'`, 2000, 'aba Pacientes');
+    await aba('consultas'); await ate(`document.querySelectorAll('#bsList .bs-it').length && [...document.querySelectorAll('#bsList .bs-it')].every((b) => b.dataset.tipo === 'consulta')`, 2000, 'aba Consultas');
+    certo(await ev(`document.activeElement.id === 'bsIn'`), 'a aba devolve o foco ao campo');
+    // Limpar: tira o termo e fica na aba
+    await clica('#bsLimpa');
+    await ate(`document.getElementById('bsIn').value === '' && document.getElementById('bsLimpa').hidden && document.querySelector('#bsAbas .on').dataset.aba === 'consultas'`, 2000, 'Limpar');
+    // Receitas sem termo: as recentes; escolher uma abre o prontuário dela na aba Prescrições
+    await aba('receitas');
+    await ate(`[...document.querySelectorAll('#bsList .bs-it .bs-r')].some((t) => t.textContent === 'Clonazepam 2 mg, Dipirona 500 mg')`, 3000, 'as receitas recentes');
+    L = await linhas();
+    certo(L.find((x) => x.t === 'Clonazepam 2 mg, Dipirona 500 mg').s === 'Maria Silva · Emitida · Controle especial', 'o tipo na linha: ' + JSON.stringify(L));
+    await ev(`[...document.querySelectorAll('#bsList .bs-it')].find((b) => b.querySelector('.bs-r').textContent.startsWith('Clonazepam')).click(); 1`);
+    await ate(`!(${aberta}) && !document.querySelector('.stage').inert && window.__abriu.length === 1`, 2000, 'abriu a receita');
+    const a1 = await ev(`window.__abriu[0]`);
+    certo(a1.patient_id === 7 && a1.patient === 'Maria Silva' && a1.tab === 'prescricoes' && a1.rx === RECEITAS[1].id, 'o prontuário da receita: ' + JSON.stringify(a1));
+
+    // ⇧⌘F abre de novo, limpa; Enter abre o paciente marcado
+    const mods = (await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`)) ? 4 + 8 : 2 + 8;
+    await key('F', 'KeyF', 70, mods);
+    await ate(`${aberta} && document.getElementById('bsIn').value === '' && document.querySelector('#bsAbas .on').dataset.aba === 'consultas'`, 2000, 'a lupa (⇧⌘F) abre limpa, já nas consultas');
+    await clica('#bsX'); await ate(`!(${aberta})`, 2000, 'fecha');
+    await clica('#navBuscar');
+    await ate(`${aberta} && document.querySelector('#bsAbas .on').dataset.aba === 'tudo'`, 2000, 'o Buscar do menu abre em Tudo');
+    await digita('joana');
+    await ate(`(document.querySelector('#bsList .bs-it.on') || {}).dataset?.tipo === 'paciente'`, 3000, 'paciente marcado');
+    await key('Enter', 'Enter', 13);
+    await ate(`!(${aberta}) && window.__abriu.length === 2`, 2000, 'Enter abriu o paciente');
+    const a2 = await ev(`window.__abriu[1]`);
+    certo(a2.patient_id === 5 && a2.patient === 'Joana Prado' && !a2.tab && !a2.rx, 'o prontuário do paciente: ' + JSON.stringify(a2));
+
+    // a consulta: vai ao dia dela, selecionada
+    await clica('#agSearch');
+    await ate(aberta, 2000, 'a lupa abre');
+    await aba('consultas'); await digita('pedro');
+    await ate(`[...document.querySelectorAll('#bsList .bs-it .bs-r')].map((t) => t.textContent).join() === 'Retorno — Pedro Lima'`, 3000, 'só a consulta do Pedro');
+    await ev(`document.querySelector('#bsList .bs-it').click(); 1`);
+    await ate(`!(${aberta}) && window.__selEv === 'manha'`, 2000, 'a consulta escolhida');
+    // Enter logo depois de digitar (antes da lista redesenhar) vale para o que está escrito
+    await clica('#agSearch'); await ate(aberta, 2000, 'abre');
+    await aba('consultas');
+    await ate(`document.querySelectorAll('#bsList .bs-it').length > 1`, 2000, 'a lista sem termo');
+    await digita('pedro'); await key('Enter', 'Enter', 13);
+    await ate(`!(${aberta}) && window.__selEv === 'manha'`, 2000, 'o Enter rápido abriu a consulta certa (' + await ev(`window.__selEv`) + ')');
+
+    // a resposta atrasada (as receitas chegam depois) não tira a linha que a pessoa marcou
+    LENTA_RX = 900;
+    try {
+      await clica('#navBuscar'); await ate(aberta, 2000, 'abre');
+      await digita('joana');
+      await ate(`(() => { const b = [...document.querySelectorAll('#bsList .bs-it')];
+        return b.length >= 2 && b[0].querySelector('.bs-r').textContent === 'Joana Prado' && !b.some((x) => x.dataset.tipo === 'receita'); })()`, 2000, 'a lista da joana, antes das receitas');
+      await key('ArrowDown', 'ArrowDown', 40);
+      const marcada = await ev(`document.querySelector('#bsList .bs-it.on .bs-r').textContent + '|' + document.querySelector('#bsList .bs-it.on').dataset.tipo`);
+      await ate(`[...document.querySelectorAll('#bsList .bs-it')].some((b) => b.dataset.tipo === 'receita')`, 3000, 'as receitas chegam');
+      const depois = await ev(`document.querySelector('#bsList .bs-it.on .bs-r').textContent + '|' + document.querySelector('#bsList .bs-it.on').dataset.tipo`);
+      certo(marcada === depois && !marcada.endsWith('|paciente'), 'a linha marcada mudou com a resposta: ' + marcada + ' → ' + depois);
+      await clica('#bsX'); await ate(`!(${aberta})`, 2000, 'fecha');
+    } finally { LENTA_RX = 0; }
+    await clica('#calBtn'); await ate(`!document.getElementById('calPop').hidden && document.getElementById('calBtn').classList.contains('on')`, 2000, 'calendário aberto');
+    await clica('#navBuscar'); await ate(aberta, 2000, 'abre por cima do calendário');
+    certo(await ev(`document.getElementById('calPop').hidden && !document.getElementById('calBtn').classList.contains('on')`), 'o ícone do calendário ficou apertado');
+    await clica('#bsX'); await ate(`!(${aberta})`, 2000, 'fecha');
+    // o foco não sai da janela (Tab real); fecha no ×, fora dela e no Esc
+    await clica('#agSearch'); await ate(aberta, 2000, 'abre');
+    for (let i = 0; i < 9; i++) await key('Tab', 'Tab', 9);
+    certo(await ev(`document.getElementById('bsCard').contains(document.activeElement)`), 'o Tab saiu da janela: ' + await ev(`document.activeElement.outerHTML.slice(0, 80)`));
+    await clica('#bsX'); await ate(`!(${aberta}) && !document.querySelector('.stage').inert`, 2000, 'o × fecha');
+    await clica('#agSearch'); await ate(aberta, 2000, 'abre');
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 60, y: 450, button: 'left', clickCount: 1 });
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 60, y: 450, button: 'left', clickCount: 1 });
+    await ate(`!(${aberta})`, 2000, 'clicar fora fecha');
+    // nada achado (como a referência): a lupa e "Nenhum resultado" no meio da lista, e o Limpar (há texto)
+    await clica('#navBuscar'); await ate(aberta, 2000, 'abre');
+    await digita('xyzw');
+    await ate(`!!document.querySelector('#bsList .bs-vazio')`, 3000, 'o vazio');
+    const v = await ev(`(() => { const c = document.getElementById('bsCard').getBoundingClientRect(), l = document.getElementById('bsList').getBoundingClientRect(),
+        e = document.querySelector('#bsList .bs-vazio'), t = e.querySelector('span').getBoundingClientRect(), i = e.querySelector('svg').getBoundingClientRect();
+      const x0 = i.left, x1 = t.right, y = (i.top + i.bottom) / 2;
+      return { texto: e.textContent, cor: getComputedStyle(e).color, fs: getComputedStyle(e).fontSize, ic: [i.width, i.height],
+               dx: Math.round((x0 + x1) / 2 - (c.left + c.width / 2)), dy: Math.round(y - (l.top + (l.height - 12) / 2)),
+               limpa: !document.getElementById('bsLimpa').hidden, linhas: document.querySelectorAll('#bsList .bs-it').length }; })()`);
+    certo(v.texto === 'Nenhum resultado' && v.cor === 'rgb(132, 132, 132)' && v.fs === '16px' && v.ic.join() === '16,16' &&
+          Math.abs(v.dx) <= 1 && Math.abs(v.dy) <= 1 && v.limpa && !v.linhas, 'nada achado: ' + JSON.stringify(v));
+    await foto('busca-vazia.png');
+    for (const a of ['consultas', 'pacientes', 'receitas']) {
+      await aba(a);
+      await ate(`(document.querySelector('#bsList .bs-vazio') || {}).textContent === 'Nenhum resultado'`, 3000, 'nada achado em ' + a);
+    }
+    await key('Escape', 'Escape', 27); await ate(`!(${aberta})`, 2000, 'fecha');
+    // sem agenda conectada: não pede para conectar — Consultas só diz que não há, Tudo mostra o resto
+    SEM_AGENDA = true;
+    try {
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?semagenda=1' });
+      await ate(`location.search === '?semagenda=1' && document.readyState === 'complete' && window.__calConnected === false`, 8000, 'agenda sem calendário');
+      await clica('#agSearch');
+      await ate(`${aberta} && document.querySelector('#bsAbas .on').dataset.aba === 'consultas' && /Nenhuma consulta/.test(document.getElementById('bsList').textContent)`, 3000, 'Consultas sem agenda');
+      certo(!/Conecte|Integrações/.test(await ev(`document.getElementById('bsCard').textContent`)), 'pediu para conectar a agenda');
+      await aba('tudo');
+      await ate(`[...document.querySelectorAll('#bsList .bs-it')].some((b) => b.dataset.tipo === 'paciente')`, 3000, 'Tudo sem agenda');
+      certo(!/Conecte|Integrações/.test(await ev(`document.getElementById('bsCard').textContent`)), 'pediu para conectar a agenda no Tudo');
+      await key('Escape', 'Escape', 27);
+    } finally { SEM_AGENDA = false; }
+    // de outra tela: agenda#buscar abre a busca (em Tudo) e o endereço volta ao normal
+    await abre('?outra=1#buscar');
+    await ate(`${aberta} && location.hash === '' && document.querySelector('#bsAbas .on').dataset.aba === 'tudo'`, 3000, 'o #buscar abre a busca em Tudo');
+    await key('Escape', 'Escape', 27);
+    await ate(`!(${aberta})`, 2000, 'o Esc fecha');
+    return 'menu, lupa, ⇧⌘F e #buscar; 780×572 no meio; Tudo/Consultas/Pacientes/Receitas; negrito; nome só no corpo; Enter, setas, Tab, ×, fora, Esc';
   }],
 ];
 

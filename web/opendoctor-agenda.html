@@ -64,24 +64,10 @@
     .ag-actions{position:absolute;top:8px;right:8px}
     .hd-btn.on{background:rgba(0,0,0,.05)}
     /* menus da agenda (abrem abaixo do ícone, alinhados à direita dele; posição calculada no JS) */
-    .srch-pop{position:absolute;top:52px;z-index:30;width:340px;max-width:calc(100% - 48px);background:#fff;
-      border:1px solid var(--sb-border);border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.14);padding:6px;
-      display:flex;flex-direction:column;gap:4px}
-    .srch-pop[hidden]{display:none}
+    /* campo de busca do Histórico e das receitas (a busca geral é a janela .bs, no fim da página) */
     .srch-in{height:40px;border:0;border-radius:10px;background:#F3F3F3;padding:0 12px;outline:none;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .srch-in::placeholder{color:#8B8B8B}
-    .srch-list{max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;scrollbar-width:thin}
-    .srch-list:empty{display:none}
-    .srch-head{padding:8px 12px 4px;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#8B8B8B}
-    .srch-item{border:0;background:none;text-align:left;padding:8px 12px;border-radius:10px;cursor:pointer;
-      display:flex;flex-direction:column;gap:2px;min-width:0}
-    .srch-item:hover,.srch-item.on{background:var(--active)}
-    .srch-t{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .srch-d{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#666C6F}
-    .srch-msg{padding:8px 12px;font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:#8B8B8B}
-    .srch-msg a{color:#0842a0}
 
     /* ===== PRONTUÁRIO (abre no lugar da agenda; o assistente continua à direita) =====
        escala das referências (Google Finance, em px reais): texto 14px, valores 18px, títulos de
@@ -1495,6 +1481,7 @@
     .hc-p{padding:8px 0 0;margin-top:2px;font-size:14px;line-height:22px;color:#56595E;white-space:pre-wrap;overflow-wrap:anywhere}
     .hc .pr-addbox{margin-top:16px}
     .pr-item.flash{animation:prflash 1.6s ease-out}
+    .rh-alvo{animation:prflash 1.6s ease-out}           /* a receita escolhida na busca */
     @keyframes prflash{0%,30%{background:#E8F0FE}100%{background:transparent}}
     /* coluna estreita (assistente aberto) */
     @container pr (max-width:720px){
@@ -2057,7 +2044,7 @@
       <div class="nav-main">
         <div class="nav-sec">
           <div class="item active" id="navConsultas" data-tip="Consultas"><span class="ico"><svg width="15" height="14" viewBox="0 0 15 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z" fill="#071216"/></svg></span><span>Consultas</span></div>
-          <div class="item" data-tip="Search"><span class="ico"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.00100402 6.12952C0.00100402 2.74849 2.7495 0 6.13052 0C9.51155 0 12.26 2.74849 12.26 6.12952C12.26 7.44729 11.8308 8.66717 11.1155 9.65361L14.5567 13.1024C14.76 13.3133 14.8655 13.5919 14.8655 13.8931C14.8655 14.5181 14.4061 15 13.7661 15C13.4724 15 13.1787 14.9021 12.9679 14.6837L9.50402 11.2199C8.54016 11.875 7.38805 12.259 6.13052 12.259C2.7495 12.259 0.00100402 9.51054 0.00100402 6.12952ZM1.56727 6.12952C1.56727 8.65211 3.60793 10.6928 6.13052 10.6928C8.65311 10.6928 10.6938 8.65211 10.6938 6.12952C10.6938 3.60693 8.65311 1.56627 6.13052 1.56627C3.60793 1.56627 1.56727 3.60693 1.56727 6.12952Z" fill="#071216"/></svg></span><span>Search</span></div>
+          <div class="item" id="navBuscar" data-tip="Buscar"><span class="ico"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.00100402 6.12952C0.00100402 2.74849 2.7495 0 6.13052 0C9.51155 0 12.26 2.74849 12.26 6.12952C12.26 7.44729 11.8308 8.66717 11.1155 9.65361L14.5567 13.1024C14.76 13.3133 14.8655 13.5919 14.8655 13.8931C14.8655 14.5181 14.4061 15 13.7661 15C13.4724 15 13.1787 14.9021 12.9679 14.6837L9.50402 11.2199C8.54016 11.875 7.38805 12.259 6.13052 12.259C2.7495 12.259 0.00100402 9.51054 0.00100402 6.12952ZM1.56727 6.12952C1.56727 8.65211 3.60793 10.6928 6.13052 10.6928C8.65311 10.6928 10.6938 8.65211 10.6938 6.12952C10.6938 3.60693 8.65311 1.56627 6.13052 1.56627C3.60793 1.56627 1.56727 3.60693 1.56727 6.12952Z" fill="#071216"/></svg></span><span>Buscar</span></div>
           <div class="item" id="navPacientes" data-tip="Pacientes"><span class="ico"><svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z" fill="#071216"/></svg></span><span>Pacientes</span></div>
           <div class="item" data-tip="Prescrições"><span class="ico"><svg width="17" height="14" viewBox="0 0 17 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.43415 13.8229C0.8315 13.8229 0.000494646 12.9993 0.000494646 11.4115V2.36688C0.000494646 0.808747 0.816661 0 2.20414 0H4.30392C5.07556 0 5.46139 0.140974 5.98077 0.571316L6.41111 0.912622C6.81919 1.24651 7.13082 1.37264 7.66504 1.37264H14.5654C16.168 1.37264 16.999 2.19623 16.999 3.78404V11.4115C16.999 12.9993 16.1754 13.8229 14.7583 13.8229H2.43415ZM2.52319 12.3686H14.4837C15.1663 12.3686 15.5448 12.0125 15.5448 11.2928V3.91018C15.5448 3.18305 15.1663 2.8269 14.4837 2.8269H7.27921C6.50757 2.8269 6.1069 2.68593 5.59494 2.26301L5.1646 1.91428C4.7491 1.57297 4.44489 1.45426 3.91809 1.45426H2.49351C1.82574 1.45426 1.45475 1.81041 1.45475 2.49302V11.2928C1.45475 12.0125 1.83316 12.3686 2.52319 12.3686ZM2.35996 5.15669V4.62989C2.35996 4.16245 2.59739 3.93986 3.07225 3.93986H13.9273C14.4021 3.93986 14.6321 4.16245 14.6321 4.62989V5.15669H2.35996Z" fill="#071216"/></svg></span><span>Prescrições</span></div>
         </div>
@@ -2078,7 +2065,7 @@
           <button class="hd-btn" id="agCreate" type="button" aria-label="Criar evento"><img src="assets/icons/agenda-add.svg?v=3" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="calBtn" type="button" aria-label="Escolher data" aria-haspopup="true"><img src="assets/icons/agenda-calendar.svg?v=3" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="viewSel" type="button" aria-label="Mudar para Semana"><img id="viewIcon" src="assets/icons/agenda-day.svg?v=3" width="36" height="36" alt=""></button>
-          <button class="hd-btn" id="agSearch" type="button" aria-label="Buscar consultas" aria-haspopup="true"><img src="assets/icons/agenda-search.svg?v=3" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="agSearch" type="button" aria-label="Buscar" aria-haspopup="dialog"><img src="assets/icons/agenda-search.svg?v=3" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="agExpand" type="button" aria-label="Expandir agenda"><img src="assets/icons/chat-expand.svg?v=3" width="36" height="36" alt=""></button>
         </div>
       </div>
@@ -2089,10 +2076,6 @@
       <div class="rc-alert warn cal-reconnect" id="calReconnect" role="status" hidden>
         <span class="t"><b>A conexão com o Google Agenda expirou.</b> As consultas não aparecem até você reconectar.</span>
         <span class="a"><a class="pr-ghost" href="/integrations/google/connect">Reconectar</a></span>
-      </div>
-      <div class="srch-pop" id="srchPop" hidden>
-        <input class="srch-in" id="srchIn" type="search" placeholder="Buscar consultas" autocomplete="off" spellcheck="false">
-        <div class="srch-list" id="srchList"></div>
       </div>
       <div class="pr-view" id="prView">
         <div class="pr">
@@ -2791,7 +2774,7 @@
       if (agExpand) agExpand.addEventListener('click', function () { setAgWide(!(right && right.classList.contains('collapsed'))); });
       // menus da agenda: logo abaixo do ícone, com a borda direita alinhada à dele
       window.__placePop = function (pop, btn) {
-        document.querySelectorAll('.srch-pop, .cal-pop').forEach(function (p) { if (p !== pop) p.hidden = true; });
+        document.querySelectorAll('.cal-pop').forEach(function (p) { if (p !== pop) p.hidden = true; });
         document.querySelectorAll('.ag-actions .hd-btn.on').forEach(function (b) { if (b !== btn) b.classList.remove('on'); });
         var c = pop.parentNode.getBoundingClientRect(), r = btn.getBoundingClientRect();
         pop.style.right = Math.max(c.right - r.right, 0) + 'px';
@@ -7691,6 +7674,7 @@
           rxOrient = rxDraft ? rxDraft.orientacoes || '' : '';
           rx.limpa(); rx.estado(rxDraft ? 'rascunho salvo' : 'rascunho'); rx.recado('');
           rx.desenha(); renderRh(); drawSg(); rxConferir();
+          if (ctx && ctx.rx) rxMostra();                   // veio da busca: a receita escolhida à vista
         }).catch(function () {                             // sem as receitas não se sabe o rascunho: só leitura, e tenta de novo
           if (vez !== rxVez) return;
           rxOk = false; rxFalhou = true;
@@ -7698,6 +7682,20 @@
           setTimeout(function () { if (vez === rxVez) rxLoad(); }, 10000);
         });
         if (!medico) api('GET', '/me/medico').then(function (res) { if (res.ok) { medico = res.j.medico; rx.desenha(); } });   // o cabeçalho da folha
+      }
+      // veio da busca (Receitas): o histórico inteiro aberto e a receita escolhida no meio da tela, com um realce rápido.
+      // Sai do contexto depois de usada (recarregar não leva de novo até ela)
+      function rxMostra() {
+        var id = String(ctx.rx); delete ctx.rx; delete ctx.tab; persistCtx();
+        if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+        var alvo = rxDraft && rxDraft.id === id ? [$('rxBox')] : null;
+        if (!alvo) { rhAll = true; renderRh(); alvo = [].slice.call(document.querySelectorAll('#rhList [data-rx="' + id + '"]')); }
+        if (!alvo.length || !alvo[0]) return;
+        alvo[0].scrollIntoView({ block: 'center' });
+        alvo.forEach(function (n) {
+          n.classList.remove('rh-alvo'); void n.offsetWidth; n.classList.add('rh-alvo');
+          setTimeout(function () { n.classList.remove('rh-alvo'); }, 1700);
+        });
       }
       // ----- salvar o rascunho (uma gravação por vez: a primeira cria, vazio sai) -----
       var rxFila = Promise.resolve(), rxSaveT = null, rxDeNovoT = null, rxRecSalvar = false;   // rxRecSalvar: o recado é do salvar
@@ -8403,6 +8401,7 @@
       function rhHead(r) {
         var d = new Date(r.emitida_em || r.created_at), can = rxCan();
         var h = el('div', 'rh-head'), t = el('div', 'rh-ht'), acts = el('div', 'rh-acts');
+        h.setAttribute('data-rx', r.id);                  // a busca acha a receita por aqui
         t.appendChild(el('span', 'rh-hd', dayMon(d)));
         t.appendChild(el('span', 'rh-hs', [DOWS[d.getDay()] + ' · ' + hm(d), rxConsulta(r), TIPO[r.tipo] || 'Receita'].join(' · ')));
         t.appendChild(rhBadge(r));
@@ -8424,6 +8423,7 @@
       // uma linha por remédio (Remédio · Posologia · Quantidade), no visual da tabela de Consultas
       function rhItem(r, x) {
         var row = el('div', 'pr-trow rh-cols rh-item'), ja = rxHas(x), nm = el('span', 'pr-tdate', [x.nome, x.dose].filter(Boolean).join(' '));
+        row.setAttribute('data-rx', r.id);
         if (x.continuo) nm.appendChild(el('small', null, 'Uso contínuo'));
         row.appendChild(nm);
         row.appendChild(el('span', 'pr-tcell pr-tmuted rh-pos', x.posologia || '—'));
@@ -8661,7 +8661,7 @@
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
         $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prProbTags').innerHTML = ''; $('prExport').hidden = true;
-        visits = null; calOn = null; setTab(c && c.event_id ? 'atual' : 'geral');
+        visits = null; calOn = null; setTab(c && c.tab === 'prescricoes' ? 'prescricoes' : c && c.event_id ? 'atual' : 'geral');   // tab: da busca (Receitas)
         if (!ctx || (!ctx.patient && !ctx.patient_id)) {
           msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return;
         }
@@ -8700,6 +8700,15 @@
         else closePr(true);
       });
       window.__openProntuario = open;
+      // a busca escolheu o paciente que já está aberto (ou uma receita dele): fica nesta consulta/evolução e só muda a
+      // aba. O open() trocaria a consulta por uma evolução avulsa e pausaria a gravação
+      window.__prMesmoPaciente = function (c) {
+        var aberto = (patient && patient.id) || (ctx && ctx.patient_id);
+        if (!isOpen() || !c || c.patient_id == null || aberto == null || String(c.patient_id) !== String(aberto)) return false;
+        setTab(c.tab === 'prescricoes' ? 'prescricoes' : 'geral');
+        if (c.rx) { ctx.rx = c.rx; persistCtx(); if (rxOk) rxMostra(); }   // ainda carregando: o rxLoad mostra quando chegar
+        return true;
+      };
       window.__closeProntuario = function () { closePr(true); };
       // recarregou a página no prontuário (ou veio do link antigo): reabre com o contexto salvo
       if (location.hash === '#prontuario') {
@@ -8985,28 +8994,129 @@
       };
     })();
   </script>
+  <!-- ===== busca: janela no meio da tela (a lupa da agenda, ⇧⌘F e o Buscar do menu), como a referência do usuário:
+       780 × 572 (a referência tem 718 × 458), cantos de 16, linhas de 64 com o trecho buscado em negrito; a fonte do
+       sistema, como a dica ===== -->
+  <style>
+    .bs-ov{position:fixed;inset:0;z-index:75;display:flex;align-items:center;justify-content:center;padding:16px}   /* acima do evento (60), abaixo do aviso de sessão (80) */
+    .bs-ov[hidden]{display:none}
+    .bs{width:780px;max-width:100%;height:572px;max-height:100%;   /* 780 × 572 (a referência: 718 × 458); as linhas, iguais */
+      display:flex;flex-direction:column;overflow:hidden;
+      background:#fff;border:1px solid rgba(13,13,13,.12);border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;color:#0F0F0F}
+    .bs-top{flex:none;height:64px;display:flex;align-items:center;padding:0 16px 0 24px}
+    .bs-in{flex:1 1 auto;min-width:0;height:40px;border:0;outline:none;background:none;padding:0;
+      font:inherit;font-size:16px;line-height:24px;color:#0F0F0F}
+    .bs-in::placeholder{color:#8F8F8F}
+    .bs-limpa{flex:none;height:32px;padding:0 12px;border:0;border-radius:8px;background:none;cursor:pointer;
+      font:inherit;font-size:14px;line-height:20px;color:#535353}
+    .bs-limpa:hover{background:#F3F3F3}
+    .bs-limpa[hidden]{display:none}
+    .bs-sep{flex:none;width:1px;height:20px;margin:0 8px 0 10px;background:#E5E5E5}
+    .bs-limpa[hidden] + .bs-sep{display:none}             /* sem o Limpar, sem o divisor */
+    .bs-x{flex:none;width:36px;height:36px;border:0;border-radius:50%;background:none;cursor:pointer;color:#535353;
+      display:flex;align-items:center;justify-content:center}
+    .bs-x:hover{background:#F3F3F3}
+    .bs-abas{flex:none;display:flex;gap:6px;height:36px;padding:0 12px;margin-bottom:13px}
+    .bs-abas button{height:36px;padding:0 12px;border:0;border-radius:18px;background:none;cursor:pointer;
+      font:inherit;font-size:14px;line-height:20px;color:#535353}
+    .bs-abas button:hover{color:#0F0F0F}
+    .bs-abas button.on{background:#F3F3F3;color:#0F0F0F}
+    .bs-list{flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 12px 12px;scrollbar-width:thin}
+    .bs-it{width:100%;height:64px;border:0;border-radius:12px;background:none;cursor:pointer;text-align:left;
+      display:flex;align-items:center;padding:0 14px 0 20px;font:inherit;color:#0F0F0F}
+    .bs-it.on{background:#F2F2F2}
+    .bs-ic{flex:none;width:16px;height:16px;margin-right:21px;display:flex;align-items:center;justify-content:center}
+    .bs-ic svg{max-width:16px;max-height:16px}
+    .bs-tx{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+    .bs-t{font-size:14px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bs-s{font-size:12px;line-height:18px;color:#535353;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bs-it b{font-weight:600;color:#0F0F0F}
+    .bs-d{flex:none;margin-left:40px;font-size:12px;line-height:16px;color:#535353;white-space:nowrap}
+    .bs-msg{padding:12px 20px;font-size:14px;line-height:20px;color:#535353}
+    /* nada achado (como a referência): a lupa e o texto no meio da lista, em cinza */
+    .bs-vazio{height:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 20px;text-align:center;
+      font-size:16px;line-height:20px;color:#848484}
+    .bs-vazio svg{flex:none}
+    .bs-msg a{color:#0842a0}
+  </style>
+  <div class="bs-ov" id="busca" hidden>
+    <div class="bs" id="bsCard" role="dialog" aria-modal="true" aria-label="Buscar">
+      <div class="bs-top">
+        <input class="bs-in" id="bsIn" type="text" enterkeyhint="search" placeholder="Buscar consultas, pacientes e receitas"
+          autocomplete="off" spellcheck="false" aria-label="Buscar">
+        <button class="bs-limpa" id="bsLimpa" type="button" hidden>Limpar</button>
+        <span class="bs-sep" aria-hidden="true"></span>
+        <button class="bs-x" id="bsX" type="button" aria-label="Fechar"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M.75.75l6.5 6.5M7.25.75l-6.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="bs-abas" id="bsAbas" role="tablist" aria-label="Onde buscar">
+        <button type="button" role="tab" data-aba="tudo">Tudo</button>
+        <button type="button" role="tab" data-aba="consultas">Consultas</button>
+        <button type="button" role="tab" data-aba="pacientes">Pacientes</button>
+        <button type="button" role="tab" data-aba="receitas">Receitas</button>
+      </div>
+      <div class="bs-list" id="bsList" role="tabpanel" aria-label="Resultados"></div>
+    </div>
+  </div>
   <script>
-    // ===== buscar consultas (ícone de lupa) =====
-    // Busca local: baixa os eventos de 6 meses atrás a 1 ano à frente e filtra no navegador,
-    // então o termo buscado (ex.: nome do paciente) não vai em URL nem sai do navegador.
+    // ===== buscar consultas, pacientes e receitas (a lupa da agenda, ⇧⌘F e o Buscar do menu) =====
+    // Consultas: busca local — baixa os eventos de 6 meses atrás a 1 ano à frente e filtra no navegador, então o termo
+    // buscado (ex.: nome do paciente) não vai em URL nem sai do navegador. Pacientes: a lista do /patients, filtrada aqui
+    // (veio cortada: o servidor procura o nome entre todos, no corpo de um POST). Receitas: POST /prontuario/receitas/busca,
+    // o termo no corpo. Nada é guardado: termo e resultados ficam só em memória, enquanto a janela está aberta.
     (function () {
-      var btn = document.getElementById('agSearch'), pop = document.getElementById('srchPop');
-      var input = document.getElementById('srchIn'), list = document.getElementById('srchList');
-      if (!btn || !pop || !input || !list) return;
+      var $ = function (id) { return document.getElementById(id); };
+      var ov = $('busca'), card = $('bsCard'), input = $('bsIn'), list = $('bsList'), limpa = $('bsLimpa');
+      var btn = $('agSearch'), navB = $('navBuscar'), stage = document.querySelector('.stage');
+      if (!ov || !card || !input || !list || !stage) return;
       var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
       var DOWS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-      var cache, cacheAt = 0, loading = null, items = [], active = -1;
+      var IC = {"consulta": "<svg width=\"15\" height=\"14\" viewBox=\"0 0 15 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z\" fill=\"#0F0F0F\"/></svg>", "paciente": "<svg width=\"13\" height=\"14\" viewBox=\"0 0 13 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z\" fill=\"#0F0F0F\"/></svg>", "receita": "<svg width=\"17\" height=\"14\" viewBox=\"0 0 17 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.43415 13.8229C0.8315 13.8229 0.000494646 12.9993 0.000494646 11.4115V2.36688C0.000494646 0.808747 0.816661 0 2.20414 0H4.30392C5.07556 0 5.46139 0.140974 5.98077 0.571316L6.41111 0.912622C6.81919 1.24651 7.13082 1.37264 7.66504 1.37264H14.5654C16.168 1.37264 16.999 2.19623 16.999 3.78404V11.4115C16.999 12.9993 16.1754 13.8229 14.7583 13.8229H2.43415ZM2.52319 12.3686H14.4837C15.1663 12.3686 15.5448 12.0125 15.5448 11.2928V3.91018C15.5448 3.18305 15.1663 2.8269 14.4837 2.8269H7.27921C6.50757 2.8269 6.1069 2.68593 5.59494 2.26301L5.1646 1.91428C4.7491 1.57297 4.44489 1.45426 3.91809 1.45426H2.49351C1.82574 1.45426 1.45475 1.81041 1.45475 2.49302V11.2928C1.45475 12.0125 1.83316 12.3686 2.52319 12.3686ZM2.35996 5.15669V4.62989C2.35996 4.16245 2.59739 3.93986 3.07225 3.93986H13.9273C14.4021 3.93986 14.6321 4.16245 14.6321 4.62989V5.15669H2.35996Z\" fill=\"#0F0F0F\"/></svg>"};
+      var TIPO = { especial: 'Controle especial', antimicrobiano: 'Antimicrobiano' };
+      var SIT = { emitida: 'Emitida', cancelada: 'Cancelada', rascunho: 'Rascunho' };
+      var NOME = { consulta: 'Consulta', paciente: 'Paciente', receita: 'Receita' };
+      var cache, cacheAt = 0, loading = null;                // consultas (60 s)
+      var evsR, evsPronto = false;                           // a última leitura das consultas (com o 'morta', que não fica no cache)
+      var pacs = null, pacsAt = 0, pacsMais = false, pacsCarga = null, pacsErro = false, pacsServ = {};
+      var rxs = {};                                          // receitas por termo: null = buscando, 'erro', ou a lista
+      var aba = 'tudo', items = [], active = -1, antes = null, espera = 0, peloFora = false;
       function pad(n) { return String(n).padStart(2, '0'); }
       function norm(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+      function termo() { return norm(input.value).replace(/\s+/g, ' ').trim(); }
+      function bate(texto, q) { return !q || norm(texto).replace(/\s+/g, ' ').indexOf(q) >= 0; }
       function parse(v) {                                    // "AAAA-MM-DD" (dia todo) é data local, não UTC
         var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || '');
         return m ? new Date(+m[1], m[2] - 1, +m[3]) : new Date(v);
       }
-      function when(ev, s) {
-        var d = DOWS[s.getDay()] + ', ' + s.getDate() + ' ' + MON[s.getMonth()] +
-                (s.getFullYear() !== new Date().getFullYear() ? ' ' + s.getFullYear() : '');
-        return d + ' · ' + (ev.allDay ? 'dia todo' : pad(s.getHours()) + ':' + pad(s.getMinutes()));
+      function quando(d) {                                   // "5 de nov." (o ano só se não for o atual)
+        return d.getDate() + ' de ' + MON[d.getMonth()] + '.' + (d.getFullYear() !== new Date().getFullYear() ? ' ' + d.getFullYear() : '');
       }
+      // o texto sem acento e minúsculo, com a posição de cada letra no original (para o negrito cair no lugar certo)
+      function dobra(texto) {
+        var t = '', m = [];
+        for (var i = 0; i < texto.length; i++) { var c = norm(texto[i]); for (var j = 0; j < c.length; j++) { t += c[j]; m.push(i); } }
+        return { t: t, m: m };
+      }
+      function marca(node, texto, q) {                       // o trecho buscado em negrito (textContent: nada vira HTML)
+        texto = texto || '';
+        var d = q ? dobra(texto) : null, de = 0, i = d ? d.t.indexOf(q) : -1;
+        while (i >= 0) {
+          var a = d.m[i], b = d.m[i + q.length - 1] + 1;
+          if (a > de) node.appendChild(document.createTextNode(texto.slice(de, a)));
+          var n = document.createElement('b'); n.textContent = texto.slice(a, b); node.appendChild(n);
+          de = b; i = d.t.indexOf(q, i + q.length);
+        }
+        if (de < texto.length) node.appendChild(document.createTextNode(texto.slice(de)));
+      }
+      function trecho(texto, q) {                            // o pedaço em volta do termo (o fim corta com reticências)
+        texto = (texto || '').replace(/\s+/g, ' ').trim();
+        var d = dobra(texto), i = q ? d.t.indexOf(q) : -1;
+        if (i < 0) return '';
+        var a = d.m[i];
+        return a > 24 ? '…' + texto.slice(a - 20) : texto;
+      }
+
+      // ----- consultas: as do calendário, lidas como antes (próximas e anteriores em separado) -----
       // undefined = erro; null = sem calendário conectado; 'morta' = conexão expirou (reconectar); [] = eventos
       var deadProv = 'google', deadWhy = '';
       function get(a, b) {
@@ -9034,70 +9144,252 @@
           .then(function (v) { loading = null; return v; });
         return loading;
       }
-      function msg(html) { list.innerHTML = '<div class="srch-msg">' + html + '</div>'; items = []; active = -1; }
-      function group(title, arr) {
-        if (!arr.length) return;
-        var h = document.createElement('div'); h.className = 'srch-head'; h.textContent = title; list.appendChild(h);
-        arr.forEach(function (x) {
-          var b = document.createElement('button'); b.type = 'button'; b.className = 'srch-item';
-          var t = document.createElement('span'); t.className = 'srch-t'; t.textContent = x.ev.title || '(sem título)';
-          var d = document.createElement('span'); d.className = 'srch-d'; d.textContent = when(x.ev, x.s);
-          b.appendChild(t); b.appendChild(d);
-          b.addEventListener('click', function () { pick(x); });
-          list.appendChild(b); items.push({ el: b, x: x });
-        });
+      function avisoConsultas(evs) {                         // por que não há consultas para mostrar ('' = há; sem agenda conectada, só não há)
+        if (evs === undefined) return 'Não foi possível carregar as consultas.';
+        if (evs === 'morta') return (deadWhy === 'permissao' ? 'O Google Agenda está sem permissão para o OpenDoctor.' : 'A conexão com o Google Agenda expirou.') +
+          ' <a href="/integrations/' + encodeURIComponent(deadProv) + '/connect">Reconecte</a> para buscar consultas.';
+        return '';
       }
-      function show() {
-        var raw = input.value.trim();
-        load().then(function (evs) {
-          if (pop.hidden || raw !== input.value.trim()) return;           // fechou ou digitou de novo
-          if (evs === undefined) return msg('Não foi possível carregar as consultas.');
-          if (evs === null) return msg('Conecte um calendário em <a href="/opendoctor-integracao.html">Integrações</a>.');
-          if (evs === 'morta') return msg((deadWhy === 'permissao' ? 'O Google Agenda está sem permissão para o OpenDoctor.' : 'A conexão com o Google Agenda expirou.') +
-            ' <a href="/integrations/' + encodeURIComponent(deadProv) + '/connect">Reconecte</a> para buscar consultas.');
-          var q = norm(raw), t0 = new Date(); t0.setHours(0, 0, 0, 0);
-          var hits = evs.filter(function (ev) {
-            return ev.start && (!q || norm([ev.title, ev.description, ev.location].join(' ')).indexOf(q) >= 0);
-          }).map(function (ev) { return { ev: ev, s: parse(ev.start) }; })
-            .filter(function (x) { return !isNaN(x.s.getTime()); });
-          var next = hits.filter(function (x) { return x.s >= t0; }).sort(function (a, b) { return a.s - b.s; });
-          var past = q ? hits.filter(function (x) { return x.s < t0; }).sort(function (a, b) { return b.s - a.s; }) : [];
-          list.innerHTML = ''; items = []; active = -1;
-          if (!next.length && !past.length) return msg(q ? 'Nenhuma consulta encontrada.' : 'Nenhuma consulta nos próximos dias.');
-          group('Próximas', next.slice(0, q ? 30 : 8));
-          group('Anteriores', past.slice(0, 30));
-        });
+      function consultas(evs, q, nProx, nAnt) {
+        if (!Array.isArray(evs)) return [];
+        var t0 = new Date(); t0.setHours(0, 0, 0, 0);
+        var hits = evs.filter(function (ev) { return ev.start && bate([ev.title, ev.description, ev.location].join(' '), q); })
+          .map(function (ev) { return { ev: ev, s: parse(ev.start) }; })
+          .filter(function (x) { return !isNaN(x.s.getTime()); });
+        var next = hits.filter(function (x) { return x.s >= t0; }).sort(function (a, b) { return a.s - b.s; });
+        var past = q ? hits.filter(function (x) { return x.s < t0; }).sort(function (a, b) { return b.s - a.s; }) : [];
+        return next.slice(0, nProx).concat(past.slice(0, nAnt));
       }
-      function mark(i) {
+
+      // ----- pacientes: a lista do /patients (60 s); cortada, o servidor procura o nome entre todos -----
+      function carregaPacs() {
+        if (pacs && Date.now() - pacsAt < 60e3) return Promise.resolve(pacs);
+        if (pacsCarga) return pacsCarga;
+        pacsCarga = fetch('/patients').then(function (r) { if (!r.ok) throw r; return r.json(); })
+          .then(function (j) { pacs = j.patients || []; pacsMais = !!j.more; pacsAt = Date.now(); pacsErro = false; return pacs; })
+          .catch(function () { pacsErro = true; return pacs; })          // falhou: fica a lista que havia (ou nenhuma)
+          .then(function (v) { pacsCarga = null; return v; });
+        return pacsCarga;
+      }
+      function pacsDoServidor(raw, q) {
+        if (!pacsMais || !q || pacsServ.hasOwnProperty(q)) return;
+        var m = pacsServ; m[q] = null;                       // null = pedido em andamento; m: o que chega depois de fechar não fica
+        fetch('/patients/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: raw.trim() }) })
+          .then(function (r) { return r.ok ? r.json() : { patients: [] }; })
+          .then(function (j) { m[q] = (j && j.patients) || []; }, function () { m[q] = []; })
+          .then(function () { if (m === pacsServ && !ov.hidden && termo() === q && (aba === 'tudo' || aba === 'pacientes')) desenha(); });
+      }
+      function pacsBuscando(q) { return pacsMais && !!q && !Array.isArray(pacsServ[q]); }   // o servidor ainda procura o nome
+      function pacientes(q, n) {
+        var tem = {}, todos = (pacs || []).slice();
+        todos.forEach(function (p) { tem[p.id] = 1; });
+        (pacsServ[q] || []).forEach(function (p) { if (!tem[p.id]) { tem[p.id] = 1; todos.push(p); } });
+        var hits = todos.filter(function (p) { return bate(p.name, q); }), pos = {};
+        hits.forEach(function (p, i) { pos[p.id] = i; });
+        hits.sort(function (a, b) {                          // quem começa com o termo vem antes; a de exemplo por último
+          var ea = a.example ? 1 : 0, eb = b.example ? 1 : 0;
+          if (ea !== eb) return ea - eb;
+          if (q) { var ca = norm(a.name).indexOf(q) === 0 ? 0 : 1, cb = norm(b.name).indexOf(q) === 0 ? 0 : 1; if (ca !== cb) return ca - cb; }
+          return pos[a.id] - pos[b.id];                      // senão, a ordem do servidor (os usados mais recentemente)
+        });
+        return hits.slice(0, n);
+      }
+
+      // ----- receitas: o servidor procura nos remédios e no nome do paciente (vazio: as mais recentes) -----
+      function buscaRx(raw, q) {
+        if (rxs.hasOwnProperty(q) && rxs[q] !== 'erro') return;   // o erro pede de novo (ao redigitar ou trocar de aba)
+        var m = rxs; m[q] = null;                            // m: o que chega depois de fechar não fica
+        fetch('/prontuario/receitas/busca', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: raw.trim() }) })
+          .then(function (r) { if (!r.ok) throw r; return r.json(); })
+          .then(function (j) { m[q] = (j && j.receitas) || []; }, function () { m[q] = 'erro'; })
+          .then(function () { if (m === rxs && !ov.hidden && termo() === q && (aba === 'tudo' || aba === 'receitas')) desenha(); });
+      }
+
+      // ----- a lista -----
+      function msg(html) { list.innerHTML = '<div class="bs-msg">' + html + '</div>'; items = []; active = -1; }
+      var LUPA = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.25" stroke="#848484" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="#848484" stroke-width="1.5" stroke-linecap="round"/></svg>';
+      function vazio(texto) {                                // nada achado: "Nenhum resultado" (sem termo, o texto da lista vazia)
+        list.innerHTML = '<div class="bs-vazio">' + LUPA + '<span></span></div>';
+        list.querySelector('.bs-vazio span').textContent = texto; items = []; active = -1;
+      }
+      function linha(tipo, titulo, sub, data, go, q, chave) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'bs-it'; b.setAttribute('data-tipo', tipo);
+        var ic = document.createElement('span'); ic.className = 'bs-ic'; ic.innerHTML = IC[tipo];
+        var tx = document.createElement('span'); tx.className = 'bs-tx';
+        var t = document.createElement('span'); t.className = 'bs-t';   // o tipo primeiro, depois o achado: "Receita · Losartana 50 mg"
+        var k = document.createElement('span'); k.className = 'bs-k'; k.textContent = NOME[tipo] + ' · '; t.appendChild(k);
+        var r = document.createElement('span'); r.className = 'bs-r'; marca(r, titulo, q); t.appendChild(r); tx.appendChild(t);
+        if (sub) { var s = document.createElement('span'); s.className = 'bs-s'; marca(s, sub, q); tx.appendChild(s); }
+        b.appendChild(ic); b.appendChild(tx);
+        if (data && !isNaN(data.getTime())) { var d = document.createElement('span'); d.className = 'bs-d'; d.textContent = quando(data); b.appendChild(d); }
+        var i = items.length;
+        b.addEventListener('click', function () { fecha(true); go(); });
+        b.addEventListener('mousemove', function () { if (active !== i) mexe(i, true); });
+        list.appendChild(b); items.push({ el: b, k: tipo + ':' + chave });
+      }
+      function linhaConsulta(x, q) {
+        var ev = x.ev, s = x.s;
+        var hora = ev.allDay ? 'Dia todo' : DOWS[s.getDay()] + ' · ' + pad(s.getHours()) + ':' + pad(s.getMinutes());
+        var extra = q && !bate(ev.title, q) ? trecho([ev.location, ev.description].filter(Boolean).join(' · '), q) : (ev.location || '');
+        linha('consulta', ev.title || '(sem título)', [hora, extra].filter(Boolean).join(' · '), s, function () { abreConsulta(x); }, q, evKey(ev));
+      }
+      function linhaPaciente(p, q) {
+        var notas = !p.notes ? 'Sem anotações' : p.notes + (p.notes === 1 ? ' anotação' : ' anotações');
+        var sub = [p.example ? 'Exemplo (dados fictícios)' : '', p.birth_date ? ptAge(p.birth_date) : '', notas].filter(Boolean).join(' · ');
+        linha('paciente', p.name, sub, p.last ? new Date(p.last) : null, function () { abrePaciente(p); }, q, p.id);
+      }
+      function linhaReceita(r, q) {
+        var sub = [r.patient, SIT[r.status] || '', r.status !== 'rascunho' ? TIPO[r.tipo] || '' : ''].filter(Boolean).join(' · ');
+        linha('receita', (r.remedios || []).join(', ') || 'Receita sem remédios', sub, r.data ? new Date(r.data) : null,
+              function () { abreReceita(r); }, q, r.id);
+      }
+      var ultimo = '';                                       // aba e termo do último desenho
+      function desenha() {
+        // a leitura de 60 s venceu e há consultas na tela: elas ficam até chegar a nova (sem piscar "Carregando…")
+        var q = termo(), evs = evsR, carregando = !evsPronto || (!!loading && !Array.isArray(evsR));
+        // a mesma busca redesenhada (chegou o resto): a linha marcada e a rolagem ficam — o Enter abre a que foi escolhida
+        var mesmo = ultimo === aba + '\n' + q, era = mesmo && items[active] ? items[active].k : null, topo = mesmo ? list.scrollTop : 0;
+        ultimo = aba + '\n' + q;
+        list.innerHTML = ''; list.scrollTop = 0; items = []; active = -1;
+        var aviso = carregando ? '' : avisoConsultas(evs), rs = rxs[q];
+        if (aba === 'consultas') {
+          if (carregando) return msg('Carregando…');
+          if (aviso) return msg(aviso);
+          var cs = consultas(evs, q, q ? 30 : 8, 30);
+          if (!cs.length) return vazio(q ? 'Nenhum resultado' : 'Nenhuma consulta nos próximos dias');
+          cs.forEach(function (x) { linhaConsulta(x, q); });
+        } else if (aba === 'pacientes') {
+          if (!pacs) return msg(pacsErro ? 'Não foi possível carregar os pacientes.' : 'Carregando…');
+          var ps = pacientes(q, 50);
+          if (!ps.length) return pacsBuscando(q) ? msg('Buscando…') : vazio(q ? 'Nenhum resultado' : 'Nenhum paciente cadastrado ainda');
+          ps.forEach(function (p) { linhaPaciente(p, q); });
+        } else if (aba === 'receitas') {
+          if (rs === undefined || rs === null) return msg('Buscando…');
+          if (rs === 'erro') return msg('Não foi possível buscar as receitas.');
+          if (!rs.length) return vazio(q ? 'Nenhum resultado' : 'Nenhuma receita ainda');
+          rs.forEach(function (r) { linhaReceita(r, q); });
+        } else {                                             // Tudo: com termo, pacientes, consultas e receitas; sem, as próximas e os recentes
+          if (q) {
+            pacientes(q, 4).forEach(function (p) { linhaPaciente(p, q); });
+            consultas(evs, q, 4, 4).forEach(function (x) { linhaConsulta(x, q); });
+            if (Array.isArray(rs)) rs.slice(0, 4).forEach(function (r) { linhaReceita(r, q); });
+          } else {
+            consultas(evs, '', 8, 0).forEach(function (x) { linhaConsulta(x, q); });
+            pacientes('', 3).forEach(function (p) { linhaPaciente(p, q); });
+          }
+          // o que não deu para ler é dito (nunca vira "Nada encontrado"); só textos fixos e o aviso das consultas
+          var falhas = [!pacs && pacsErro ? 'Não foi possível carregar os pacientes.' : '', aviso,
+                        q && rs === 'erro' ? 'Não foi possível buscar as receitas.' : ''].filter(Boolean).join('<br>');
+          if (!items.length) {
+            if (carregando || (!pacs && !pacsErro) || (q && (rs == null || pacsBuscando(q)))) return msg(q ? 'Buscando…' : 'Carregando…');
+            return falhas ? msg(falhas) : vazio(q ? 'Nenhum resultado' : 'Nenhuma consulta nos próximos dias');
+          }
+          if (falhas) { var nota = document.createElement('div'); nota.className = 'bs-msg'; nota.innerHTML = falhas; list.appendChild(nota); }
+        }
+        if (!items.length) return;
+        var j = 0; if (era) items.forEach(function (it, n) { if (it.k === era) j = n; });
+        mexe(j, true); list.scrollTop = topo;                // busca nova: a primeira marcada, a lista no topo
+      }
+      function mostra() {                                    // busca o que a aba precisa e desenha
+        clearTimeout(espera); espera = 0;
+        var raw = input.value, q = termo();
+        limpa.hidden = !raw;
+        var quer = { c: aba === 'tudo' || aba === 'consultas', p: aba === 'tudo' || aba === 'pacientes', r: aba === 'receitas' || (aba === 'tudo' && !!q) };
+        if (quer.r) buscaRx(raw, q);
+        Promise.all([quer.c ? load() : null, quer.p ? carregaPacs() : null]).then(function (r) {
+          if (quer.c) { evsR = r[0]; evsPronto = true; }
+          if (ov.hidden || termo() !== q) return;            // fechou ou digitou de novo
+          if (quer.p) pacsDoServidor(raw, q);
+          desenha();
+        });
+        desenha();                                           // o que já se sabe aparece na hora
+      }
+      function mexe(i, semRolar) {                           // a linha marcada (setas e mouse); o Enter abre ela
         if (!items.length) return;
         active = (i + items.length) % items.length;
         items.forEach(function (it, j) { it.el.classList.toggle('on', j === active); });
-        items[active].el.scrollIntoView({ block: 'nearest' });
+        if (!semRolar) items[active].el.scrollIntoView({ block: 'nearest' });
       }
-      // vai para o dia da consulta e deixa ela selecionada (a agenda rola até ela)
-      function pick(x) {
-        close();
+
+      // ----- abrir o que foi escolhido (a agenda volta a aparecer, se o assistente estava na tela toda) -----
+      function agendaAVista() {
+        if (stage.classList.contains('expanded')) { var e = $('raExpand'); if (e) e.click(); }
+      }
+      function de() { return stage.classList.contains('pacientes') ? 'pacientes' : undefined; }   // para onde o Voltar leva
+      function abreConsulta(x) {                             // vai para o dia da consulta e deixa ela selecionada
+        agendaAVista();
+        var c = $('navConsultas'); if (c) c.click();         // sai do prontuário e de Pacientes, como o menu
         var k = evKey(x.ev);
         window.__evData[k] = x.ev;
         window.__selEv = k;
         if (window.__calGoto) window.__calGoto(x.s);
       }
-      function open() {
-        window.__placePop(pop, btn);
-        pop.hidden = false; btn.classList.add('on');
-        input.value = ''; input.focus(); show();
+      function abrePaciente(p) {
+        agendaAVista();
+        if (window.__prMesmoPaciente && window.__prMesmoPaciente({ patient_id: p.id })) return;
+        if (window.__openProntuario) window.__openProntuario({ patient_id: p.id, patient: p.name, from: de() });
       }
-      function close() { pop.hidden = true; btn.classList.remove('on'); }
-      btn.addEventListener('click', function (e) { e.stopPropagation(); pop.hidden ? open() : close(); });
-      pop.addEventListener('click', function (e) { e.stopPropagation(); });
-      document.addEventListener('click', function () { if (!pop.hidden) close(); });
-      input.addEventListener('input', show);
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'ArrowDown') { e.preventDefault(); mark(active + 1); }
-        else if (e.key === 'ArrowUp') { e.preventDefault(); mark(active - 1); }
-        else if (e.key === 'Enter') { e.preventDefault(); var it = items[active >= 0 ? active : 0]; if (it) pick(it.x); }
-        else if (e.key === 'Escape') { e.stopPropagation(); close(); }
-      });
+      function abreReceita(r) {                              // o prontuário do paciente, na aba Prescrições, com a receita à vista
+        agendaAVista();
+        if (window.__prMesmoPaciente && window.__prMesmoPaciente({ patient_id: r.patient_id, tab: 'prescricoes', rx: r.id })) return;
+        if (window.__openProntuario) window.__openProntuario({ patient_id: r.patient_id, patient: r.patient, from: de(), tab: 'prescricoes', rx: r.id });
+      }
+
+      // ----- abrir e fechar a janela -----
+      var abas = [].slice.call(document.querySelectorAll('#bsAbas [data-aba]'));
+      function poeAba(a) {
+        aba = a;
+        abas.forEach(function (b) { var sim = b.getAttribute('data-aba') === a; b.classList.toggle('on', sim); b.setAttribute('aria-selected', sim ? 'true' : 'false'); });
+      }
+      function abre(inicial) {                               // inicial: a aba em que a janela abre
+        if (!ov.hidden) { input.focus(); return; }
+        antes = document.activeElement;
+        document.querySelectorAll('.cal-pop').forEach(function (p) { p.hidden = true; });   // o calendário aberto fecha
+        document.querySelectorAll('.ag-actions .hd-btn.on').forEach(function (b) { b.classList.remove('on'); });   // e o ícone dele apaga
+        pacsAt = 0;                                          // os pacientes são lidos de novo a cada abertura
+        ov.hidden = false; stage.inert = true;
+        if (btn) btn.classList.add('on');
+        input.value = ''; poeAba(inicial || 'tudo'); items = []; active = -1;
+        input.focus(); mostra();
+      }
+      function fecha(escolheu) {
+        if (ov.hidden) return;
+        clearTimeout(espera);
+        ov.hidden = true; stage.inert = false;
+        if (btn) btn.classList.remove('on');
+        rxs = {}; pacsServ = {};                             // o termo e o que ele achou não ficam
+        list.innerHTML = ''; items = []; active = -1;
+        if (!escolheu && antes && antes.focus && document.contains(antes)) antes.focus();
+      }
+      abas.forEach(function (b) { b.addEventListener('click', function () { poeAba(b.getAttribute('data-aba')); mostra(); input.focus(); }); });
+      input.addEventListener('input', function () { limpa.hidden = !input.value; clearTimeout(espera); espera = setTimeout(mostra, 120); });
+      limpa.addEventListener('click', function () { input.value = ''; input.focus(); mostra(); });
+      $('bsX').addEventListener('click', function () { fecha(); });
+      ov.addEventListener('mousedown', function (e) { peloFora = e.target === ov; });   // fora da janela (sem arrastar de dentro)
+      ov.addEventListener('click', function (e) { if (e.target === ov && peloFora) fecha(); peloFora = false; });
+      document.addEventListener('keydown', function (e) {
+        if (ov.hidden) return;
+        var sess = $('odSession'); if (sess && !sess.hidden) return;   // o aviso de sessão está por cima: as teclas são dele
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); fecha(); return; }   // só a busca fecha
+        if (e.key === 'Tab') {                               // o foco não sai da janela (com os links das mensagens)
+          var foc = [].filter.call(card.querySelectorAll('input, button, a[href]'), function (b) { return !b.disabled && b.getClientRects().length > 0; });
+          var i = foc.indexOf(document.activeElement);
+          e.preventDefault();
+          if (foc.length) foc[i < 0 ? 0 : (i + (e.shiftKey ? -1 : 1) + foc.length) % foc.length].focus();
+          return;
+        }
+        if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && items.length) { e.preventDefault(); mexe(active + (e.key === 'ArrowDown' ? 1 : -1)); return; }
+        if (e.key === 'Enter' && document.activeElement === input && !e.isComposing && e.keyCode !== 229) {   // 229: o Enter do IME (Safari)
+          e.preventDefault();
+          if (espera) mostra();                              // Enter logo depois de digitar: vale o que está escrito, nunca a lista anterior
+          if (items.length) items[active >= 0 ? active : 0].el.click();
+        }
+      }, true);
+      // a lupa da agenda (e o ⇧⌘F, que aperta ela) já abre nas consultas; o Buscar do menu abre em Tudo
+      if (btn) btn.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) abre('consultas'); else fecha(); });
+      if (navB) navB.addEventListener('click', function () { abre('tudo'); });
+      // as outras telas levam a agenda#buscar: abre a busca e o endereço volta ao normal (recarregar não reabre)
+      if (location.hash === '#buscar') { history.replaceState(history.state, '', location.pathname + location.search); abre('tudo'); }
     })();
   </script>
   <!-- ===== sessão expirada + boas-vindas (fluxo de login) ===== -->

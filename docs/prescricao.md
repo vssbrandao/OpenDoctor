@@ -54,6 +54,17 @@ A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o 
   ou quantidade acima de 60 dão 400 com o motivo, que a tela mostra. Nome, dose e forma vêm da base CMED e não se
   editam: o teto deles (2000, 200 e 300) fica bem acima do maior da base e só barra abuso, nunca um remédio de verdade.
 - `POST /prontuario/receitas/conferir`: avisos de cada item; nada é gravado.
+- `POST /prontuario/receitas/busca` com `{"q": termo}`: a busca global da aba Receitas (`db.search_receitas`).
+  - O termo pode ser o nome do paciente: vai só no corpo, nunca na URL nem no log.
+  - Acha a receita com o termo no nome do paciente ou no nome de um remédio. A comparação é em Python, com
+    `patient_key` (sem acento nem maiúscula): `%` e `_` são letras como as outras, e a de exemplo é achada pelo nome
+    ("maria"), nunca pela chave (" exemplo").
+  - O SQL lê as 2000 mais recentes do médico (`RX_BUSCA_LIDAS`, junto com os pacientes dele) e o filtro corta em 30.
+    Sem termo, vêm as 20 mais recentes.
+  - O rascunho sem remédio fica de fora; emitidas e canceladas entram. Ordem: da mais nova para a mais velha
+    (`coalesce(emitida_em, created_at)`).
+  - Cada uma traz `id`, `patient_id`, `patient`, `tipo`, `status`, `data` (a emissão, ou a criação do rascunho) e
+    `remedios`: nome e dose, como "Losartana 50 mg".
 - `POST /prontuario/receitas/{id}/emitir`:
   - confere de novo;
   - exige nome, CRM e UF do médico;
@@ -216,8 +227,16 @@ continua no servidor, mas a tela não a usa mais.
 ## Testes
 - **Sem crédito:**
   - `tests/test_receitas.py`: rotas e conferência, com o banco em memória `tests/fake_receitas.py`, também usado pelo
-    preview;
-  - `tests/test_db_integration.py`: o SQL no banco de testes;
+    preview. Na busca (`test_busca_*`):
+    - acha pelo remédio e pelo paciente, sem acento nem maiúscula, e o termo não vai para o log;
+    - nunca mostra receita de outro médico;
+    - deixa de fora o rascunho vazio;
+    - sem termo, traz as 20 mais recentes; com termo, até 30;
+    - confere o formato do resultado;
+    - `%` e `_` não são curinga;
+  - `tests/test_db_integration.py`: o SQL no banco de testes. A busca está em `test_busca_de_receitas`: dois médicos
+    (o outro não acha nada; receita apontando para paciente de outro médico não aparece), acento, sem curinga,
+    rascunho vazio de fora e a de exemplo achada pelo nome;
   - `tests/test_prescricao.py` e `tests/test_renovacao.py`.
 - **E2E** `tests/e2e/prescricoes.mjs`, num preview só dele: `PREVIEW=http://localhost:8792`, launch config
   `opendoctor-presc-e2e`, nunca a porta que o usuário está usando. Cenários:

@@ -2476,6 +2476,21 @@ async def prontuario_receitas_conferir(request: Request):
     return {"avisos": await _conferencia(u, p, prescricao.itens_limpos(b.get("itens")))}
 
 
+RX_BUSCA, RX_RECENTES = 30, 20        # busca da aba Receitas: até 30 achadas; sem termo, as 20 mais recentes
+
+
+@app.post("/prontuario/receitas/busca")
+async def prontuario_receitas_busca(request: Request):
+    """Busca global (aba Receitas): as receitas do médico com o termo no nome do paciente ou de um remédio, sem acento
+    nem maiúscula; sem termo, as mais recentes. O termo pode ser o nome do paciente: vai no corpo, nunca na URL nem no log."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    q = str((await _json(request)).get("q") or "")[:200]
+    limite = RX_BUSCA if db.patient_key(q) else RX_RECENTES
+    return {"receitas": await run_in_threadpool(db.search_receitas, u["id"], q, limite)}
+
+
 @app.post("/prontuario/receitas/{rid}/emitir")
 async def prontuario_receita_emite(rid: str, request: Request):
     """Emite o rascunho (com os itens mandados, conferidos de novo aqui). Exige o patient_id da receita, e nome, CRM e

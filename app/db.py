@@ -1271,6 +1271,42 @@ def list_receitas(user_id, patient_id):
     return [_receita(r) for r in rows]
 
 
+RX_BUSCA_LIDAS = 2000          # busca da aba Receitas: lê as mais recentes do médico até este teto e filtra aqui
+
+
+def _rx_remedio(nome, dose):
+    """"Losartana 50 mg": o nome do item e a dose, quando há."""
+    nome, dose = str(nome or "").strip(), str(dose or "").strip()
+    return f"{nome} {dose}" if dose else nome
+
+
+def search_receitas(user_id, q, limit):
+    """Busca global (aba Receitas): receitas do médico em que q está no nome do paciente ou no nome de um remédio,
+    da mais nova para a mais velha. A comparação é aqui, com patient_key (sem acento nem maiúscula; % e _ são letras
+    como as outras; a de exemplo é achada pelo nome, nunca pela chave " exemplo"). q vazio: as mais recentes. O rascunho
+    sem remédio não entra; emitidas e canceladas entram. Cada uma: id, paciente, tipo, status, data e os remédios."""
+    k = patient_key(q)
+    with connection() as conn:
+        rows = conn.execute("""select x.id, x.patient_id, p.name, x.tipo, x.status, coalesce(x.emitida_em, x.created_at),
+                                      (select jsonb_agg(jsonb_build_array(i.v ->> 'nome', i.v ->> 'dose') order by i.n)
+                                         from jsonb_array_elements(x.itens) with ordinality i(v, n))
+                               from receitas x
+                               join patients p on p.id = x.patient_id and p.user_id = x.user_id
+                               where x.user_id = %s and (x.status <> 'rascunho' or x.itens <> '[]'::jsonb)
+                               order by coalesce(x.emitida_em, x.created_at) desc limit %s""",
+                            (user_id, RX_BUSCA_LIDAS if k else limit)).fetchall()
+    out = []
+    for rid, pid, nome, tipo, status, quando, itens in rows:
+        itens = [(n, d) for n, d in itens or [] if str(n or "").strip()]
+        if k and k not in patient_key(nome) and not any(k in patient_key(n) for n, _ in itens):
+            continue
+        out.append({"id": str(rid), "patient_id": pid, "patient": nome, "tipo": tipo, "status": status,
+                    "data": quando.isoformat(), "remedios": [_rx_remedio(n, d) for n, d in itens]})
+        if len(out) >= limit:
+            break
+    return out
+
+
 def get_receita(user_id, receita_id):
     with connection() as conn:
         r = conn.execute(f"select {_RX_COLS} from receitas where user_id = %s and id = %s", (user_id, receita_id)).fetchone()

@@ -1,11 +1,11 @@
 """Receitas e dados do médico em memória, com os MESMOS contratos de app/db.py (list/get/create/update/delete/emit/
-cancel_receita, rx_link_orphans, add_example_receitas, get/update_medico). Uma cópia só, usada pelos testes das rotas
+cancel_receita, search_receitas, rx_link_orphans, add_example_receitas, get/update_medico). Uma cópia só, usada pelos testes das rotas
 (tests/test_receitas.py) e pelo preview local (scripts/preview_gravacao.py): mudou uma regra no db.py, muda aqui."""
 import datetime as dt
 import uuid
 
 NOMES = ("list_receitas", "get_receita", "create_receita", "update_receita", "delete_receita", "emit_receita",
-         "cancel_receita", "rx_link_orphans", "add_example_receitas", "get_medico", "update_medico")
+         "cancel_receita", "search_receitas", "rx_link_orphans", "add_example_receitas", "get_medico", "update_medico")
 CAMPOS = ("name", "crm", "crm_uf", "especialidade", "consultorio_endereco", "consultorio_telefone", "receita_papel")
 
 
@@ -43,6 +43,28 @@ class FakeReceitas:
     def list_receitas(self, user_id, patient_id):
         rs = [r for r in self.rx.values() if r["user_id"] == user_id and r["patient_id"] == patient_id]
         return [self._pub(r) for r in sorted(rs, key=lambda r: r["emitida_em"] or r["created_at"], reverse=True)]
+
+    def search_receitas(self, user_id, q, limit):
+        """Como db.search_receitas: o termo no nome do paciente (db.get_patient, trocado nos testes e no preview) ou no
+        nome de um remédio, por patient_key; o rascunho sem remédio fica de fora; da mais nova para a mais velha."""
+        from app import db
+        k = db.patient_key(q)
+        rs = [r for r in self.rx.values() if r["user_id"] == user_id and (r["status"] != "rascunho" or r["itens"])]
+        out = []
+        for r in sorted(rs, key=lambda r: r["emitida_em"] or r["created_at"], reverse=True):
+            p = db.get_patient(user_id, r["patient_id"])
+            if not p:                                    # (no banco, o join com os pacientes do médico)
+                continue
+            itens = [(str(i.get("nome") or "").strip(), str(i.get("dose") or "").strip()) for i in r["itens"]]
+            itens = [(n, d) for n, d in itens if n]
+            if k and k not in db.patient_key(p["name"]) and not any(k in db.patient_key(n) for n, _ in itens):
+                continue
+            out.append({"id": r["id"], "patient_id": r["patient_id"], "patient": p["name"], "tipo": r["tipo"],
+                        "status": r["status"], "data": r["emitida_em"] or r["created_at"],
+                        "remedios": [f"{n} {d}" if d else n for n, d in itens]})
+            if len(out) >= limit:
+                break
+        return out
 
     def get_receita(self, user_id, receita_id):
         r = self.rx.get(receita_id)

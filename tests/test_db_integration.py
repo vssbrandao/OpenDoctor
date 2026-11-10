@@ -252,6 +252,49 @@ def test_receitas_rascunho_emitida_cancelada(novo_usuario):
     assert db.delete_patient(ana, p2["id"]) == "ok"                                      # o rascunho sai junto
 
 
+def test_busca_de_receitas(novo_usuario):
+    """Busca da aba Receitas (POST /prontuario/receitas/busca): o termo no nome do paciente ou de um remédio, sem acento
+    nem maiúscula e sem curinga; só as do médico, da mais nova para a mais velha; o rascunho vazio fica de fora. A de
+    exemplo é achada pelo nome, nunca pela chave."""
+    from app import exemplo
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    joao, outra = db.create_patient(ana, "João Conceição"), db.create_patient(ana, "Outra Pessoa")
+    r = db.create_receita(ana, joao["id"], [{"nome": "Losartana"}])
+    emit = db.emit_receita(ana, r["id"], [("simples", [{"nome": "Losartana", "dose": "50 mg"}, {"nome": "Ácido fólico"}]),
+                                          ("especial", [{"nome": "Sertralina", "dose": " 50 mg "}])])
+    canc = db.cancel_receita(ana, emit[1]["id"], "Dose errada")
+    ureia = db.create_receita(ana, outra["id"], [{"nome": "Ureia 10%", "dose": "creme"}])    # rascunho com remédio: entra
+    vazio = db.create_receita(ana, outra["id"], [])                                         # rascunho vazio: fora
+    busca = lambda uid, q, n=30: db.search_receitas(uid, q, n)                              # noqa: E731
+    ids = lambda uid, q: {x["id"] for x in busca(uid, q)}                                   # noqa: E731
+    assert ids(ana, "  CONCEICAO ") == ids(ana, "joão") == {emit[0]["id"], canc["id"]}       # pelo paciente
+    assert ids(ana, "acido FOL") == {emit[0]["id"]} and ids(ana, "sertralína") == {canc["id"]}   # pelo remédio; cancelada entra
+    assert ids(ana, "10%") == ids(ana, "%") == {ureia["id"]}                                 # % é letra
+    assert busca(ana, "l%a") == [] and busca(ana, "u_eia") == [] and busca(ana, "_") == []  # sem curinga
+    todas = busca(ana, "", 20)
+    assert [x["id"] for x in todas][0] == ureia["id"] and {x["id"] for x in todas} == {ureia["id"], emit[0]["id"], canc["id"]}
+    assert vazio["id"] not in ids(ana, "outra")
+    (s,) = [x for x in todas if x["id"] == emit[0]["id"]]
+    assert s == {"id": emit[0]["id"], "patient_id": joao["id"], "patient": "João Conceição", "tipo": "simples",
+                 "status": "emitida", "data": emit[0]["emitida_em"], "remedios": ["Losartana 50 mg", "Ácido fólico"]}
+    (c,) = [x for x in todas if x["id"] == canc["id"]]
+    assert (c["tipo"], c["status"], c["remedios"]) == ("especial", "cancelada", ["Sertralina 50 mg"])
+    assert busca(beto, "") == [] and busca(beto, "conceicao") == [] and busca(beto, "losartana") == []   # de outro médico
+    # o join também confere o dono do paciente: receita (inconsistente) da Ana apontando para paciente do Beto não aparece
+    carlos = db.create_patient(beto, "Carlos do Beto")
+    with db.connection() as c:
+        c.execute("""insert into receitas (user_id, patient_id, status, itens)
+                     values (%s, %s, 'emitida', '[{"nome": "Losartana"}]'::jsonb)""", (ana, carlos["id"]))
+        c.commit()
+    assert busca(ana, "carlos") == [] and ids(ana, "losartana") == {emit[0]["id"]} and busca(beto, "carlos") == []
+    # a de exemplo: pelo nome ("Maria Silva"), nunca pela chave; da mais nova para a mais velha; o limite vale
+    exemplo.seed(ana)
+    maria = busca(ana, "maria")
+    assert maria and {x["patient"] for x in maria} == {db.EXAMPLE_NAME} and busca(ana, "exemplo") == []
+    datas = [x["data"] for x in busca(ana, "")]
+    assert datas == sorted(datas, reverse=True) and len(busca(ana, "", 2)) == 2
+
+
 def test_receita_avulsa_vai_para_a_evolucao_escrita_depois(novo_usuario):
     """Prontuário avulso: a receita feita antes de a evolução existir (rascunho ou já emitida) passa a ser dela, e aparece
     no card e no PDF. A que já tem consulta fica; só evolução deste médico e deste paciente."""

@@ -425,7 +425,7 @@ const cenarios = [
   ['menu retraído: cada ícone mostra a dica escura com o nome, à direita do menu; aberto, nenhuma (o nome já está escrito)', async () => {
     const mouse = (x, y) => send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none' });
     const ligada = `document.querySelector('.nav-tip').classList.contains('on')`;
-    const NOMES = ['Consultas', 'Search', 'Pacientes', 'Prescrições', 'Integrações', 'Configurações', 'Perfil'];
+    const NOMES = ['Consultas', 'Buscar', 'Pacientes', 'Prescrições', 'Integrações', 'Configurações', 'Perfil'];
     const item = (nome) => ev(`(() => { const b = document.querySelector('.nav .item[data-tip=${JSON.stringify(nome)}]'), r = b.getBoundingClientRect(),
         n = document.querySelector('.nav').getBoundingClientRect(), p = document.querySelector('.nav-tip'), t = p.getBoundingClientRect(), cs = getComputedStyle(p);
       return { on: p.classList.contains('on'), texto: p.querySelector('span').textContent, title: b.getAttribute('title'),
@@ -441,6 +441,10 @@ const cenarios = [
       certo(await ev(`document.querySelector('.nav').classList.contains('collapsed')`), `${pagina}: o menu não abriu retraído`);
       certo(await ev(`document.querySelectorAll('.nav .item[data-tip]').length === 7 && !document.querySelector('.nav .item[title]')`),
             `${pagina}: itens do menu sem data-tip ou ainda com title`);
+      // o Buscar abre a busca: na agenda, a janela; nas outras telas, leva à agenda com ela aberta (#buscar, sem dado nenhum)
+      const busca = await ev(`(() => { const b = document.querySelector('.nav .item[data-tip="Buscar"]'); return b && { id: b.id, href: b.getAttribute('data-href') }; })()`);
+      certo(busca && (pagina === 'opendoctor-agenda.html' ? busca.id === 'navBuscar' && !busca.href : busca.href === 'opendoctor-agenda.html#buscar'),
+            `${pagina}: o Buscar do menu ` + JSON.stringify(busca));
       for (const [i, nome] of NOMES.entries()) {
         let d = await item(nome);
         await mouse(d.bx, d.by);

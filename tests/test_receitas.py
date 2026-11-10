@@ -171,6 +171,80 @@ def test_a_pagina_manda_o_paciente_que_o_servidor_exige():
     assert len(corpos) == 2 and all(c.strip().startswith("patient_id:") for c in corpos), corpos
 
 
+def busca(cli, q=None):
+    """POST /prontuario/receitas/busca (o termo vai no corpo: pode ser o nome do paciente)."""
+    r = cli.post("/prontuario/receitas/busca", json={} if q is None else {"q": q})
+    assert r.status_code == 200, r.text
+    return r.json()["receitas"]
+
+
+def ids(cli, q=None):
+    return [x["id"] for x in busca(cli, q)]
+
+
+def test_busca_acha_pelo_remedio_e_pelo_paciente(cli, capsys):
+    """Busca da aba Receitas: o termo no nome de um remédio ou do paciente, sem acento nem maiúscula, da mais nova para
+    a mais velha. O termo (que pode ser o nome do paciente) não vai para o log."""
+    maria = nova(cli, itens=[LOS, {"nome": "Ácido fólico", "dose": "5 mg"}])
+    joao = cli.post("/prontuario/receitas", json={"patient_id": 8, "itens": [{"nome": "Metformina", "dose": "850 mg"}]}).json()["receita"]
+    assert ids(cli, "  LOSARTANA ") == [maria["id"]] and ids(cli, "acido FOL") == [maria["id"]]      # pelo remédio
+    assert ids(cli, "metformína") == [joao["id"]]
+    assert ids(cli, "MARIA sil") == [maria["id"]] and ids(cli, "joão") == ids(cli, "JOAO") == [joao["id"]]   # pelo paciente
+    assert ids(cli, "a") == [joao["id"], maria["id"]]                                                # a mais nova primeiro
+    assert ids(cli, "silva maria") == [] and ids(cli, "dipirona") == []
+    out = capsys.readouterr()
+    assert "joao" not in (out.out + out.err).lower() and "maria" not in (out.out + out.err).lower()
+
+
+def test_busca_nao_mostra_receita_de_outro_medico(cli):
+    rx = nova(cli)
+    cli.fake._nova(OUTRO, 7, [LOS], status="emitida", emitida_em="2030-01-01T00:00:00+00:00")   # do outro, mais nova
+    assert ids(cli, "losartana") == ids(cli, "") == [rx["id"]]
+    cli.quem["u"] = OUTRO
+    assert busca(cli, "losartana") == [] and busca(cli, "maria") == [] and busca(cli, "") == []
+
+
+def test_busca_deixa_de_fora_o_rascunho_vazio(cli):
+    """O rascunho sem remédio não entra; rascunho com remédio, emitida e cancelada entram."""
+    nova(cli, itens=[])
+    rasc, emit, canc = nova(cli), nova(cli), nova(cli)
+    for x in (emit, canc):
+        assert cli.post(f"/prontuario/receitas/{x['id']}/emitir", json={"patient_id": 7}).status_code == 200
+    assert cli.post(f"/prontuario/receitas/{canc['id']}/cancelar", json={"motivo": "erro"}).status_code == 200
+    r = busca(cli, "")
+    assert [(x["id"], x["status"]) for x in r] == [(canc["id"], "cancelada"), (emit["id"], "emitida"), (rasc["id"], "rascunho")]
+    assert ids(cli, "maria") == ids(cli, "")
+
+
+def test_busca_sem_termo_traz_as_recentes(cli):
+    """Sem termo (ou só espaço): as 20 mais recentes; com termo, até 30. A data da emitida é a da emissão."""
+    for i in range(35):
+        cli.fake._nova(UID, 7, [LOS], status="emitida", emitida_em=f"2026-01-01T00:00:{i:02d}+00:00")
+    rasc = nova(cli)                                                                  # criada agora: a mais nova
+    datas = [x["data"] for x in busca(cli)]
+    assert len(datas) == 20 and datas[0] == rasc["created_at"]
+    assert datas[1:] == [f"2026-01-01T00:00:{i:02d}+00:00" for i in range(34, 15, -1)]
+    assert ids(cli, "") == ids(cli, "   ") == ids(cli) and len(busca(cli, "losartana")) == 30
+
+
+def test_busca_formato_do_resultado(cli):
+    rx = nova(cli, itens=[LOS, {"nome": "Dipirona", "dose": "  "}])
+    assert busca(cli, "dipirona") == [{"id": rx["id"], "patient_id": 7, "patient": "Maria Silva", "tipo": "simples",
+                                       "status": "rascunho", "data": rx["created_at"], "remedios": ["Losartana 50 mg", "Dipirona"]}]
+    out = cli.post(f"/prontuario/receitas/{rx['id']}/emitir",
+                   json={"patient_id": 7, "itens": [LOS, {"nome": "Sertralina", "dose": "50 mg"}]}).json()["receitas"]
+    assert busca(cli, "sertralina") == [{"id": out[1]["id"], "patient_id": 7, "patient": "Maria Silva", "tipo": "especial",
+                                         "status": "emitida", "data": out[1]["emitida_em"], "remedios": ["Sertralina 50 mg"]}]
+
+
+def test_busca_sem_curinga(cli):
+    """% e _ são letras como as outras (a comparação não é LIKE)."""
+    ureia = nova(cli, itens=[{"nome": "Ureia 10%", "dose": "creme"}])
+    nova(cli)
+    assert ids(cli, "10%") == ids(cli, "%") == [ureia["id"]]
+    assert busca(cli, "l%a") == [] and busca(cli, "u_eia") == [] and busca(cli, "_") == []
+
+
 def test_limite_mede_o_texto_como_sai():
     assert pr.erro_itens([{"nome": "Losartana", "posologia": "  " + "a " * 250}]) == ""   # espaço sobrando não conta (499)
     assert pr.erro_itens(None) == "" and pr.erro_itens([{"nome": " ", "posologia": "x" * 900}]) == ""   # sem nome sai
@@ -263,7 +337,8 @@ def test_medico_configuracoes(cli):
 
 
 @pytest.mark.parametrize("metodo,rota", [("get", "/prontuario/receitas?patient_id=7"), ("post", "/prontuario/receitas"),
-                                         ("post", "/prontuario/receitas/conferir"), ("get", "/me/medico"), ("patch", "/me/medico")])
+                                         ("post", "/prontuario/receitas/conferir"), ("post", "/prontuario/receitas/busca"),
+                                         ("get", "/me/medico"), ("patch", "/me/medico")])
 def test_exige_login(monkeypatch, metodo, rota):
     monkeypatch.setattr(auth, "current_user", lambda request: None)
     assert getattr(TestClient(server.app), metodo)(rota).status_code == 401
