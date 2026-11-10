@@ -154,6 +154,11 @@ async function abreEvento(sel) {
   await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento');
 }
 async function fecha() { await tecla('Escape'); await sleep(300); }
+// "Criar paciente" da consulta: o formulário do novo paciente abre por cima dela com o nome digitado; cria por ele
+async function peloFormulario(nome) {
+  await ate(`!document.getElementById('ptNewRow').hidden && document.getElementById('ptNewName').value === ${JSON.stringify(nome)}`, 3000, 'o formulário com ' + nome);
+  await clica('#ptNewSave');
+}
 
 // os botões das barras de cima da agenda: o texto da dica (o aria-label) e a letra do atalho (⇧⌘ + letra, Ctrl+Shift fora do Mac)
 const BOTOES = [['agCreate', 'Criar evento', 'E'], ['calBtn', 'Escolher data', 'D'], ['viewSel', 'Mudar para Semana', 'U'],
@@ -241,9 +246,52 @@ const cenarios = [
     await ate(`document.querySelectorAll('#evPList .evpop-po').length > 0`, 2000, 'a lista de pacientes');
     const it = await ev(`(() => { const b = document.querySelector('#evPList .evpop-po'), t = b.firstElementChild; return [b.children.length, Math.round(t.getBoundingClientRect().left - b.getBoundingClientRect().left), getComputedStyle(b).paddingLeft].join(); })()`);
     certo(it === '1,12,12px', 'o item da lista é só o nome, sem o espaço das iniciais: ' + it);
+    // "Criar paciente" abre o formulário do novo paciente por cima da consulta, com o nome digitado; o × volta ao campo
+    // Paciente sem criar; criar volta com o paciente escolhido e o foco no Local
+    const pacs = () => pedidos.filter((r) => r.method === 'POST' && r.path === '/patients');
+    const p0 = pacs().length;
+    const opcaoCriar = async () => {
+      await ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = 'Paula Nova'; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+      await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent === 'Criar paciente "Paula Nova"')`, 2000, 'a opção criar');
+      await ev(`[...document.querySelectorAll('#evPList .evpop-po')].find((b) => b.textContent === 'Criar paciente "Paula Nova"').click(); 1`);
+      await ate(`!document.getElementById('ptNewRow').hidden && document.getElementById('ptNewName').value === 'Paula Nova' && document.activeElement.id === 'ptNewName'`, 2000, 'o formulário com o nome');
+    };
+    await opcaoCriar();
+    const por = await ev(`(() => { const f = document.getElementById('ptNewRow').getBoundingClientRect(), r = document.querySelector('.right').getBoundingClientRect();
+      return [Math.abs(f.left - r.left) <= 1 && Math.abs(f.width - r.width) <= 1, getComputedStyle(document.getElementById('evPop')).visibility, document.getElementById('evPop').hidden, document.querySelector('.right').classList.contains('novo')].join(); })()`);
+    certo(por === 'true,hidden,false,true', 'o formulário por cima da consulta: ' + por);
+    // o Esc com o foco fora dos campos do formulário fecha só ele (a consulta e o título continuam)
+    await ev(`document.activeElement.blur(); 1`);
+    await fecha();
+    await ate(`document.getElementById('ptNewRow').hidden && !document.getElementById('evPop').hidden && document.getElementById('evTitle').value === 'Retorno' && document.activeElement.id === 'evPatient'`, 2000,
+      'o Esc fecha só o formulário: ' + await ev(`JSON.stringify({ f: document.getElementById('ptNewRow').hidden, c: document.getElementById('evPop').hidden })`));
+    await opcaoCriar();
+    await clica('#ptNewX');
+    await ate(`document.getElementById('ptNewRow').hidden && document.activeElement.id === 'evPatient' && getComputedStyle(document.getElementById('evPop')).visibility === 'visible'`, 2000, 'o × volta à consulta');
+    certo(pacs().length === p0 && await ev(`document.getElementById('evPClear').hidden`), 'o × não criou');
+    await opcaoCriar();
+    await clica('#ptNewSave');
+    await ate(`document.getElementById('ptNewRow').hidden && !document.getElementById('evPClear').hidden && document.getElementById('evPatient').value === 'Paula Nova' && document.activeElement.id === 'evLocation'`,
+      3000, 'criado: escolhido na consulta, o foco no Local');
+    const pb = pacs().pop().body;
+    certo(pacs().length === p0 + 1 && pb.name === 'Paula Nova' && 'cpf' in pb && 'coverage' in pb && pb.force === false, 'o cadastro pelo formulário: ' + JSON.stringify(pb));
+    certo(await pv() === 'Retorno — Paula Nova|11h–11h30|false', 'a prévia com o paciente: ' + await pv());
+    // "Criar outro paciente" com um homônimo só: enquanto o formulário está aberto, o campo (que perdeu o foco) não escolhe
+    // a Paula que já existe por baixo — o médico disse que é outra pessoa; o × volta sem ninguém escolhido
+    await ev(`document.getElementById('evPClear').click(); 1`);
+    await ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = 'Paula Nova'; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent === 'Criar outro paciente "Paula Nova"')`, 2000, 'a opção criar outro');
+    await ev(`[...document.querySelectorAll('#evPList .evpop-po')].find((b) => b.textContent === 'Criar outro paciente "Paula Nova"').click(); 1`);
+    await ate(`!document.getElementById('ptNewRow').hidden && document.getElementById('ptNewName').value === 'Paula Nova'`, 2000, 'o formulário do criar outro');
+    await ev(`document.getElementById('evPatient').dispatchEvent(new FocusEvent('blur')); 1`);   // o foco saiu do campo para o formulário
+    certo(await ev(`document.getElementById('evPClear').hidden`), 'com o formulário aberto, a Paula que já existe não foi escolhida por baixo');
+    await clica('#ptNewX');
+    await ate(`document.getElementById('ptNewRow').hidden`, 2000, 'o × volta');
+    certo(await ev(`document.getElementById('evPClear').hidden`), 'depois do ×, ninguém escolhido');
+    PACS.splice(PACS.findIndex((x) => x.name === 'Paula Nova'), 1);   // não entra nas listas dos outros cenários
     // o Esc fecha e o assistente volta (com o + de novo sem destaque)
     await fecha();
-    await fecha();                                             // o primeiro Esc fecha a lista de pacientes
+    await fecha();                                             // (se a lista de pacientes estiver aberta, o primeiro Esc fecha ela)
     certo(await pv() === '', 'a prévia sai da agenda ao fechar');
     await ate(`document.getElementById('evPop').hidden && !document.querySelector('.right').classList.contains('evento')`, 2000, 'o Esc fecha');
     certo(await ev(`getComputedStyle(document.getElementById('biInput')).visibility === 'visible' && document.getElementById('agCreate').getAttribute('aria-expanded') === 'false'`), 'o assistente voltou');
@@ -495,8 +543,9 @@ const cenarios = [
     l = await lista();
     certo(l.join(' | ') === 'Maria Silva (exemplo) | *Criar paciente "Maria Silva"', 'lista "Maria Silva": ' + l.join(' | '));
     await noCampo('Enter');
+    await peloFormulario('Maria Silva');
     await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
-    const novo = pedidos.filter((r) => r.method === 'POST' && r.path === '/patients');
+    const novo = pedidos.filter((r) => r.method === 'POST' && r.path === '/patients' && r.body.name === 'Maria Silva');
     certo(novo.length === 1 && novo[0].body.name === 'Maria Silva' && !novo[0].body.force, 'criou a Maria de verdade: ' + JSON.stringify(novo.map((r) => r.body)));
     const real = PACS[PACS.length - 1].id;
     const a = await cria();
@@ -571,6 +620,7 @@ const cenarios = [
     await poe('Ot');
     await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.includes('Otávio Antigo'))`, 3000, 'lista de "Ot"');
     await poe('Otto'); await sleep(50); await enter();          // antes da resposta da busca de "Otto"
+    await peloFormulario('Otto');
     await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
     certo(await val('#evPatient') === 'Otto' && criados().pop() === 'Otto', 'escolheu: ' + await val('#evPatient') + ' / ' + JSON.stringify(criados()));
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
@@ -578,6 +628,7 @@ const cenarios = [
     await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
     await poe('Zé'); await sleep(50);
     await poe('Zé Carlos'); await sleep(50); await enter();
+    await peloFormulario('Zé Carlos');
     await ate(`!document.getElementById('evPClear').hidden`, 3000, 'paciente escolhido');
     certo(await val('#evPatient') === 'Zé Carlos' && criados().pop() === 'Zé Carlos', 'nome inteiro: ' + JSON.stringify(criados()));
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
@@ -635,14 +686,16 @@ const cenarios = [
     await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
     await poe('Bruno Novo');
     await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.endsWith('"Bruno Novo"'))`, 3000, 'opção criar');
-    await ev(`${tecla1}; ${tecla1}; 1`);                      // Enter duplo antes da resposta
+    await ev(`${tecla1}; ${tecla1}; 1`);                      // Enter duplo: o formulário abre uma vez, com o nome
+    await ate(`!document.getElementById('ptNewRow').hidden && document.getElementById('ptNewName').value === 'Bruno Novo'`, 3000, 'o formulário com o nome');
+    await ev(`(() => { const n = document.getElementById('ptNewName'), k = () => n.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); k(); k(); return 1; })()`);   // Enter duplo no formulário, antes da resposta
     await ate(`!document.getElementById('evPClear').hidden`, 3000, 'criado');
     const n = pedidos.filter((r) => r.method === 'POST' && r.path === '/patients' && r.body.name === 'Bruno Novo').length;
     certo(n === 1, 'cadastros do Bruno Novo: ' + n);
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     return 'Ana Souza (exata) escolhida antes da Ana Souza Lima; a Joana do evento ficou; Enter duplo criou um cadastro';
   }],
-  ['campo Paciente: cadastro em andamento não deixa criar a consulta no homônimo; a de exemplo nunca leva o Enter a outra pessoa', async () => {
+  ['campo Paciente: "Criar outro paciente" abre o formulário e a consulta fica no cadastro novo; a de exemplo nunca leva o Enter a outra pessoa', async () => {
     const poe = (v) => ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = ${JSON.stringify(v)}; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
     const tecla = (k) => ev(`document.getElementById('evPatient').dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, bubbles: true, cancelable: true })); 1`);
     const destaque = () => ev(`(() => { const b = document.querySelector('#evPList .evpop-po.on'); return b ? b.lastChild.textContent : null; })()`);
@@ -657,7 +710,8 @@ const cenarios = [
     certo(await destaque() === 'Criar paciente "Maria Silva"', 'destaque: ' + await destaque());
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
 
-    // "Criar outro paciente" em andamento: Criar avisa, o blur não escolhe o homônimo, e a consulta fica no cadastro novo
+    // "Criar outro paciente": o formulário abre com o nome e a consulta guardada por baixo; enquanto o cadastro não volta,
+    // o botão fica parado; voltou, a consulta fica no cadastro novo (force: o médico já disse que é outra pessoa)
     LENTO_PAC = 700;
     await ev(`window.__openEventAt(200, 200, new Date(), 15, 0); 1`);
     await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela'); await sleep(400);
@@ -667,14 +721,11 @@ const cenarios = [
     certo((await destaque() || '').startsWith('Criar outro paciente'), 'destaque: ' + await destaque());
     const e0 = eventos();
     await tecla('Enter');
-    await ev(`document.getElementById('evPatient').blur(); 1`);
-    certo(await ev(`document.getElementById('evPClear').hidden`), 'o blur escolheu o homônimo durante o cadastro');
-    await clica('#evCreate');
-    certo(await txt('#evMsg') === 'Aguarde o cadastro do paciente.' && eventos() === e0, 'Criar durante o cadastro: ' + await txt('#evMsg'));
-    await ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); return 1; })()`);
-    certo(await txt('#evMsg') === 'Aguarde o cadastro do paciente.', 'Enter de novo durante o cadastro: ' + await txt('#evMsg'));
-    await ate(`!document.getElementById('evPClear').hidden`, 3000, 'cadastro novo escolhido');
-    certo(await ev(`document.getElementById('evMsg').hidden`), 'o "Aguarde" ficou na tela depois do cadastro');
+    await ate(`!document.getElementById('ptNewRow').hidden && document.getElementById('ptNewName').value === 'Joana Prado'`, 3000, 'o formulário com o nome');
+    certo(await ev(`getComputedStyle(document.getElementById('evPop')).visibility === 'hidden' && !document.getElementById('evPop').hidden`), 'a consulta guardada por baixo');
+    await clica('#ptNewSave');
+    certo(await ev(`document.getElementById('ptNewSave').disabled`) && eventos() === e0, 'enquanto cadastra: o botão parado, nenhuma consulta');
+    await ate(`!document.getElementById('evPClear').hidden && document.getElementById('ptNewRow').hidden`, 3000, 'cadastro novo escolhido');
     const novoPac = pedidos.filter((r) => r.method === 'POST' && r.path === '/patients').pop();
     certo(novoPac.body.name === 'Joana Prado' && novoPac.body.force === true, 'cadastro: ' + JSON.stringify(novoPac.body));
     await clica('#evCreate');
@@ -696,30 +747,7 @@ const cenarios = [
     await tecla('Enter'); await sleep(200);
     await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou'); await sleep(300);
     certo(patches('mx').length === 0, 'trocou a paciente do evento: ' + JSON.stringify(patches('mx').map((x) => x.body.patient_id)));
-    return 'Enter foi para "Criar paciente"; Criar esperou o cadastro e a consulta ficou nele; a de exemplo do evento ficou';
-  }],
-  ['campo Paciente: cadastro que responde depois do prazo não vira dois pacientes', async () => {
-    const poe = (v) => ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = ${JSON.stringify(v)}; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
-    const enter = () => ev(`document.getElementById('evPatient').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); 1`);
-    const posts = () => pedidos.filter((r) => r.method === 'POST' && r.path === '/patients' && r.body.name === 'Lia Demorada').length;
-    await ev(`window.__prazoCadastro = 400; 1`);
-    LENTO_PAC = 1200;                                            // o servidor cria aos 1,2 s; a tela desiste aos 0,4 s
-    await ev(`window.__openEventAt(200, 200, new Date(), 17, 0); 1`);
-    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela'); await sleep(400);
-    await poe('Lia Demorada');
-    await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.endsWith('"Lia Demorada"'))`, 3000, 'opção criar');
-    await enter();
-    await ate(`document.getElementById('evMsg').textContent.startsWith('Não foi possível criar o paciente agora')`, 4000, 'desistiu: ' + await txt('#evMsg'));
-    await sleep(1200);                                           // o cadastro chegou no servidor
-    LENTO_PAC = 0;
-    await poe('Lia Demorada');
-    await ate(`[...document.querySelectorAll('#evPList .evpop-po')].some((b) => b.textContent.endsWith('"Lia Demorada"'))`, 3000, 'opção criar de novo');
-    await enter();
-    await ate(`!document.getElementById('evPClear').hidden`, 4000, 'paciente ligado: ' + await txt('#evMsg'));
-    certo(posts() === 1 && PACS.filter((p) => p.name === 'Lia Demorada').length === 1, 'cadastros: ' + posts());
-    await ev(`window.__prazoCadastro = 0; 1`);
-    await fecha(); await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
-    return 'a segunda tentativa achou o paciente criado e não cadastrou outro';
+    return 'Enter foi para "Criar paciente"; "Criar outro" abriu o formulário e a consulta ficou no cadastro novo; a de exemplo do evento ficou';
   }],
   ['boas-vindas: vêm da sessão da conta nova, uma vez, só para quem não tem a agenda conectada', async () => {
     const CONVITE = 'Bem-vindo! Conecte sua agenda do Google.';
@@ -1561,11 +1589,13 @@ const cenarios = [
                  '|' + ['ptNewName', 'ptNewPlano'].map((i) => !!document.getElementById(i).closest('.fl').querySelector('.nv-ico')).join() + '|' + getComputedStyle(document.querySelector('#ptNewRow label[for="ptNewSex"]')).color,
                topo: Math.round(document.getElementById('ptNewName').closest('.fl').getBoundingClientRect().top - document.querySelector('#ptNewRow > .rp-head').getBoundingClientRect().bottom),
                grupos: [...document.querySelectorAll('#ptNewRow .nv-sec')].map((x) => getComputedStyle(x).borderTopWidth).join(),
+               // sem a linha entre o nome e o CPF, a 2 um do outro (como o título e a data da consulta)
+               nomeCpf: Math.round(document.getElementById('ptNewCpf').closest('.fl').getBoundingClientRect().top - document.getElementById('ptNewName').closest('.fl').getBoundingClientRect().bottom),
                nomeX: Math.round(document.querySelector('#ptNewRow .nv-nome .nv-ico').getBoundingClientRect().left - document.getElementById('ptNewT').getBoundingClientRect().left),
                btnDir: (() => { const e = document.getElementById('ptNewErr'), h = e.hidden; e.hidden = true; const g = Math.round(document.getElementById('ptNewRow').getBoundingClientRect().right - document.getElementById('ptNewSave').getBoundingClientRect().right); e.hidden = h; return g; })(),
                // o texto digitado na mesma linha do rótulo e do texto das listas
                linhaTxt: (() => { const t = (i) => { const e = document.getElementById(i), r = e.getBoundingClientRect(), s = getComputedStyle(e); return Math.round(r.top + parseFloat(s.paddingTop) + parseFloat(s.borderTopWidth) - e.closest('.fl').getBoundingClientRect().top); }; return [t('ptNewCpf'), t('ptNewSex'), Math.round(document.querySelector('label[for="ptNewCpf"]').getBoundingClientRect().top - document.getElementById('ptNewCpf').closest('.fl').getBoundingClientRect().top), Math.round(document.getElementById('ptNewCpf').getBoundingClientRect().height)].join(); })(),
-               traco: (() => { const s = getComputedStyle(document.querySelectorAll('#ptNewRow .nv-sec')[1], '::before'); return s.left + '|' + s.backgroundColor + '|' + getComputedStyle(document.querySelectorAll('#ptNewRow .nv-sec')[1]).borderTopColor; })(),
+               traco: (() => { const s = getComputedStyle(document.querySelectorAll('#ptNewRow .nv-sec')[2], '::before'); return s.left + '|' + s.backgroundColor + '|' + getComputedStyle(document.querySelectorAll('#ptNewRow .nv-sec')[2]).borderTopColor; })(),
                lista: lab('ptNewSex') + '|' + getComputedStyle(document.getElementById('ptNewSex')).color + '|' + document.getElementById('ptNewCov').value + '|' + lab('ptNewCov'),
                botao: [b.height, b.backgroundColor, b.borderTopLeftRadius, b.fontSize].join('|'),
                titulo: ['fontSize', 'fontWeight', 'color'].map((k) => getComputedStyle(document.getElementById('ptNewT'))[k]).join() === ['fontSize', 'fontWeight', 'color'].map((k) => getComputedStyle(document.querySelector('.right > .rp-head .rp-title'))[k]).join(),
@@ -1575,7 +1605,7 @@ const cenarios = [
     certo(vis.pe.fixo && vis.pe.baixo === 24 && vis.pe.fora && vis.cov === ':Não informado|particular:Particular|convenio:Convênio' && vis.sexo === ':Não informado|F:Feminino|M:Masculino' && vis.radios === 0 &&
           vis.alt === '44px,44px,44px,44px,44px,44px,44px' && vis.raio === '12px' && vis.fundo === 'rgb(247, 248, 248)|rgba(0, 0, 0, 0)' && vis.vermelho && vis.rotulo &&
           vis.fonte === '14px/20px,14px/20px,14px/20px,14px/20px,14px' && vis.icones === '#071216,#071216,#071216,#071216,#071216,#071216,#071216,#071216|true,true|rgb(139, 139, 139)' && vis.topo === 16 && vis.icoCorte === 0 &&
-          (() => { const [aw, ah, bw, bh] = vis.mesmoMenu.split(',').map(Number); return Math.abs(aw - bw) < 0.05 && Math.abs(ah - bh) < 0.05; })() && vis.grupos === '0px,1px,1px,1px' && vis.nomeX === 0 &&
+          (() => { const [aw, ah, bw, bh] = vis.mesmoMenu.split(',').map(Number); return Math.abs(aw - bw) < 0.05 && Math.abs(ah - bh) < 0.05; })() && vis.grupos === '0px,0px,1px,1px' && vis.nomeCpf === 2 && vis.nomeX === 0 &&
           vis.lista === '1|rgba(0, 0, 0, 0)|convenio|0' && vis.btnDir === 24 && vis.btnDir === vis.pe.baixo && vis.linhaTxt === '12,12,12,44' && vis.traco === '1px|rgba(0, 0, 0, 0.08)|rgba(0, 0, 0, 0)' &&
           vis.botao === '48px|rgb(0, 0, 0)|1000px|15px' && vis.titulo && vis.linha && vis.sobra === 0 && vis.xNoAlto,
           'a forma do Notion Calendar na escala do Criar evento (o título do tamanho do do assistente, a linha que divide, só o × no alto, sem as dicas): ' + JSON.stringify(vis));

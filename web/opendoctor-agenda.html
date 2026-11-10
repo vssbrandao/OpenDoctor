@@ -1810,11 +1810,15 @@
        traço, os ícones SF do menu, o botão preto preso embaixo). Uma linha de 44 por campo com o ícone a 12 e o texto a 44;
        mouse em cima ou digitando = #F7F8F8. Os horários são texto (a lista abre no clique), o "Dia todo" segue como
        interruptor; o paciente só com o ícone de pessoa (sem as iniciais) */
-    .right.evento > :not(#evPop){visibility:hidden}
-    /* sem a linha entre o título e a data, e o título a 2 da data (o espaço entre as linhas de um grupo) */
-    #evPop .nv-sec-nome{padding-bottom:0}
-    #evPop .nv-sec-nome + .nv-sec{padding-top:2px;border-top:0}
-    #evPop .nv-sec-nome + .nv-sec::before{display:none}
+    .right.evento > :not(#evPop):not(#ptNewRow){visibility:hidden}
+    /* "Criar paciente" da consulta: o formulário do novo paciente por cima dela (a janela fica guardada por baixo) */
+    .right.novo #ptNewRow{z-index:4}
+    .right.novo #evPop{visibility:hidden}
+    /* sem a linha entre o primeiro campo e o grupo seguinte (o título e a data da consulta, o nome e o CPF do novo
+       paciente), a 2 um do outro (o espaço entre as linhas de um grupo) */
+    .rp-novo .nv-sec-nome{padding-bottom:0}
+    .rp-novo .nv-sec-nome + .nv-sec{padding-top:2px;border-top:0}
+    .rp-novo .nv-sec-nome + .nv-sec::before{display:none}
     #evPop .hd-btn[hidden]{display:none}                 /* a lixeira só ao abrir uma consulta da agenda */
     .evpop-row{position:relative;display:flex;align-items:center;gap:12px;min-height:44px;margin:0 12px;padding:0 12px 0 44px;
       border-radius:12px;transition:background-color .12s ease}
@@ -3222,7 +3226,7 @@
         });
         if (q) {
           var dup = sameName(raw).length;                     // mesmo nome já cadastrado → é outra pessoa?
-          option('new', '+', (dup ? 'Criar outro paciente "' : 'Criar paciente "') + raw + '"', function () { createPatient(raw, !!dup); },
+          option('new', '+', (dup ? 'Criar outro paciente "' : 'Criar paciente "') + raw + '"', function () { abreNovoPaciente(raw, !!dup); },
             dup ? 'new-dup' : 'new');                         // virou "Criar outro" (sem a confirmação do 409): o destaque das setas não fica nele
         }
         if (!q && !hits.length) {
@@ -3253,72 +3257,21 @@
         plItems.forEach(function (b, j) { b.classList.toggle('on', j === plActive); b.setAttribute('aria-selected', j === plActive ? 'true' : 'false'); });
         plItems[plActive].scrollIntoView({ block: 'nearest' });
       }
-      var criando = -1;                                      // a abertura da janela com um cadastro em andamento (um de cada vez)
-      var AGUARDE = 'Aguarde o cadastro do paciente.';
-      function aguarde() { elMsg.className = 'evpop-msg'; elMsg.textContent = AGUARDE; elMsg.hidden = false; }
-      // tentativa que não voltou (prazo ou rede): o servidor pode ter criado o paciente mesmo assim. nome → os ids com esse
-      // nome antes dela; antes de cadastrar de novo, a lista é recarregada e um paciente novo com o nome é o dela
-      var semResposta = {};
-      function recarregada() { return Promise.race([loadPatients(true), new Promise(function (r) { setTimeout(r, 10000); })]); }
-      function novoComNome(name, antes) { return sameName(name).filter(function (p) { return antes.indexOf(p.id) < 0; })[0] || null; }
-      function ligaCriado(my, name, p) {
-        if (my !== seq || pop.hidden) return;
-        if (elMsg.textContent === AGUARDE) elMsg.hidden = true;
-        if (pnorm(elPatient.value) === pnorm(name)) { setPatient(p); elMsg.hidden = true; }
-        else if (document.activeElement === elPatient) showList();
-      }
-      function createPatient(name, force) {
-        if (criando === seq) { aguarde(); return; }            // Enter duplo (ou outro nome) não cria dois ao mesmo tempo
-        var my = criando = seq;
-        name = name.split(/\s+/).filter(Boolean).join(' ');
-        var k = pnorm(name);
-        if (semResposta[k]) {
-          var antes0 = semResposta[k].concat(sameName(name).map(function (p) { return p.id; }));   // quem o médico já via na lista não é o da tentativa
-          recarregada().then(function () {
-            var p = novoComNome(name, antes0);
-            if (!p) { enviar(antes0); return; }
-            delete semResposta[k];
-            if (criando === my) criando = -1;
-            ligaCriado(my, name, p);
-          });
-          return;
-        }
-        enviar(sameName(name).map(function (p) { return p.id; }));
-        function enviar(antes) {
-        var ctl = window.AbortController ? new AbortController() : null;
-        // 45 s: mais que o servidor leva para desistir sozinho (pool 30 s + conexão 15 s); só corta o que de fato não volta
-        var prazo = ctl ? setTimeout(function () { ctl.abort(); }, window.__prazoCadastro || 45000) : 0;   // __prazoCadastro: só o teste
-        fetch('/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name, force: !!force }),
-                             signal: ctl ? ctl.signal : undefined })
-          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, j: j }; }); })
-          .then(function (res) {
-            clearTimeout(prazo);
-            if (criando === my) criando = -1;
-            if (res.ok && res.j.ok) { delete semResposta[k]; patients = [res.j.patient].concat((patients || []).filter(function (p) { return p.id !== res.j.patient.id; })); }
-            if (my !== seq || pop.hidden) return;              // a janela é outra: o cadastro fica na lista, sem mexer nela
-            if (elMsg.textContent === AGUARDE) elMsg.hidden = true;
-            if (res.ok && res.j.ok) {
-              if (pnorm(elPatient.value) === pnorm(name)) { setPatient(res.j.patient); elMsg.hidden = true; }
-              else if (document.activeElement === elPatient) showList();   // o médico mudou o nome enquanto isso
-            } else if (res.status === 409 && !force) {      // já existe (lista desatualizada): confirma que é outra pessoa
-              if (confirm('Já existe um paciente chamado "' + name + '". É outra pessoa? Criar um novo cadastro mesmo assim?')) createPatient(name, true);
-            } else {
-              elMsg.className = 'evpop-msg'; elMsg.hidden = false;
-              if (res.status === 401) elMsg.innerHTML = '<a href="/opendoctor-login.html">Entre na sua conta</a> para cadastrar pacientes.';
-              else elMsg.textContent = 'Não foi possível criar o paciente.';
-            }
-          }).catch(function () {
-            clearTimeout(prazo);
-            semResposta[k] = antes;
-            recarregada().then(function () {                  // pode ter sido criado: aí é ele, sem cadastrar outro
-              if (criando === my) criando = -1;
-              var p = novoComNome(name, antes);
-              if (p) { delete semResposta[k]; ligaCriado(my, name, p); return; }
-              if (my !== seq || pop.hidden) return;
-              elMsg.className = 'evpop-msg'; elMsg.textContent = 'Não foi possível criar o paciente agora. Tente de novo.'; elMsg.hidden = false;
-            });
-          });
-        }
+      // "Criar paciente": o formulário do novo paciente (CPF, nascimento, contato, convênio) por cima da janela, com o nome
+      // digitado; criado, ele volta escolhido e o foco vai para o Local; o × (ou Esc) volta ao campo Paciente, sem criar
+      var cadastrando = -1;                                  // a abertura da janela com o formulário aberto por ela
+      function abreNovoPaciente(name, outro) {
+        if (!window.__novoPacienteDaConsulta) return;
+        var my = cadastrando = seq; hideList();
+        window.__novoPacienteDaConsulta(name.split(/\s+/).filter(Boolean).join(' '), function (p) {
+          if (cadastrando === my) cadastrando = -1;
+          patients = [p].concat((patients || []).filter(function (x) { return x.id !== p.id; }));
+          if (my !== seq || pop.hidden) return;              // a janela é outra: o cadastro fica na lista
+          setPatient(p); elMsg.hidden = true; elLoc.focus();
+        }, function (semFoco) {
+          if (cadastrando === my) cadastrando = -1;
+          if (!semFoco && my === seq && !pop.hidden) elPatient.focus();
+        }, outro);
       }
       elPatient.addEventListener('focus', showList);
       elPatient.addEventListener('input', function () {
@@ -3327,7 +3280,9 @@
       });
       elPatient.addEventListener('blur', function () {
         var raw = elPatient.value.trim();
-        if (raw && !selPatient && criando !== seq) { var m = byKey(raw); if (m) setPatient(m); }   // digitou o nome exato de um cadastrado (não o que está sendo criado)
+        // digitou o nome exato de um cadastrado; não enquanto o formulário do novo paciente está aberto (o foco foi para ele, e
+        // no "Criar outro" o médico já disse que é outra pessoa: escolher o homônimo aqui o salvaria na consulta)
+        if (raw && !selPatient && cadastrando !== seq) { var m = byKey(raw); if (m) setPatient(m); }
         hideList();
       });
       elPatient.addEventListener('keydown', function (e) {
@@ -3406,6 +3361,7 @@
       elAllDay.addEventListener('click', previa);
       function esconde(semFoco) {                            // semFoco: outra tela abriu (não puxa o foco de volta)
         if (pop.hidden) return;
+        if (window.__fechaNovoPaciente) window.__fechaNovoPaciente();   // o novo paciente aberto por ela fecha junto
         var dentro = pop.contains(document.activeElement);
         pop.hidden = true; if (painel) painel.classList.remove('evento');
         if (agBtn) { agBtn.setAttribute('aria-expanded', 'false'); agBtn.classList.remove('on'); }
@@ -3624,7 +3580,7 @@
       // calendário, a busca, o próprio "Expandir agenda" ou o ⇧⌘A) sai de baixo do mouse antes do clique. O Esc, o × e
       // a troca de tela continuam recolhendo
       document.addEventListener('mousedown', function (e) {
-        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.cal-inner, .wk-col, .cal-allday .wk-ev, .wk-ad .wk-ev')) {
+        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('#ptNewRow, .cal-inner, .wk-col, .cal-allday .wk-ev, .wk-ad .wk-ev')) {
           var r0 = recolhidoEv; recolhidoEv = false;
           if (!close()) recolhidoEv = r0;                    // ficou aberta (o aviso da alteração): continua valendo
         }
@@ -3636,7 +3592,6 @@
       }
 
       elCreate.addEventListener('click', function () {
-        if (criando === seq && pnorm(elPatient.value)) { aguarde(); return; }   // campo apagado: a consulta sai sem paciente, como antes
         if (mode === 'edit') { openProntuario(); return; }
         var p = buildPayload();
         if (p.error) { elMsg.className = 'evpop-msg'; elMsg.textContent = p.error; elMsg.hidden = false; return; }
@@ -9047,7 +9002,8 @@
       // novo paciente: no lugar do assistente (a tela não fica inerte e o Tab não fica preso; Esc e o × fecham)
       var newRow = $('ptNewRow'), newName = $('ptNewName'), newErr = $('ptNewErr'), btnNovo = $('ptNew'),
           painel = document.querySelector('.right'), plBox = $('ptNewPlanoBox'), plano = $('ptNewPlano'),
-          recolhido = false, salvando = false, geracao = 0;   // geracao: cada abrir e fechar (a resposta velha não mexe no novo)
+          recolhido = false, salvando = false, geracao = 0,   // geracao: cada abrir e fechar (a resposta velha não mexe no novo)
+          daConsulta = null;                              // aberto pelo "Criar paciente" da consulta: {criado, fechou, outro}
       function errNovo(t, campo) {                         // o erro embaixo e, se for de um campo, a borda vermelha nele
         newErr.textContent = t || ''; newErr.hidden = !t;
         [].forEach.call(newRow.querySelectorAll('.fl.bad'), function (x) { x.classList.remove('bad'); });
@@ -9092,9 +9048,21 @@
           btnNovo.setAttribute('aria-expanded', 'false'); btnNovo.classList.remove('on');
           if (recolhido && $('agExpand')) $('agExpand').click();                              // volta a recolher o assistente
           recolhido = false;
-          if (!semFoco) btnNovo.focus();
+          var dc = daConsulta; daConsulta = null;
+          if (dc) { if (dc.fechou) dc.fechou(semFoco); }                                      // volta à consulta (o foco no Paciente)
+          else if (!semFoco) btnNovo.focus();
         }
       }
+      // "Criar paciente" na lista da consulta: o mesmo formulário, com o nome digitado; criado, ele volta escolhido nela
+      // (outro: veio de "Criar outro paciente", o médico já disse que é outra pessoa com o mesmo nome)
+      window.__novoPacienteDaConsulta = function (nome, criado, fechou, outro) {
+        if (!newRow.hidden && !daConsulta) toggleNew(false, true);
+        var ja = !newRow.hidden;
+        toggleNew(true);
+        daConsulta = { criado: criado, fechou: fechou, outro: !!outro };
+        if (!ja) { newName.value = nome; newName.focus(); newName.setSelectionRange(nome.length, nome.length); }
+      };
+      window.__fechaNovoPaciente = function () { if (!newRow.hidden) toggleNew(false, true); };
       btnNovo.addEventListener('click', function () { toggleNew(true); });
       $('ptNewX').addEventListener('click', function () { toggleNew(false); });
       $('ptNewCov').addEventListener('change', function () { mostraPlano(); errNovo(''); if (cobertura() === 'convenio') plano.focus(); });
@@ -9104,9 +9072,17 @@
         if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); toggleNew(false); return; }
         if (e.key === 'Enter' && e.target.matches('input.fl-input')) { e.preventDefault(); createNew(false); }
       });
+      // aberto pela consulta: o Esc fecha só o formulário (volta ao campo Paciente), mesmo com o foco fora dos campos —
+      // senão o Esc da consulta fecharia as duas e o rascunho se perderia
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' || newRow.hidden || !daConsulta || newRow.contains(e.target)) return;
+        var sess = $('odSession'); if (sess && !sess.hidden) return;
+        e.preventDefault(); e.stopPropagation(); toggleNew(false);
+      }, true);
       // sair de Pacientes (o menu, o voltar do navegador) ou abrir um prontuário fecha o formulário
-      new MutationObserver(function () {
-        if (!newRow.hidden && (!stage.classList.contains('pacientes') || stage.classList.contains('prontuario'))) toggleNew(false, true);
+      new MutationObserver(function () {             // (o aberto pela consulta fica em Consultas: fecha ao ir para Pacientes)
+        var fora = daConsulta ? stage.classList.contains('pacientes') : !stage.classList.contains('pacientes');
+        if (!newRow.hidden && (fora || stage.classList.contains('prontuario'))) toggleNew(false, true);
       }).observe(stage, { attributes: true, attributeFilter: ['class'] });
       function createNew(force) {
         if (salvando) return;                              // Enter duas vezes: um cadastro só
@@ -9121,14 +9097,17 @@
         // o nome e os contatos vão só no corpo do POST (nunca na URL)
         var body = { name: v, cpf: cpf || null, birth_date: nasc || null, sex: $('ptNewSex').value || null,
                      email: $('ptNewEmail').value.trim() || null, phone: $('ptNewPhone').value.trim() || null,
-                     coverage: cv, health_plan: cv === 'convenio' ? pl : null, force: !!force };
+                     coverage: cv, health_plan: cv === 'convenio' ? pl : null, force: !!force || !!(daConsulta && daConsulta.outro) };
         var g = geracao;
         salvando = true; $('ptNewSave').disabled = true;
         api('POST', '/patients', body).then(function (res) {
           if (g !== geracao) { if (res.ok && res.j && res.j.ok) load(); return; }   // o formulário já fechou (ou é outro)
           salvando = false; $('ptNewSave').disabled = false;
           if (res.ok && res.j.ok) {
-            toggleNew(false);
+            var cb = daConsulta && daConsulta.criado;
+            if (cb) daConsulta.fechou = null;              // criado: a consulta recebe o paciente (não é um "voltar sem criar")
+            toggleNew(false, !!cb);
+            if (cb) cb(res.j.patient);
             load();
           } else if (res.status === 409 && res.j.duplicates) {   // homônimo: mostra quem já existe e confirma
             var who = res.j.duplicates.map(function (d) { return d.name + (d.birth_date ? ' (' + ptAge(d.birth_date) + ', nasc. ' + d.birth_date.split('-').reverse().join('/') + ')' : ' (sem data de nascimento)'); }).join('\n');
@@ -9137,12 +9116,18 @@
             $('ptNewEmail').value = ''; $('ptNewCov').value = ''; mostraPlano();
             errNovo('E-mail e atendimento ainda não podem ser salvos. Clique em Criar paciente para cadastrar sem eles.');
           } else {
+            // resposta perdida (5xx, sem o erro): pode ter sido criado; a próxima tentativa do "Criar outro" passa pelo 409
+            if (daConsulta && (res.status >= 500 || !res.j || !res.j.error)) daConsulta.outro = false;
             var er = res.j && res.j.error ? String(res.j.error) : '';
             var campo = { 'e-mail inválido': $('ptNewEmail'), 'data de nascimento inválida': $('ptNewBirth'), 'informe o plano do convênio': plano, 'nome obrigatório': newName }[er]
               || (/^CPF /.test(er) ? $('ptNewCpf') : null);   // "CPF inválido" ou "CPF já cadastrado para …"
             errNovo(res.status === 401 ? 'Entre na sua conta para cadastrar pacientes.' : (er ? er.charAt(0).toUpperCase() + er.slice(1) + '.' : 'Não foi possível criar o paciente.'), campo);
           }
-        }, function () { if (g !== geracao) return; salvando = false; $('ptNewSave').disabled = false; errNovo('Não foi possível criar o paciente.'); });
+        }, function () {
+          if (g !== geracao) return; salvando = false; $('ptNewSave').disabled = false;
+          if (daConsulta) daConsulta.outro = false;          // sem resposta: pode ter sido criado (a próxima passa pelo 409)
+          errNovo('Não foi possível criar o paciente.');
+        });
       }
       $('ptNewSave').addEventListener('click', function () { createNew(false); });
 
