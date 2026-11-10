@@ -1404,7 +1404,8 @@ const cenarios = [
       const pe = (() => { const corpo = document.querySelector('#ptNewRow .rp-novo-corpo'), antes = document.getElementById('ptNewSave').getBoundingClientRect().bottom;
         corpo.scrollTop = corpo.scrollHeight; const depois = document.getElementById('ptNewSave').getBoundingClientRect().bottom; corpo.scrollTop = 0;
         return { fixo: Math.abs(antes - depois) < 1, baixo: Math.round(document.getElementById('ptNewRow').getBoundingClientRect().bottom - depois), fora: !corpo.contains(document.getElementById('ptNewSave')) }; })();
-      return { pe, cov: [...document.getElementById('ptNewCov').options].map((o) => o.value + ':' + o.textContent).join('|'), radios: document.querySelectorAll('#ptNewRow input[type=radio]').length,
+      return { pe, cov: [...document.getElementById('ptNewCov').options].map((o) => o.value + ':' + o.textContent).join('|'),
+               sexo: [...document.getElementById('ptNewSex').options].map((o) => o.value + ':' + o.textContent).join('|'), radios: document.querySelectorAll('#ptNewRow input[type=radio]').length,
                alt: ['ptNewName', 'ptNewCpf', 'ptNewBirth', 'ptNewSex', 'ptNewEmail', 'ptNewPhone', 'ptNewCov'].map((i) => c(i).height).join(), raio: c('ptNewEmail').borderTopLeftRadius,
                fundo: c('ptNewPhone').backgroundColor, rotulo: !!document.querySelector('#ptNewRow .fl label.fl-label[for="ptNewEmail"]'),
                botao: [b.height, b.backgroundColor, b.borderTopLeftRadius].join('|'),
@@ -1412,7 +1413,7 @@ const cenarios = [
                linha: getComputedStyle(document.getElementById('ptNewRow')).boxShadow === getComputedStyle(document.querySelector('.right')).boxShadow && getComputedStyle(document.querySelector('.right')).boxShadow !== 'none' && ['.rp-head', '.rp-novo-corpo', '.rp-novo-pe'].every((x) => getComputedStyle(document.querySelector('#ptNewRow > ' + x)).backgroundColor === 'rgba(0, 0, 0, 0)'),
                sobra: document.querySelectorAll('#ptNewCancel, #ptNewRow .nv-nota, #ptNewRow .nv-title').length,
                xNoAlto: (() => { const x = document.getElementById('ptNewX').getBoundingClientRect(), r = document.getElementById('ptNewRow').getBoundingClientRect(); return x.top - r.top < 20 && r.right - x.right < 20; })() }; })()`);
-    certo(vis.pe.fixo && vis.pe.baixo === 24 && vis.pe.fora && vis.cov === ':Não informado|particular:Particular|convenio:Convênio' && vis.radios === 0 &&
+    certo(vis.pe.fixo && vis.pe.baixo === 24 && vis.pe.fora && vis.cov === ':Não informado|particular:Particular|convenio:Convênio' && vis.sexo === ':Não informado|F:Feminino|M:Masculino' && vis.radios === 0 &&
           vis.alt === '84px,84px,84px,84px,84px,84px,84px' && vis.raio === '24px' && vis.fundo === 'rgb(247, 248, 248)' && vis.rotulo &&
           vis.botao === '84px|rgb(11, 11, 12)|999px' && vis.titulo && vis.linha && vis.sobra === 0 && vis.xNoAlto,
           'o visual do login (o título do tamanho do do assistente, a linha que divide, só o × no alto, sem as dicas): ' + JSON.stringify(vis));

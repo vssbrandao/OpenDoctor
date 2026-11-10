@@ -2157,7 +2157,7 @@
               <label class="pr-field wide"><span>Nome completo</span><input class="pr-in" id="pfName" autocomplete="off" spellcheck="false"></label>
               <label class="pr-field"><span>Data de nascimento</span><input class="pr-in" id="pfBirth" type="date"></label>
               <label class="pr-field"><span>Sexo</span>
-                <select class="pr-in" id="pfSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option></select></label>
+                <select class="pr-in" id="pfSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option></select></label>
               <label class="pr-field"><span>CPF (opcional)</span><input class="pr-in" id="pfCpf" inputmode="numeric" placeholder="000.000.000-00" autocomplete="off"></label>
               <label class="pr-field"><span>Telefone (opcional)</span><input class="pr-in" id="pfPhone" inputmode="tel" placeholder="(00) 00000-0000" autocomplete="off"></label>
               <div class="pr-formfoot">
@@ -2584,7 +2584,7 @@
               <div class="fl"><input class="fl-input" id="ptNewCpf" type="text" placeholder=" " autocomplete="off" inputmode="numeric" enterkeyhint="next"><label class="fl-label" for="ptNewCpf">CPF</label></div>
               <div class="nv-linha">
                 <div class="fl"><input class="fl-input" id="ptNewBirth" type="text" placeholder=" " autocomplete="off" inputmode="numeric" enterkeyhint="next"><label class="fl-label" for="ptNewBirth">Nascimento</label></div>
-                <div class="fl fl-sel"><select class="fl-input" id="ptNewSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option><option value="O">Outro</option></select><label class="fl-label" for="ptNewSex">Sexo</label><svg width="10" height="7" viewBox="0 0 10 7" fill="none" aria-hidden="true"><path d="M1 1.2l4 4 4-4" stroke="#6E6E6E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="fl fl-sel"><select class="fl-input" id="ptNewSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option></select><label class="fl-label" for="ptNewSex">Sexo</label><svg width="10" height="7" viewBox="0 0 10 7" fill="none" aria-hidden="true"><path d="M1 1.2l4 4 4-4" stroke="#6E6E6E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
               </div>
               <div class="fl"><input class="fl-input" id="ptNewEmail" type="email" inputmode="email" maxlength="254" placeholder=" " autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next"><label class="fl-label" for="ptNewEmail">E-mail</label></div>
               <div class="fl"><input class="fl-input" id="ptNewPhone" type="tel" inputmode="tel" placeholder=" " autocomplete="off" enterkeyhint="next"><label class="fl-label" for="ptNewPhone">Telefone</label></div>
@@ -4983,11 +4983,22 @@
         closeMenus();
         if (!patient) return;
         var f = $('prForm'); if (!f.hidden) { f.hidden = true; return; }
-        $('pfName').value = patient.name; $('pfBirth').value = patient.birth_date || ''; $('pfSex').value = patient.sex || '';
+        $('pfName').value = patient.name; $('pfBirth').value = patient.birth_date || ''; pfSexo(patient.sex || '');
         $('pfCpf').value = fmtCpf(patient.cpf || ''); $('pfPhone').value = patient.phone || '';
         $('pfBirth').max = new Date().toISOString().slice(0, 10);
         $('pfErr').hidden = true; f.hidden = false; $('pfBirth').focus();
       });
+      // o Sexo só oferece Feminino e Masculino; quem já está salvo com outro valor (o antigo "Outro") ganha essa opção só
+      // enquanto o formulário dele está aberto, para salvar o resto sem apagar o sexo
+      function pfSexo(v) {
+        var s = $('pfSex'), velha = s.querySelector('option[data-antiga]');
+        if (velha) velha.remove();
+        if (v && ![].some.call(s.options, function (o) { return o.value === v; })) {
+          var o = document.createElement('option'); o.value = v; o.textContent = SEX[v] || v; o.setAttribute('data-antiga', '');
+          s.appendChild(o);
+        }
+        s.value = v;
+      }
       $('pfCancel').addEventListener('click', function () { $('prForm').hidden = true; });
       $('pfSave').addEventListener('click', function () {
         var btn = this, body = { name: $('pfName').value, birth_date: $('pfBirth').value || null, sex: $('pfSex').value || null,
