@@ -1399,24 +1399,70 @@ const cenarios = [
     const antes = pedidos.filter((x) => x.method === 'POST' && x.path === '/patients').length;
     await clica('#ptNewSave');
     await ate(`document.getElementById('ptNewErr').textContent === 'Informe o plano do convênio.' && document.activeElement.id === 'ptNewPlano' && document.getElementById('ptNewPlanoBox').classList.contains('bad')`, 2000, 'sem o plano não cria (e o campo fica vermelho)');
-    // o visual do login: campos de 84 com raio 24, cinza #F7F8F8 (o da caixa de texto do assistente), o rótulo dentro; o botão preto de 84
+    // a forma do painel do Notion Calendar na escala do "Criar evento" da agenda: campos de 44 com canto 12, texto 14/20, o
+    // ícone SF Symbols preto (#071216, o do menu) em cada um, 4 grupos com o traço entre eles; o ícone do
+    // nome alinhado com o título e 16 abaixo dele; digitando = cinza #F7F8F8 (o da caixa de texto do assistente), parado =
+    // sem fundo; lista vazia mostra o nome do campo; o botão preto de 48 (o "Criar" do evento) no canto, a 24 da lateral e de baixo
+    await send('Page.captureScreenshot', { format: 'png' }); await sleep(250); await send('Page.captureScreenshot', { format: 'png' });   // sem janela, só desenha (e termina a transição do contorno vermelho) com a foto
     const vis = await ev(`(() => { const c = (i) => getComputedStyle(document.getElementById(i).closest('.fl')), b = getComputedStyle(document.getElementById('ptNewSave'));
+      const lab = (i) => getComputedStyle(document.querySelector('#ptNewRow label[for="' + i + '"]')).opacity;
       const pe = (() => { const corpo = document.querySelector('#ptNewRow .rp-novo-corpo'), antes = document.getElementById('ptNewSave').getBoundingClientRect().bottom;
         corpo.scrollTop = corpo.scrollHeight; const depois = document.getElementById('ptNewSave').getBoundingClientRect().bottom; corpo.scrollTop = 0;
         return { fixo: Math.abs(antes - depois) < 1, baixo: Math.round(document.getElementById('ptNewRow').getBoundingClientRect().bottom - depois), fora: !corpo.contains(document.getElementById('ptNewSave')) }; })();
       return { pe, cov: [...document.getElementById('ptNewCov').options].map((o) => o.value + ':' + o.textContent).join('|'),
                sexo: [...document.getElementById('ptNewSex').options].map((o) => o.value + ':' + o.textContent).join('|'), radios: document.querySelectorAll('#ptNewRow input[type=radio]').length,
                alt: ['ptNewName', 'ptNewCpf', 'ptNewBirth', 'ptNewSex', 'ptNewEmail', 'ptNewPhone', 'ptNewCov'].map((i) => c(i).height).join(), raio: c('ptNewEmail').borderTopLeftRadius,
-               fundo: c('ptNewPhone').backgroundColor, rotulo: !!document.querySelector('#ptNewRow .fl label.fl-label[for="ptNewEmail"]'),
-               botao: [b.height, b.backgroundColor, b.borderTopLeftRadius].join('|'),
+               fundo: c('ptNewPlano').backgroundColor + '|' + c('ptNewPhone').backgroundColor, vermelho: c('ptNewPlano').boxShadow.includes('rgb(217, 48, 37)'),
+               rotulo: !!document.querySelector('#ptNewRow .fl label.fl-label[for="ptNewEmail"]'),
+               fonte: ['ptNewName', 'ptNewEmail', 'ptNewSex', 'ptNewPlano'].map((i) => { const s = getComputedStyle(document.getElementById(i)); return s.fontSize + '/' + s.lineHeight; }).concat(
+                 [getComputedStyle(document.querySelector('#ptNewRow label[for="ptNewSex"]')).fontSize]).join(),
+               // o desenho passa milésimos da caixa do svg: com overflow hidden a beirada sai cortada
+               icoCorte: [...document.querySelectorAll('#ptNewRow .fl > .nv-ico > svg')].filter((s) => { const b = s.querySelector('path').getBBox(), w = +s.getAttribute('width'), h = +s.getAttribute('height');
+                 return getComputedStyle(s).overflow !== 'visible' && (b.x < 0 || b.y < 0 || b.x + b.width > w || b.y + b.height > h); }).length,
+               // o mesmo peso e tamanho dos ícones do menu: o calendário igual ao de Consultas na barra lateral
+               mesmoMenu: (() => { const a = document.querySelector('#navConsultas .ico svg path').getBBox(), b = document.querySelectorAll('#ptNewRow .nv-ico svg path')[2].getBBox();
+                 return [a.width, a.height, b.width, b.height].map((x) => x.toFixed(2)).join(); })(),
+               icones: [...document.querySelectorAll('#ptNewRow .fl > .nv-ico > svg path')].map((x) => x.getAttribute('fill')).join() +
+                 '|' + ['ptNewName', 'ptNewPlano'].map((i) => !!document.getElementById(i).closest('.fl').querySelector('.nv-ico')).join() + '|' + getComputedStyle(document.querySelector('#ptNewRow label[for="ptNewSex"]')).color,
+               topo: Math.round(document.getElementById('ptNewName').closest('.fl').getBoundingClientRect().top - document.querySelector('#ptNewRow > .rp-head').getBoundingClientRect().bottom),
+               grupos: [...document.querySelectorAll('#ptNewRow .nv-sec')].map((x) => getComputedStyle(x).borderTopWidth).join(),
+               nomeX: Math.round(document.querySelector('#ptNewRow .nv-nome .nv-ico').getBoundingClientRect().left - document.getElementById('ptNewT').getBoundingClientRect().left),
+               btnDir: (() => { const e = document.getElementById('ptNewErr'), h = e.hidden; e.hidden = true; const g = Math.round(document.getElementById('ptNewRow').getBoundingClientRect().right - document.getElementById('ptNewSave').getBoundingClientRect().right); e.hidden = h; return g; })(),
+               // o texto digitado na mesma linha do rótulo e do texto das listas
+               linhaTxt: (() => { const t = (i) => { const e = document.getElementById(i), r = e.getBoundingClientRect(), s = getComputedStyle(e); return Math.round(r.top + parseFloat(s.paddingTop) + parseFloat(s.borderTopWidth) - e.closest('.fl').getBoundingClientRect().top); }; return [t('ptNewCpf'), t('ptNewSex'), Math.round(document.querySelector('label[for="ptNewCpf"]').getBoundingClientRect().top - document.getElementById('ptNewCpf').closest('.fl').getBoundingClientRect().top), Math.round(document.getElementById('ptNewCpf').getBoundingClientRect().height)].join(); })(),
+               traco: (() => { const s = getComputedStyle(document.querySelectorAll('#ptNewRow .nv-sec')[1], '::before'); return s.left + '|' + s.backgroundColor + '|' + getComputedStyle(document.querySelectorAll('#ptNewRow .nv-sec')[1]).borderTopColor; })(),
+               lista: lab('ptNewSex') + '|' + getComputedStyle(document.getElementById('ptNewSex')).color + '|' + document.getElementById('ptNewCov').value + '|' + lab('ptNewCov'),
+               botao: [b.height, b.backgroundColor, b.borderTopLeftRadius, b.fontSize].join('|'),
                titulo: ['fontSize', 'fontWeight', 'color'].map((k) => getComputedStyle(document.getElementById('ptNewT'))[k]).join() === ['fontSize', 'fontWeight', 'color'].map((k) => getComputedStyle(document.querySelector('.right > .rp-head .rp-title'))[k]).join(),
                linha: getComputedStyle(document.getElementById('ptNewRow')).boxShadow === getComputedStyle(document.querySelector('.right')).boxShadow && getComputedStyle(document.querySelector('.right')).boxShadow !== 'none' && ['.rp-head', '.rp-novo-corpo', '.rp-novo-pe'].every((x) => getComputedStyle(document.querySelector('#ptNewRow > ' + x)).backgroundColor === 'rgba(0, 0, 0, 0)'),
                sobra: document.querySelectorAll('#ptNewCancel, #ptNewRow .nv-nota, #ptNewRow .nv-title').length,
                xNoAlto: (() => { const x = document.getElementById('ptNewX').getBoundingClientRect(), r = document.getElementById('ptNewRow').getBoundingClientRect(); return x.top - r.top < 20 && r.right - x.right < 20; })() }; })()`);
     certo(vis.pe.fixo && vis.pe.baixo === 24 && vis.pe.fora && vis.cov === ':Não informado|particular:Particular|convenio:Convênio' && vis.sexo === ':Não informado|F:Feminino|M:Masculino' && vis.radios === 0 &&
-          vis.alt === '84px,84px,84px,84px,84px,84px,84px' && vis.raio === '24px' && vis.fundo === 'rgb(247, 248, 248)' && vis.rotulo &&
-          vis.botao === '84px|rgb(11, 11, 12)|999px' && vis.titulo && vis.linha && vis.sobra === 0 && vis.xNoAlto,
-          'o visual do login (o título do tamanho do do assistente, a linha que divide, só o × no alto, sem as dicas): ' + JSON.stringify(vis));
+          vis.alt === '44px,44px,44px,44px,44px,44px,44px' && vis.raio === '12px' && vis.fundo === 'rgb(247, 248, 248)|rgba(0, 0, 0, 0)' && vis.vermelho && vis.rotulo &&
+          vis.fonte === '14px/20px,14px/20px,14px/20px,14px/20px,14px' && vis.icones === '#071216,#071216,#071216,#071216,#071216,#071216,#071216,#071216|true,true|rgb(139, 139, 139)' && vis.topo === 16 && vis.icoCorte === 0 &&
+          (() => { const [aw, ah, bw, bh] = vis.mesmoMenu.split(',').map(Number); return Math.abs(aw - bw) < 0.05 && Math.abs(ah - bh) < 0.05; })() && vis.grupos === '0px,1px,1px,1px' && vis.nomeX === 0 &&
+          vis.lista === '1|rgba(0, 0, 0, 0)|convenio|0' && vis.btnDir === 24 && vis.btnDir === vis.pe.baixo && vis.linhaTxt === '12,12,12,44' && vis.traco === '1px|rgba(0, 0, 0, 0.08)|rgba(0, 0, 0, 0)' &&
+          vis.botao === '48px|rgb(0, 0, 0)|1000px|15px' && vis.titulo && vis.linha && vis.sobra === 0 && vis.xNoAlto,
+          'a forma do Notion Calendar na escala do Criar evento (o título do tamanho do do assistente, a linha que divide, só o × no alto, sem as dicas): ' + JSON.stringify(vis));
+    // campo preenchido continua com nome para o leitor de tela (o nome do campo some da tela, não da árvore de acessibilidade)
+    {
+      const doc = await send('DOM.getDocument', { depth: 0 }), nomes = [];
+      for (const id of ['ptNewName', 'ptNewCpf', 'ptNewEmail', 'ptNewPhone', 'ptNewCov', 'ptNewPlano']) {
+        const { nodeId } = await send('DOM.querySelector', { nodeId: doc.root.nodeId, selector: '#' + id });
+        const ax = await send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
+        nomes.push(ax.nodes[0].name ? ax.nodes[0].name.value : '');
+      }
+      const cheios = await ev(`['ptNewName', 'ptNewCpf', 'ptNewEmail', 'ptNewPhone'].filter((i) => document.getElementById(i).value).length`);
+      certo(nomes.join() === 'Nome completo,CPF,E-mail,Telefone,Tipo de atendimento,Plano do convênio' && cheios === 4, 'nome acessível dos campos (preenchidos: ' + cheios + '): ' + nomes.join());
+    }
+    // a lista pelo teclado ganha o contorno (sem cursor piscando, só o fundo não mostraria onde está o foco)
+    await ev(`document.getElementById('ptNewPhone').focus(); 1`);
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    await send('Page.captureScreenshot', { format: 'png' }); await sleep(250); await send('Page.captureScreenshot', { format: 'png' });
+    certo(await ev(`document.activeElement.id === 'ptNewCov' && getComputedStyle(document.getElementById('ptNewCov').closest('.fl')).boxShadow.includes('rgb(125, 125, 130)')`),
+          'Tab até a lista: contorno de foco ' + await ev(`document.activeElement.id + ' ' + getComputedStyle(document.getElementById('ptNewCov').closest('.fl')).boxShadow`));
+    await ev(`document.getElementById('ptNewPlano').focus(); 1`);
     // nascimento como no login: só dígitos, as barras entram sozinhas; data impossível não vai ao servidor
     await ev(`document.getElementById('ptNewBirth').focus(); 1`);
     await send('Input.insertText', { text: '31021990' });

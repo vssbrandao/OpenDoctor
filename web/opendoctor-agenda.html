@@ -1648,42 +1648,53 @@
     .pt-nav button:disabled{opacity:.4;cursor:default}
     /* coluna estreita (o assistente ao lado): os números menores; as margens ficam as da barra de cima */
     @container pt (max-width:520px){ .pt-linha{grid-template-columns:minmax(0,1fr) 32px;gap:16px} .pt-ultc{display:none} .pt-linha .pt-mais{grid-column:2} .pt-stat{padding:12px 14px} .pt-stat b{font-size:20px;line-height:26px} }
-    /* novo paciente: no lugar do assistente (a conversa fica por baixo, guardada: fora do Tab, dos atalhos e da dica),
-       com o visual do login (web/opendoctor-login.html): campos .fl de 84 com o rótulo dentro, 8 px entre eles, pares lado
-       a lado e o botão preto de 84; o título no alto como o do assistente; fecha pelo × */
+    /* novo paciente: no lugar do assistente (a conversa fica por baixo, guardada: fora do Tab, dos atalhos e da dica).
+       A forma do painel lateral do Notion Calendar (um campo por linha com o ícone, grupos separados por um traço, vazio
+       mostra o nome do campo) na escala do "Criar evento" da agenda (.evpop, Figma): texto 14/20 #071216, nome do campo
+       #8B8B8B, linhas de 44 com canto 12 e 12 de respiro, ícones SF como os do menu (SF Pro Display Medium 15,1 pt, #071216) em 20 a 12 do texto; mouse em cima ou
+       digitando = o cinza #F7F8F8 (o da caixa de texto do assistente). O título no alto como o do assistente e o
+       conteúdo alinhado com ele (a 24); o botão preto (o "Criar" do evento, um pouco maior: 48) preso no canto, a 24 da lateral e de baixo; fecha pelo × */
     .right.novo > :not(.rp-novo){visibility:hidden}
     .rp-novo{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;background:#fff;font-family:var(--disp);
       box-shadow:inset 1px 0 0 var(--sb-border)}   /* a linha que divide a agenda e o assistente (a do .right) continua */
     .rp-novo[hidden]{display:none}
     .rp-novo h2.rp-title{margin:0}                     /* o título do tamanho de "Assistente AI" */
-    .rp-novo-corpo{flex:1;min-height:0;overflow-y:auto;padding:16px 24px 24px;display:flex;flex-direction:column}
-    .rp-novo-pe{flex:none;display:flex;flex-direction:column;gap:12px;padding:0 24px 24px}   /* o botão preso embaixo (sem fundo: não cobre a linha que divide) */
-    .nv-form{display:flex;flex-direction:column;gap:16px}
-    .nv-campos{display:flex;flex-direction:column;gap:8px}
-    .nv-linha{display:flex;gap:8px;align-items:flex-start}
-    .nv-linha > .fl{flex:1 1 0;min-width:0}
-    .rp-novo .fl{position:relative;width:100%;height:84px;border-radius:24px;background:#F7F8F8;box-shadow:inset 0 0 0 1px transparent;
-      transition:background-color .12s,box-shadow .12s}
+    .rp-novo-corpo{flex:1;min-height:0;overflow-y:auto}
+    .rp-novo-pe{flex:none;display:flex;align-items:center;gap:12px;padding:12px 24px 24px 24px}   /* o botão preso embaixo (sem fundo: não cobre a linha que divide) */
+    .nv-sec{display:flex;flex-direction:column;gap:2px;padding:8px 0}
+    .nv-sec + .nv-sec{border-top:1px solid transparent;position:relative}   /* o traço começa depois da linha que divide (não pinta sobre ela) */
+    .nv-sec + .nv-sec::before{content:"";position:absolute;top:-1px;left:1px;right:0;height:1px;background:var(--line)}
+    .nv-sec-nome{padding-top:16px}   /* mais longe do título "Novo paciente" */
+    .rp-novo .fl{position:relative;flex:none;height:44px;margin:0 12px;border-radius:12px;transition:background-color .12s,box-shadow .12s}
     .rp-novo .fl[hidden]{display:none}
-    .rp-novo .fl:focus-within{background:#fff;box-shadow:inset 0 0 0 1px #7D7D82}
-    .rp-novo .fl.bad{box-shadow:inset 0 0 0 1px #D93025}
-    .rp-novo .fl-input{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:24px;outline:none;background:transparent;
-      padding:41.4px 32px 24.6px;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:500;font-size:15px;
-      line-height:18px;letter-spacing:-.2px;color:#000}
+    .rp-novo .fl:hover,.rp-novo .fl:focus-within{background:#F7F8F8}
+    .rp-novo .fl-sel:has(select:focus-visible){box-shadow:inset 0 0 0 1px #7D7D82}   /* lista pelo teclado: sem cursor piscando, o contorno mostra onde está */
+    .rp-novo .fl.bad,.rp-novo .fl.bad:hover{box-shadow:inset 0 0 0 1px #D93025}
+    .rp-novo .nv-ico{position:absolute;left:12px;top:12px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;pointer-events:none}   /* como os ícones do menu: SF Pro Display Medium 15,1 pt em #071216 */
+    .rp-novo .nv-ico svg{overflow:visible}   /* o desenho passa milésimos da caixa (14,941 em 14,94): sem isso a beirada sai cortada */
+    .rp-novo .fl-input{position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;outline:none;background:transparent;
+      padding:12px 12px 12px 44px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
+    .rp-novo .nv-nome .fl-input{font-weight:700}   /* o nome como o título do evento */
     .rp-novo .fl-input::placeholder{color:transparent}
-    .rp-novo .fl-label{position:absolute;left:32px;right:32px;top:32.2px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-      font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;color:#6B6B70;transition:top .12s,font-size .12s,color .12s}
-    .rp-novo .fl-input:focus + .fl-label,.rp-novo .fl-input:not(:placeholder-shown) + .fl-label,.rp-novo .fl-sel .fl-label{
-      top:24.6px;font-size:12px;color:#7D7D82}
-    .rp-novo .fl-sel select{appearance:none;-webkit-appearance:none;padding-right:56px;cursor:pointer}
-    .rp-novo .fl-sel svg{position:absolute;right:32px;top:50%;margin-top:-3px;pointer-events:none}
-    .nv-err{padding:0 32px;font-weight:500;font-size:14px;line-height:1.4;color:#D93025}
+    .rp-novo .fl-label{position:absolute;left:44px;right:12px;top:12px;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#8B8B8B}
+    .rp-novo .nv-nome .fl-label{font-weight:500}
+    .rp-novo input.fl-input{height:auto}   /* sem altura fixa o texto digitado fica na linha do rótulo (com 100% descia 1 px) */
+    /* preenchido: o nome do campo some da tela mas fica para o leitor de tela (display:none tirava o nome do campo) */
+    .rp-novo input.fl-input:not(:placeholder-shown) + .fl-label{opacity:0}
+    /* lista: vazio mostra o nome do campo (o "Não informado" continua na lista); escolhido mostra a opção */
+    .rp-novo .fl-sel select{appearance:none;-webkit-appearance:none;cursor:pointer}
+    .rp-novo .fl-sel select:has(option[value=""]:checked){color:transparent}
+    .rp-novo .fl-sel select:not(:has(option[value=""]:checked)) + .fl-label{opacity:0}
+    .rp-novo .fl-sel option{color:#071216}
+    @media (forced-colors:active){ .rp-novo .fl-sel .fl-label{opacity:0} }   /* alto contraste pinta o "Não informado": o nome do campo sai de cima dele */
+    .nv-err{flex:1;min-width:0;font-weight:500;font-size:14px;line-height:20px;color:#c5221f}
     .nv-err[hidden]{display:none}
-    .nv-btn{width:100%;height:84px;padding:0 48px;border-radius:999px;display:flex;align-items:center;justify-content:center;
-      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:1.4;white-space:nowrap}
-    .nv-dark{border:0;background:#0B0B0C;color:#fff}
-    .nv-dark:hover{background:#2A2A2D}
-    .nv-btn:disabled{opacity:.6;cursor:default}
+    .nv-btn{flex:none;margin-left:auto;height:48px;padding:0 28px;border-radius:1000px;display:flex;align-items:center;justify-content:center;
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:15px;letter-spacing:-.01em;white-space:nowrap}
+    .nv-dark{border:0;background:#000;color:#fff}
+    .nv-dark:hover{background:#222}
+    .nv-btn:disabled{opacity:.5;cursor:default}
     .nv-btn:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
 
     /* ===== visão SEMANA (Figma 1014:9927) =====
@@ -2577,23 +2588,25 @@
           <h2 class="rp-title" id="ptNewT">Novo paciente</h2>
           <div class="hd-actions"><button class="hd-btn" id="ptNewX" type="button" aria-label="Fechar"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M13 13l10 10M23 13L13 23" stroke="#879196" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
         </div>
-        <div class="rp-novo-corpo">
-          <div class="nv-form">
-            <div class="nv-campos">
-              <div class="fl"><input class="fl-input" id="ptNewName" type="text" placeholder=" " autocomplete="off" spellcheck="false" autocapitalize="words" enterkeyhint="next"><label class="fl-label" for="ptNewName">Nome completo</label></div>
-              <div class="fl"><input class="fl-input" id="ptNewCpf" type="text" placeholder=" " autocomplete="off" inputmode="numeric" enterkeyhint="next"><label class="fl-label" for="ptNewCpf">CPF</label></div>
-              <div class="nv-linha">
-                <div class="fl"><input class="fl-input" id="ptNewBirth" type="text" placeholder=" " autocomplete="off" inputmode="numeric" enterkeyhint="next"><label class="fl-label" for="ptNewBirth">Nascimento</label></div>
-                <div class="fl fl-sel"><select class="fl-input" id="ptNewSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option></select><label class="fl-label" for="ptNewSex">Sexo</label><svg width="10" height="7" viewBox="0 0 10 7" fill="none" aria-hidden="true"><path d="M1 1.2l4 4 4-4" stroke="#6E6E6E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-              </div>
-              <div class="fl"><input class="fl-input" id="ptNewEmail" type="email" inputmode="email" maxlength="254" placeholder=" " autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next"><label class="fl-label" for="ptNewEmail">E-mail</label></div>
-              <div class="fl"><input class="fl-input" id="ptNewPhone" type="tel" inputmode="tel" placeholder=" " autocomplete="off" enterkeyhint="next"><label class="fl-label" for="ptNewPhone">Telefone</label></div>
-              <div class="fl fl-sel"><select class="fl-input" id="ptNewCov"><option value="">Não informado</option><option value="particular">Particular</option><option value="convenio">Convênio</option></select><label class="fl-label" for="ptNewCov">Tipo de atendimento</label><svg width="10" height="7" viewBox="0 0 10 7" fill="none" aria-hidden="true"><path d="M1 1.2l4 4 4-4" stroke="#6E6E6E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-              <div class="fl" id="ptNewPlanoBox" hidden><input class="fl-input" id="ptNewPlano" type="text" placeholder=" " autocomplete="off" spellcheck="false" enterkeyhint="go"><label class="fl-label" for="ptNewPlano">Plano do convênio</label></div>
-            </div>
+        <div class="rp-novo-corpo">                         <!-- como o painel do Notion Calendar: um grupo por assunto -->
+          <div class="nv-sec nv-sec-nome">
+            <div class="fl nv-nome"><span class="nv-ico"><svg width="15.25" height="15.25" viewBox="0 0 15.25 15.25" fill="none" aria-hidden="true"><path d="M7.621 15.243C11.827 15.243 15.243 11.827 15.243 7.621C15.243 3.416 11.827 0.000 7.621 0.000C3.416 0.000 0.000 3.416 0.000 7.621C0.000 11.827 3.416 15.243 7.621 15.243ZM7.621 10.167C5.526 10.167 3.903 10.912 3.121 11.775C2.117 10.683 1.498 9.222 1.498 7.621C1.498 4.235 4.235 1.498 7.621 1.498C11.008 1.498 13.745 4.235 13.745 7.621C13.745 9.222 13.125 10.683 12.122 11.775C11.340 10.912 9.724 10.167 7.621 10.167ZM7.621 8.957C9.053 8.964 10.159 7.747 10.159 6.161C10.159 4.670 9.045 3.431 7.621 3.431C6.205 3.431 5.076 4.670 5.083 6.161C5.091 7.747 6.197 8.942 7.621 8.957Z" fill="#071216"/></svg></span><input class="fl-input" id="ptNewName" type="text" placeholder=" " autocomplete="off" spellcheck="false" autocapitalize="words" enterkeyhint="next"><label class="fl-label" for="ptNewName">Nome completo</label></div>
+          </div>
+          <div class="nv-sec">
+            <div class="fl"><span class="nv-ico"><svg width="17.48" height="13.77" viewBox="0 0 17.48 13.77" fill="none" aria-hidden="true"><path d="M2.420 13.767L15.058 13.767C16.652 13.767 17.478 12.948 17.478 11.377L17.478 2.390C17.478 0.819 16.652 0.000 15.058 0.000L2.420 0.000C0.826 0.000 0.000 0.812 0.000 2.390L0.000 11.377C0.000 12.948 0.826 13.767 2.420 13.767ZM2.508 12.321C1.822 12.321 1.446 11.967 1.446 11.251L1.446 2.516C1.446 1.800 1.822 1.439 2.508 1.439L14.970 1.439C15.649 1.439 16.032 1.800 16.032 2.516L16.032 11.251C16.032 11.967 15.649 12.321 14.970 12.321ZM5.770 6.839C6.655 6.847 7.363 6.102 7.363 5.106C7.363 4.176 6.655 3.401 5.770 3.401C4.892 3.401 4.176 4.176 4.176 5.106C4.176 6.102 4.892 6.839 5.770 6.839ZM10.499 4.508L14.328 4.508C14.601 4.508 14.800 4.301 14.800 4.036C14.800 3.777 14.601 3.578 14.328 3.578L10.499 3.578C10.226 3.578 10.027 3.777 10.027 4.036C10.027 4.301 10.226 4.508 10.499 4.508ZM10.499 7.356L14.328 7.356C14.601 7.356 14.800 7.149 14.800 6.884C14.800 6.625 14.601 6.419 14.328 6.419L10.499 6.419C10.226 6.419 10.027 6.625 10.027 6.884C10.027 7.149 10.226 7.356 10.499 7.356ZM2.988 10.196L8.551 10.196C8.817 10.196 8.957 10.012 8.957 9.768C8.957 9.082 7.946 7.334 5.770 7.334C3.593 7.334 2.590 9.082 2.590 9.768C2.590 10.012 2.722 10.196 2.988 10.196ZM10.499 10.196L14.328 10.196C14.601 10.196 14.800 9.997 14.800 9.739C14.800 9.473 14.601 9.259 14.328 9.259L10.499 9.259C10.226 9.259 10.027 9.473 10.027 9.739C10.027 9.997 10.226 10.196 10.499 10.196Z" fill="#071216"/></svg></span><input class="fl-input" id="ptNewCpf" type="text" placeholder=" " autocomplete="off" inputmode="numeric" enterkeyhint="next"><label class="fl-label" for="ptNewCpf">CPF</label></div>
+            <div class="fl"><span class="nv-ico"><svg width="15" height="13.78" viewBox="0 0 15 13.78" fill="none" aria-hidden="true"><path d="M2.420 13.775L12.572 13.775C14.166 13.775 14.992 12.948 14.992 11.377L14.992 2.398C14.992 0.819 14.166 0.000 12.572 0.000L2.420 0.000C0.826 0.000 0.000 0.819 0.000 2.398L0.000 11.377C0.000 12.956 0.826 13.775 2.420 13.775ZM2.398 12.329C1.785 12.329 1.446 12.004 1.446 11.362L1.446 4.545C1.446 3.896 1.785 3.578 2.398 3.578L12.579 3.578C13.199 3.578 13.546 3.896 13.546 4.545L13.546 11.362C13.546 12.004 13.199 12.329 12.579 12.329ZM6.072 6.138L6.507 6.138C6.773 6.138 6.861 6.057 6.861 5.792L6.861 5.364C6.861 5.098 6.773 5.017 6.507 5.017L6.072 5.017C5.814 5.017 5.725 5.098 5.725 5.364L5.725 5.792C5.725 6.057 5.814 6.138 6.072 6.138ZM8.492 6.138L8.920 6.138C9.186 6.138 9.274 6.057 9.274 5.792L9.274 5.364C9.274 5.098 9.186 5.017 8.920 5.017L8.492 5.017C8.226 5.017 8.138 5.098 8.138 5.364L8.138 5.792C8.138 6.057 8.226 6.138 8.492 6.138ZM10.905 6.138L11.332 6.138C11.598 6.138 11.687 6.057 11.687 5.792L11.687 5.364C11.687 5.098 11.598 5.017 11.332 5.017L10.905 5.017C10.639 5.017 10.550 5.098 10.550 5.364L10.550 5.792C10.550 6.057 10.639 6.138 10.905 6.138ZM3.659 8.514L4.095 8.514C4.360 8.514 4.449 8.433 4.449 8.167L4.449 7.739C4.449 7.474 4.360 7.393 4.095 7.393L3.659 7.393C3.401 7.393 3.313 7.474 3.313 7.739L3.313 8.167C3.313 8.433 3.401 8.514 3.659 8.514ZM6.072 8.514L6.507 8.514C6.773 8.514 6.861 8.433 6.861 8.167L6.861 7.739C6.861 7.474 6.773 7.393 6.507 7.393L6.072 7.393C5.814 7.393 5.725 7.474 5.725 7.739L5.725 8.167C5.725 8.433 5.814 8.514 6.072 8.514ZM8.492 8.514L8.920 8.514C9.186 8.514 9.274 8.433 9.274 8.167L9.274 7.739C9.274 7.474 9.186 7.393 8.920 7.393L8.492 7.393C8.226 7.393 8.138 7.474 8.138 7.739L8.138 8.167C8.138 8.433 8.226 8.514 8.492 8.514ZM10.905 8.514L11.332 8.514C11.598 8.514 11.687 8.433 11.687 8.167L11.687 7.739C11.687 7.474 11.598 7.393 11.332 7.393L10.905 7.393C10.639 7.393 10.550 7.474 10.550 7.739L10.550 8.167C10.550 8.433 10.639 8.514 10.905 8.514ZM3.659 10.890L4.095 10.890C4.360 10.890 4.449 10.809 4.449 10.543L4.449 10.115C4.449 9.850 4.360 9.768 4.095 9.768L3.659 9.768C3.401 9.768 3.313 9.850 3.313 10.115L3.313 10.543C3.313 10.809 3.401 10.890 3.659 10.890ZM6.072 10.890L6.507 10.890C6.773 10.890 6.861 10.809 6.861 10.543L6.861 10.115C6.861 9.850 6.773 9.768 6.507 9.768L6.072 9.768C5.814 9.768 5.725 9.850 5.725 10.115L5.725 10.543C5.725 10.809 5.814 10.890 6.072 10.890ZM8.492 10.890L8.920 10.890C9.186 10.890 9.274 10.809 9.274 10.543L9.274 10.115C9.274 9.850 9.186 9.768 8.920 9.768L8.492 9.768C8.226 9.768 8.138 9.850 8.138 10.115L8.138 10.543C8.138 10.809 8.226 10.890 8.492 10.890Z" fill="#071216"/></svg></span><input class="fl-input" id="ptNewBirth" type="text" placeholder=" " autocomplete="off" inputmode="numeric" enterkeyhint="next"><label class="fl-label" for="ptNewBirth">Nascimento</label></div>
+            <div class="fl fl-sel"><span class="nv-ico"><svg width="12.98" height="13.79" viewBox="0 0 12.98 13.79" fill="none" aria-hidden="true"><path d="M6.493 6.920C8.271 6.920 9.717 5.349 9.717 3.416C9.717 1.512 8.278 0.000 6.493 0.000C4.714 0.000 3.261 1.535 3.261 3.431C3.261 5.356 4.707 6.920 6.493 6.920ZM6.493 5.644C5.467 5.644 4.596 4.685 4.596 3.431C4.596 2.206 5.460 1.276 6.493 1.276C7.525 1.276 8.381 2.191 8.381 3.416C8.381 4.678 7.518 5.644 6.493 5.644ZM1.889 13.782L11.089 13.782C12.358 13.782 12.970 13.376 12.970 12.513C12.970 10.499 10.447 7.784 6.485 7.784C2.523 7.784 0.000 10.499 0.000 12.513C0.000 13.376 0.612 13.782 1.889 13.782ZM1.638 12.506C1.468 12.506 1.402 12.454 1.402 12.314C1.402 11.185 3.224 9.060 6.485 9.060C9.746 9.060 11.576 11.185 11.576 12.314C11.576 12.454 11.502 12.506 11.332 12.506Z" fill="#071216"/></svg></span><select class="fl-input" id="ptNewSex"><option value="">Não informado</option><option value="F">Feminino</option><option value="M">Masculino</option></select><label class="fl-label" for="ptNewSex">Sexo</label></div>
+          </div>
+          <div class="nv-sec">
+            <div class="fl"><span class="nv-ico"><svg width="18.07" height="12.95" viewBox="0 0 18.07 12.95" fill="none" aria-hidden="true"><path d="M2.420 12.941L15.826 12.941C17.235 12.941 18.061 12.122 18.061 10.543L18.061 2.390C18.061 0.819 17.227 0.000 15.641 0.000L2.236 0.000C0.826 0.000 0.000 0.819 0.000 2.390L0.000 10.543C0.000 12.122 0.834 12.941 2.420 12.941ZM8.367 6.898L2.228 1.365C2.287 1.358 2.354 1.358 2.420 1.358L15.641 1.358C15.708 1.358 15.774 1.358 15.833 1.365L9.695 6.898C9.481 7.090 9.259 7.186 9.031 7.186C8.802 7.186 8.581 7.090 8.367 6.898ZM16.704 2.435L16.704 10.477L12.380 6.153L16.696 2.265C16.704 2.317 16.704 2.376 16.704 2.435ZM1.358 2.427C1.358 2.368 1.358 2.317 1.365 2.265L5.681 6.153L1.358 10.477ZM2.420 11.583C2.287 11.583 2.169 11.569 2.058 11.546L6.611 6.987L7.614 7.894C8.064 8.300 8.522 8.485 9.031 8.485C9.540 8.485 9.997 8.300 10.447 7.894L11.451 6.987L16.003 11.546C15.892 11.569 15.774 11.583 15.641 11.583Z" fill="#071216"/></svg></span><input class="fl-input" id="ptNewEmail" type="email" inputmode="email" maxlength="254" placeholder=" " autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next"><label class="fl-label" for="ptNewEmail">E-mail</label></div>
+            <div class="fl"><span class="nv-ico"><svg width="14.67" height="14.64" viewBox="0 0 14.67 14.64" fill="none" aria-hidden="true"><path d="M10.912 14.638C12.196 14.638 13.066 14.269 13.856 13.406C13.907 13.347 13.959 13.288 14.018 13.229C14.446 12.742 14.667 12.240 14.667 11.775C14.667 11.222 14.372 10.705 13.716 10.255L11.827 8.957C11.214 8.536 10.691 8.514 9.990 8.868L8.876 9.414C8.632 9.532 8.426 9.554 8.175 9.377C7.835 9.149 7.068 8.522 6.537 7.990C6.020 7.466 5.489 6.832 5.231 6.411C5.120 6.220 5.135 6.043 5.275 5.814L5.917 4.774C6.220 4.272 6.286 3.659 5.917 3.128L4.390 0.944C3.947 0.310 3.423 0.007 2.877 0.000C2.405 0.000 1.918 0.207 1.431 0.635C1.365 0.686 1.306 0.745 1.247 0.789C0.376 1.586 0.000 2.449 0.000 3.814C0.000 5.961 1.254 8.536 3.696 10.956C6.131 13.376 8.684 14.638 10.912 14.638ZM10.905 13.420C9.023 13.450 6.662 12.107 4.626 10.086C2.575 8.057 1.203 5.622 1.232 3.770C1.239 2.951 1.527 2.258 2.088 1.771C2.140 1.719 2.191 1.682 2.243 1.638C2.449 1.461 2.678 1.365 2.877 1.365C3.099 1.365 3.291 1.453 3.431 1.675L4.737 3.623C4.869 3.822 4.862 4.006 4.707 4.272L3.991 5.452C3.682 5.969 3.718 6.397 4.050 6.854C4.471 7.437 5.098 8.226 5.703 8.824C6.360 9.481 7.267 10.241 7.754 10.565C8.212 10.882 8.647 10.956 9.311 10.632L10.477 10.063C10.787 9.916 11.023 9.923 11.281 10.093L12.978 11.222C13.206 11.369 13.288 11.561 13.288 11.775C13.288 11.974 13.192 12.203 13.015 12.410C12.970 12.469 12.934 12.513 12.889 12.565C12.395 13.125 11.701 13.406 10.905 13.420Z" fill="#071216"/></svg></span><input class="fl-input" id="ptNewPhone" type="tel" inputmode="tel" placeholder=" " autocomplete="off" enterkeyhint="next"><label class="fl-label" for="ptNewPhone">Telefone</label></div>
+          </div>
+          <div class="nv-sec">
+            <div class="fl fl-sel"><span class="nv-ico"><svg width="17.46" height="12.77" viewBox="0 0 17.46 12.77" fill="none" aria-hidden="true"><path d="M2.420 12.764L15.036 12.764C16.630 12.764 17.456 11.945 17.456 10.373L17.456 2.398C17.456 0.819 16.630 0.000 15.036 0.000L2.420 0.000C0.826 0.000 0.000 0.819 0.000 2.398L0.000 10.373C0.000 11.952 0.826 12.764 2.420 12.764ZM1.446 2.516C1.446 1.800 1.822 1.446 2.508 1.446L14.948 1.446C15.626 1.446 16.010 1.800 16.010 2.516L16.010 3.062L1.446 3.062ZM2.508 11.318C1.822 11.318 1.446 10.964 1.446 10.248L1.446 4.781L16.010 4.781L16.010 10.248C16.010 10.964 15.626 11.318 14.948 11.318ZM3.512 9.982L5.319 9.982C5.747 9.982 6.043 9.695 6.043 9.274L6.043 7.909C6.043 7.496 5.747 7.201 5.319 7.201L3.512 7.201C3.077 7.201 2.781 7.496 2.781 7.909L2.781 9.274C2.781 9.695 3.077 9.982 3.512 9.982Z" fill="#071216"/></svg></span><select class="fl-input" id="ptNewCov"><option value="">Não informado</option><option value="particular">Particular</option><option value="convenio">Convênio</option></select><label class="fl-label" for="ptNewCov">Tipo de atendimento</label></div>
+            <div class="fl" id="ptNewPlanoBox" hidden><span class="nv-ico"><svg width="13.78" height="13.78" viewBox="0 0 13.78 13.78" fill="none" aria-hidden="true"><path d="M2.420 13.775L11.355 13.775C12.948 13.775 13.775 12.956 13.775 11.377L13.775 2.398C13.775 0.826 12.948 0.000 11.355 0.000L2.420 0.000C0.826 0.000 0.000 0.819 0.000 2.398L0.000 11.377C0.000 12.956 0.826 13.775 2.420 13.775ZM2.508 12.329C1.822 12.329 1.446 11.974 1.446 11.259L1.446 2.523C1.446 1.808 1.822 1.446 2.508 1.446L11.266 1.446C11.945 1.446 12.329 1.808 12.329 2.523L12.329 11.259C12.329 11.974 11.945 12.329 11.266 12.329ZM3.873 2.663C3.291 2.663 2.848 3.128 2.848 3.763C2.848 4.744 3.918 5.563 4.552 6.006C4.619 6.050 4.700 6.087 4.744 6.087C4.803 6.087 4.869 6.043 4.936 6.006C5.578 5.615 6.633 4.744 6.633 3.763C6.633 3.128 6.190 2.663 5.592 2.663C5.216 2.663 4.906 2.892 4.737 3.209C4.567 2.892 4.272 2.663 3.873 2.663ZM3.327 8.344L10.388 8.344C10.654 8.344 10.853 8.138 10.853 7.872C10.853 7.614 10.654 7.415 10.388 7.415L3.327 7.415C3.047 7.415 2.848 7.614 2.848 7.872C2.848 8.138 3.047 8.344 3.327 8.344ZM3.327 10.779L8.544 10.779C8.809 10.779 9.016 10.573 9.016 10.314C9.016 10.049 8.809 9.842 8.544 9.842L3.327 9.842C3.047 9.842 2.848 10.049 2.848 10.314C2.848 10.573 3.047 10.779 3.327 10.779Z" fill="#071216"/></svg></span><input class="fl-input" id="ptNewPlano" type="text" placeholder=" " autocomplete="off" spellcheck="false" enterkeyhint="go"><label class="fl-label" for="ptNewPlano">Plano do convênio</label></div>
           </div>
         </div>
-        <div class="rp-novo-pe">                            <!-- preso no pé do painel; o erro logo acima do botão -->
+        <div class="rp-novo-pe">                            <!-- preso no pé do painel; o erro na mesma linha, à esquerda do botão -->
           <div class="nv-err" id="ptNewErr" role="status" hidden></div>
           <button class="nv-btn nv-dark" id="ptNewSave" type="button">Criar paciente</button>
         </div>
