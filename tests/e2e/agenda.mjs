@@ -174,6 +174,126 @@ const cenarios = [
     await foto('agenda-dia.png');
     return 'Férias e Aniversário na faixa; cards com horário intactos';
   }],
+  ['nova consulta e consulta aberta no lugar do assistente, como o novo paciente', async () => {
+    await ev(`window.__openEventAt(200, 200, new Date(), 10, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela');
+    await send('Page.captureScreenshot', { format: 'png' }); await sleep(250); await send('Page.captureScreenshot', { format: 'png' });   // sem janela, só desenha com a foto
+    // ocupa a coluna do assistente (a conversa fica por baixo, fora do Tab e dos atalhos), com o visual do novo paciente:
+    // linhas de 44 com canto 12, os ícones SF do menu (o calendário igual ao de Consultas), 4 grupos, o botão preto de 48
+    // a 24 da lateral e de baixo; nova = "Nova consulta", sem a lixeira, o foco no título
+    const l = await ev(`(() => { const f = document.getElementById('evPop').getBoundingClientRect(), r = document.querySelector('.right').getBoundingClientRect();
+      const st = (s) => getComputedStyle(document.querySelector(s)).visibility, linha = (i) => document.getElementById(i).closest('.evpop-row');
+      const b = getComputedStyle(document.getElementById('evCreate')), pe = document.getElementById('evCreate').getBoundingClientRect();
+      const a = document.querySelector('#navConsultas .ico svg path').getBBox(), c = document.querySelectorAll('#evPop .nv-ico svg path')[1].getBBox();
+      return { mesmo: [f.left - r.left, f.top - r.top, f.width - r.width, f.height - r.height].every((x) => Math.abs(x) <= 1),
+               dentro: !!document.getElementById('evPop').closest('.right'), evento: document.querySelector('.right').classList.contains('evento'),
+               baixo: [st('.right > .rp-head'), st('#biInput'), st('#rpMsgs')].join(), titulo: document.getElementById('evT').textContent,
+               lixeira: document.getElementById('evDelete').getClientRects().length, foco: document.activeElement.id,
+               mais: document.getElementById('agCreate').getAttribute('aria-expanded'),
+               alt: ['evTitle', 'evDateLbl', 'evStart', 'evAllDay', 'evPatient', 'evLocation'].map((i) => Math.round(linha(i).getBoundingClientRect().height)).join(),
+               raio: getComputedStyle(linha('evLocation')).borderTopLeftRadius,
+               icones: [...document.querySelectorAll('#evPop .nv-ico svg path')].map((p) => p.getAttribute('fill')).join(),
+               menu: Math.abs(a.width - c.width) < 0.05 && Math.abs(a.height - c.height) < 0.05,
+               botao: [b.height, b.backgroundColor, b.fontSize, document.getElementById('evCreate').textContent].join('|'),
+               canto: [Math.round(r.right - pe.right), Math.round(r.bottom - pe.bottom)].join(),
+               grupos: document.querySelectorAll('#evPop .nv-sec').length,
+               // sem a linha entre o título e a data; as outras continuam
+               tracos: [...document.querySelectorAll('#evPop .nv-sec')].slice(1).map((x) => getComputedStyle(x, '::before').display).join(),
+               vaoData: Math.round(linha('evDateLbl').getBoundingClientRect().top - linha('evTitle').getBoundingClientRect().bottom),
+               titulo14: getComputedStyle(document.getElementById('evT')).fontSize === getComputedStyle(document.querySelector('.right > .rp-head .rp-title')).fontSize,
+               // o título na mesma posição do novo paciente: 16 abaixo do cabeçalho
+               topo: Math.round(linha('evTitle').getBoundingClientRect().top - document.querySelector('#evPop > .rp-head').getBoundingClientRect().bottom) }; })()`);
+    certo(l.mesmo && l.dentro && l.evento && l.baixo === 'hidden,hidden,hidden' && l.titulo === 'Nova consulta' && l.lixeira === 0 && l.foco === 'evTitle' &&
+          l.mais === 'true' && l.alt === '44,44,44,44,44,44' && l.raio === '12px' && l.icones === Array(7).fill('#071216').join() && l.menu &&
+          l.botao === '48px|rgb(0, 0, 0)|15px|Criar consulta' && l.canto === '24,24' && l.grupos === 4 && l.titulo14 && l.topo === 16 && l.tracos === 'none,block,block' && l.vaoData === 2,
+          'no lugar do assistente, como o novo paciente: ' + JSON.stringify(l));
+    await foto('consulta-nova.png');
+    // sem linha acima do título (só o espaço até a primeira linha da agenda); sem a duração ao lado dos horários
+    certo(await ev(`getComputedStyle(document.querySelector('#evPop .nv-sec-nome'), '::before').content === 'none' && getComputedStyle(document.querySelector('#evPop .nv-sec-nome')).borderTopWidth === '0px'`),
+          'sem linha acima do título');
+    certo(await ev(`getComputedStyle(document.getElementById('evDur')).display`) === 'none', 'sem a duração ao lado dos horários');
+    // a prévia: a consulta sendo criada aparece na agenda ao lado e anda com o título e o horário (sem abrir nada)
+    const pv = () => ev(`(() => { const d = document.querySelector('.cal-inner .ev-real.draft'); return d ? d.querySelector('.er-title').textContent + '|' + d.querySelector('.er-sub').textContent + '|' + d.hasAttribute('data-evkey') : ''; })()`);
+    certo(await pv() === 'Nova consulta|10h–10h30|false', 'a prévia na agenda: ' + await pv());
+    await ev(`(() => { const t = document.getElementById('evTitle'); t.value = 'Retorno'; t.dispatchEvent(new Event('input', { bubbles: true }));
+      const s = document.getElementById('evStart'); s.value = '11:00'; s.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+    certo(await pv() === 'Retorno|11h–11h30|false', 'a prévia anda com o título e o horário: ' + await pv());
+    await clica('#evAllDay');
+    certo(await ev(`!!document.querySelector('#calAllDay .wk-ev.draft') && !document.querySelector('.cal-inner .ev-real.draft') && document.querySelector('#calAllDay .wk-ev.draft').textContent === 'Retorno'`),
+          'dia todo: a prévia vai para a faixa de dia inteiro');
+    await clica('#evAllDay');
+    certo(await pv() === 'Retorno|11h–11h30|false', 'de volta ao horário: ' + await pv());
+    // a lista de pacientes sem o espaço das iniciais: o nome começa na borda do item
+    await ev(`(() => { const p = document.getElementById('evPatient'); p.focus(); p.value = 'Jo'; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await ate(`document.querySelectorAll('#evPList .evpop-po').length > 0`, 2000, 'a lista de pacientes');
+    const it = await ev(`(() => { const b = document.querySelector('#evPList .evpop-po'), t = b.firstElementChild; return [b.children.length, Math.round(t.getBoundingClientRect().left - b.getBoundingClientRect().left), getComputedStyle(b).paddingLeft].join(); })()`);
+    certo(it === '1,12,12px', 'o item da lista é só o nome, sem o espaço das iniciais: ' + it);
+    // o Esc fecha e o assistente volta (com o + de novo sem destaque)
+    await fecha();
+    await fecha();                                             // o primeiro Esc fecha a lista de pacientes
+    certo(await pv() === '', 'a prévia sai da agenda ao fechar');
+    await ate(`document.getElementById('evPop').hidden && !document.querySelector('.right').classList.contains('evento')`, 2000, 'o Esc fecha');
+    certo(await ev(`getComputedStyle(document.getElementById('biInput')).visibility === 'visible' && document.getElementById('agCreate').getAttribute('aria-expanded') === 'false'`), 'o assistente voltou');
+    // assistente recolhido: abre para a consulta e, ao fechar pelo ×, recolhe de novo
+    await ev(`document.getElementById('agExpand').click(); 1`);
+    await ate(`document.querySelector('.right').classList.contains('collapsed')`, 2000, 'recolheu o assistente');
+    await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+    await ate(`!document.getElementById('evPop').hidden && !document.querySelector('.right').classList.contains('collapsed')`, 2000, 'abre o assistente recolhido');
+    await clica('#evClose');
+    await ate(`document.getElementById('evPop').hidden && document.querySelector('.right').classList.contains('collapsed')`, 2000, 'o × recolhe de novo');
+    await ev(`document.getElementById('showChat').click(); 1`);
+    await ate(`!document.querySelector('.right').classList.contains('collapsed')`, 2000, 'o assistente de volta');
+    // com o assistente recolhido antes, o clique fora não recolhe de novo no mousedown: o botão clicado (o calendário)
+    // não sai de baixo do mouse e abre no mesmo clique; e o ⇧⌘A recolhe o assistente uma vez só, como diz o botão
+    const clicaMouse = async (sel) => {
+      const c = await ev(`(() => { const r = document.querySelector(${JSON.stringify(sel)}).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+      for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased'])
+        await send('Input.dispatchMouseEvent', { type, x: c.x, y: c.y, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: 1 });
+    };
+    const recolheEabre = async () => {
+      await ev(`document.getElementById('agExpand').click(); 1`);
+      await ate(`document.querySelector('.right').classList.contains('collapsed')`, 2000, 'recolheu o assistente');
+      await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
+      await ate(`!document.getElementById('evPop').hidden && !document.querySelector('.right').classList.contains('collapsed')`, 2000, 'abriu');
+    };
+    await recolheEabre();
+    await clicaMouse('#calBtn');
+    await ate(`!document.getElementById('calPop').hidden`, 2000, 'um clique no calendário com a consulta aberta abre o calendário: ' +
+      await ev(`JSON.stringify({ pop: document.getElementById('evPop').hidden, rec: document.querySelector('.right').classList.contains('collapsed') })`));
+    certo(await ev(`document.getElementById('evPop').hidden && !document.querySelector('.right').classList.contains('collapsed')`), 'fechou sem recolher o assistente');
+    await fecha();
+    await ate(`document.getElementById('calPop').hidden`, 2000, 'fechou o calendário');
+    await recolheEabre();
+    const mods = (await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`)) ? 4 + 8 : 2 + 8;
+    for (const type of ['rawKeyDown', 'keyUp']) await send('Input.dispatchKeyEvent', { type, modifiers: mods, key: 'A', code: 'KeyA', windowsVirtualKeyCode: 65 });
+    await ate(`document.getElementById('evPop').hidden && document.querySelector('.right').classList.contains('collapsed')`, 2000, 'o ⇧⌘A recolhe: ' +
+      await ev(`JSON.stringify({ pop: document.getElementById('evPop').hidden, rec: document.querySelector('.right').classList.contains('collapsed') })`));
+    certo(await ev(`document.getElementById('agExpand').getAttribute('aria-label')`) === 'Mostrar assistente', 'o ⇧⌘A fez o que o botão dizia');
+    await ev(`document.getElementById('showChat').click(); 1`);
+    await ate(`!document.querySelector('.right').classList.contains('collapsed')`, 2000, 'o assistente de volta');
+    // consulta aberta com uma alteração que não dá para salvar: o "Expandir agenda" não esconde a coluna com o aviso
+    await abreEvento('.ev-real[data-evkey="plantao"]');
+    await ev(`(() => { const p = document.getElementById('evPatient'); p.value = 'Alguém Fora Da Lista'; return 1; })()`);
+    await clicaMouse('#agExpand');
+    await sleep(300);
+    certo(await ev(`!document.getElementById('evPop').hidden && document.getElementById('evPop').getClientRects().length > 0 && document.getElementById('evMsg').getClientRects().length > 0 && !document.querySelector('.right').classList.contains('collapsed')`),
+          'o aviso e a consulta continuam à vista: ' + await txt('#evMsg'));
+    await fecha(); await fecha();                              // o segundo fechar descarta
+    await ate(`document.getElementById('evPop').hidden`, 2000, 'descartou');
+    // consulta da agenda: "Consulta", com a lixeira e o Prontuário
+    await abreEvento('.ev-real[data-evkey="plantao"]');
+    const e = await ev(`[document.getElementById('evT').textContent, document.getElementById('evDelete').getClientRects().length, document.getElementById('evCreate').textContent].join('|')`);
+    certo(e === 'Consulta|1|Prontuário', 'consulta aberta: ' + e);
+    await foto('consulta-aberta.png');
+    // o voltar do navegador para Pacientes fecha (sem mudança, sem PATCH) — como o novo paciente
+    const antes = patches('plantao').length;
+    await ev(`location.hash = '#pacientes'; 1`);
+    await ate(`document.getElementById('evPop').hidden && !document.querySelector('.right').classList.contains('evento')`, 3000, 'ir para Pacientes fecha');
+    certo(patches('plantao').length === antes, 'sem mudança, sem PATCH: ' + (patches('plantao').length - antes));
+    await clica('#navConsultas');
+    await ate(`!document.querySelector('.stage').classList.contains('pacientes')`, 3000, 'de volta a Consultas');
+    return 'no lugar do assistente, com o visual do novo paciente; Esc, × (recolhe de novo) e Pacientes fecham; aberta: Consulta, lixeira e Prontuário';
+  }],
   ['plantão 19h–7h: abre, salva com o fim no dia seguinte', async () => {
     await abreEvento('.ev-real[data-evkey="plantao"]');
     certo(await val('#evStart') === '19:00' && await val('#evEnd') === '07:00', 'horários');

@@ -167,9 +167,52 @@ def _patients():
     return {"patients": [dict({k: v for k, v in p.items() if k != "key"}, **conta(p["id"])) for p in PATS.values()]}
 
 
+# agenda: desconectada (como antes) até abrir /_preview/agenda?on=1, que finge uma agenda conectada só em memória
+# (eventos fictícios; criar, editar e excluir funcionam no preview, nada vai ao Google)
+AGENDA = {"on": False, "eventos": {}, "seq": 0}
+
+
+@mock.get("/_preview/agenda")
+def _agenda_on(on: int = 1):
+    AGENDA["on"] = bool(on)
+    return HTMLResponse('<!doctype html><meta http-equiv="refresh" content="0;url=/opendoctor-agenda.html">')
+
+
 @mock.get("/calendar/events")
-def _events():
-    return {"connected": False, "events": []}
+def _events(start: str = "", end: str = ""):
+    if not AGENDA["on"]:
+        return {"connected": False, "events": []}
+    return {"connected": True, "events": [dict(e) for e in AGENDA["eventos"].values()
+                                          if (not end or e["start"] < end) and (not start or (e.get("end") or e["start"]) > start)]}
+
+
+@mock.post("/calendar/events")
+async def _ev_cria(request: Request):
+    b = await request.json()
+    AGENDA["seq"] += 1
+    eid = f"prev{AGENDA['seq']}"
+    AGENDA["eventos"][eid] = {"id": eid, "title": b.get("title") or "", "start": b.get("start"), "end": b.get("end"),
+                              "description": b.get("description") or "", "location": b.get("location") or "",
+                              "allDay": bool(b.get("all_day")), "patient_id": b.get("patient_id")}
+    return {"ok": True, "id": eid}
+
+
+@mock.patch("/calendar/events/{eid}")
+async def _ev_edita(eid: str, request: Request):
+    if eid not in AGENDA["eventos"]:
+        return JSONResponse({"ok": False, "error": "evento não encontrado"}, status_code=404)
+    b = await request.json()
+    e = AGENDA["eventos"][eid]
+    e.update({k: b[k] for k in ("title", "start", "end", "description", "location", "patient_id") if k in b})
+    if "all_day" in b:
+        e["allDay"] = bool(b["all_day"])
+    return {"ok": True}
+
+
+@mock.delete("/calendar/events/{eid}")
+def _ev_apaga(eid: str):
+    AGENDA["eventos"].pop(eid, None)
+    return {"ok": True}
 
 
 # ----- abrir o prontuário de um paciente fictício (script externo: a CSP não roda script inline injetado) -----

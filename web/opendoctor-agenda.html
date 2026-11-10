@@ -1780,6 +1780,8 @@
     /* evento selecionado (clique): fundo azul claro, iniciais em círculo branco — Figma 1019:12340 */
     .ev-real.sel,.ev-real.sel:hover,.wk-ev.sel,.wk-ev.sel:hover{background:#D3E3FD}
     .ev-real.sel .avatar,.wk-ev.sel .avatar{background:#FEFEFE}
+    /* a consulta sendo criada (prévia): o azul do evento escolhido; clicar nela não abre nada */
+    .ev-real.draft,.ev-real.draft:hover,.wk-ev.draft,.wk-ev.draft:hover{background:#D3E3FD;cursor:default}
     /* semana: mesmo círculo azul com as iniciais do paciente, no canto inferior direito (como no Dia) */
     .wk-ev-foot{margin-top:auto;display:flex;justify-content:flex-end}
     .wk-ev .avatar{width:42px;height:34px;font-size:10px;line-height:14px}   /* 30% menor que o do Dia (60x48, 14px) */
@@ -1802,41 +1804,35 @@
       min-width:0;box-shadow:inset 0 -1px 0 rgba(26,26,26,.08)}
     .wk-ad.gmt{left:0;z-index:5}
 
-    /* janela de evento: blocos cinza suaves (sem divisórias), título em destaque, horários em pílulas,
-       "Dia todo" como interruptor e avatar do paciente igual ao dos cards da agenda */
-    .evpop{position:fixed;z-index:60;width:360px;max-height:calc(100vh - 24px);overflow-y:auto;background:#fff;
-      border-radius:24px;box-shadow:0 0 0 1px rgba(0,0,0,.05),0 16px 48px rgba(0,0,0,.16);padding:12px;
-      font-family:var(--disp);color:#071216;display:flex;flex-direction:column;gap:8px;scrollbar-width:none}
-    .evpop::-webkit-scrollbar{display:none}
-    .evpop[hidden]{display:none}
-    /* todo o texto em Helvetica Now Display 14px; ícones SF Symbols (Medium, 15pt) em #8B8B8B */
-    .evpop-head{display:flex;align-items:center;gap:8px;padding:2px 0 2px 16px;min-height:40px}
-    .evpop-name{flex:1;min-width:0;border:0;outline:none;background:none;padding:0;
-      font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    .evpop-name::placeholder{color:#8B8B8B;font-weight:500}
-    .evpop-hbtns{display:flex;align-items:center;gap:2px;flex:none}
-    .evpop-close{width:32px;height:32px;border:0;background:none;cursor:pointer;border-radius:10px;
-      display:flex;align-items:center;justify-content:center}
-    .evpop-close:hover{background:rgba(0,0,0,.05)}
-    .evpop-close[hidden]{display:none}
-    .evpop-card{background:#F7F8F8;border-radius:16px;padding:4px;display:flex;flex-direction:column}
-    .evpop-row{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;
-      transition:background .12s ease}
+    /* nova consulta / consulta: no lugar do assistente, como o novo paciente (.rp-novo: o título, os grupos .nv-sec com o
+       traço, os ícones SF do menu, o botão preto preso embaixo). Uma linha de 44 por campo com o ícone a 12 e o texto a 44;
+       mouse em cima ou digitando = #F7F8F8. Os horários são texto (a lista abre no clique), o "Dia todo" segue como
+       interruptor; o paciente só com o ícone de pessoa (sem as iniciais) */
+    .right.evento > :not(#evPop){visibility:hidden}
+    /* sem a linha entre o título e a data, e o título a 2 da data (o espaço entre as linhas de um grupo) */
+    #evPop .nv-sec-nome{padding-bottom:0}
+    #evPop .nv-sec-nome + .nv-sec{padding-top:2px;border-top:0}
+    #evPop .nv-sec-nome + .nv-sec::before{display:none}
+    #evPop .hd-btn[hidden]{display:none}                 /* a lixeira só ao abrir uma consulta da agenda */
+    .evpop-row{position:relative;display:flex;align-items:center;gap:12px;min-height:44px;margin:0 12px;padding:0 12px 0 44px;
+      border-radius:12px;transition:background-color .12s ease}
     .evpop-row.click{cursor:pointer}
-    .evpop-row.click:hover,.evpop-row:focus-within{background:#EDEDED}
-    .evpop-ico{width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center}
-    .evpop-input{border:0;outline:none;background:none;width:100%;padding:0;
+    .evpop-row:hover,.evpop-row:focus-within{background:#F7F8F8}
+    .evpop-name{flex:1;min-width:0;border:0;outline:none;background:none;padding:0;
+      font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}   /* o título como o nome do paciente */
+    .evpop-name::placeholder{color:#8B8B8B;font-weight:500}
+    .evpop-input{flex:1;min-width:0;border:0;outline:none;background:none;width:100%;padding:0;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .evpop-input::placeholder{color:#8B8B8B;font-weight:400}
-    .evpop-time{width:auto;flex:none;-webkit-appearance:none;appearance:none;cursor:pointer;background:#fff;
-      border:1px solid rgba(0,0,0,.08);border-radius:10px;padding:5px 10px}
-    .evpop-time:hover,.evpop-time:focus{border-color:rgba(0,0,0,.22)}
-    .evpop-arrow{flex:none;display:flex;align-items:center}
-    .evpop-ico img,.evpop-arrow img,.evpop-close img,.evpop-clear img{display:block}
-    .evpop-dur{margin-left:auto;color:#8B8B8B;font-weight:500;font-size:14px;line-height:20px;white-space:nowrap}
+    .evpop-time{flex:none;width:auto;-webkit-appearance:none;appearance:none;cursor:pointer;background:transparent;
+      border-radius:8px;padding:2px 6px;margin:0 -6px;transition:background-color .12s ease}
+    .evpop-time:hover,.evpop-time:focus-visible{background:#EDEDED}
+    .evpop-arrow{flex:none;color:#8B8B8B}             /* o traço entre os horários */
+    .evpop-clear img{display:block}
+    .evpop-dur{display:none}                           /* sem a duração ao lado dos horários (o valor segue na conta do fim) */
     .evpop-date{position:relative;font-weight:500;font-size:14px;line-height:20px;color:#071216;flex:1}
     .evpop-date input{position:absolute;inset:0;opacity:0;pointer-events:none}
-    .evpop-opt{border:0;background:none;width:100%;text-align:left;
+    .evpop-opt{border:0;background:none;text-align:left;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .evpop-switch{margin-left:auto;flex:none;width:34px;height:20px;border-radius:999px;background:#D6D6D6;
       position:relative;transition:background .15s ease}
@@ -1845,20 +1841,15 @@
     .evpop-opt.on .evpop-switch{background:#071216}
     .evpop-opt.on .evpop-switch::after{transform:translateX(14px)}
     .evpop.allday .evpop-times{display:none}
-    .evpop-av{width:20px;height:20px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;
-      font-family:var(--disp);font-weight:500;font-size:9px;line-height:1;letter-spacing:.02em;color:#0842A0}
-    .evpop-av.has{background:#D3E3FD}
-    .evpop-av.has img{display:none}
-    /* lista de pacientes (escolher um existente ou criar um novo) */
-    .evpop-pl{display:flex;flex-direction:column;gap:2px;padding:2px 0 4px;max-height:220px;overflow-y:auto;scrollbar-width:thin}
+    /* lista de pacientes (escolher um existente ou criar um novo), logo abaixo do campo */
+    .evpop-pl{display:flex;flex-direction:column;gap:2px;margin:0 12px;padding:2px 0 4px;max-height:220px;overflow-y:auto;scrollbar-width:thin}
     .evpop-pl[hidden]{display:none}
     .evpop-po{display:flex;align-items:center;gap:12px;min-height:40px;padding:0 12px;border:0;background:none;
       border-radius:12px;cursor:pointer;text-align:left;width:100%;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .evpop-po span:last-child{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .evpop-po:hover,.evpop-po.on{background:#EDEDED}
+    .evpop-po:hover,.evpop-po.on{background:#F7F8F8}
     .evpop-po.new{color:#0842A0}
-    .evpop-po.new .evpop-av{background:#fff}
     .evpop-clear{width:24px;height:24px;flex:none;border:0;background:none;border-radius:6px;cursor:pointer;
       display:flex;align-items:center;justify-content:center}
     .evpop-clear:hover{background:rgba(0,0,0,.06)}
@@ -1868,14 +1859,10 @@
     .evpop-desc{display:block;flex:1;border:0;outline:none;background:none;width:100%;resize:none;min-height:60px;padding:0;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .evpop-desc::placeholder{color:#8B8B8B;font-weight:400}
-    .evpop-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0 0 12px}
-    .evpop-msg{font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#c5221f}
+    .evpop-msg{flex:1;min-width:0;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#c5221f}
+    .evpop-msg[hidden]{display:none}
     .evpop-msg.ok{color:#188038}
     .evpop-msg a{color:#0842a0}
-    .evpop-create{margin-left:auto;height:40px;padding:0 22px;border:0;border-radius:1000px;flex:none;
-      background:#000;color:#fff;cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;letter-spacing:-.01em}
-    .evpop-create:hover{background:#222}
-    .evpop-create:disabled{opacity:.5;cursor:default}
 
     /* "now" indicator (orange line + dot) */
     .now{position:absolute;left:27px;right:0;height:0;border-top:1px solid var(--now);z-index:4;pointer-events:none}
@@ -2111,7 +2098,7 @@
       <div class="ag-head">
         <div class="cal-head" id="calHead"><span class="date">Seg, 30 Junho</span></div>
         <div class="ag-actions hd-actions">
-          <button class="hd-btn" id="agCreate" type="button" aria-label="Criar evento"><img src="assets/icons/agenda-add.svg?v=3" width="36" height="36" alt=""></button>
+          <button class="hd-btn" id="agCreate" type="button" aria-label="Criar evento" aria-controls="evPop" aria-expanded="false"><img src="assets/icons/agenda-add.svg?v=3" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="calBtn" type="button" aria-label="Escolher data" aria-haspopup="true"><img src="assets/icons/agenda-calendar.svg?v=3" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="viewSel" type="button" aria-label="Mudar para Semana"><img id="viewIcon" src="assets/icons/agenda-day.svg?v=3" width="36" height="36" alt=""></button>
           <button class="hd-btn" id="agSearch" type="button" aria-label="Buscar" aria-haspopup="dialog"><img src="assets/icons/agenda-search.svg?v=3" width="36" height="36" alt=""></button>
@@ -2586,7 +2573,7 @@
       <section class="rp-novo" id="ptNewRow" aria-labelledby="ptNewT" hidden>
         <div class="rp-head">
           <h2 class="rp-title" id="ptNewT">Novo paciente</h2>
-          <div class="hd-actions"><button class="hd-btn" id="ptNewX" type="button" aria-label="Fechar"><svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true"><path d="M13 13l10 10M23 13L13 23" stroke="#879196" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+          <div class="hd-actions"><button class="hd-btn" id="ptNewX" type="button" aria-label="Fechar"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.401 9.761L5.001 6.168L8.594 9.761C8.904 10.071 9.443 10.078 9.760 9.761C10.077 9.444 10.070 8.905 9.760 8.595L6.167 4.995L9.760 1.402C10.070 1.092 10.077 0.553 9.760 0.236C9.443 -0.081 8.904 -0.074 8.594 0.236L5.001 3.829L1.401 0.229C1.091 -0.074 0.552 -0.081 0.235 0.236C-0.082 0.553 -0.075 1.092 0.235 1.402L3.828 4.995L0.235 8.595C-0.075 8.905 -0.082 9.444 0.235 9.761C0.552 10.078 1.091 10.071 1.401 9.761Z" fill="#879196"/></svg></button></div>
         </div>
         <div class="rp-novo-corpo">                         <!-- como o painel do Notion Calendar: um grupo por assunto -->
           <div class="nv-sec nv-sec-nome">
@@ -2611,57 +2598,44 @@
           <button class="nv-btn nv-dark" id="ptNewSave" type="button">Criar paciente</button>
         </div>
       </section>
-    </div>
 
-    <!-- Popover: criar evento (abre ao clicar num espaço vazio da agenda) -->
-    <div class="evpop" id="evPop" hidden>
-      <div class="evpop-head">
-        <input class="evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off">
-        <div class="evpop-hbtns">
-          <button class="evpop-close" id="evDelete" type="button" aria-label="Excluir evento" title="Excluir evento" hidden><img src="assets/icons/sf-trash.svg?v=2" width="14.18" height="16.31" alt=""></button>
-          <button class="evpop-close" id="evClose" type="button" aria-label="Fechar" title="Fechar"><img src="assets/icons/sf-xmark.svg?v=2" width="11.61" height="11.61" alt=""></button>
+      <!-- nova consulta (Consultas → +, ⇧⌘E ou um horário vazio) e consulta aberta (clicar nela): no lugar do assistente,
+           como o novo paciente; a conversa fica por baixo, guardada -->
+      <section class="rp-novo evpop" id="evPop" aria-labelledby="evT" hidden>
+        <div class="rp-head">
+          <h2 class="rp-title" id="evT">Nova consulta</h2>
+          <div class="hd-actions">
+            <button class="hd-btn" id="evDelete" type="button" aria-label="Excluir evento" hidden><img src="assets/icons/sf-trash.svg?v=2" width="14.18" height="16.31" alt=""></button>
+            <button class="hd-btn" id="evClose" type="button" aria-label="Fechar"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.401 9.761L5.001 6.168L8.594 9.761C8.904 10.071 9.443 10.078 9.760 9.761C10.077 9.444 10.070 8.905 9.760 8.595L6.167 4.995L9.760 1.402C10.070 1.092 10.077 0.553 9.760 0.236C9.443 -0.081 8.904 -0.074 8.594 0.236L5.001 3.829L1.401 0.229C1.091 -0.074 0.552 -0.081 0.235 0.236C-0.082 0.553 -0.075 1.092 0.235 1.402L3.828 4.995L0.235 8.595C-0.075 8.905 -0.082 9.444 0.235 9.761C0.552 10.078 1.091 10.071 1.401 9.761Z" fill="#879196"/></svg></button>
+          </div>
         </div>
-      </div>
-      <div class="evpop-card">
-        <label class="evpop-row click" id="evDateLbl">
-          <span class="evpop-ico"><img src="assets/icons/sf-calendar.svg?v=2" width="14.6" height="13.48" alt=""></span>
-          <span class="evpop-date"><span id="evDateTxt"></span><input id="evDate" type="date" aria-label="Data"></span>
-        </label>
-        <div class="evpop-row evpop-times">
-          <span class="evpop-ico"><img src="assets/icons/sf-clock.svg?v=2" width="14.94" height="14.94" alt=""></span>
-          <select class="evpop-input evpop-time" id="evStart" aria-label="Início"></select>
-          <span class="evpop-arrow"><img src="assets/icons/sf-arrow-right.svg?v=2" width="12" height="9.79" alt=""></span>
-          <select class="evpop-input evpop-time" id="evEnd" aria-label="Fim"></select>
-          <span class="evpop-dur" id="evDur"></span>
+        <div class="rp-novo-corpo">
+          <div class="nv-sec nv-sec-nome">
+            <div class="evpop-row"><span class="nv-ico"><svg width="14.75" height="14.72" viewBox="0 0 14.75 14.72" fill="none" aria-hidden="true"><path d="M14.011 1.860L14.520 1.336C14.808 1.041 14.815 0.635 14.535 0.362L14.343 0.163C14.092 -0.080 13.671 -0.044 13.406 0.222L12.882 0.739ZM5.209 9.791L6.714 9.157L13.443 2.421L12.321 1.307L5.592 8.043L4.928 9.496C4.855 9.666 5.039 9.858 5.209 9.791ZM3.165 14.712L10.093 14.712C12.122 14.712 13.258 13.584 13.258 11.547L13.258 4.715C13.258 4.523 13.236 4.339 13.206 4.169L11.783 5.586C11.805 5.704 11.812 5.815 11.812 5.940L11.812 11.510C11.812 12.639 11.178 13.274 10.056 13.274L3.202 13.274C2.081 13.274 1.446 12.639 1.446 11.510L1.446 4.664C1.446 3.542 2.081 2.908 3.202 2.908L8.676 2.908C8.846 2.908 9.016 2.915 9.171 2.937L10.587 1.513C10.418 1.484 10.233 1.469 10.041 1.469L3.165 1.462C1.136 1.462 0.000 2.598 0.000 4.627L0.000 11.547C0.000 13.584 1.136 14.712 3.165 14.712Z" fill="#071216"/></svg></span><input class="evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off" aria-label="Título"></div>
+          </div>
+          <div class="nv-sec">
+            <label class="evpop-row click" id="evDateLbl"><span class="nv-ico"><svg width="15" height="13.78" viewBox="0 0 15 13.78" fill="none" aria-hidden="true"><path d="M2.420 13.775L12.572 13.775C14.166 13.775 14.992 12.948 14.992 11.377L14.992 2.398C14.992 0.819 14.166 0.000 12.572 0.000L2.420 0.000C0.826 0.000 0.000 0.819 0.000 2.398L0.000 11.377C0.000 12.956 0.826 13.775 2.420 13.775ZM2.398 12.329C1.785 12.329 1.446 12.004 1.446 11.362L1.446 4.545C1.446 3.896 1.785 3.578 2.398 3.578L12.579 3.578C13.199 3.578 13.546 3.896 13.546 4.545L13.546 11.362C13.546 12.004 13.199 12.329 12.579 12.329ZM6.072 6.138L6.507 6.138C6.773 6.138 6.861 6.057 6.861 5.792L6.861 5.364C6.861 5.098 6.773 5.017 6.507 5.017L6.072 5.017C5.814 5.017 5.725 5.098 5.725 5.364L5.725 5.792C5.725 6.057 5.814 6.138 6.072 6.138ZM8.492 6.138L8.920 6.138C9.186 6.138 9.274 6.057 9.274 5.792L9.274 5.364C9.274 5.098 9.186 5.017 8.920 5.017L8.492 5.017C8.226 5.017 8.138 5.098 8.138 5.364L8.138 5.792C8.138 6.057 8.226 6.138 8.492 6.138ZM10.905 6.138L11.332 6.138C11.598 6.138 11.687 6.057 11.687 5.792L11.687 5.364C11.687 5.098 11.598 5.017 11.332 5.017L10.905 5.017C10.639 5.017 10.550 5.098 10.550 5.364L10.550 5.792C10.550 6.057 10.639 6.138 10.905 6.138ZM3.659 8.514L4.095 8.514C4.360 8.514 4.449 8.433 4.449 8.167L4.449 7.739C4.449 7.474 4.360 7.393 4.095 7.393L3.659 7.393C3.401 7.393 3.313 7.474 3.313 7.739L3.313 8.167C3.313 8.433 3.401 8.514 3.659 8.514ZM6.072 8.514L6.507 8.514C6.773 8.514 6.861 8.433 6.861 8.167L6.861 7.739C6.861 7.474 6.773 7.393 6.507 7.393L6.072 7.393C5.814 7.393 5.725 7.474 5.725 7.739L5.725 8.167C5.725 8.433 5.814 8.514 6.072 8.514ZM8.492 8.514L8.920 8.514C9.186 8.514 9.274 8.433 9.274 8.167L9.274 7.739C9.274 7.474 9.186 7.393 8.920 7.393L8.492 7.393C8.226 7.393 8.138 7.474 8.138 7.739L8.138 8.167C8.138 8.433 8.226 8.514 8.492 8.514ZM10.905 8.514L11.332 8.514C11.598 8.514 11.687 8.433 11.687 8.167L11.687 7.739C11.687 7.474 11.598 7.393 11.332 7.393L10.905 7.393C10.639 7.393 10.550 7.474 10.550 7.739L10.550 8.167C10.550 8.433 10.639 8.514 10.905 8.514ZM3.659 10.890L4.095 10.890C4.360 10.890 4.449 10.809 4.449 10.543L4.449 10.115C4.449 9.850 4.360 9.768 4.095 9.768L3.659 9.768C3.401 9.768 3.313 9.850 3.313 10.115L3.313 10.543C3.313 10.809 3.401 10.890 3.659 10.890ZM6.072 10.890L6.507 10.890C6.773 10.890 6.861 10.809 6.861 10.543L6.861 10.115C6.861 9.850 6.773 9.768 6.507 9.768L6.072 9.768C5.814 9.768 5.725 9.850 5.725 10.115L5.725 10.543C5.725 10.809 5.814 10.890 6.072 10.890ZM8.492 10.890L8.920 10.890C9.186 10.890 9.274 10.809 9.274 10.543L9.274 10.115C9.274 9.850 9.186 9.768 8.920 9.768L8.492 9.768C8.226 9.768 8.138 9.850 8.138 10.115L8.138 10.543C8.138 10.809 8.226 10.890 8.492 10.890Z" fill="#071216"/></svg></span><span class="evpop-date"><span id="evDateTxt"></span><input id="evDate" type="date" aria-label="Data"></span></label>
+            <div class="evpop-row evpop-times"><span class="nv-ico"><svg width="15.25" height="15.25" viewBox="0 0 15.25 15.25" fill="none" aria-hidden="true"><path d="M7.621 15.243C11.827 15.243 15.243 11.827 15.243 7.621C15.243 3.416 11.827 0.000 7.621 0.000C3.416 0.000 0.000 3.416 0.000 7.621C0.000 11.827 3.416 15.243 7.621 15.243ZM7.621 13.738C4.235 13.738 1.498 11.008 1.498 7.621C1.498 4.235 4.235 1.498 7.621 1.498C11.008 1.498 13.745 4.235 13.745 7.621C13.745 11.008 11.008 13.738 7.621 13.738ZM3.888 8.536L7.614 8.536C7.946 8.536 8.204 8.278 8.204 7.953L8.204 3.113C8.204 2.789 7.946 2.531 7.614 2.531C7.289 2.531 7.031 2.789 7.031 3.113L7.031 7.371L3.888 7.371C3.556 7.371 3.305 7.621 3.305 7.953C3.305 8.278 3.556 8.536 3.888 8.536Z" fill="#071216"/></svg></span><select class="evpop-input evpop-time" id="evStart" aria-label="Início"></select>
+              <span class="evpop-arrow" aria-hidden="true">–</span>
+              <select class="evpop-input evpop-time" id="evEnd" aria-label="Fim"></select><span class="evpop-dur" id="evDur"></span></div>
+            <button class="evpop-row click evpop-opt" id="evAllDay" type="button" aria-pressed="false"><span class="nv-ico"><svg width="18.07" height="15.12" viewBox="0 0 18.07 15.12" fill="none" aria-hidden="true"><path d="M2.420 13.775L10.108 13.775C9.842 13.332 9.650 12.845 9.562 12.329L2.398 12.329C1.785 12.329 1.446 12.004 1.446 11.362L1.446 4.545C1.446 3.896 1.785 3.578 2.398 3.578L12.579 3.578C13.199 3.578 13.546 3.896 13.546 4.545L13.546 6.537C13.789 6.500 14.033 6.478 14.276 6.478C14.512 6.478 14.756 6.500 14.992 6.537L14.992 2.398C14.992 0.819 14.166 0.000 12.572 0.000L2.420 0.000C0.826 0.000 0.000 0.819 0.000 2.398L0.000 11.377C0.000 12.956 0.826 13.775 2.420 13.775ZM6.072 6.138L6.507 6.138C6.766 6.138 6.854 6.057 6.854 5.792L6.854 5.364C6.854 5.098 6.766 5.017 6.507 5.017L6.072 5.017C5.806 5.017 5.718 5.098 5.718 5.364L5.718 5.792C5.718 6.057 5.806 6.138 6.072 6.138ZM8.485 6.138L8.920 6.138C9.178 6.138 9.267 6.057 9.267 5.792L9.267 5.364C9.267 5.098 9.178 5.017 8.920 5.017L8.485 5.017C8.219 5.017 8.130 5.098 8.130 5.364L8.130 5.792C8.130 6.057 8.219 6.138 8.485 6.138ZM10.897 6.138L11.332 6.138C11.598 6.138 11.687 6.057 11.687 5.792L11.687 5.364C11.687 5.098 11.598 5.017 11.332 5.017L10.897 5.017C10.632 5.017 10.543 5.098 10.543 5.364L10.543 5.792C10.543 6.057 10.632 6.138 10.897 6.138ZM3.659 8.514L4.087 8.514C4.353 8.514 4.442 8.433 4.442 8.167L4.442 7.739C4.442 7.474 4.353 7.393 4.087 7.393L3.659 7.393C3.394 7.393 3.305 7.474 3.305 7.739L3.305 8.167C3.305 8.433 3.394 8.514 3.659 8.514ZM6.072 8.514L6.507 8.514C6.766 8.514 6.854 8.433 6.854 8.167L6.854 7.739C6.854 7.474 6.766 7.393 6.507 7.393L6.072 7.393C5.806 7.393 5.718 7.474 5.718 7.739L5.718 8.167C5.718 8.433 5.806 8.514 6.072 8.514ZM8.485 8.514L8.920 8.514C9.178 8.514 9.267 8.433 9.267 8.167L9.267 7.739C9.267 7.474 9.178 7.393 8.920 7.393L8.485 7.393C8.219 7.393 8.130 7.474 8.130 7.739L8.130 8.167C8.130 8.433 8.219 8.514 8.485 8.514ZM14.276 15.117C16.335 15.117 18.069 13.391 18.069 11.318C18.069 9.237 16.357 7.525 14.276 7.525C12.196 7.525 10.477 9.237 10.477 11.318C10.477 13.406 12.196 15.117 14.276 15.117ZM13.811 13.376C13.671 13.376 13.502 13.325 13.398 13.206L12.159 11.856C12.063 11.746 12.011 11.605 12.011 11.473C12.011 11.163 12.255 10.949 12.535 10.949C12.705 10.949 12.838 11.015 12.934 11.119L13.782 12.056L15.523 9.643C15.626 9.503 15.781 9.414 15.966 9.414C16.254 9.414 16.497 9.636 16.497 9.931C16.497 10.027 16.460 10.137 16.386 10.241L14.247 13.184C14.158 13.302 13.996 13.376 13.811 13.376ZM3.659 10.890L4.087 10.890C4.353 10.890 4.442 10.809 4.442 10.543L4.442 10.115C4.442 9.850 4.353 9.768 4.087 9.768L3.659 9.768C3.394 9.768 3.305 9.850 3.305 10.115L3.305 10.543C3.305 10.809 3.394 10.890 3.659 10.890ZM6.072 10.890L6.507 10.890C6.766 10.890 6.854 10.809 6.854 10.543L6.854 10.115C6.854 9.850 6.766 9.768 6.507 9.768L6.072 9.768C5.806 9.768 5.718 9.850 5.718 10.115L5.718 10.543C5.718 10.809 5.806 10.890 6.072 10.890ZM8.485 10.890L8.920 10.890C9.178 10.890 9.267 10.809 9.267 10.543L9.267 10.115C9.267 9.850 9.178 9.768 8.920 9.768L8.485 9.768C8.219 9.768 8.130 9.850 8.130 10.115L8.130 10.543C8.130 10.809 8.219 10.890 8.485 10.890Z" fill="#071216"/></svg></span><span>Dia todo</span><span class="evpop-switch" aria-hidden="true"></span></button>
+          </div>
+          <div class="nv-sec">
+            <div class="evpop-row"><span class="nv-ico"><svg width="12.98" height="13.79" viewBox="0 0 12.98 13.79" fill="none" aria-hidden="true"><path d="M6.493 6.920C8.271 6.920 9.717 5.349 9.717 3.416C9.717 1.512 8.278 0.000 6.493 0.000C4.714 0.000 3.261 1.535 3.261 3.431C3.261 5.356 4.707 6.920 6.493 6.920ZM6.493 5.644C5.467 5.644 4.596 4.685 4.596 3.431C4.596 2.206 5.460 1.276 6.493 1.276C7.525 1.276 8.381 2.191 8.381 3.416C8.381 4.678 7.518 5.644 6.493 5.644ZM1.889 13.782L11.089 13.782C12.358 13.782 12.970 13.376 12.970 12.513C12.970 10.499 10.447 7.784 6.485 7.784C2.523 7.784 0.000 10.499 0.000 12.513C0.000 13.376 0.612 13.782 1.889 13.782ZM1.638 12.506C1.468 12.506 1.402 12.454 1.402 12.314C1.402 11.185 3.224 9.060 6.485 9.060C9.746 9.060 11.576 11.185 11.576 12.314C11.576 12.454 11.502 12.506 11.332 12.506Z" fill="#071216"/></svg></span><input class="evpop-input" id="evPatient" type="text" placeholder="Paciente" autocomplete="off"
+                   role="combobox" aria-autocomplete="list" aria-controls="evPList" aria-expanded="false" aria-label="Paciente">
+              <button class="evpop-clear" id="evPClear" type="button" aria-label="Remover paciente" title="Remover paciente" hidden><img src="assets/icons/sf-xmark.svg?v=2" width="9" height="9" alt=""></button></div>
+            <div class="evpop-pl" id="evPList" role="listbox" hidden></div>
+            <div class="evpop-row"><span class="nv-ico"><svg width="15.49" height="14.72" viewBox="0 0 15.49 14.72" fill="none" aria-hidden="true"><path d="M0.981 14.446C1.225 14.446 1.446 14.365 1.734 14.203L5.334 12.255L9.267 14.461C9.577 14.623 9.894 14.712 10.204 14.712C10.506 14.712 10.809 14.630 11.074 14.475L14.763 12.395C15.265 12.115 15.486 11.716 15.486 11.155L15.486 1.247C15.486 0.627 15.117 0.258 14.505 0.258C14.262 0.258 14.048 0.347 13.752 0.509L10.012 2.590L6.131 0.236C5.858 0.081 5.556 0.000 5.253 0.000C4.951 0.000 4.655 0.074 4.390 0.229L0.730 2.309C0.221 2.590 0.000 2.981 0.000 3.541L0.000 13.465C0.000 14.084 0.369 14.446 0.981 14.446ZM4.685 10.949L1.631 12.631C1.579 12.653 1.535 12.675 1.498 12.675C1.417 12.675 1.365 12.609 1.365 12.513L1.365 3.918C1.365 3.711 1.439 3.578 1.638 3.468L4.449 1.837C4.530 1.785 4.604 1.749 4.685 1.704ZM6.072 10.993L6.072 1.881C6.146 1.918 6.234 1.963 6.308 2.007L9.414 3.881L9.414 12.860C9.318 12.808 9.215 12.756 9.112 12.705ZM10.801 12.970L10.801 3.755L13.863 2.088C13.900 2.066 13.944 2.044 13.981 2.044C14.062 2.044 14.121 2.110 14.121 2.199L14.121 10.764C14.121 10.971 14.048 11.104 13.856 11.214L11.141 12.786C11.030 12.852 10.912 12.919 10.801 12.970Z" fill="#071216"/></svg></span><input class="evpop-input" id="evLocation" type="text" placeholder="Local" autocomplete="off" aria-label="Local"></div>
+          </div>
+          <div class="nv-sec">
+            <label class="evpop-row evpop-descrow"><span class="nv-ico"><svg width="15.22" height="12.99" viewBox="0 0 15.22 12.99" fill="none" aria-hidden="true"><path d="M0.694 1.402L14.512 1.402C14.903 1.402 15.213 1.085 15.213 0.701C15.213 0.310 14.903 0.000 14.512 0.000L0.694 0.000C0.302 0.000 0.000 0.310 0.000 0.701C0.000 1.085 0.302 1.402 0.694 1.402ZM0.694 5.260L9.031 5.260C9.422 5.260 9.724 4.943 9.724 4.560C9.724 4.169 9.422 3.859 9.031 3.859L0.694 3.859C0.302 3.859 0.000 4.176 0.000 4.560C0.000 4.943 0.302 5.260 0.694 5.260ZM0.694 9.119L14.512 9.119C14.903 9.119 15.213 8.809 15.213 8.426C15.213 8.035 14.903 7.725 14.512 7.725L0.694 7.725C0.302 7.725 0.000 8.035 0.000 8.426C0.000 8.802 0.302 9.119 0.694 9.119ZM0.694 12.985L9.031 12.985C9.422 12.985 9.724 12.668 9.724 12.284C9.724 11.893 9.422 11.583 9.031 11.583L0.694 11.583C0.302 11.583 0.000 11.893 0.000 12.284C0.000 12.668 0.302 12.985 0.694 12.985Z" fill="#071216"/></svg></span><textarea class="evpop-desc" id="evDesc" rows="3" placeholder="Adicionar descrição" aria-label="Descrição"></textarea></label>
+          </div>
         </div>
-        <button class="evpop-row click evpop-opt" id="evAllDay" type="button" aria-pressed="false">
-          <span class="evpop-ico"><img src="assets/icons/sf-sun.svg?v=2" width="15.84" height="15.89" alt=""></span>
-          <span>Dia todo</span><span class="evpop-switch" aria-hidden="true"></span>
-        </button>
-      </div>
-      <div class="evpop-card">
-        <div class="evpop-row">
-          <span class="evpop-ico"><span class="evpop-av" id="evAv"><img src="assets/icons/sf-person.svg?v=2" width="12.8" height="13.56" alt=""><span id="evAvTxt"></span></span></span>
-          <input class="evpop-input" id="evPatient" type="text" placeholder="Paciente" autocomplete="off"
-                 role="combobox" aria-autocomplete="list" aria-controls="evPList" aria-expanded="false">
-          <button class="evpop-clear" id="evPClear" type="button" aria-label="Remover paciente" title="Remover paciente" hidden><img src="assets/icons/sf-xmark.svg?v=2" width="9" height="9" alt=""></button>
+        <div class="rp-novo-pe">                            <!-- preso no pé do painel; a mensagem à esquerda do botão -->
+          <div class="evpop-msg" id="evMsg" hidden></div>
+          <button class="nv-btn nv-dark" id="evCreate" type="button">Criar consulta</button>
         </div>
-        <div class="evpop-pl" id="evPList" role="listbox" hidden></div>
-        <div class="evpop-row">
-          <span class="evpop-ico"><img src="assets/icons/sf-mappin.svg?v=2" width="13.91" height="16.08" alt=""></span>
-          <input class="evpop-input" id="evLocation" type="text" placeholder="Local" autocomplete="off">
-        </div>
-      </div>
-      <div class="evpop-card">
-        <label class="evpop-row evpop-descrow">
-          <span class="evpop-ico"><img src="assets/icons/sf-text-alignleft.svg?v=2" width="14.76" height="12.68" alt=""></span>
-          <textarea class="evpop-desc" id="evDesc" rows="3" placeholder="Adicionar descrição"></textarea>
-        </label>
-      </div>
-      <div class="evpop-foot">
-        <div class="evpop-msg" id="evMsg" hidden></div>
-        <button class="evpop-create" id="evCreate" type="button">Criar</button>
-      </div>
+      </section>
     </div>
 
     <!-- botões flutuantes p/ reabrir painéis recolhidos -->
@@ -2843,7 +2817,12 @@
           agExpand.setAttribute('aria-label', on ? 'Mostrar assistente' : 'Expandir agenda');   // o texto da dica (.nav-tip)
         }
       }
-      if (agExpand) agExpand.addEventListener('click', function () { setAgWide(!(right && right.classList.contains('collapsed'))); });
+      if (agExpand) agExpand.addEventListener('click', function () {
+        // a consulta ficou aberta com o aviso (alteração que não dá para salvar): recolher a coluna a esconderia junto
+        var ep = document.getElementById('evPop');
+        if (ep && !ep.hidden) return;
+        setAgWide(!(right && right.classList.contains('collapsed')));
+      });
       // menus da agenda: logo abaixo do ícone, com a borda direita alinhada à dele
       window.__placePop = function (pop, btn) {
         document.querySelectorAll('.cal-pop').forEach(function (p) { if (p !== pop) p.hidden = true; });
@@ -2889,9 +2868,10 @@
     function allDayPill(ev) {
       var k = evKey(ev), b = document.createElement('div'), t = document.createElement('div');
       b.className = 'wk-ev short' + (k === window.__selEv ? ' sel' : '');
+      t.className = 'wk-ev-t'; t.textContent = ev.title || '(sem título)'; b.appendChild(t);
+      if (ev._rascunho) { b.classList.add('draft'); return b; }   // a prévia da consulta sendo criada
       b.setAttribute('data-evkey', k); window.__evData[k] = ev;
       b.title = (ev.title || '(sem título)') + ' · dia todo';
-      t.className = 'wk-ev-t'; t.textContent = ev.title || '(sem título)'; b.appendChild(t);
       b.addEventListener('click', function (e) {            // seleciona e abre a janela preenchida (como os outros eventos)
         window.__selEv = null; window.__evSelect(k);
         if (window.__openEventEdit) window.__openEventEdit(e.clientX, e.clientY, ev);
@@ -2952,9 +2932,13 @@
         var f = function (w) { return w ? Array.from(w)[0] : ''; };
         return (f(p[0]) + f(p.length > 1 ? p[p.length - 1] : '')).toUpperCase() || '•';
       }
+      var ultimos = [];                                    // os eventos do dia (a prévia redesenha sem buscar de novo)
       function render(events) {
         var inner = document.querySelector('.cal-inner');
         if (!inner) return;
+        ultimos = events;
+        var rasc = window.__evRascunho ? window.__evRascunho() : null;   // a consulta sendo criada aparece junto
+        if (rasc) events = events.concat([rasc]);
         inner.querySelectorAll('.ev-real').forEach(function (n) { n.remove(); });
         var strip = document.getElementById('calAllDay'), ad = events.filter(function (ev) { return allDayOn(ev, dayStart); });
         if (strip) { strip.innerHTML = ''; ad.forEach(function (ev) { strip.appendChild(allDayPill(ev)); }); strip.hidden = !ad.length; }
@@ -2973,8 +2957,9 @@
           var tall = height >= 110;
           var card = document.createElement('div');
           card.className = 'ev-real';
-          card.setAttribute('data-evkey', evKey(ev)); window.__evData[evKey(ev)] = ev;
-          if (evKey(ev) === window.__selEv) card.classList.add('sel');
+          if (ev._rascunho) card.classList.add('draft');
+          else { card.setAttribute('data-evkey', evKey(ev)); window.__evData[evKey(ev)] = ev; }
+          if (!ev._rascunho && evKey(ev) === window.__selEv) card.classList.add('sel');
           card.style.top = top + 'px';
           card.style.height = height + 'px';
           card.innerHTML = '<div><div class="er-title"></div><div class="er-sub"></div></div>' +
@@ -3019,6 +3004,7 @@
           : 'A conexão com o Google Agenda expirou.';
       };
       window.__refreshAgenda = refresh;
+      window.__redesenhaDia = function () { if (window.__calConnected) render(ultimos); };   // a prévia mudou
       window.__onDayDateChange = function () {
         var inner = document.querySelector('.cal-inner');
         if (inner) inner.querySelectorAll('.ev-real').forEach(function (n) { n.remove(); });   // limpa o dia anterior já
@@ -3048,7 +3034,7 @@
           elPatient = document.getElementById('evPatient'), elCreate = document.getElementById('evCreate'),
           elLoc = document.getElementById('evLocation'), elDur = document.getElementById('evDur'),
           elDateTxt = document.getElementById('evDateTxt'), elAllDay = document.getElementById('evAllDay');
-      var allDay = false, POP_W = 360;                   // largura da janela (= .evpop)
+      var allDay = false;
       // a janela tem uma data só: fim antes do início = termina no dia seguinte (plantão 19h–7h, 23h30–0h);
       // extraDays = dias a mais de um evento de dia inteiro (férias de vários dias).
       // Com horário, o fim fica em endMin = minutos desde a 0h do dia de início (passa de 1440 nos dias seguintes);
@@ -3123,7 +3109,6 @@
       // ===== paciente: escolher um do cadastro ou criar um novo (ligado ao prontuário dele) =====
       // A lista vem de GET /patients e é filtrada aqui (o nome nunca vai em URL); cortada nos mais recentes (more), a
       // busca pergunta também a POST /patients/search.
-      var elAv = document.getElementById('evAv'), elAvTxt = document.getElementById('evAvTxt');
       var elPList = document.getElementById('evPList');
       var selPatient = null;                                 // {id, name}; id null = evento antigo só com o nome
       var patients = null, patientsAt = 0, patientsMore = false, plItems = [], plActive = -1, plFirst = 0;   // plFirst: a opção do Enter sem destaque
@@ -3135,19 +3120,17 @@
         return w.length ? (Array.from(w[0])[0] + (w.length > 1 ? Array.from(w[w.length - 1])[0] : '')).toUpperCase() : '';
       }
       var elPClear = document.getElementById('evPClear');
-      // avatar azul com iniciais só quando o paciente está escolhido (igual aos cards da agenda)
+      // o ícone de pessoa fica sempre (sem as iniciais no círculo azul); o × para tirar só com o paciente escolhido
       function avatar() {
-        var ini = selPatient ? initialsOf(selPatient.name) : '';
-        elAvTxt.textContent = ini; elAv.classList.toggle('has', !!ini);
         elPClear.hidden = !selPatient;
       }
       elPClear.addEventListener('mousedown', function (e) { e.preventDefault(); });
       elPClear.addEventListener('click', function () { setPatient(null); elPatient.focus(); });
-      // a janela não pode passar do pé da tela quando a lista de pacientes abre
+      // a lista de pacientes aberta fica à vista: o corpo do painel rola até ela (só ele; a página não rola)
       function fitPop() {
-        if (pop.hidden) return;
-        var r = pop.getBoundingClientRect();
-        if (r.bottom > window.innerHeight - 12) pop.style.top = Math.max(12, window.innerHeight - 12 - r.height) + 'px';
+        if (pop.hidden || elPList.hidden) return;
+        var c = pop.querySelector('.rp-novo-corpo'), r = elPList.getBoundingClientRect(), cr = c.getBoundingClientRect();
+        if (r.bottom > cr.bottom) c.scrollTop += r.bottom - cr.bottom;
       }
       function loadPatients(force) {
         if (!force && patients && Date.now() - patientsAt < 60e3) return Promise.resolve(patients);
@@ -3180,16 +3163,14 @@
       }
       function setPatient(p) {
         selPatient = p; elPatient.value = p ? p.name : ''; avatar(); hideList();
+        if (typeof previa === 'function') previa();
       }
       function hideList() { plTok++; elPList.hidden = true; elPList.innerHTML = ''; plItems = []; plKeys = []; plActive = -1; plFor = null; elPatient.setAttribute('aria-expanded', 'false'); }
       function option(cls, avHtml, label, onPick, key) {
         var b = document.createElement('button'); b.type = 'button'; b.className = 'evpop-po' + (cls ? ' ' + cls : '');
         b.setAttribute('role', 'option');
-        var av = document.createElement('span'); av.className = 'evpop-av has';
-        if (avHtml === '+') av.innerHTML = '<img src="assets/icons/sf-plus.svg?v=2" width="10" height="10" alt="">';
-        else av.textContent = avHtml;
-        var t = document.createElement('span'); t.textContent = label;
-        b.appendChild(av); b.appendChild(t);
+        var t = document.createElement('span'); t.textContent = label;   // só o texto: sem as iniciais nem o espaço delas
+        b.appendChild(t);
         b.addEventListener('mousedown', function (e) { e.preventDefault(); });   // não tira o foco do campo
         b.addEventListener('click', onPick);
         elPList.appendChild(b); plItems.push(b); plKeys.push(key);
@@ -3348,7 +3329,7 @@
         elTitle.value = ''; elDesc.value = ''; elPatient.value = ''; elLoc.value = '';
         setAllDay(false); extraDays = 0; delete elDur.dataset.min;
         elMsg.hidden = true; elMsg.className = 'evpop-msg';
-        elCreate.disabled = false; elCreate.textContent = 'Criar';
+        elCreate.disabled = false; elCreate.textContent = 'Criar consulta';
         elDate.value = fmtDate(now);
         elStart.value = pad(h) + ':' + pad(m);
         var eh = h, em = m + 30; if (em >= 60) { eh = (h + 1) % 24; em -= 60; }
@@ -3357,17 +3338,62 @@
         selPatient = null; hideList(); loadPatients(true);   // sempre fresca (pode ter mudado na tela Pacientes)
         seq++;
         remember(); durLabel(); dateLabel(); avatar();
-        pop.hidden = false;
-        // posiciona perto do clique, sem sair da tela
-        var w = POP_W, ph = pop.offsetHeight || 420;
-        var x = Math.min(clientX + 8, window.innerWidth - w - 12);
-        var y = Math.min(clientY, window.innerHeight - ph - 12);
-        pop.style.left = Math.max(12, x) + 'px';
-        pop.style.top = Math.max(12, y) + 'px';
-        elTitle.focus();
+        mostra(); elTitle.focus();
       }
       var mode = 'create', editEv = null, original = null, seq = 0;   // seq: qual abertura da janela está ativa
       var elDel = document.getElementById('evDelete');
+      // a janela fica no lugar do assistente (como o novo paciente): o assistente em tela cheia sai dela, o recolhido abre
+      // e volta a recolher ao fechar; a conversa fica por baixo, fora do Tab e dos atalhos (.right.evento)
+      var painel = document.querySelector('.right'), stageEl = document.querySelector('.stage'), recolhidoEv = false,
+          elT = document.getElementById('evT'), agBtn = document.getElementById('agCreate');
+      function mostra() {
+        if (pop.hidden) {
+          var rx = document.getElementById('raExpand'), sc = document.getElementById('showChat');
+          if (stageEl && stageEl.classList.contains('expanded') && rx) rx.click();
+          recolhidoEv = !!painel && painel.classList.contains('collapsed');
+          if (recolhidoEv && sc) sc.click();
+        }
+        elT.textContent = mode === 'edit' ? 'Consulta' : 'Nova consulta';
+        pop.hidden = false; if (painel) painel.classList.add('evento');
+        if (agBtn) { agBtn.setAttribute('aria-expanded', 'true'); agBtn.classList.add('on'); }
+        pop.querySelector('.rp-novo-corpo').scrollTop = 0;
+        previa();
+      }
+      // prévia: enquanto cria, a consulta aparece na agenda ao lado (Dia, Semana e a faixa de dia inteiro) e anda com a
+      // data, o horário, o título e o paciente; some ao fechar (criada, ela volta como evento de verdade)
+      window.__evRascunho = function () {
+        if (pop.hidden || mode !== 'create' || !elDate.value || elMsg.classList.contains('ok')) return null;   // criada: a de verdade aparece
+        var t = elTitle.value.trim(), pac = selPatient ? selPatient.name : '';
+        var title = (t && pac ? t + ' — ' + pac : t || pac) || 'Nova consulta';
+        var q = elDate.value.split('-'), d0 = new Date(+q[0], +q[1] - 1, +q[2]);
+        if (allDay) return { _rascunho: true, allDay: true, title: title, start: fmtDate(d0), end: fmtDate(new Date(+q[0], +q[1] - 1, +q[2] + 1 + extraDays)) };
+        if (!elStart.value) return null;
+        var s0 = new Date(elDate.value + 'T' + elStart.value + ':00'), min = spanMin();
+        return { _rascunho: true, title: title, start: s0.toISOString(), end: new Date(s0.getTime() + (min > 0 ? min : 30) * 6e4).toISOString() };
+      };
+      function previa() {
+        if (window.__redesenhaDia) window.__redesenhaDia();
+        if (window.__redesenhaSemana) window.__redesenhaSemana();
+      }
+      [elTitle, elPatient].forEach(function (x) { x.addEventListener('input', previa); });
+      [elStart, elEnd, elDate].forEach(function (x) { x.addEventListener('change', previa); });
+      elAllDay.addEventListener('click', previa);
+      function esconde(semFoco) {                            // semFoco: outra tela abriu (não puxa o foco de volta)
+        if (pop.hidden) return;
+        var dentro = pop.contains(document.activeElement);
+        pop.hidden = true; if (painel) painel.classList.remove('evento');
+        if (agBtn) { agBtn.setAttribute('aria-expanded', 'false'); agBtn.classList.remove('on'); }
+        var ax = document.getElementById('agExpand');
+        if (recolhidoEv && ax) ax.click();                   // volta a recolher o assistente
+        recolhidoEv = false;
+        previa();                                            // a prévia sai da agenda
+        if (dentro && !semFoco && agBtn && agBtn.getClientRects().length) agBtn.focus();
+      }
+      // sair de Consultas (Pacientes, o voltar do navegador) ou abrir um prontuário fecha a janela (a edição é salva;
+      // se não der para salvar, o segundo fechar descarta, como o Esc duas vezes)
+      if (stageEl) new MutationObserver(function () {
+        if (!pop.hidden && (stageEl.classList.contains('pacientes') || stageEl.classList.contains('prontuario'))) { if (!close(true)) close(true); }
+      }).observe(stageEl, { attributes: true, attributeFilter: ['class'] });
       function ensureOption(sel, v) {                      // horário fora da grade de 15 min
         if (![].some.call(sel.options, function (o) { return o.value === v; })) {
           var o = document.createElement('option'); o.value = o.textContent = v;
@@ -3416,7 +3442,7 @@
             if (cb) cb(res.ok && res.j.ok);
           }).catch(function () { alert('Falha de conexão ao salvar o evento.'); if (cb) cb(false); });
       }
-      function close() {                                     // false = ficou aberta (alteração que não dá para salvar)
+      function close(semFoco) {                              // false = ficou aberta (alteração que não dá para salvar)
         if (pop.hidden) return true;
         if (mode === 'edit') {                               // salva alterações ao fechar
           var p = buildPayload();
@@ -3425,15 +3451,8 @@
           }
           saveEdit();
         }
-        pop.hidden = true; mode = 'create'; editEv = null;
+        mode = 'create'; editEv = null; esconde(semFoco === true);
         return true;
-      }
-      function place(clientX, clientY) {
-        var w = POP_W, ph = pop.offsetHeight || 460;
-        var x = Math.min(clientX + 8, window.innerWidth - w - 12);
-        var y = Math.min(clientY, window.innerHeight - ph - 12);
-        pop.style.left = Math.max(12, x) + 'px';
-        pop.style.top = Math.max(12, y) + 'px';
       }
       // clicar num evento: mesma janela, preenchida (lixeira + "Prontuário")
       window.__openEventEdit = function (clientX, clientY, ev) {
@@ -3479,7 +3498,7 @@
         original = JSON.stringify(buildPayload());
         elDel.hidden = !(ev.id && window.__calConnected);
         elCreate.disabled = false; elCreate.textContent = 'Prontuário';
-        pop.hidden = false; place(clientX, clientY);
+        mostra();
       };
       // excluir (com confirmação) — some do Google Calendar
       elDel.addEventListener('click', function () {
@@ -3490,7 +3509,7 @@
           .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
           .then(function (res) {
             if (res.ok && res.j.ok) {
-              mode = 'create'; editEv = null; pop.hidden = true;
+              mode = 'create'; editEv = null; esconde();
               if (window.__evSelect) window.__evSelect(null);
               if (window.__refreshAgenda) window.__refreshAgenda();
               if (window.__refreshWeek) window.__refreshWeek();
@@ -3518,7 +3537,7 @@
                     patient_id: selPatient.id || null,
                     start: p.start || null, end: p.end || null, all_day: !!p.all_day, location: p.location || '' };
         var go = function () {
-          pop.hidden = true; mode = 'create'; editEv = null; elCreate.disabled = false;
+          mode = 'create'; editEv = null; elCreate.disabled = false; esconde(true);
           if (window.__openProntuario) window.__openProntuario(ctx);
         };
         if (canSave()) { elCreate.disabled = true; saveEdit(function () { go(); }); }
@@ -3535,7 +3554,7 @@
         if (m === 0) h += 1;
         if (h > 23) { h = 23; m = 30; }
         var day = window.__calSelected ? window.__calSelected() : n;
-        openAt(r.right - POP_W - 8, r.bottom + 8, h, m, day);
+        openAt(0, 0, h, m, day);
       });
       // usado pela visão Semana: abre o popover no dia/horário clicado
       window.__openEventAt = function (x, y, day, h, m) {
@@ -3547,6 +3566,7 @@
       calInner.addEventListener('click', function (e) {
         if (e.target.closest('.now')) return;
         var evEl = e.target.closest('.ev-real');
+        if (evEl && evEl.classList.contains('draft')) return;  // a prévia da consulta sendo criada
         if (!evEl && !pop.hidden) { close(); return; }         // aberto → clicar num vazio fecha
         if (evEl) {                                            // seleciona e abre a janela preenchida
           var k = evEl.getAttribute('data-evkey');
@@ -3566,7 +3586,7 @@
         openAt(e.clientX, e.clientY, h, m, window.__calSelected ? window.__calSelected() : null);
       });
 
-      document.getElementById('evClose').addEventListener('click', close);
+      document.getElementById('evClose').addEventListener('click', function () { close(); });
       // Enter num campo de texto cria o evento (não no textarea, nem quando o Enter escolheu um paciente da lista)
       pop.addEventListener('keydown', function (e) {
         if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing || mode !== 'create' || elCreate.disabled) return;
@@ -3574,9 +3594,14 @@
         e.preventDefault(); elCreate.click();
       });
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
-      // clique fora fecha
+      // clique fora fecha, sem recolher de novo o assistente: recolher no mousedown mexe a agenda e o botão clicado (o
+      // calendário, a busca, o próprio "Expandir agenda" ou o ⇧⌘A) sai de baixo do mouse antes do clique. O Esc, o × e
+      // a troca de tela continuam recolhendo
       document.addEventListener('mousedown', function (e) {
-        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.cal-inner, .wk-col, .cal-allday .wk-ev, .wk-ad .wk-ev')) close();
+        if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('.cal-inner, .wk-col, .cal-allday .wk-ev, .wk-ad .wk-ev')) {
+          var r0 = recolhidoEv; recolhidoEv = false;
+          if (!close()) recolhidoEv = r0;                    // ficou aberta (o aviso da alteração): continua valendo
+        }
       });
 
       function isoFrom(dateStr, timeStr) {
@@ -3606,15 +3631,15 @@
               elMsg.className = 'evpop-msg';
               elMsg.innerHTML = (res.j.reason === 'expirada' ? 'A conexão com o Google Agenda expirou. ' : 'O Google Agenda está sem permissão para criar eventos. ') +
                 '<a href="/integrations/google/connect">Reconecte o Google</a> para criar eventos.';
-              elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
+              elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar consulta';
             } else {
               elMsg.className = 'evpop-msg';
               elMsg.textContent = (res.j && res.j.reason && res.j.error) || 'Não foi possível criar o evento.';
-              elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
+              elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar consulta';
             }
           }).catch(function () {
             elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.';
-            elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar';
+            elMsg.hidden = false; elCreate.disabled = false; elCreate.textContent = 'Criar consulta';
           });
       });
     })();
@@ -4070,6 +4095,8 @@
 
       function render() {
         var H = (WK_LAST - WK_FIRST) * WK_PX, now = new Date();
+        var rasc = window.__evRascunho ? window.__evRascunho() : null;   // a consulta sendo criada aparece junto
+        var evs = rasc ? events.concat([rasc]) : events;
         grid.innerHTML = '';
         // cabeçalho: fuso + dias
         var off = -now.getTimezoneOffset() / 60;
@@ -4083,7 +4110,7 @@
           grid.appendChild(h);
         }
         // dia inteiro: uma linha abaixo dos dias, só quando a semana tem algum
-        var ad = days.map(function (d) { return events.filter(function (ev) { return allDayOn(ev, d); }); });
+        var ad = days.map(function (d) { return evs.filter(function (ev) { return allDayOn(ev, d); }); });
         if (ad.some(function (l) { return l.length; })) {
           grid.appendChild(el('div', 'wk-ad gmt'));
           ad.forEach(function (l) { var c = el('div', 'wk-ad'); l.forEach(function (ev) { c.appendChild(allDayPill(ev)); }); grid.appendChild(c); });
@@ -4099,6 +4126,7 @@
           var c = el('div', 'wk-col' + (d === days[0] ? ' first' : '')); c.style.height = H + 'px'; grid.appendChild(c);
           c.addEventListener('click', function (e) {
             var we = e.target.closest('.wk-ev');
+            if (we && we.classList.contains('draft')) return;  // a prévia da consulta sendo criada
             if (we) {                                          // seleciona e abre a janela preenchida
               var k = we.getAttribute('data-evkey');
               window.__selEv = null; window.__evSelect(k);
@@ -4114,7 +4142,7 @@
           });
           return c;
         });
-        events.forEach(function (ev) {
+        evs.forEach(function (ev) {
           if (ev.allDay || !ev.start) return;
           var s = new Date(ev.start), e = ev.end ? new Date(ev.end) : new Date(s.getTime() + 18e5);
           if (isNaN(s.getTime())) return;
@@ -4125,9 +4153,9 @@
             // 1px de folga das linhas da grade em cima e embaixo (como nas laterais): a linha da hora fica no
             // pixel 142*h da coluna → evento começa 2px abaixo dela e termina 2px antes da linha seguinte
             var top = (a - d0.getTime()) / 36e5 * WK_PX + 2, hgt = Math.max((b - a) / 36e5 * WK_PX - 3, 24);
-            var box = el('div', 'wk-ev' + (hgt < 60 ? ' short' : '')); box.style.top = top + 'px'; box.style.height = hgt + 'px';
-            box.setAttribute('data-evkey', evKey(ev)); window.__evData[evKey(ev)] = ev;
-            if (evKey(ev) === window.__selEv) box.classList.add('sel');
+            var box = el('div', 'wk-ev' + (hgt < 60 ? ' short' : '') + (ev._rascunho ? ' draft' : '')); box.style.top = top + 'px'; box.style.height = hgt + 'px';
+            if (!ev._rascunho) { box.setAttribute('data-evkey', evKey(ev)); window.__evData[evKey(ev)] = ev; }
+            if (!ev._rascunho && evKey(ev) === window.__selEv) box.classList.add('sel');
             var full = ev.title || '(sem título)', parts = full.split(' — ');
             box.title = full + ' · ' + fmtT(s) + '–' + fmtT(e);
             box.appendChild(el('div', 'wk-ev-t', parts[0]));
@@ -4197,6 +4225,7 @@
       window.__onDateChange = function (d) { if (isWeek()) showWeek(d, true); };
       window.__isWeekView = isWeek;
       window.__refreshWeek = function () { if (isWeek()) fetchWeek().then(function () { if (isWeek()) render(); }); };
+      window.__redesenhaSemana = function () { if (isWeek()) render(); };   // a prévia mudou
 
       // a agenda sempre abre no Dia (pedido do dono); a Semana vale até sair da tela. A escolha que a versão anterior
       // guardava no aparelho sai
