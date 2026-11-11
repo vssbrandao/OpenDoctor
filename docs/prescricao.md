@@ -1,6 +1,6 @@
 # Prescrições: receitas, possíveis prescrições e receitas anteriores
 
-A aba Prescrições do prontuário tem três partes (fases 1, 2 e 3 do plano; o que falta está em "Pendências"):
+A aba Prescrição do prontuário (seletor de cima) tem três partes (fases 1, 2 e 3 do plano; o que falta está em "Pendências"):
 
 1. **Prescrições:** a receita da consulta aberta, que fica no rascunho até ser emitida.
 2. **Possíveis prescrições:** até 2 remédios que o paciente ainda não usou e talvez façam sentido, sugeridos pela IA.
@@ -147,7 +147,20 @@ com título 14 Medium, descrição 13 #848486 e um cartão branco (borda #EBEBEB
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
   - entra o remédio de uso contínuo que não está no cadastro;
   - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta).
-- **Histórico:** as emitidas aparecem no card da consulta e, com ele, no "Exportar PDF".
+- **Consultas (Resumo):** as emitidas aparecem no card da consulta, na aba Consultas do painel do Resumo, e, com ele, no
+  "Exportar PDF". (A aba Histórico do prontuário saiu.)
+- **Receita de hoje:** na aba Prescrição do seletor de cima (Prontuário · Consulta · Prescrição).
+- **Histórico de receitas:** fica no Resumo, na aba Prescrições do painel (saiu da aba Prescrição do prontuário),
+  embaixo da tabela "Medicamentos em uso" (as do resumo clínico, com a posologia, a quantidade e o "Usar nesta
+  consulta" da última receita emitida com o mesmo remédio e dose; sem receita, só o nome).
+  O histórico é uma lista só (uma linha por remédio, a data da receita embaixo do nome; a consulta e o tipo na dica),
+  sem "Cancelar receita" e sem "Imprimir 2ª via" na tela (a rota de cancelar continua no servidor). O "Usar nesta
+  consulta" põe o remédio na receita de hoje e abre a aba Prescrição. A receita achada na busca abre no histórico
+  (Resumo › Prescrições; o rascunho de hoje, na aba Prescrição). O título "Histórico" e a tabela, sem a contagem e a
+  busca própria (as 5 mais novas e "Mostrar todas"). A dose do cadastro só casa com a da receita quando é a mesma
+  (`rxDoseIgual`: 15 mg não é 5 mg, 150 mcg não é 50 mcg, 1 g não é 1 gota; espaços e milhar não contam: 500 mg / ml
+  é 500 mg/ml, 50 000 UI e 1.000 mg são 50000 UI e 1000 mg; "50 mg, 1 cp" casa com 50 mg). Não vai no PDF
+  do prontuário (as emitidas já vão no card da consulta).
 - **Impressão:** a linha do remédio leva a forma ("Losartana potássica 50 mg, comprimido revestido") e o uso
   contínuo uma vez só; as orientações vêm depois dos remédios. Só a folha vai para o papel enquanto `body.rxp` estiver ligado; desliga no `afterprint`. No Safari, o
   `window.print()` não espera a impressão terminar.
@@ -245,13 +258,12 @@ continua no servidor, mas a tela não a usa mais.
   - emitir sem CRM e depois em vias;
   - talão;
   - controle especial;
-  - cancelar;
-  - 2ª via;
+  - o histórico em uma lista só (sem Cancelar e sem 2ª via);
   - recarregar no meio;
   - receita no Histórico;
   - atualizar as medicações em uso depois de emitir;
   - possíveis prescrições: só 2 remédios novos e só o "Adicionar"; a sugestão do nome do remédio;
-  - busca e escolha dos itens no Histórico;
+  - escolha dos itens no Histórico de receitas (Resumo › Prescrições);
   - receita em A5.
 
   O preview usa uma resposta real guardada (`scripts/preview_prescricao.json`, prompt 2026-10-17.1, Maria fictícia):

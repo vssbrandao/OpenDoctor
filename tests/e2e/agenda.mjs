@@ -1145,7 +1145,7 @@ const cenarios = [
     await ev(`[...document.querySelectorAll('#bsList .bs-it')].find((b) => b.querySelector('.bs-r').textContent.startsWith('Clonazepam')).click(); 1`);
     await ate(`!(${aberta}) && !document.querySelector('.stage').inert && window.__abriu.length === 1`, 2000, 'abriu a receita');
     const a1 = await ev(`window.__abriu[0]`);
-    certo(a1.patient_id === 7 && a1.patient === 'Maria Silva' && a1.tab === 'prescricoes' && a1.rx === RECEITAS[1].id, 'o prontuário da receita: ' + JSON.stringify(a1));
+    certo(a1.patient_id === 7 && a1.patient === 'Maria Silva' && a1.tab === 'geral' && a1.rx === RECEITAS[1].id, 'o prontuário da receita (emitida: no Resumo › Prescrições): ' + JSON.stringify(a1));
 
     // ⇧⌘F abre de novo, limpa; Enter abre o paciente marcado
     const mods = (await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`)) ? 4 + 8 : 2 + 8;

@@ -374,6 +374,197 @@ const cenarios = [
     if (!l.some((x) => x.k === 'novo:1')) throw new Error('apagou o áudio de menos de 48 h');
     return 'o de 49 h saiu; o de 1 h ficou';
   }],
+  ['a Análise (o gráfico e a tabela) fica na aba Análise do painel do Resumo; sem a aba Análise do prontuário e sem os cartões de cima', async () => {
+    await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&exemplo=1&tab=geral' });
+    await ate(`!!document.querySelector('#prTabs [data-tab=geral].on') && !document.querySelector('.pr-panel[data-panel=geral]').hidden`, 20000, 'a aba Resumo');
+    await ate(`document.querySelectorAll('#csTable tr').length > 1`, 10000, 'os sinais por consulta desenhados');
+    await ev(`document.querySelector('#ovcTabs [data-ct=ana]').click(); 1`);      // a Análise é a última aba do painel
+    await ate(`!document.getElementById('ovTop').hidden && !document.getElementById('ovChart').hidden && document.getElementById('ovChart').getClientRects().length > 0`, 10000, 'o gráfico visível na aba Análise');
+    // no alto da aba, o resumo da análise (como o parágrafo dos pontos), calculado aqui; embaixo dele, o "Por que … · Perguntar ao assistente"
+    const ar = await ev(`(() => { const r = document.getElementById('anaRes'), w = document.getElementById('gqWhy'), p = document.getElementById('anaResP');
+      return { vis: r.getClientRects().length > 0, t: r.querySelector('.ovc-ptt').textContent, p: p.textContent,
+        antes: !!(r.compareDocumentPosition(document.getElementById('ovTop')) & Node.DOCUMENT_POSITION_FOLLOWING),
+        why: r.contains(w) && !document.getElementById('ovTop').contains(w) && !w.hidden && w.getBoundingClientRect().top >= p.getBoundingClientRect().bottom,
+        whyT: document.getElementById('gqWhyT').textContent, linhas: document.getElementById('gqWhyT').getClientRects().length && Math.round(document.getElementById('gqWhyT').getBoundingClientRect().height / 22) }; })()`);
+    if (!ar.vis || ar.t !== 'Resumo da análise' || !/^Dos \d+ .+ com faixa de referência, (\d+ (está|estão)|nenhum está) na referência/.test(ar.p)
+        || !/Desde a primeira medida, (melhorou|melhoraram) /.test(ar.p) || !/A maior variação foi d(o|a|os) .+: de .+ para .+ em \d+ (dias?|mês|meses|anos)\./.test(ar.p) || !ar.antes
+        || /\.\./.test(ar.p) || /Glicemia|Temp\.|Creat\./.test(ar.p) || /^Dos 1 /.test(ar.p)
+        || !ar.why || !/^Qual o risco (cardiometabólico|renal|cardiometabólico e renal) e o que priorizar\?$/.test(ar.whyT) || ar.linhas !== 1)
+      throw new Error('resumo da análise: ' + JSON.stringify(ar));
+    // momentos importantes (como no Finance): halo laranja só onde o tratamento mudou ou entrou um diagnóstico; sem o chip em cima;
+    // passar o mouse na bolinha mostra o cartão do momento junto dela (a data e o que aconteceu); sair, some
+    await ate(`document.querySelectorAll('#ovSvg [data-mom]').length > 0`, 8000, 'os momentos importantes no gráfico');
+    const mo = await ev(`(() => { const svg = document.getElementById('ovSvg'), plot = document.getElementById('ovPlot'), n0 = svg.querySelectorAll('[data-mom]').length,
+        c = svg.querySelector('[data-mom="0"]').getBoundingClientRect(), cx = c.left + c.width / 2, cy = c.top + c.height / 2;
+      plot.dispatchEvent(new MouseEvent('mousemove', { clientX: cx, clientY: cy, bubbles: true }));
+      const card = document.getElementById('gqMomC'), aberto = !card.hidden, itens = (card.querySelector('.cs-pop-x') || {}).textContent ? 1 : 0,
+        ver = [...card.querySelectorAll('button')].some((b) => b.textContent === 'Ver evolução'), pg = (card.querySelector('.cs-pop-pg span') || {}).textContent,
+        forte = svg.querySelector('[data-mom="0"]').getAttribute('fill-opacity'), cr = card.getBoundingClientRect(), perto = Math.abs(cr.left + cr.width / 2 - cx) < 140 || cr.left < cx;
+      plot.dispatchEvent(new MouseEvent('mouseleave', { bubbles: false })); plot.dispatchEvent(new Event('mouseleave'));
+      return { n0, aberto, itens, ver, pg, forte, perto, fechou: card.hidden, chip: !!document.getElementById('gqMom'), h: Math.round(svg.getBoundingClientRect().height),
+        pts: svg.querySelectorAll('circle[r="3"]').length, marca: document.querySelectorAll('#ovRanges button.mom').length }; })()`);
+    if (!(mo.n0 > 0 && mo.n0 < 8) || !mo.aberto || !mo.itens || !mo.ver || mo.pg !== '1 / ' + mo.n0 || mo.forte !== '0.38' || !mo.perto || !mo.fechou || mo.chip
+        || mo.h !== 240 || mo.pts !== 0 || !mo.marca) throw new Error('momentos importantes: ' + JSON.stringify(mo));
+    // as setas do cartão andam só pelos momentos do gráfico e o cartão fica (ele muda de lugar; o cursor não precisa ir junto);
+    // sair da bolinha fecha com uma folga (dá para chegar ao cartão); sair do gráfico fecha na hora
+    const sm = await ev(`(async () => { const svg = document.getElementById('ovSvg'), plot = document.getElementById('ovPlot'), card = document.getElementById('gqMomC'),
+        n0 = svg.querySelectorAll('[data-mom]').length, c = svg.querySelector('[data-mom="0"]').getBoundingClientRect(), r = plot.getBoundingClientRect(),
+        bola = { clientX: c.left + c.width / 2, clientY: c.top + c.height / 2, bubbles: true }, vazio = { clientX: r.right - 4, clientY: r.top + 4, bubbles: true },
+        espera = (ms) => new Promise((ok) => setTimeout(ok, ms)), pg = () => card.hidden ? 'fechado' : (card.querySelector('.cs-pop-pg span') || {}).textContent;
+      plot.dispatchEvent(new MouseEvent('mousemove', bola)); plot.dispatchEvent(new MouseEvent('mousemove', vazio));
+      const folga = pg(); await espera(350); const fechou = pg();
+      plot.dispatchEvent(new MouseEvent('mousemove', bola)); const lugar = card.style.left + card.style.top;
+      card.querySelector('.cs-pop-pg button:last-child').click(); const seta = pg(), parado = card.style.left + card.style.top === lugar;
+      plot.dispatchEvent(new MouseEvent('mousemove', vazio)); await espera(350); const fixo = pg();
+      plot.dispatchEvent(new Event('mouseleave')); return { n0, folga, fechou, seta, parado, fixo, saiu: pg() }; })()`);
+    if (sm.folga !== '1 / ' + sm.n0 || sm.fechou !== 'fechado' || sm.saiu !== 'fechado'
+        || (sm.n0 > 1 && (sm.seta !== '2 / ' + sm.n0 || !sm.parado || sm.fixo !== '2 / ' + sm.n0))) throw new Error('setas e folga do cartão do momento: ' + JSON.stringify(sm));
+    // a pergunta é do paciente inteiro (não de um sinal): o caso completo, sem o nome, e o pedido de avaliação integrada; só preenche
+    await ev(`document.getElementById('gqWhy').click(); 1`);
+    const aq = await ev(`(() => { const i = document.getElementById('biInput'), v = i.value, nm = document.getElementById('prName').textContent.trim();
+      i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); return { v, nm }; })()`);
+    const nomeNa = (txt, nm) => nm.split(/\s+/).filter((w) => w.length > 2).some((w) => new RegExp('(^|[^\\p{L}])' + w + '($|[^\\p{L}])', 'iu').test(txt));
+    if (!/^(Mulher|Homem|Paciente) de \d+ anos/.test(aq.v) || !/Diagnósticos registrados nas evoluções: /.test(aq.v) || !/Últimos (sinais vitais|exames): /.test(aq.v)
+        || !/Fora da faixa de referência: .+\. Faça uma avaliação integrada do caso: /.test(aq.v) || /^Por que|caiu \d/.test(aq.v) || !/intervalo de retorno\.$/.test(aq.v) || aq.v.length > 2000 || !aq.nm || nomeNa(aq.v, aq.nm))
+      throw new Error('a pergunta geral ao assistente: ' + JSON.stringify({ nm: aq.nm, n: aq.v.length, v: aq.v.slice(0, 400) }));
+    const r = await ev(`(() => { const g = document.querySelector('.pr-panel[data-panel=geral]');
+      return { abas: [...document.querySelectorAll('#prTabs [data-tab]')].map((b) => b.dataset.tab).join(), painelAnalise: !!document.querySelector('.pr-panel[data-panel=analise]'),
+               dentro: ['ovTop', 'gaTable', 'csSinais'].every((i) => g.contains(document.getElementById(i))) && !document.getElementById('gaFuSec'), vazioRepetido: !!document.getElementById('gaEmpty'),
+               titulo: !!document.querySelector('#ovcP-ana #ovAnaSec #ovTop') && !document.querySelector('#ovAnaSec > .ov-h') ? 'Análise' : 'fora da aba',
+               // saíram do Resumo os cards de sinais vitais e de exames (as Evoluções recentes e os laudos voltam como abas do painel)
+               sairam: ['ovTilesWrap', 'ovLabWrap', 'ovLabTiles', 'ovFeedSec', 'ovPanSec', 'ovDxSec'].filter((i) => document.getElementById(i)).join() }; })()`);
+    if (r.abas !== 'geral,atual,prescricoes' || r.painelAnalise || !r.dentro || r.vazioRepetido || r.titulo !== 'Análise' || r.sairam) throw new Error('o Resumo junto: ' + JSON.stringify(r));
+    // saíram os cartões de cima: "Faixa no período" e "Sinais e exames na referência" (a rosca e o Perguntar ao assistente)
+    if (await ev(`['gaCards', 'gaDonut', 'gaAsk', 'gaBars', 'gaSee'].some((i) => document.getElementById(i))`)) throw new Error('os cartões de cima ainda estão na página');
+    return 'a Análise (gráfico e tabela) na aba Análise do painel, sem os cartões de cima';
+  }],
+  ['o painel do Resumo como a Visão geral do Google Finance: Resumo clínico (pontos, diagnósticos, medicações e alergias), Análise, Evoluções, Exames, Consultas e Prescrições; 40 px em cima e embaixo; sem a aba Histórico', async () => {
+    await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&exemplo=1&tab=geral' });
+    await ate(`!document.getElementById('ovComp').hidden && document.querySelectorAll('#ovDx .ov-dxrow').length > 0`, 20000, 'o painel com os diagnósticos');
+    const aba = (t) => ev(`(() => { document.querySelector('#ovcTabs [data-ct=${t}]').click(); return [...document.querySelectorAll('#ovComp .ovc-panel')].filter((p) => !p.hidden).map((p) => p.dataset.cp).join(); })()`);
+    // no Resumo clínico, a lista dos Diagnósticos: (o código |) o nome | a linha de baixo
+    const lista = (sel) => `[...document.querySelectorAll('${sel} .ov-dxrow')].map((x) => [x.querySelector('.ov-dxcode'), x.querySelector('.ov-dxdesc b'), x.querySelector('.ov-dxdesc small')].filter(Boolean).map((y) => y.textContent).join('|'))`;
+    const p = await ev(`(() => ({
+      abas: [...document.querySelectorAll('#ovcTabs [role=tab]')].map((b) => b.textContent + (b.getAttribute('aria-selected') === 'true' ? '*' : '')).join(),
+      visiveis: [...document.querySelectorAll('#ovComp .ovc-panel')].filter((x) => !x.hidden).map((x) => x.dataset.cp).join(),
+      semHistorico: !document.querySelector('.pr-panel[data-panel=consultas]') && !document.querySelector('#prTabs [data-tab=consultas]'),
+      dx: ${lista('#ovDx')}, linha: (() => { const x = document.querySelector('#ovDx .ov-dxrow').getBoundingClientRect(); return Math.round(x.height); })(),
+      acessos: !document.getElementById('prAccess') && !document.getElementById('prAccessList') }))()`);   // o registro de acessos saiu da tela (o servidor continua registrando)
+    if (p.abas !== 'Resumo*,Análise,Evoluções,Consultas,Prescrições' || p.visiveis !== 'sum' || !p.semHistorico || !p.acessos
+        || !p.dx.length || !p.dx.every((x) => /^[^|]+\|[A-Z]\d{2}(\.\d+)? · Última vez em \d/.test(x)) || p.linha < 60) throw new Error('painel: ' + JSON.stringify(p));
+    // alinhado: os nomes, o texto dos pontos, o cartão e os títulos começam na mesma borda; o bloco dos pontos e as linhas vão até a mesma borda direita
+    const al = await ev(`(() => { const P = document.getElementById('ovcP-sum'), b = P.getBoundingClientRect(), x = (e) => Math.round(e.getBoundingClientRect().left - b.left), r = (e) => Math.round(b.right - e.getBoundingClientRect().right);
+      const nomes = [...P.querySelectorAll('#ovcSumGrid .ov-dxdesc b')].filter((n) => n.getClientRects().length).map(x);
+      return { nomes: [...new Set(nomes)], texto: x(document.getElementById('ovcPP')), titulos: [...new Set([...P.querySelectorAll('.ovc-st')].map(x))],
+               dir: [...new Set([P.querySelector('#ovDx .ov-dxrow'), P.querySelector('.pr-sumcol .ov-dxrow')].map(r))] }; })()`);
+    if (al.nomes.join() !== '0' || al.texto !== 0 || al.titulos.join() !== '0' || al.dir.join() !== '0') throw new Error('alinhamento do Resumo clínico: ' + JSON.stringify(al));
+    // Resumo clínico em seções com título: Diagnósticos, Medicações em uso, Alergias (sem Problemas ativos e sem Evoluções recentes)
+    const secoes = await ev(`[...document.querySelectorAll('#ovcSumGrid .ovc-st')].map((t) => t.textContent).join()`);
+    if (secoes !== 'Diagnósticos,Medicações em uso,Alergias' || await ev(`!!document.querySelector('#ovcSumGrid [data-k=problems]') || !!document.querySelector('#sumAddTipo option[value=problems]')`)) throw new Error('as seções do Resumo clínico: ' + secoes);
+    // nas três abas com texto no alto: 40 px da barra de abas ao título e 40 px do último item até a linha; no Resumo clínico a linha
+    // fica logo abaixo do parágrafo, e o cartão começa 40 px depois dela
+    const esp = await ev(`(() => { const R = (x) => x.getBoundingClientRect(), era = document.querySelector('#ovcTabs .ovc-tab[aria-selected=true]').dataset.ct, o = {};
+      for (const [t, id, ult] of [['sum', 'ovcPersp', 'ovcPP'], ['ana', 'anaRes', 'gqWhy'], ['evo', 'evoRes', 'evoResP']]) {
+        document.querySelector('#ovcTabs [data-ct=' + t + ']').click();
+        const b = document.getElementById(id), u = document.getElementById(ult), barra = R(document.querySelector('.ovc-tabw')).bottom;
+        const lb = t === 'ana' ? document.getElementById('hxExames') : b, lu = t === 'ana' ? lb.querySelector('.ex-gb') : u;   // na Análise a linha fica embaixo do Anexar exame
+        const linha = t === 'sum' ? R(u).bottom : R(lb).bottom, fimU = t === 'sum' ? R(u).bottom - parseFloat(getComputedStyle(u).paddingBottom) - parseFloat(getComputedStyle(u).borderBottomWidth) : R(lu).bottom;
+        o[t] = [Math.round(R(b.querySelector('.ovc-ptt')).top - barra), Math.round(linha - fimU - 1)];
+        if (t === 'sum') o.cartao = Math.round(R(document.querySelector('#ovcPan .gpan-cols')).top - linha);   // as colunas dos pontos, 40 depois da linha
+      }
+      document.querySelector('#ovcTabs [data-ct=' + era + ']').click(); return o; })()`);
+    if (['sum', 'ana', 'evo'].some((t) => esp[t][0] !== 40 || esp[t][1] !== 40) || esp.cartao !== 40) throw new Error('os espaços das abas (título, linha): ' + JSON.stringify(esp));
+    // os 3 botões do topo: o texto e até 52 px de cada lado; a pílula na aba escolhida
+    const nav = await ev(`(() => { const n = document.getElementById('prTabs'), on = n.querySelector('button.on').getBoundingClientRect(), pl = n.querySelector('.pr-nav-pill').getBoundingClientRect();
+      return { pads: [...n.querySelectorAll('button')].map((b) => { const r = document.createRange(); r.selectNodeContents(b); const t = r.getBoundingClientRect(), x = b.getBoundingClientRect(); return [Math.round(t.left - x.left), Math.round(x.right - t.right)]; }),
+        pilula: Math.abs(pl.left - on.left) < 1 && Math.abs(pl.width - on.width) < 1, cabe: n.getBoundingClientRect().width <= n.parentElement.getBoundingClientRect().width + 0.5 }; })()`);
+    if (!nav.pilula || !nav.cabe || nav.pads.some(([l, r]) => l > 52 || r > 52 || l < 6 || Math.abs(l - r) > 1)) throw new Error('os botões do topo: ' + JSON.stringify(nav));
+    const topo1 = await ev(`Math.round(parseFloat(getComputedStyle(document.querySelector('#ovcSumGrid .ovc-st')).paddingTop))`);
+    // a linha embaixo dos pontos, 40 px depois das colunas, e Diagnósticos 40 px abaixo dela
+    const lp = await ev(`(() => { const R = (x) => x.getBoundingClientRect(), p = document.getElementById('ovcPersp'); return [getComputedStyle(p).borderBottomWidth,
+      Math.round(R(p).bottom - 1 - R(document.querySelector('#ovcPan .gpan-cols')).bottom)]; })()`);
+    if (topo1 !== 40 || lp[0] !== '1px' || lp[1] !== 40) throw new Error('a linha entre os pontos e Diagnósticos: ' + JSON.stringify([topo1, lp]));
+    // os pontos ficam sempre abertos (sem a seta de abrir/fechar): o título, o texto, a barra (na referência / melhorando / fora) e as duas colunas
+    const a = await ev(`(() => ({ vis: !document.getElementById('ovcPersp').hidden, aberto: !document.getElementById('ovcPan').hidden && document.getElementById('ovcPan').getClientRects().length > 0,
+      seta: !!document.querySelector('#ovcPersp button, #ovcPersp .ovc-chev'), titulo: document.querySelector('#ovcPersp .ovc-ptt').textContent,
+      texto: document.getElementById('ovcPP').textContent, barra: document.querySelectorAll('#ovcBar, #ovcRef').length,
+      pos: document.querySelectorAll('#ovPanPos li').length, neg: document.querySelectorAll('#ovPanNeg li').length }))()`);
+    if (!a.vis || !a.aberto || a.seta || a.titulo !== 'Pontos positivos e de atenção' || !/^Na última medida de .+ na referência/.test(a.texto) || a.barra !== 0
+        || !a.pos || !a.neg) throw new Error('pontos: ' + JSON.stringify(a));
+    // a linha dos pontos fica só na aba Resumo clínico
+    if (await ev(`(() => { document.querySelector('#ovcTabs [data-ct=cs]').click(); const n = document.getElementById('ovcPersp').getClientRects().length; document.querySelector('#ovcTabs [data-ct=sum]').click(); return n || !document.querySelector('#ovcP-sum #ovcPersp'); })()`)) throw new Error('a linha dos pontos aparece fora do Resumo clínico');
+    // as setas do teclado trocam de aba (e o foco vai junto)
+    await ev(`(() => { const b = document.querySelector('#ovcTabs [data-ct=sum]'); b.focus(); b.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); return 1; })()`);
+    const k1 = await ev(`document.activeElement.dataset.ct + ':' + document.querySelector('#ovcTabs .on').dataset.ct`);
+    await ev(`document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); 1`);
+    const k2 = await ev(`document.activeElement.dataset.ct + ':' + [...document.querySelectorAll('#ovComp .ovc-panel')].filter((x) => !x.hidden).map((x) => x.dataset.cp).join()`);
+    if (k1 !== 'ana:ana' || k2 !== 'med:med') throw new Error('teclado nas abas: ' + k1 + ' / ' + k2);
+    // Resumo clínico: o tipo à esquerda e o item à direita; o × tira, o "+ Adicionar" põe (salvos no paciente)
+    if (await aba('sum') !== 'sum') throw new Error('a aba Resumo clínico não abriu sozinha');
+    const rs = await ev(lista('#ovcP-sum .pr-sumcol'));      // só o nome: o tipo é o título da seção
+    if (!rs.join(';').startsWith('Losartana 50 mg 12/12h') || !rs.join(';').endsWith('Dipirona;Penicilina') || !rs.includes('Losartana 50 mg 12/12h')
+        || await ev(`[...document.querySelectorAll('#ovcP-sum .pr-sumcol .ov-dxrow')].some((x) => !x.querySelector('.ovc-x') || x.querySelector('small'))`)) throw new Error('Resumo clínico: ' + rs.join('; '));
+    const alergias = `[...document.querySelectorAll('.pr-sumcol[data-k=allergies] .ov-dxdesc b')].map((b) => b.textContent).join()`;
+    await ev(`document.querySelector('.pr-sumcol[data-k=allergies] .ov-dxrow:last-child .ovc-x').click(); 1`);
+    await ate(`${alergias} === 'Dipirona'`, 5000, 'tirar a Penicilina');
+    if (!await ev(`[...document.querySelectorAll('.pr-desfaz')].some((t) => /Alergia removida: Penicilina/.test(t.textContent) && /Desfazer/.test(t.textContent))`))
+      throw new Error('tirar a alergia não mostrou o aviso com Desfazer');
+    await sleep(800); if (await ev(alergias) !== 'Dipirona') throw new Error('o servidor não salvou a remoção');   // (se falhar, a página volta o item)
+    await ev(`document.getElementById('sumAddBtn').click(); 1`);
+    if (await ev(`document.getElementById('sumAdd').hidden || document.activeElement.id !== 'sumAddIn' || document.getElementById('sumAddBtn').getAttribute('aria-expanded') !== 'true'`))
+      throw new Error('o "+ Adicionar" não abriu a linha com o cursor no nome');
+    await ev(`(() => { const t = document.getElementById('sumAddTipo'); t.value = 'allergies'; t.dispatchEvent(new Event('change')); const i = document.getElementById('sumAddIn'); i.value = 'Penicilina';
+      i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); return 1; })()`);
+    await ate(`${alergias} === 'Dipirona,Penicilina' && document.getElementById('prAllergyTxt').textContent === 'Alergias: Dipirona, Penicilina' && !document.getElementById('sumAdd').hidden`, 5000, 'pôr a Penicilina de volta (a linha continua aberta)');
+    await sleep(800); if (await ev(alergias) !== 'Dipirona,Penicilina') throw new Error('o servidor não salvou a alergia nova');
+    await ev(`document.getElementById('sumAddIn').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); 1`);
+    if (await ev(`!document.getElementById('sumAdd').hidden || document.getElementById('sumAddBtn').getAttribute('aria-expanded') !== 'false'`)) throw new Error('o Esc não fechou o "+ Adicionar"');
+    // Exames (a aba saiu): o "Anexar exame" e a lista dos laudos anexados (Abrir, Ler valores, Excluir) na Análise, antes do gráfico
+    await aba('ana');
+    await ate(`!!document.querySelector('#ovcP-ana #hxExames #ovFiles') && document.querySelectorAll('#ovFiles .gx-row').length > 0 && document.getElementById('hxExames').getClientRects().length > 0`, 10000, 'os laudos na Análise');
+    const acoes = await ev(`[...document.querySelectorAll('#ovFiles .gx-row')[0].querySelectorAll('.gx-acts > *')].map((b) => b.textContent).join()`);
+    if (acoes !== 'Abrir,Ler valores,Excluir') throw new Error('ações do laudo: ' + acoes);
+    const so = await ev(`(() => { const p = document.getElementById('ovcP-ana'), hx = document.getElementById('hxExames'); return { semAba: !document.querySelector('#ovcTabs [data-ct=ex]') && !document.getElementById('ovcP-ex'),
+      anexar: !!hx.querySelector('[data-attach]'), antes: hx.parentElement === p && !!(hx.compareDocumentPosition(document.getElementById('ovAnaSec')) & Node.DOCUMENT_POSITION_FOLLOWING),
+      gap: Math.round(document.getElementById('ovAnaSec').getBoundingClientRect().top - hx.getBoundingClientRect().bottom) }; })()`);
+    if (!so.semAba || !so.anexar || !so.antes || so.gap !== 40) throw new Error('os exames na Análise, antes do gráfico: ' + JSON.stringify(so));
+    // Evoluções: os sinais e exames por consulta (o gráfico de barras na largura da aba e a tabela), que saíram da Análise
+    if (await aba('evo') !== 'evo') throw new Error('a aba Evoluções não abriu sozinha');
+    // no alto, o resumo das evoluções (como o parágrafo dos pontos), calculado aqui
+    const er = await ev(`(() => ({ vis: document.getElementById('evoRes').getClientRects().length > 0, t: document.querySelector('#evoRes .ovc-ptt').textContent,
+      p: document.getElementById('evoResP').textContent, antes: !!(document.getElementById('evoRes').compareDocumentPosition(document.getElementById('csSinais')) & Node.DOCUMENT_POSITION_FOLLOWING) }))()`);
+    if (!er.vis || er.t !== 'Resumo das evoluções' || !/^\d+ evoluções de [a-z]{3} \d{4} a [a-z]{3} \d{4}; a última em \d{1,2} [a-z]{3} \d{4}/.test(er.p)
+        || !/Diagnósticos mais registrados: .+ em \d+ evoluç(ão|ões)/.test(er.p) || /\)\s*\(/.test(er.p) || !/No período, a pressão arterial foi de \d+\/\d+ para \d+\/\d+ mmHg/.test(er.p) || !er.antes) throw new Error('resumo das evoluções: ' + JSON.stringify(er));
+    await ate(`document.querySelectorAll('#csSvg rect').length > 0 && document.getElementById('csSvg').getBoundingClientRect().width > 200`, 5000, 'o gráfico das consultas na aba');
+    const cs = await ev(`(() => ({ aqui: !!document.querySelector('#ovcP-evo #csSinais #csChart') && !document.querySelector('#ovAnaSec #csSinais'),
+      linhas: document.querySelectorAll('#csTable tr').length, larg: Math.round(document.getElementById('csSvg').getBoundingClientRect().width),
+      painel: Math.round(document.getElementById('ovcP-evo').getBoundingClientRect().width),
+      vb: Math.round(document.getElementById('csSvg').viewBox.baseVal.width), cw: document.getElementById('csSvg').clientWidth }))()`);
+    // desenhado na largura da aba (não na de reserva, 540, de quando a aba estava escondida)
+    if (!cs.aqui || cs.linhas < 2 || cs.larg < cs.painel - 80 || Math.abs(cs.vb - cs.cw) > 1) throw new Error('Evoluções: ' + JSON.stringify(cs));
+    // Medicamentos: o histórico de receitas (saiu da aba Prescrições)
+    if (await aba('med') !== 'med') throw new Error('a aba Prescrições não abriu sozinha');
+    const md = await ev(`(() => ({ aqui: !!document.querySelector('#ovcP-med #rhBox #rhList'), visivel: document.getElementById('rhBox').getClientRects().length > 0,
+      naPresc: !!document.querySelector('.pr-panel[data-panel=prescricoes] #rhBox'), cabecalho: !!document.querySelector('#rhBox .pr-histbar') || !!document.getElementById('rhQ') }))()`);
+    if (!md.aqui || !md.visivel || md.naPresc || md.cabecalho) throw new Error('Prescrições: ' + JSON.stringify(md));
+    // duas tabelas: os medicamentos em uso (os do resumo clínico, com a posologia da última receita) e o histórico
+    const t2 = await ev(`(() => ({ r1: (document.querySelector('#rmList .pr-tgroup') || {}).textContent, r2: (document.querySelector('#rhList .pr-tgroup') || {}).textContent,
+      uso: [...document.querySelectorAll('#rmList .rh-item')].map((r) => r.querySelector('.pr-tdate').firstChild.textContent + '|' + r.querySelector('.rh-pos').textContent),
+      meds: document.querySelectorAll('.pr-sumcol[data-k=medications] .ov-sumrow:not(.none)').length }))()`);
+    if (t2.r1 !== 'Medicamentos em uso' || t2.r2 !== 'Histórico' || t2.uso.length !== t2.meds || !t2.uso.length || !t2.uso.some((x) => /^Losartana 50 mg\|.*12\/12/.test(x)))
+      throw new Error('as duas tabelas das Prescrições: ' + JSON.stringify(t2));
+    // Consultas: a linha de uma evolução finalizada abre o cartão dela
+    await aba('cs');
+    await ev(`document.querySelector('#ovcP-cs #prVisits .pr-trow[aria-expanded]').click(); 1`);
+    await ate(`!!document.querySelector('#ovcP-cs #prVisits .pr-item.hc') && !document.getElementById('ovcP-cs').hidden`, 5000, 'o cartão da evolução em Consultas');
+    if (await ev(`!!document.getElementById('ovFeed') || [...document.querySelectorAll('#ovcSumGrid .ovc-st')].some((t) => t.textContent === 'Evoluções recentes')`)) throw new Error('a lista Evoluções recentes ainda está no Resumo clínico');
+    // Consultas: a lista (com a busca) que era do Histórico
+    if (await ev(`document.querySelectorAll('#ovcP-cs #prVisits .pr-trow').length < 2 || !!document.querySelector('#ovcP-cs #prHistQ')`)) throw new Error('a lista de Consultas não está na aba (ou a busca voltou)');
+    // as setas das abas: só quando as abas não cabem, e só do lado onde há mais abas
+    const s2 = await ev(`(() => { const b = document.getElementById('ovcTabs'); return { cabe: b.scrollWidth <= b.clientWidth + 1, l: !document.getElementById('ovcScL').hidden, r: !document.getElementById('ovcScR').hidden, x: b.scrollLeft, max: b.scrollWidth - b.clientWidth }; })()`);
+    if (s2.cabe ? (s2.l || s2.r) : ((s2.l !== (s2.x > 1)) || (s2.r !== (s2.x < s2.max - 1)))) throw new Error('setas das abas: ' + JSON.stringify(s2));
+    return `${p.dx.length} diagnósticos, pontos (${a.pos} positivos, ${a.neg} de atenção), ${rs.length} itens do resumo, laudos (${acoes}); tirar/pôr alergia salvo; teclado e setas${s2.cabe ? ' (as abas cabem)' : ''}`;
+  }],
   ['a paciente de exemplo continua com a demonstração', async () => {
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });
     await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && !b.disabled)`, 20000, 'gravador');

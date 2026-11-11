@@ -5,7 +5,7 @@
 //
 // Rode num preview SÓ DELE (outra porta): o teste limpa os dados do preview a cada cenário.
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -97,9 +97,9 @@ const sg = (nome) => `[...document.querySelectorAll('.rxc-linha.ia')].find((r) =
 const cursor = (sel, fim) => ev(`(() => { const c = ${sel}; c.focus(); const r = document.createRange(); r.selectNodeContents(c); r.collapse(${!fim});
   const s = getSelection(); s.removeAllRanges(); s.addRange(r); return 1; })()`);
 const emUso = async () => (await srv('/patients')).patients.find((p) => p.id === 9001).medications.split('\n');
+// as consultas ficam na aba Consultas do painel do Resumo (a aba Histórico do prontuário saiu)
+const abreConsultas = `(() => { document.querySelector('#prTabs [data-tab=geral]').click(); document.querySelector('#ovcTabs [data-ct=cs]').click(); return 1; })()`;
 // Histórico (visual da tabela de Consultas, uma linha por remédio): ação da receita i (no cabeçalho dela)
-const acaoRh = (t, i = 0) => ev(`(() => { [...[...document.querySelectorAll('#rhList .rh-head')][${i}].querySelectorAll('.rh-acts button')]
-  .find((b) => b.textContent === ${JSON.stringify(t)}).click(); return 1; })()`);
 // "Usar nesta consulta" na linha do remédio (na i-ésima linha com esse nome)
 const usaRh = (nome) => ev(`(() => { [...document.querySelectorAll('#rhList .rh-item')].find((r) => r.querySelector('.pr-tdate').textContent.startsWith(${JSON.stringify(nome)}))
   .querySelector('button').click(); return 1; })()`);
@@ -111,9 +111,25 @@ async function evolucao(txt) {
   await ate(`/^Salvo às/.test(document.getElementById('prStatus').textContent)`, 10000, 'evolução salva');
 }
 const notas = (st) => `fetch('/prontuario/receitas?patient_id=9001').then((r) => r.json()).then((j) => j.receitas.filter((r) => r.status === ${JSON.stringify(st)}).map((r) => r.note_id))`;
-const semConsulta = `[...document.querySelectorAll('#rhList .rh-hs')].some((t) => t.textContent.includes('Sem consulta'))`;
+const semConsulta = `[...document.querySelectorAll('#rhList .rh-item')].some((t) => t.title.includes('Sem consulta'))`;   // a consulta fica na dica da linha
 
 const cenarios = [
+  ['a dose do cadastro só casa com a da receita quando é a mesma (15 mg não é 5 mg; espaços e milhar não contam)', async () => {
+    const html = readFileSync(new URL('../../web/opendoctor-agenda.html', import.meta.url), 'utf8');
+    const ini = html.indexOf('      function rxDoseIgual(linha, dose) {'), fim = html.indexOf('\n      }\n', ini) + 8;
+    if (ini < 0 || fim < ini) throw new Error('rxDoseIgual não achado na página');
+    const norm = (v) => (v || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const igual = new Function('norm', html.slice(ini, fim) + '; return rxDoseIgual;')(norm);
+    const casos = [['Losartana 50 mg 12/12h', '50 mg', true], ['Escitalopram 15 mg', '5 mg', false], ['Clonazepam 0,5 mg', '5 mg', false],
+      ['Levotiroxina 150 mcg', '50 mcg', false], ['Metformina 1500 mg 2x/dia', '500 mg', false], ['Dipirona 1 gota', '1 g', false],
+      ['Dipirona 500 mg / ml', '500 mg/ml', true], ['Vitamina D 50 000 UI', '50000 UI', true], ['Losartana + HCTZ 50+12,5 mg', '50 + 12,5 mg', true],
+      ['Losartana 50mg', '50 mg', true], ['Atorvastatina 20 mg', '2 mg', false], ['Metformina 850 mg', '', true],
+      ['Losartana 50 mg, 1 cp 12/12h', '50 mg', true], ['Dipirona 1 g.', '1 g', true], ['Metformina 1.000 mg', '1000 mg', true],
+      ['Levotiroxina 0.125 mg', '125 mg', false], ['Clonazepam 2,5 mg', '2 mg', false]];
+    const errados = casos.filter(([l, d, esperado]) => igual(l, d) !== esperado);
+    if (errados.length) throw new Error('doses: ' + JSON.stringify(errados));
+    return casos.length + ' casos';
+  }],
   ['renovar o uso contínuo da última receita em um clique', async () => {
     await abre();
     const faixa = await ev(`[...document.querySelectorAll('.rxc-linha.renova .rxc-linha-t')].map((t) => t.textContent).join(' · ')`);
@@ -265,22 +281,14 @@ const cenarios = [
     certo(f.length === 2 && f[0].startsWith('Receituário de controle especial') && id === 2, 'folhas: ' + f.join('|'));
     return '2 vias de controle especial';
   }],
-  ['cancelar uma receita emitida, com motivo', async () => {
-    await abre(); resposta = 'Dose errada';
-    await acaoRh('Cancelar receita');
-    await ate(`[...document.querySelectorAll('#rhList .rh-head')].some((h) => h.innerText.includes('Motivo: Dose errada') && h.querySelector('.pr-badge').textContent === 'Cancelada')`, 6000, 'cancelada na lista');
-    certo((await daApi()).some((r) => r[1] === 'cancelada' && r[3] === 'Dose errada'), 'cancelada no servidor');
-    return 'cancelada com o motivo';
-  }],
-  ['2ª via com a data da consulta e a marca', async () => {
-    await abre();
-    const em = new Date((await srv('/prontuario/receitas?patient_id=9001')).receitas.find((r) => r.status === 'emitida').emitida_em);
-    const data = [em.getDate(), em.getMonth() + 1].map((x) => String(x).padStart(2, '0')).join('/') + '/' + em.getFullYear();
-    await ev(`(() => { window.__folhas = null; return 1; })()`); await acaoRh('Imprimir 2ª via');
-    await ate(`window.__folhas !== null`, 5000, 'folha da 2ª via');
-    const t = await ev(`document.getElementById('rxPrint').innerText`);
-    certo(t.includes(data) && t.includes('2ª via, impressa em'), 'data e marca: ' + t.slice(0, 200));
-    return 'data ' + data + ' e marca de 2ª via';
+  ['histórico de receitas em uma lista só: a data embaixo do remédio, sem o cabeçalho de cada receita, sem Cancelar e sem 2ª via', async () => {
+    await abre(); await ate(n('#rhList .rh-item') + ' > 0', 5000, 'histórico');
+    const h = await ev(`(() => { const L = document.getElementById('rhList'), itens = [...L.querySelectorAll('.rh-item')];
+      return { cab: L.querySelectorAll('.rh-head, .rh-acts').length, botoes: [...L.querySelectorAll('button')].map((b) => b.textContent).filter((t) => /Cancelar|2ª via/.test(t)).length,
+               datas: itens.every((r) => /^\\d{1,2} [a-z]{3} \\d{4}/.test((r.querySelector('.pr-tdate small') || {}).textContent || '')),
+               dica: itens.every((r) => /Receita/.test(r.title)), rx: itens.every((r) => r.dataset.rx) }; })()`);
+    certo(!h.cab && !h.botoes && h.datas && h.dica && h.rx, 'lista única: ' + JSON.stringify(h));
+    return 'uma linha por remédio, com a data da receita; sem Cancelar e sem 2ª via';
   }],
   ['recarregar no meio: o rascunho volta igual', async () => {
     await abre(false); await item('losartana 50', '1 comprimido de 12/12 h, uso contínuo');
@@ -291,9 +299,9 @@ const cenarios = [
     const depois = await ev(linhas); certo(depois.join() === antes.join(), 'igual: ' + depois.join('; '));
     return depois.map((l) => l.split(' | ')[0]).join(', ') + ' voltaram';
   }],
-  ['receitas emitidas aparecem no card da consulta no Histórico', async () => {
+  ['receitas emitidas aparecem no card da consulta (Resumo › Consultas)', async () => {
     await abre();
-    await ev(`document.querySelector('#prTabs [data-tab=consultas]').click()`); await sleep(500);
+    await ev(abreConsultas); await sleep(500);
     await ev(`(() => { const r = [...document.querySelectorAll('.pr-trow')].find((x) => x.offsetParent !== null && /Retorno/.test(x.innerText)); r.click(); return 1; })()`);
     await ate(`[...document.querySelectorAll('.pr-item.hc .hc-sp')].some((x) => /Receita simples · emitida/.test(x.textContent))`, 6000, 'receita no card');
     return 'seção "Receita simples · emitida em …" no card';
@@ -304,12 +312,12 @@ const cenarios = [
     certo((await ev(notas('emitida'))).join() === '', 'emitida sem consulta: a evolução ainda não existe');
     await evolucao('Renovação das receitas de uso contínuo.');
     await ate(`${notas('emitida')}.then((n) => n.length === 1 && n[0] > 0)`, 8000, 'a receita ligada à evolução salva');
-    await ate(`!${semConsulta} && [...document.querySelectorAll('#rhList .rh-hs')].some((t) => t.textContent.includes('Evolução avulsa'))`, 5000,
+    await ate(`!${semConsulta} && [...document.querySelectorAll('#rhList .rh-item')].some((t) => t.title.includes('Evolução avulsa'))`, 5000,
       'o Histórico de receitas diz a evolução, não "Sem consulta"');
     // outra vez no prontuário (pela lista de Pacientes): a evolução de antes, com a receita, no card e no PDF
     await ev(`window.__openProntuario({ patient_id: 9001, patient: 'Maria Silva', from: 'pacientes' })`);
-    await ate(`[...document.querySelectorAll('#prVisits .pr-trow[aria-expanded]')].length === 1`, 8000, 'a evolução de antes no Histórico');
-    await ev(`document.querySelector('#prTabs [data-tab=consultas]').click()`); await sleep(300);
+    await ate(`[...document.querySelectorAll('#prVisits .pr-trow[aria-expanded]')].length === 1`, 8000, 'a evolução de antes nas Consultas');
+    await ev(abreConsultas); await sleep(300);
     await ev(`document.querySelector('#prVisits .pr-trow[aria-expanded]').click()`);
     await ate(`[...document.querySelectorAll('.pr-item.hc .hc-sp')].some((x) => /Receita simples · emitida/.test(x.textContent))`, 6000, 'receita no card');
     await ev(`(() => { [...document.querySelectorAll('.pr-item.hc')].forEach((c) => c.remove()); document.getElementById('prExport').click(); return 1; })()`);
@@ -361,20 +369,24 @@ const cenarios = [
   }],
   ['histórico aparece mesmo sem receitas, avisando que ainda não há', async () => {
     await abre(false);
-    certo(await ev(`!document.getElementById('rhBox').hidden && document.getElementById('rhList').innerText.includes('Nenhuma receita emitida para este paciente ainda')`),
+    await ev(`(() => { document.querySelector('#prTabs [data-tab=geral]').click(); document.querySelector('#ovcTabs [data-ct=med]').click(); return 1; })()`);   // Resumo › Prescrições
+    certo(await ev(`!document.getElementById('rhBox').hidden && document.getElementById('rhBox').getClientRects().length > 0 && document.getElementById('rhList').innerText.includes('Nenhuma receita emitida para este paciente ainda')`),
       'o Histórico fica à vista, vazio');
-    certo(await ev(`document.getElementById('rhQ').hidden`), 'sem a busca enquanto não há receita');
+    certo(await ev(`!document.querySelector('#rhBox .pr-histbar') && !document.getElementById('rhQ')`), 'sem o título, a contagem e a busca');
     return 'Histórico à vista, com o aviso de que ainda não há receita';
   }],
-  ['histórico de receitas: busca por remédio e escolha dos itens', async () => {
+  ['histórico de receitas: escolha dos itens (sem título, contagem e busca)', async () => {
     await abre(); await ate(n('#rhList .rh-item') + ' > 0', 5000, 'histórico');
-    certo(await ev(`document.querySelector('#rhBox .gh-t').textContent === 'Histórico' && !document.getElementById('rtBox')`), 'um cartão só, Histórico');
-    const bh = (t) => ev(`(() => { const q = document.getElementById('rhQ'); q.value = ${JSON.stringify(t)}; q.dispatchEvent(new Event('input', { bubbles: true }));
-      return document.querySelectorAll('#rhList .rh-item').length; })()`);
-    certo(await bh('parac') === 1 && await ev(n('#rhList .rh-head')) === 1, 'a busca acha só a linha do paracetamol, com a receita dela');
-    certo(await bh('xyz') === 0 && (await ev(`document.getElementById('rhList').innerText`)).includes('Nenhuma receita'), 'sem resultado avisa');
-    await bh('');
-    await usaRh('Losartana'); await usaRh('Atorvastatina'); await salvo();     // a escolha é linha a linha
+    certo(await ev(`!document.querySelector('#rhBox .gh-t') && !document.getElementById('rhQ') && !document.getElementById('rtBox')`), 'só a tabela, sem o cabeçalho');
+    certo(await ev(`document.querySelector('#rmList .pr-tgroup').textContent === 'Medicamentos em uso' && document.querySelector('#rhList .pr-tgroup').textContent === 'Histórico'`),
+      'duas tabelas: Medicamentos em uso e Histórico');
+    // o histórico fica no Resumo, na aba Medicamentos; o "Usar nesta consulta" de lá põe o remédio na receita e abre a aba Prescrições
+    certo(await ev(`!!document.querySelector('#ovcP-med #rhBox') && !document.querySelector('.pr-panel[data-panel=prescricoes] #rhBox')`), 'o histórico no Resumo › Prescrições');
+    await ev(`(() => { document.querySelector('#prTabs [data-tab=geral]').click(); document.querySelector('#ovcTabs [data-ct=med]').click(); return 1; })()`);
+    certo(await ev(`document.getElementById('rhBox').getClientRects().length > 0`), 'o histórico à vista na aba Prescrições do painel');
+    await usaRh('Losartana');
+    certo(await ev(`document.getElementById('prMain').dataset.tab === 'prescricoes'`), 'o "Usar nesta consulta" abre a aba Prescrições');
+    await usaRh('Atorvastatina'); await salvo();     // a escolha é linha a linha
     const l = (await ev(linhas)).map((x) => x.split(' | ')[0]).join(', ');
     certo(l === 'Losartana 50 mg, Atorvastatina 20 mg', 'foram só os escolhidos: ' + l);
     certo(await ev(`[...document.querySelectorAll('#rhList .rh-item')].filter((r) => r.innerText.includes('Na receita')).length`) >= 2, 'as linhas viram "Na receita"');
