@@ -1308,7 +1308,7 @@ const cenarios = [
     certo(t.ana && t.ana.sub === '' && t.ana.tags === 0 && t.ana.ult === 'ÚltimaNenhuma consulta' && t.ana.num === 'Consultas|Nenhuma consulta',
           'sem consultas (e sem idade): a linha de baixo vazia; a última e o número com "Nenhuma consulta": ' + JSON.stringify(t.ana));
     certo(t.sits === 0, 'ainda há selo de situação');
-    const alto = await ev(`(() => { const h = document.querySelector('.pt-head'), st = document.querySelector('#ptList .pt-linha'), b = document.getElementById('ptNew');
+    const alto = await ev(`(() => { const h = document.querySelector('.pt-head'), st = document.querySelector('#ptList .pt-lista'), b = document.getElementById('ptNew');   // a lista com a linha em cima
       return { ids: [...h.querySelectorAll('.hd-actions .hd-btn')].map((x) => x.id).join(), hd: b.classList.contains('hd-btn'), img: b.querySelector('img').getAttribute('src'),
                label: b.getAttribute('aria-label'), pop: b.getAttribute('aria-controls') + '|' + b.getAttribute('aria-expanded') + '|' + b.getAttribute('aria-haspopup'), velho: document.querySelectorAll('.pt-tools, .pt-acao').length,
                vao: Math.round(st.getBoundingClientRect().top - h.getBoundingClientRect().bottom) }; })()`);

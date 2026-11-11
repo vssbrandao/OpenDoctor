@@ -1730,7 +1730,7 @@
        (idade) | o número de consultas | a última consulta (as duas em duas linhas, como o nome e a idade), as 3 da mesma
        largura | ⋯;
        18 px em cima e embaixo, 24 entre as colunas, a divisória clara dentro da margem */
-    .pt-lista{margin-top:32px;display:flex;flex-direction:column}   /* sem os números de cima: 32 abaixo do título */
+    .pt-lista{margin-top:32px;display:flex;flex-direction:column;border-top:1px solid var(--sb-border)}   /* 32 abaixo do título, com a linha em cima */
     .pt-linha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 32px;align-items:center;gap:24px;padding:18px 0;
       border-bottom:1px solid var(--sb-border);cursor:pointer;font-family:var(--disp)}
     .pt-linha:focus-visible{outline:2px solid #0B57D0;outline-offset:2px;border-radius:8px}
@@ -9061,7 +9061,7 @@
       function recente(p) { return !!(p.notes && p.last) && (Date.now() - new Date(p.last).getTime()) / 864e5 <= 30; }
       var MAIS = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.5" cy="8" r="1.25" fill="currentColor"/></svg>';
       function render() {
-        var rows = all.slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'pt-BR'); });
+        var rows = all.slice().sort(function (a, b) { return (b.example ? 1 : 0) - (a.example ? 1 : 0) || a.name.localeCompare(b.name, 'pt-BR'); });   // a de exemplo primeiro
         list.innerHTML = ''; fechaMenu();
         if (loaded && !rows.length) {
           list.appendChild(el('div', 'pt-empty', all.length ? 'Nenhum paciente encontrado.' : 'Nenhum paciente ainda. Crie um aqui ou ao marcar uma consulta na agenda.'));
