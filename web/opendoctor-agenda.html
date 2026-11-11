@@ -92,6 +92,9 @@
     /* texto 14 px Medium (altura 1,4 = 19,6 px), centralizado na barra de 36 px */
     .pr-nav button::before,.pr-nav button::after{content:'';flex:0 1000 auto;width:52px;min-width:6px}   /* o espaço encolhe antes do texto */
     .pr-nav button > span{flex:0 0 auto;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* coluna estreita: "Prescri…" */
+    #prTabs{width:100%}                                   /* da largura das abas do painel; os 3 botões iguais */
+    #prTabs button{flex:1 1 0}
+    #prTabs button::before,#prTabs button::after{flex:1 1 0;width:auto}
     .pr-nav button.on{color:#000}
     .pr-nav button:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px}
     .pr-nav-pill{position:absolute;top:0;left:0;height:36px;box-sizing:border-box;border:1px solid rgba(0,0,0,.08);border-radius:24px;background:#fff}
@@ -1727,7 +1730,7 @@
        (idade) | o número de consultas | a última consulta (as duas em duas linhas, como o nome e a idade), as 3 da mesma
        largura | ⋯;
        18 px em cima e embaixo, 24 entre as colunas, a divisória clara dentro da margem */
-    .pt-lista{margin-top:40px;display:flex;flex-direction:column}
+    .pt-lista{margin-top:32px;display:flex;flex-direction:column}   /* sem os números de cima: 32 abaixo do título */
     .pt-linha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 32px;align-items:center;gap:24px;padding:18px 0;
       border-bottom:1px solid var(--sb-border);cursor:pointer;font-family:var(--disp)}
     .pt-linha:focus-visible{outline:2px solid #0B57D0;outline-offset:2px;border-radius:8px}
@@ -2612,13 +2615,7 @@
         </div>
         <div class="pt">
           <div class="pt-err" id="ptErr" hidden></div>
-          <div class="pt-stats" id="ptStats" hidden>
-            <div class="pt-stat"><span>Pacientes</span><b id="ptStTotal"></b></div>
-            <div class="pt-stat"><span>Atendidos em 30 dias</span><b id="ptSt30"></b></div>
-            <div class="pt-stat"><span>Total de consultas</span><b id="ptStCons"></b></div>
-          </div>
           <div id="ptList"></div>
-          <div class="pt-pag" id="ptPag" hidden></div>
         </div>
         <div class="pt-menu" id="ptMenu" role="menu" hidden></div>
       </div>
@@ -9063,59 +9060,17 @@
       // atendido nos últimos 30 dias: a última consulta (com anotação) foi há até 30 dias
       function recente(p) { return !!(p.notes && p.last) && (Date.now() - new Date(p.last).getTime()) / 864e5 <= 30; }
       var MAIS = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.5" cy="8" r="1.25" fill="currentColor"/></svg>';
-      var SETA = { primeira: 'M11 4L7 8l4 4M5 4v8', anterior: 'M10 4L6 8l4 4', proxima: 'M6 4l4 4-4 4', ultima: 'M5 4l4 4-4 4M11 4v8' };
-      var pagina = 1, porPag = 30;                          // 30 por página (sem o "Linhas por página")
-      // os números de cima: de todos os pacientes lidos (a lista cortada mostra "1000+")
-      function numeros() {
-        var st = $('ptStats');
-        st.hidden = !loaded || denied;
-        if (st.hidden) return;
-        var n30 = all.filter(recente).length, cons = all.reduce(function (n, p) { return n + (p.notes || 0); }, 0);   // consultas: as registradas no prontuário
-        $('ptStTotal').textContent = all.length + (more ? '+' : ''); $('ptStCons').textContent = cons + (more ? '+' : ''); $('ptSt30').textContent = n30;
-      }
       function render() {
         var rows = all.slice().sort(function (a, b) { return a.name.localeCompare(b.name, 'pt-BR'); });
-        list.innerHTML = ''; fechaMenu(); numeros(); pag.hidden = true;
+        list.innerHTML = ''; fechaMenu();
         if (loaded && !rows.length) {
           list.appendChild(el('div', 'pt-empty', all.length ? 'Nenhum paciente encontrado.' : 'Nenhum paciente ainda. Crie um aqui ou ao marcar uma consulta na agenda.'));
           return;
         }
-        var tot = Math.max(1, Math.ceil(rows.length / porPag));
-        if (pagina > tot) pagina = tot;
-        var lista = el('div', 'pt-lista');
-        rows.slice((pagina - 1) * porPag, pagina * porPag).forEach(function (p) { lista.appendChild(row(p)); });
+        var lista = el('div', 'pt-lista');               // todos de uma vez (sem o rodapé das páginas)
+        rows.forEach(function (p) { lista.appendChild(row(p)); });
         list.appendChild(lista);
-        paginas(rows.length, tot);
         if (more) list.appendChild(el('div', 'pt-empty', 'Aqui estão os pacientes usados mais recentemente. Busque pelo nome (na lupa) para achar os outros.'));
-        linhaRodape();
-      }
-      var pag = $('ptPag');
-      // a linha em cima das páginas: só quando a lista chega perto delas (a menos de 16 px, ou passando por baixo);
-      // com espaço entre as duas (poucos pacientes, o fim da rolagem), sem linha
-      var linhaRaf = 0;
-      function linhaRodape() {
-        cancelAnimationFrame(linhaRaf);
-        linhaRaf = requestAnimationFrame(function () {
-          var ult = list.lastElementChild;
-          if (pag.hidden || !ult) { pag.classList.remove('linha'); return; }
-          pag.classList.toggle('linha', pag.getBoundingClientRect().top - ult.getBoundingClientRect().bottom < 16);
-        });
-      }
-      $('ptView').addEventListener('scroll', linhaRodape, { passive: true });
-      if (window.ResizeObserver) new ResizeObserver(linhaRodape).observe($('ptView'));   // a janela ou o assistente mudam a altura
-      function paginas(n, tot) {                           // embaixo, preso: quantos, a página e as setas
-        pag.innerHTML = ''; pag.hidden = false;
-        pag.appendChild(el('span', 'pt-cont', n + (n === 1 ? ' paciente' : ' pacientes')));
-        pag.appendChild(el('span', null, 'Página ' + pagina + ' de ' + tot));
-        var nav = el('div', 'pt-nav');
-        [['primeira', 'Primeira página', 1], ['anterior', 'Página anterior', pagina - 1], ['proxima', 'Próxima página', pagina + 1], ['ultima', 'Última página', tot]].forEach(function (b) {
-          var x = el('button'); x.type = 'button'; x.setAttribute('aria-label', b[1]);
-          x.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="' + SETA[b[0]] + '" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-          x.disabled = b[2] < 1 || b[2] > tot || b[2] === pagina;
-          x.addEventListener('click', function () { pagina = b[2]; render(); $('ptView').scrollTop = 0; });
-          nav.appendChild(x);
-        });
-        pag.appendChild(nav);
       }
       // o ⋯ da linha: Abrir prontuário, Renomear e Excluir (só quem pode sair: sem prontuário, ou a de exemplo)
       var menu = $('ptMenu'), menuDe = null;

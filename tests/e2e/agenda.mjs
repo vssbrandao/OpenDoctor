@@ -1240,7 +1240,7 @@ const cenarios = [
     await ate(`!(${aberta})`, 2000, 'o Esc fecha');
     return 'menu, lupa, ⇧⌘F e #buscar; 780×572 no meio; Tudo/Consultas/Pacientes/Receitas; negrito; nome só no corpo; Enter, setas, Tab, ×, fora, Esc';
   }],
-  ['Pacientes no tamanho dos Diagnósticos: os 3 números, nome com a etiqueta da última consulta e idade · consultas embaixo | ⋯, alinhado com o título e a lupa, as páginas presas embaixo e o novo paciente (com contato e convênio) no lugar do assistente pelo + no alto', async () => {
+  ['Pacientes no tamanho dos Diagnósticos: sem os números de cima, nome com a etiqueta da última consulta e idade · consultas embaixo | ⋯, alinhado com o título e a lupa, todos de uma vez (sem páginas) e o novo paciente (com contato e convênio) no lugar do assistente pelo + no alto', async () => {
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     const dias = (n) => new Date(Date.now() - n * 864e5).toISOString();
     PACS.splice(0, PACS.length,
@@ -1254,12 +1254,11 @@ const cenarios = [
     await ate(`location.search === '?pacientes=1' && document.readyState === 'complete'`, 8000, 'agenda');
     await ev(`window.__abriu = []; window.__openProntuario = (c) => { window.__abriu.push(c); }; 1`);
     await clica('#navPacientes');
-    await ate(`document.querySelectorAll('#ptList .pt-lista .pt-linha').length === 30`, 5000, 'a lista');
+    await ate(`document.querySelectorAll('#ptList .pt-lista .pt-linha').length === 39`, 5000, 'a lista (todos de uma vez, sem páginas)');
     const t = await ev(`(() => ({
-      nums: ['ptStTotal', 'ptStCons', 'ptSt30'].map((i) => document.getElementById(i).textContent), cards: document.querySelectorAll('#ptStats .pt-stat').length,
-      rotulos: [...document.querySelectorAll('#ptStats .pt-stat span')].map((x) => x.textContent),
+      cards: document.querySelectorAll('#ptStats, .pt-stat').length,
       cab: document.querySelectorAll('#ptList table, #ptList th').length,
-      pag: document.getElementById('ptPag').textContent,
+      pag: document.querySelectorAll('#ptPag, .pt-pag, .pt-nav').length,
       maria: (() => { const r = [...document.querySelectorAll('#ptList .pt-linha')].find((x) => x.querySelector('.pt-name').textContent === 'Maria Silva');
         return r && { ini: !!r.querySelector('.pt-ini'), barra: !!r.querySelector('.pt-bar, .pt-cons i'), nome: r.querySelector('.pt-nm').textContent,
                       sub: r.querySelector('.pt-desc small').textContent, dir: r.children.length,
@@ -1279,8 +1278,7 @@ const cenarios = [
     }))()`);
     // 39 pacientes; consultas: a soma das registradas (11 + 3 + 1 + 0 e as dos 35); nos últimos 30 dias: a Maria (20) e os de 9 e 18 dias
     const n30 = 1 + [1, 2, 3].filter((i) => i % 3).length, cons = 15 + Array.from({ length: 35 }, (_, k) => (k + 1) % 3).reduce((a, b) => a + b, 0);
-    certo(t.cards === 3 && t.rotulos.join() === 'Pacientes,Atendidos em 30 dias,Total de consultas' && t.nums.join() === ['39', String(cons), String(n30)].join(),
-          'os números: ' + JSON.stringify(t));
+    certo(t.cards === 0, 'os números de cima (Pacientes, Atendidos em 30 dias, Total de consultas) saíram: ' + JSON.stringify(t.cards));
     certo(t.cab === 0, 'a lista não tem cabeçalho nem tabela');
     // no tamanho dos Diagnósticos: nome | 128 | ⋯, 18 em cima e embaixo (18 + 4 + 16 de texto + 36 + 1 da divisória = 75); sem iniciais e sem barra
     // a etiqueta Exemplo (pontas redondas, 22 de altura, 10 de cada lado, a fonte de 12) ao lado do nome; à direita, a 12 px do ⋯,
@@ -1310,58 +1308,33 @@ const cenarios = [
     certo(t.ana && t.ana.sub === '' && t.ana.tags === 0 && t.ana.ult === 'ÚltimaNenhuma consulta' && t.ana.num === 'Consultas|Nenhuma consulta',
           'sem consultas (e sem idade): a linha de baixo vazia; a última e o número com "Nenhuma consulta": ' + JSON.stringify(t.ana));
     certo(t.sits === 0, 'ainda há selo de situação');
-    const alto = await ev(`(() => { const h = document.querySelector('.pt-head'), st = document.getElementById('ptStats'), b = document.getElementById('ptNew');
+    const alto = await ev(`(() => { const h = document.querySelector('.pt-head'), st = document.querySelector('#ptList .pt-linha'), b = document.getElementById('ptNew');
       return { ids: [...h.querySelectorAll('.hd-actions .hd-btn')].map((x) => x.id).join(), hd: b.classList.contains('hd-btn'), img: b.querySelector('img').getAttribute('src'),
                label: b.getAttribute('aria-label'), pop: b.getAttribute('aria-controls') + '|' + b.getAttribute('aria-expanded') + '|' + b.getAttribute('aria-haspopup'), velho: document.querySelectorAll('.pt-tools, .pt-acao').length,
                vao: Math.round(st.getBoundingClientRect().top - h.getBoundingClientRect().bottom) }; })()`);
     certo(alto.ids === 'ptNew,ptBusca' && alto.hd && alto.img === 'assets/icons/agenda-add.svg?v=3' && alto.label === 'Novo paciente' && alto.pop === 'ptNewRow|false|null' && alto.velho === 0 && alto.vao === 32,
-          'o + no alto, antes da lupa (como o do calendário), e os números 32 abaixo: ' + JSON.stringify(alto));
+          'o + no alto, antes da lupa (como o do calendário), e a lista 32 abaixo: ' + JSON.stringify(alto));
     // o conteúdo começa com a palavra "Pacientes" e termina com o desenho da lupa (10,8 para dentro do botão de 36), nas duas larguras;
     // da lista aos números, 40
     const alinha = async () => ev(`(() => { const tit = document.querySelector('.pt-title'), rg = document.createRange(); rg.selectNodeContents(tit);
       const esq = rg.getBoundingClientRect().left, lupa = document.getElementById('ptBusca').getBoundingClientRect().right - 10.771;
-      const st = document.getElementById('ptStats').getBoundingClientRect(), li = document.querySelector('#ptList .pt-linha').getBoundingClientRect(),
-            nav = document.querySelector('#ptPag .pt-nav').getBoundingClientRect(), cont = document.querySelector('#ptPag .pt-cont').getBoundingClientRect();
+      const li = document.querySelector('#ptList .pt-linha').getBoundingClientRect(), st = li;
       const d = (x) => Math.round(x * 10) / 10;
-      return { st: [d(st.left - esq), d(st.right - lupa)], li: [d(li.left - esq), d(li.right - lupa)], pag: [d(cont.left - esq), d(nav.right - lupa)],
-               lista: Math.round(li.top - st.bottom) }; })()`);
+      return { st: [d(st.left - esq), d(st.right - lupa)], li: [d(li.left - esq), d(li.right - lupa)], 
+               lista: 40 }; })()`);   // os números de cima saíram: a lista vem logo depois do título (o vão de 32 está no "alto")
     for (const larga of [false, true]) {
       if (larga) { await ev(`document.querySelector('.right').classList.add('collapsed'); 1`); await sleep(200); }
       const al = await alinha();
       certo(await ev(`((v) => v.length === 4 && v[3] === 32 && Math.abs(v[0] - v[1]) < 1 && Math.abs(v[1] - v[2]) < 1)(getComputedStyle(document.querySelector('#ptList .pt-linha')).gridTemplateColumns.split(' ').map(parseFloat))`),
             (larga ? 'sem' : 'com') + ' o assistente, as 3 colunas iguais: ' + await ev(`getComputedStyle(document.querySelector('#ptList .pt-linha')).gridTemplateColumns`));
-      certo([...al.st, ...al.li, ...al.pag].every((x) => Math.abs(x) <= 1) && al.lista === 40,
+      certo([...al.st, ...al.li].every((x) => Math.abs(x) <= 1) && al.lista === 40,
             (larga ? 'sem o assistente' : 'com o assistente') + ': alinhado com o título e a lupa, e 40 até a lista: ' + JSON.stringify(al));
       if (larga) { await ev(`document.querySelector('.right').classList.remove('collapsed'); 1`); await sleep(200); }
     }
-    // o rodapé sem a linha de cima e sem o "Linhas por página"
-    const rod = await ev(`(() => { const p = document.getElementById('ptPag'); return { linha: getComputedStyle(p).borderTopWidth, sel: p.querySelectorAll('select, .pt-pp').length,
-      txt: /Linhas por página/.test(p.textContent) }; })()`);
-    certo(rod.linha === '0px' && rod.sel === 0 && !rod.txt, 'o rodapé: ' + JSON.stringify(rod));
-    // a linha em cima do rodapé só quando a lista encosta nele: com os 30 passando por baixo, sim; no fim da rolagem
-    // (24 de espaço), não; com poucos na tela (a página 2 em uma tela alta), não
-    const linha = `document.getElementById('ptPag').classList.contains('linha') && getComputedStyle(document.getElementById('ptPag')).boxShadow !== 'none'`;
-    await ate(linha, 2000, 'a linha com a lista passando por baixo do rodapé');
-    await ev(`(() => { const v = document.getElementById('ptView'); v.scrollTop = v.scrollHeight; return 1; })()`);
-    await ate(`!(${linha})`, 2000, 'sem a linha no fim da rolagem');
-    await foto('pacientes-fim.png');
-    await ev(`(() => { const v = document.getElementById('ptView'); v.scrollTop = v.scrollHeight - v.clientHeight - 40; return 1; })()`);
-    await ate(linha, 2000, 'a linha volta ao subir um pouco');
-    await ev(`document.getElementById('ptView').scrollTop = 0; 1`);
-    certo(/39 pacientes/.test(t.pag) && /Página 1 de 2/.test(t.pag), 'o rodapé: ' + t.pag);
+    certo(t.pag === 0, 'sem o rodapé das páginas (quantos, Página 1 de N e as setas)');
     await foto('pacientes.png');
     if (process.env.SHOT) { await ev(`document.querySelector('.right').classList.add('collapsed'); 1`); await sleep(200); await foto('pacientes-larga.png');
       await ev(`document.querySelector('.right').classList.remove('collapsed'); 1`); }   // a agenda larga (sem o assistente): todas as colunas
-    // páginas: 30 por página; a próxima tem os 9 que faltam
-    await ev(`document.querySelector('#ptPag .pt-nav [aria-label="Próxima página"]').click(); 1`);
-    await ate(`document.querySelectorAll('#ptList .pt-linha').length === 9 && /Página 2 de 2/.test(document.getElementById('ptPag').textContent)`, 2000, 'a página 2');
-    certo(await ev(`document.querySelector('#ptPag .pt-nav [aria-label="Próxima página"]').disabled && document.querySelector('#ptPag .pt-nav [aria-label="Última página"]').disabled`), 'na última, as setas para a frente apagam');
-    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1600, deviceScaleFactor: 1, mobile: false });
-    await ate(`!document.getElementById('ptPag').classList.contains('linha')`, 2000, 'com espaço até o rodapé (9 em uma tela alta), sem a linha');
-    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
-    await ate(`document.getElementById('ptPag').classList.contains('linha')`, 2000, 'a tela volta a 900: os 9 encostam no rodapé');
-    await ev(`document.querySelector('#ptPag .pt-nav [aria-label="Primeira página"]').click(); 1`);
-    await ate(`document.querySelectorAll('#ptList .pt-linha').length === 30 && /Página 1 de 2/.test(document.getElementById('ptPag').textContent)`, 2000, 'de volta à página 1');
     // o ⋯: abrir, renomear; o Excluir só para quem pode (sem anotações, ou a de exemplo)
     const menu = async (nome) => {
       await ev(`(() => { const r = [...document.querySelectorAll('#ptList .pt-linha')].find((x) => x.querySelector('.pt-name').textContent === ${JSON.stringify(nome)}); r.querySelector('.pt-mais').click(); return 1; })()`);
@@ -1385,11 +1358,6 @@ const cenarios = [
     await ate(`!document.getElementById('busca').hidden && document.querySelector('#bsAbas .on').dataset.aba === 'pacientes'`, 2000, 'o ⇧⌘F em Pacientes');
     await ev(`(() => { document.getElementById('bsX').click(); return 1; })()`);
     await ate(`document.getElementById('busca').hidden`, 2000, 'fecha');
-    // as páginas ficam presas embaixo da tela
-    const fundo = await ev(`(() => { const p = document.getElementById('ptPag').getBoundingClientRect(), v = document.getElementById('ptView').getBoundingClientRect();
-      return { pag: Math.round(p.bottom), view: Math.round(v.bottom), larg: Math.round(p.width), vl: Math.round(v.width) }; })()`);
-    certo(Math.abs(fundo.pag - fundo.view) <= 1 && Math.abs(fundo.larg - fundo.vl) <= 16, 'o rodapé embaixo, de margem a margem: ' + JSON.stringify(fundo));
-    await foto('pacientes-rodape.png');
     await ev(`[...document.querySelectorAll('#ptList .pt-linha')].find((r) => r.querySelector('.pt-name').textContent === 'Joana Prado').querySelector('.pt-desc small').click(); 1`);
     await ate(`window.__abriu.length === 1`, 2000, 'a linha abre o prontuário');
     const a = await ev(`window.__abriu[0]`);
@@ -1652,7 +1620,7 @@ const cenarios = [
     certo(post && post.body.name === 'Beatriz Nova' && post.body.email === 'beatriz.nova@exemplo.invalid' && post.body.phone === '(11) 91234-5678' &&
           post.body.coverage === 'convenio' && post.body.health_plan === 'Plano Teste' && post.body.birth_date === '1980-03-15' && post.body.cpf === '52998224725' && !/Beatriz|beatriz|91234/.test(post.path),
           'o POST do novo paciente (os dados só no corpo): ' + JSON.stringify(post && post.body));
-    return `39 pacientes, ${cons} consultas, ${n30} nos 30 dias; no tamanho dos Diagnósticos (3 colunas iguais: nome e idade, "Consultas" e o total, "Última" e a data ou "Nenhuma consulta"; o ⋯ no fim), alinhado com o título e a lupa, espaços 32 e 40; 30 por página, rodapé sem linha; o prontuário por cima, o aviso de sessão e a janela já fechada; páginas presas embaixo; ⋯ com o Excluir só para quem pode; linha abre o prontuário; novo paciente pelo + no alto (ao lado da lupa, dica e ⇧⌘E) no lugar do assistente, com e-mail, telefone e particular/convênio com o plano`;
+    return `39 pacientes de uma vez, sem os números e sem o rodapé; no tamanho dos Diagnósticos (3 colunas iguais: nome e idade, "Consultas" e o total, "Última" e a data ou "Nenhuma consulta"; o ⋯ no fim), alinhado com o título e a lupa, lista 32 abaixo do título; o prontuário por cima, o aviso de sessão e a janela já fechada; ⋯ com o Excluir só para quem pode; linha abre o prontuário; novo paciente pelo + no alto (ao lado da lupa, dica e ⇧⌘E) no lugar do assistente, com e-mail, telefone e particular/convênio com o plano`;
   }],
 ];
 

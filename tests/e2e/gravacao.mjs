@@ -474,11 +474,13 @@ const cenarios = [
       }
       document.querySelector('#ovcTabs [data-ct=' + era + ']').click(); return o; })()`);
     if (['sum', 'ana', 'evo'].some((t) => esp[t][0] !== 40 || esp[t][1] !== 40) || esp.cartao !== 40) throw new Error('os espaços das abas (título, linha): ' + JSON.stringify(esp));
-    // os 3 botões do topo: o texto e até 52 px de cada lado; a pílula na aba escolhida
+    // os 3 botões do topo: da largura das abas do painel, os 3 iguais e o texto no meio; a pílula na aba escolhida
     const nav = await ev(`(() => { const n = document.getElementById('prTabs'), on = n.querySelector('button.on').getBoundingClientRect(), pl = n.querySelector('.pr-nav-pill').getBoundingClientRect();
       return { pads: [...n.querySelectorAll('button')].map((b) => { const r = document.createRange(); r.selectNodeContents(b); const t = r.getBoundingClientRect(), x = b.getBoundingClientRect(); return [Math.round(t.left - x.left), Math.round(x.right - t.right)]; }),
-        pilula: Math.abs(pl.left - on.left) < 1 && Math.abs(pl.width - on.width) < 1, cabe: n.getBoundingClientRect().width <= n.parentElement.getBoundingClientRect().width + 0.5 }; })()`);
-    if (!nav.pilula || !nav.cabe || nav.pads.some(([l, r]) => l > 52 || r > 52 || l < 6 || Math.abs(l - r) > 1)) throw new Error('os botões do topo: ' + JSON.stringify(nav));
+        pilula: Math.abs(pl.left - on.left) < 1 && Math.abs(pl.width - on.width) < 1, cabe: n.getBoundingClientRect().width <= n.parentElement.getBoundingClientRect().width + 0.5,
+        larg: Math.round(n.getBoundingClientRect().width - document.querySelector('#ovComp .ovc-tabw').getBoundingClientRect().width),
+        iguais: new Set([...n.querySelectorAll('button')].map((b) => Math.round(b.getBoundingClientRect().width))).size }; })()`);
+    if (!nav.pilula || !nav.cabe || Math.abs(nav.larg) > 1 || nav.iguais !== 1 || nav.pads.some(([l, r]) => l < 6 || Math.abs(l - r) > 1)) throw new Error('os botões do topo: ' + JSON.stringify(nav));
     const topo1 = await ev(`Math.round(parseFloat(getComputedStyle(document.querySelector('#ovcSumGrid .ovc-st')).paddingTop))`);
     // a linha embaixo dos pontos, 40 px depois das colunas, e Diagnósticos 40 px abaixo dela
     const lp = await ev(`(() => { const R = (x) => x.getBoundingClientRect(), p = document.getElementById('ovcPersp'); return [getComputedStyle(p).borderBottomWidth,
