@@ -617,6 +617,7 @@
     .ovc-tab:first-child{padding-left:0}
     #ovcTabs .ovc-tab{flex:1 0 auto}                     /* as abas dividem a barra: o traço vai até a próxima aba */
     #ovcTabs .ovc-tab:first-child{text-align:left}
+    #ovcTabs .ovc-tab{font-weight:700}                   /* as abas do painel em Bold */
     .ovc-tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;border-top:2px solid #000;border-radius:0}
     .ovc-tab:focus-visible{outline:2px solid var(--g-blue);outline-offset:-2px}
     .ovc-persp{display:flex;flex-direction:column;padding:6px 6px 6px 0;border-bottom:1px solid var(--sb-border)}
@@ -1730,7 +1731,7 @@
        (idade) | o número de consultas | a última consulta (as duas em duas linhas, como o nome e a idade), as 3 da mesma
        largura | ⋯;
        18 px em cima e embaixo, 24 entre as colunas, a divisória clara dentro da margem */
-    .pt-lista{margin-top:32px;display:flex;flex-direction:column;border-top:1px solid var(--sb-border)}   /* 32 abaixo do título, com a linha em cima */
+    .pt-lista{margin-top:32px;display:flex;flex-direction:column}   /* 32 abaixo do título, sem linha em cima */
     .pt-linha{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 32px;align-items:center;gap:24px;padding:18px 0;
       border-bottom:1px solid var(--sb-border);cursor:pointer;font-family:var(--disp)}
     .pt-linha:focus-visible{outline:2px solid #0B57D0;outline-offset:2px;border-radius:8px}
@@ -2205,6 +2206,7 @@
     /* hierarquia: o nome em destaque (20 Bold), a idade/sexo logo embaixo, as tags um pouco abaixo, em pílulas */
     #prMain > .pr-head .pr-name{font-size:20px;line-height:28px;font-weight:700;letter-spacing:-.1px;color:#0A0A0A}
     #prMain > .pr-head .pr-sub{margin-top:4px;font-size:14px;line-height:24px;font-weight:400;color:#0A0A0A}   /* como o parágrafo dos pontos */
+    #prMain > .pr-head .pr-sub{display:none}   /* sem a linha "58 anos · Feminino" embaixo do nome */
     #prMain > .pr-head .pr-tags{margin-top:20px;gap:8px}
     #prMain > .pr-head .pr-tag,#prMain > .pr-head .pr-allergy{height:32px;padding:0 14px;border-radius:16px;font-family:var(--disp);font-size:14px;line-height:24px;font-weight:400;display:inline-flex;align-items:center}   /* a fonte de "58 anos · Feminino" */
     #prMain > .pr-head .pr-allergy[hidden]{display:none}   /* sem alergia, sem a pílula (o inline-flex de cima passava por cima do hidden) */
