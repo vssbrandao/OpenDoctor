@@ -2204,9 +2204,8 @@
     #prMain > .pr-head{margin:16px 0 0}   /* folga: 40 da barra do topo até o nome, 40 das tags até as abas */
     #prMain > .pr-head .pr-more{display:none}   /* sem o ⋯ no cabeçalho (Editar cadastro e Exportar PDF ficam sem esse acesso) */
     /* hierarquia: o nome em destaque (20 Bold), a idade/sexo logo embaixo, as tags um pouco abaixo, em pílulas */
-    #prMain > .pr-head .pr-name{font-size:20px;line-height:28px;font-weight:700;letter-spacing:-.1px;color:#0A0A0A}
+    #prMain > .pr-head .pr-name{font-size:18px;line-height:26px;font-weight:700;letter-spacing:-.1px;color:#0A0A0A}
     #prMain > .pr-head .pr-sub{margin-top:4px;font-size:14px;line-height:24px;font-weight:400;color:#0A0A0A}   /* como o parágrafo dos pontos */
-    #prMain > .pr-head .pr-sub{display:none}   /* sem a linha "58 anos · Feminino" embaixo do nome */
     #prMain > .pr-head .pr-tags{margin-top:20px;gap:8px}
     #prMain > .pr-head .pr-tag,#prMain > .pr-head .pr-allergy{height:32px;padding:0 14px;border-radius:16px;font-family:var(--disp);font-size:14px;line-height:24px;font-weight:400;display:inline-flex;align-items:center}   /* a fonte de "58 anos · Feminino" */
     #prMain > .pr-head .pr-allergy[hidden]{display:none}   /* sem alergia, sem a pílula (o inline-flex de cima passava por cima do hidden) */
@@ -5114,13 +5113,8 @@
       function renderHeader() {
         var name = patient ? patient.name : (ctx && ctx.patient) || '';
         $('prName').textContent = name; $('prAvatar').textContent = initials(name);
-        var p = patient || {}, bits = [];
-        if (p.birth_date) bits.push(age(p.birth_date));     // data completa fica no indicador "Idade"
-        if (p.sex) bits.push(SEX[p.sex]);
-        if (p.cpf) bits.push('CPF ' + fmtCpf(p.cpf));
-        if (p.phone) bits.push(p.phone);
-        // cada informação não quebra no meio (ex.: telefone)
-        $('prSub').textContent = bits.length ? bits.map(function (b) { return b.replace(/ /g, '\u00a0'); }).join(' · ') : 'Prontuário';
+        var p = patient || {};
+        $('prSub').textContent = p.birth_date ? age(p.birth_date) : ''; $('prSub').hidden = !p.birth_date;   // só a idade embaixo do nome
         var miss = patient && !p.birth_date;               // sem nascimento não dá para diferenciar homônimos
         $('prEditBtn').textContent = miss ? 'Completar cadastro' : 'Editar cadastro';
         $('prEditBtn').classList.toggle('warn', !!miss); $('prMore').classList.toggle('warn', !!miss);
