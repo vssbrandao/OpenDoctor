@@ -115,6 +115,77 @@ const cenarios = [
     if (buracos.length) throw new Error('buraco entre trechos: ' + JSON.stringify(buracos));
     return `${t.length} trechos, ${t.reduce((a, s) => a + s.dur, 0).toFixed(1)} s, sem buracos`;
   }],
+  ['o áudio original sobe em partes (pausa = parte nova) e o player do cartão da lista toca o som guardado', async () => {
+    await grava('/_preview/pr?pid=9003&ev=evA', 16);
+    await clica('#prRec .cs-stop[aria-label="Pausar a gravação"]'); await sleep(1500);
+    await clica('#prRec .cs-stop[aria-label="Continuar gravando"]'); await ate(est('gravando'), 10000, 'continuar'); await sleep(9000);
+    await encerra();
+    const AUD = `indexedDB.databases().then((ds) => ds.find((d) => d.name.startsWith('od_gravacao_'))).then((d) => d && new Promise((ok) => { const r = indexedDB.open(d.name);
+      r.onsuccess = () => { const db = r.result; if (!db.objectStoreNames.contains('aud')) { ok([]); return; } const q = db.transaction('aud').objectStore('aud').getAll(); q.onsuccess = () => ok(q.result.map((x) => ({ pt: x.pt, n: x.n, dead: x.dead }))); }; }))`;
+    await ate(`${AUD}.then((l) => !l || l.length === 0)`, 40000, 'a fila do áudio esvaziar');
+    const g = Object.values((await estado()).gravacoes)[0], au = g.audio;
+    const partes = [...new Set(au.map((a) => a.part))];
+    if (partes.length !== 2) throw new Error('esperava 2 partes (antes e depois da pausa): ' + JSON.stringify(au));
+    if (!au.every((a) => a.mime === 'audio/webm' && a.bytes > 0)) throw new Error('pedaço sem tipo ou vazio: ' + JSON.stringify(au));
+    const p1 = au.filter((a) => a.part === partes[1]), fim = Math.max(...au.map((a) => a.upto));
+    if (!(p1[0].at > 10 && fim > 20)) throw new Error('relógio do áudio fora do da gravação: ' + JSON.stringify(au));
+    const kb = au.reduce((a, x) => a + x.bytes, 0) / 1024;
+    // o player da aba Consulta, logo depois de gravar: botão de som e o play tocando o áudio guardado
+    if (!(await ev(`!!document.getElementById('csSom') && document.getElementById('csSom').offsetParent !== null`))) throw new Error('sem o botão de som no player da aba Consulta');
+    await ev(`performance.clearResourceTimings(); document.getElementById('rcPlay').click()`);
+    await ate(`performance.getEntriesByType('resource').some((r) => /\\/prontuario\\/recordings\\/audio\\?/.test(r.name))`, 10000, 'a aba Consulta buscar o áudio');
+    await ate(`document.getElementById('csPtm') && document.getElementById('csPtm').textContent !== '0:00'`, 10000, 'o tempo andar na aba Consulta');
+    await ev(`document.getElementById('csSom').click()`);
+    const mudo = await ev(`document.getElementById('csSom').getAttribute('aria-pressed')`);
+    if (mudo !== 'true') throw new Error('o botão de som não deixou mudo');
+    await ev(`document.getElementById('rcPlay').click()`);
+    await finalizaEvo(); await sleep(600);
+    if (await ev(`!document.getElementById('rcFinal').hidden`)) await finalizaEvo();   // com o aviso na tela, o 2º Assinar assina
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.evolucoes).some((n) => n.event_id === 'evA' && n.timing))`, 15000, 'assinar');
+    // o cartão aberto na lista Consultas: o play toca o som guardado (GET da parte) e o tempo anda
+    await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9003&tab=geral' });
+    await ate(`[...document.querySelectorAll('#ovcTabs .ovc-tab')].some((x) => /Consultas/.test(x.textContent))`, 20000, 'abas do painel');
+    await ev(`[...document.querySelectorAll('#ovcTabs .ovc-tab')].find((x) => /Consultas/.test(x.textContent)).click()`); await sleep(800);
+    const abriu = await ev(`(() => { const rs = [...document.querySelectorAll('#prVisits .pr-trow[aria-expanded]')];
+      for (const b of rs) { b.click(); const c = b.nextSibling; if (c && c.querySelector && c.querySelector('.hc-tr') && [...c.querySelectorAll('.hc-tr')].some((t) => /Transcri/.test(t.textContent))) return true; b.click(); } return false; })()`);
+    if (!abriu) throw new Error('não achou o cartão da consulta gravada na lista');
+    await ev(`(() => { const c = document.querySelector('#prVisits .pr-item.hc'); [...c.querySelectorAll('.hc-player .hc-btn')].filter((x) => x.offsetWidth)[1].click(); return 1; })()`);
+    await ate(`document.querySelector('#prVisits .pr-item.hc .hc-lab').children[1].textContent !== '0:00'`, 15000, 'o tempo andar tocando o áudio');
+    const pedidos = await ev(`performance.getEntriesByType('resource').filter((r) => /\\/prontuario\\/recordings\\/audio\\?/.test(r.name)).length`);
+    if (!pedidos) throw new Error('o player não buscou o áudio guardado');
+    const voz = await ev(`speechSynthesis.speaking`);
+    if (voz) throw new Error('com áudio guardado, a voz do computador não deveria ler');
+    await ev(`[...document.querySelector('#prVisits .pr-item.hc').querySelectorAll('.hc-player .hc-btn')].filter((x) => x.offsetWidth)[1].click()`);
+    return `${au.length} pedaços em 2 partes (${kb.toFixed(0)} KB, até ${fim.toFixed(1)} s); o cartão tocou o som guardado`;
+  }],
+  ['quem fala: cada fala com Médico/Paciente e o clique no rótulo troca e fica gravado', async () => {
+    await grava('/_preview/pr?pid=9003&ev=evA', 20);
+    await ate(`document.querySelectorAll('#rcTx .rc-q').length > 0`, 30000, 'as falas com o rótulo');
+    const rot = await ev(`[...document.querySelectorAll('#rcTx .rc-q')].map((b) => b.textContent)`);
+    if (!rot.every((t) => ['Médico', 'Paciente', 'Acompanhante'].includes(t))) throw new Error('rótulo estranho: ' + JSON.stringify(rot));
+    if (!rot.includes('Médico') || !rot.includes('Paciente')) throw new Error('esperava Médico e Paciente: ' + JSON.stringify(rot));
+    await ev(`document.querySelector('#rcTx .rc-q').click()`); await sleep(200);
+    await ev(`[...document.querySelectorAll('.rc-qmenu .gq-mi')].find((b) => b.textContent === 'Acompanhante').click()`);
+    await ate(`document.querySelector('#rcTx .rc-q').textContent === 'Acompanhante'`, 5000, 'o rótulo trocar na tela');
+    await sleep(1200);
+    await clica('#prRec .cs-stop[aria-label="Pausar a gravação"]');
+    const tr = await (await fetch(BASE + '/prontuario/recordings/state', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patient_id: 9003, event_id: 'evA', rec_ids: [] }) })).json();
+    const f0 = tr.recordings[0].segments.find((s) => (s.falas || []).length).falas[0];
+    if (f0.q !== 'a' || !f0.manual) throw new Error('a troca não ficou gravada: ' + JSON.stringify(f0));
+    return `${rot.length} falas rotuladas; a troca para Acompanhante ficou gravada`;
+  }],
+  ['parte do áudio cheia (teto do servidor): a gravação segue numa parte nova, sem perder o texto', async () => {
+    await srv('/_preview/sim?teto_parte=24000');                  // ~1,5 pedaço de 5 s por parte
+    await grava('/_preview/pr?pid=9003&ev=evA', 26);
+    await clica('#prRec .cs-stop[aria-label="Pausar a gravação"]'); await sleep(8000);
+    const g = Object.values((await estado()).gravacoes)[0], partes = [...new Set(g.audio.map((a) => a.part))];
+    if (partes.length < 2) throw new Error('esperava uma parte nova depois do teto: ' + JSON.stringify(g.audio));
+    if (!g.trechos.length) throw new Error('o texto da gravação não subiu');
+    const sess = new Set(g.audio.map((a) => a.sess));
+    if (sess.size !== partes.length) throw new Error('parte com pedaços de sessões diferentes: ' + JSON.stringify(g.audio));
+    return `${partes.length} partes, ${g.audio.length} pedaços, ${g.trechos.length} trechos de texto`;
+  }],
   ['trocar de paciente com a gravação ligada não perde o trecho em andamento', async () => {
     await grava('/_preview/pr?pid=9003&ev=evA', 8);
     await ev(`window.__openProntuario({ patient_id: 9004, patient: 'x', from: 'pacientes' })`);
@@ -168,13 +239,13 @@ const cenarios = [
     await ate(est('interrompida'), 15000, 'reencontrar a gravação avulsa');
     return (await ev(UI)).tempo + ' recuperados';
   }],
-  ['revisão continua depois de recarregar: pontos, selo e sem duplicar', async () => {
+  ['revisão continua depois de recarregar: selo e sem duplicar (sem a lista "Para conferir na evolução")', async () => {
     await grava('/_preview/pr?pid=9003&ev=evC', 20); await encerra(); await sleep(2500);
     const antes = (await ev(UI)).pontos;
     await send('Page.reload', { ignoreCache: true });
     await ate(est('pronta'), 20000, 'tela depois de recarregar'); await sleep(1500);
     const depois = await ev(UI);
-    if (!antes || depois.pontos !== antes) throw new Error(`pontos para conferir: ${antes} antes, ${depois.pontos} depois`);
+    if (antes || depois.pontos) throw new Error(`a lista para conferir voltou: ${antes} antes, ${depois.pontos} depois`);
     await escreve('s', ' .', true);
     await sleep(3500);
     const nota = () => estado().then((e) => Object.values(e.evolucoes).find((n) => n.event_id === 'evC'));
@@ -182,7 +253,7 @@ const cenarios = [
     if (!n.scribe) throw new Error('o selo sumiu depois de recarregar e editar');
     if (vezes !== 1) throw new Error('texto gerado aparece ' + vezes + ' vezes');
     if (await ev(`[...document.querySelectorAll('button')].some((b) => b.offsetParent !== null && /Gravar mais/.test(b.textContent))`)) throw new Error('voltou o Gravar mais um trecho');
-    return `${depois.pontos} pontos mantidos, selo mantido, texto uma vez só, sem o card da consulta gravada`;
+    return 'sem a lista para conferir, selo mantido, texto uma vez só, sem o card da consulta gravada';
   }],
   ['os números da revisão chegam ao finalizar mesmo depois de recarregar', async () => {
     await grava('/_preview/pr?pid=9003&ev=evH', 18); await encerra(); await sleep(2500);

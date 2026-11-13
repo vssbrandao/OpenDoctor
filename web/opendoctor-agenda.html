@@ -617,7 +617,6 @@
     .ovc-tab:first-child{padding-left:0}
     #ovcTabs .ovc-tab{flex:1 0 auto}                     /* as abas dividem a barra: o traço vai até a próxima aba */
     #ovcTabs .ovc-tab:first-child{text-align:left}
-    #ovcTabs .ovc-tab{font-weight:700}                   /* as abas do painel em Bold */
     .ovc-tab.on::after{content:"";position:absolute;left:0;right:0;bottom:0;border-top:2px solid #000;border-radius:0}
     .ovc-tab:focus-visible{outline:2px solid var(--g-blue);outline-offset:-2px}
     .ovc-persp{display:flex;flex-direction:column;padding:6px 6px 6px 0;border-bottom:1px solid var(--sb-border)}
@@ -727,7 +726,7 @@
     #ovcP-ana #ovDelta,#ovcP-ana #ovDelta small{font-size:16px;line-height:22px}
     #ovcP-med > #rhBox{margin-top:0}                              /* Prescrições: 40 das abas a "Medicamentos em uso" (o título já tem 40) */
     #ovcP-med #rmList + #rhList{margin-top:0}                    /* e 40 entre as duas tabelas */
-    #ovcP-cs #prVisits{padding-top:24px}                          /* sem o título Anteriores: 40 das abas até a primeira consulta */
+    #ovcP-cs #prVisits{padding-top:0}                             /* a primeira consulta logo abaixo das abas */
     #ovcP-ana #hxExames .ov-hrow{margin:0;padding:16px 0 12px}   /* exames na Análise: o título 40 da linha e 12 até a lista; o Anexar exame é a barra embaixo */
     #hxExames .ex-gb{margin-top:16px}
     #hxExames .ex-gb .gb-l{padding-left:16px}   /* sem o ícone à esquerda: o clipe vai à direita, no lugar da seta */
@@ -753,7 +752,7 @@
     #csChart .gfc-t{display:none}                       /* o nome já está no seletor */
     #csChart .gfc-svg{height:240px;margin-top:16px}
     #ovcP-ana > .ov-ana{margin-top:24px}
-    #ovcP-cs > .gsub{margin-top:16px}
+    #ovcP-cs > .gsub{margin-top:0}
     .ov-hrow .gh{margin-bottom:0}                      /* o "Anexar exame" na altura do título */
     #hxExames .ov-hrow{margin-bottom:16px}
     /* diagnósticos (linhas como "Próximos resultados") */
@@ -1032,6 +1031,13 @@
     .rc-u{display:flex;flex-direction:column;gap:2px;border-radius:8px}
     .rc-h{font-weight:500;font-size:12px;line-height:16px;color:#0A0A0A}
     .rc-h small{margin-left:6px;font-weight:400;font-size:12px;color:#56595E}
+    .rc-f{position:relative}
+    .rc-f + .rc-f{margin-top:10px}
+    .rc-f .rc-t{margin-top:2px}
+    .rc-q{position:relative;padding:0;border:0;background:none;font:inherit;color:inherit;cursor:pointer;border-radius:4px}
+    .rc-q:hover{text-decoration:underline;text-underline-offset:2px}
+    .rc-q:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
+    .rc-qmenu{position:absolute;z-index:30;min-width:160px}
     .rc-t{font-size:14px;line-height:22px;color:#36373A;transition:color .15s}
     .rc-u.typing .rc-t::after{content:'';display:inline-block;width:2px;height:16px;margin-left:3px;vertical-align:-3px;background:#0B57D0;animation:rcBlink 1s steps(1) infinite}
     @keyframes rcBlink{50%{opacity:0}}
@@ -1088,20 +1094,6 @@
     .rc-u.hl{background:#FEF7E0;box-shadow:0 0 0 8px #FEF7E0}
     .rc-review{margin-top:12px;padding:4px 0;border-radius:12px;background:#fff;font-family:var(--disp)}
     .rc-review[hidden]{display:none}
-    .rc-rv-h{display:flex;align-items:center;gap:8px;padding:10px 16px 6px;font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A}
-    .rc-rv-h span{height:20px;padding:0 8px;border-radius:10px;background:#E1E3E8;font-size:12px;line-height:20px}
-    .rc-rv-h small{margin-left:auto;font-weight:400;font-size:12px;color:#56595E}
-    .rc-pt{display:flex;align-items:flex-start;gap:12px;padding:10px 8px 10px 16px;border-top:1px solid var(--sb-border)}
-    .rc-pt:first-of-type{border-top:0}
-    .rc-pt i{flex:none;width:8px;height:8px;margin-top:6px;border-radius:50%;background:#80868B}
-    .rc-pt.alto i{background:#C0151D}.rc-pt.medio i{background:#E37400}
-    .rc-pt .t{flex:1;min-width:0;font-size:14px;line-height:20px;color:#0A0A0A}
-    .rc-pt .t small{display:block;font-size:12px;line-height:16px;color:#56595E}
-    .rc-pt .a{flex:none;display:flex;gap:2px}
-    .rc-pt .pr-ghost{height:28px;padding:0 10px;border-radius:14px;font-size:12px}
-    .rc-pt .pr-ghost.lk{color:#0B57D0}
-    .rc-pt.ok .t{color:#80868B;text-decoration:line-through}
-    .rc-pt.ok i{background:#137333}
     .rc-pill{position:fixed;left:50%;bottom:24px;z-index:60;transform:translateX(-50%);display:flex;align-items:center;gap:8px;height:40px;
       padding:0 16px;border:0;border-radius:20px;background:#fff;box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15);
       font-family:var(--disp);font-size:14px;line-height:20px;color:#0A0A0A;cursor:pointer}
@@ -1525,9 +1517,38 @@
     .gf-grpl{position:sticky;left:0;display:inline-block}
     .pr-tchev{display:flex;width:24px;height:24px;color:#444746}
     .pr-tchev svg{width:24px;height:24px;transition:transform .15s}
-    .pr-trow.open{background:#F7F8F8}
+    button.pr-trow.open,button.pr-trow.open:hover{background:none}   /* aberta: a linha sem o cinza do hover */
     .pr-trow.open .pr-tchev svg{transform:rotate(180deg)}
-    .pr-item.hc.in-cs{margin:12px 0 20px}
+    .pr-item.hc.in-cs{margin:0 0 40px;padding:24px 0 8px;border-radius:0;background:none}   /* aberto na lista: cantos retos, colado na linha de cima */
+    .pr-item.hc.in-cs .hc-hd{justify-content:flex-end;margin-bottom:8px}          /* data e título já estão na linha de cima */
+    .pr-item.hc.in-cs .hc-hd:has(.hc-t .pr-badge){justify-content:space-between}
+    .pr-item.hc.in-cs .hc-player{border:4px solid #F7F8F8}                         /* o player com a borda cinza do cartão da Consulta (4 px #F7F8F8) */
+    .pr-item.hc.in-cs .hc-tr{min-height:56px;padding:0}
+    .pr-item.hc.in-cs .hc-pw + .hc-tr{margin-top:8px}
+    .pr-item.hc.in-cs .hc-tr + .hc-body + .hc-tr{border-top:1px solid var(--sb-border)}   /* a linha entre Evolução e Transcrição */
+    .pr-item.hc.in-cs .hc-tr[aria-expanded=true] .hc-prev{visibility:visible}    /* aberta, a frase fica (ela tem o nome da linha) */
+    .pr-item.hc.in-cs{position:relative}
+    .pr-item.hc.in-cs .hc-btn + .hc-btn{margin-left:-20px}            /* os dois botões juntos, 4 px entre eles, como na tela da gravação (.cs-btns) */
+    .pr-item.hc.in-cs + .pr-trow{border-top:1px solid var(--sb-border)}   /* aberta: a linha de baixo fecha o bloco com um traço em cima */
+    .hc-mk.on{box-shadow:inset 0 0 0 1.5px #FF5500}                    /* o destaque aberto, como na tela da gravação */
+    .hc-pop .cs-pop-f{justify-content:flex-end}
+    .hc-sum{display:flex;flex-direction:column;gap:8px;padding:0 0 24px}     /* como "Pontos positivos e de atenção": título 14/24 Bold e o texto 14/24 */
+    .hc-sumt{font-weight:700;font-size:14px;line-height:24px;color:#0A0A0A}
+    .hc-sump{margin:0;font-size:14px;line-height:24px;color:#0A0A0A}
+    .hc-trl{font-weight:700}   /* a tipografia da frase, com o nome em Bold */
+    .pr-item.hc.in-cs .hc-chev{margin:0}
+    .pr-item.hc.in-cs .hc-body{padding-bottom:16px}
+    .pr-item.hc.in-cs .hc-foot{display:flex}
+    /* o botão da ação (Adicionar adendo): contorno, sem ícone, 48 de altura, 0 24, texto 14 Medium; 40 do conteúdo */
+    .pr-item.hc.in-cs .hc-foot{padding:40px 0 16px}
+    .hc-act{height:48px;padding:0 24px;border:1px solid var(--sb-border);border-radius:24px;background:none;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#0A0A0A;white-space:nowrap}
+    .hc-act:hover{background:#F7F8F8}
+    .hc-act[hidden]{display:none}
+    .hc-addh:empty{display:none}
+    .hc-addh{padding-top:24px}
+    .pr-item.hc.in-cs .hc-dd .gq-menu{left:0;right:auto}
+    .hc-ia{padding:0 0 16px;font-size:12px;line-height:16px;color:#56595E}
     .pr-histbar .gh{margin-bottom:0}
     .pr-item.hc{display:flex;flex-direction:column;gap:0;margin:0 0 24px;padding:16px;border:0;border-radius:16px;background:#F7F8F8;font-family:var(--disp)}
     .pr-item.hc:first-child{padding-top:16px}
@@ -1584,8 +1605,9 @@
     .hc-prev span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .hc-chev{flex:none;display:flex;width:24px;height:24px;margin:0 16px}
     .hc-chev svg{width:24px;height:24px;transition:transform .15s}
-    .pr-item.hc.open .hc-prev{visibility:hidden}
-    .pr-item.hc.open .hc-chev svg{transform:rotate(180deg)}
+    .hc-tr[aria-expanded=true] .hc-prev{visibility:hidden}
+    .hc-tr[aria-expanded=true] .hc-chev svg{transform:rotate(180deg)}
+    .hc-txb .rc-tx{max-height:none;overflow:visible;margin-top:12px}       /* a transcrição da consulta: as falas inteiras, no cartão branco */
     .hc-body{display:flex;flex-direction:column;gap:8px}
     .hc-body[hidden]{display:none}
     .hc-hl{display:flex;flex-direction:column;gap:8px}
@@ -1669,7 +1691,7 @@
       body{background:#fff}
       .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.rc-tx,.rc-note,.pr-foot,.pr-chipin,.pr-tabs,
       .pr-chip button,.ovc-x,.ovc-tabw,.ovc-chev,.ovc-add,.ovc-more,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=prescricoes],.pr-link,#prForm,
-      .pr-more,.ov-ranges,.ov-tip,.ov-link,.ov-empty .ov-pill,.ov-tiles,.ov-persp,.ov .pr-chipin,.gb,.gfc .gq-dd,.hc-pw,.hc-dd,.hc-tr,.hc-more{display:none!important}
+      .pr-more,.ov-ranges,.ov-tip,.ov-link,.ov-empty .ov-pill,.ov-tiles,.ov-persp,.ov .pr-chipin,.gb,.gfc .gq-dd,.hc-pw,.hc-dd,.hc-tr,.hc-more,.hc-txb{display:none!important}
       .hc-body{display:flex!important}
       .ovc-panel[hidden]{display:block!important}
       #ovcP-med{display:none!important}           /* o histórico de receitas não ia no PDF (as emitidas vão no card da consulta) */
@@ -5417,7 +5439,7 @@
         g.fill();
       }
       // o player (depois da consulta): trilha com o progresso, marcadores laranja no começo de O, A e P (demonstração) e os
-      // botões redondos: som (só na demonstração; a gravação real não guarda áudio) e percorrer/pausar
+      // botões redondos: som (na demonstração e na gravação real com o áudio guardado) e tocar/pausar
       function csPlayer(r, marks, som) {
         var p = $('csPlay'); p.innerHTML = ''; p.hidden = false; marks = marks || [];
         var tk = el('div', 'cs-trk'), feito = el('i', 'cs-feito'), bola = el('span', 'cs-bola'), dur = csDur(r);
@@ -5449,7 +5471,8 @@
         });
         p.appendChild(tk); p._pl = { feito: feito, bola: bola, tm: tm };
         var bs = el('div', 'cs-btns');
-        if (som) { var s = el('button', 'cs-rb'); s.type = 'button'; s.id = 'csSom'; s.addEventListener('click', function () { r.mute = !r.mute; csIcons(r); });
+        if (som) { var s = el('button', 'cs-rb'); s.type = 'button'; s.id = 'csSom'; s.addEventListener('click', function () {
+            r.mute = !r.mute; if (recPb && recPb.r === r && recPb.aud) recPb.aud.muted = r.mute; csIcons(r); });
           bs.appendChild(s); }
         var pb = el('button', 'cs-rb'); pb.type = 'button'; pb.id = 'rcPlay'; pb.addEventListener('click', function () { recPlay(r); }); bs.appendChild(pb);
         p.appendChild(bs); csIcons(r); recSeekUi(r);
@@ -5525,7 +5548,7 @@
       // como no Figma: parado, play e o som mudo; tocando, pausa e o som (a não ser que tenha sido silenciado)
       function csIcons(r) {
         var on = !!recPb && recPb.r === r, pb = $('rcPlay'), s = $('csSom');
-        if (pb) { var l = on ? 'Pausar' : 'Percorrer a transcrição'; pb.innerHTML = on ? CSI.pause : CSI.play; pb.title = l; pb.setAttribute('aria-label', l); }
+        if (pb) { var l = on ? 'Pausar' : r.segs && r.temAudio ? 'Ouvir a consulta' : 'Percorrer a transcrição'; pb.innerHTML = on ? CSI.pause : CSI.play; pb.title = l; pb.setAttribute('aria-label', l); }
         if (s) { s.innerHTML = on && !r.mute ? CSI.som : CSI.mute; s.title = r.mute ? 'Ativar o som' : 'Sem som'; s.setAttribute('aria-label', s.title);
           s.setAttribute('aria-pressed', r.mute ? 'true' : 'false'); }
       }
@@ -5740,6 +5763,7 @@
       }
       function recPlay(r) {
         if (recPb) { recStopPb(); return; }
+        if (r.segs && r.temAudio) { recPlayAud(r); return; }
         var dur = csDur(r); if ((r.pos || 0) >= dur - 0.1) r.pos = 0;
         var last = performance.now();
         recPb = { r: r, iv: setInterval(function () {
@@ -5748,8 +5772,58 @@
         }, 100) };
         $('rcTx').classList.add('pb'); csIcons(r);
       }
+      // gravação real com o áudio guardado: toca as partes (/prontuario/recordings/audio) no relógio da gravação. A bolinha
+      // segue o som; clicar na trilha ou no "Ouvir" de um destaque leva o som até ali; o botão de som deixa mudo
+      function recPlayAud(r) {
+        var dur = csDur(r); if ((r.pos || 0) >= dur - 0.1) r.pos = 0;
+        var pb = recPb = { r: r, aud: null, iv: null, vez: 0, partes: [], last: r.pos || 0 };
+        $('rcTx').classList.add('pb'); csIcons(r);
+        r._ablob = r._ablob || {};
+        var falha = function (msg) { if (recPb !== pb) return; toast(msg); recStopPb(); };
+        var solta = function () { if (pb.aud) { try { pb.aud.pause(); URL.revokeObjectURL(pb.aud._url); } catch (_) {} pb.aud = null; } };
+        var blobDe = function (pt) {
+          return r._ablob[pt] || (r._ablob[pt] = fetch('/prontuario/recordings/audio?rec_id=' + encodeURIComponent(r.recId) + '&part=' + pt, { credentials: 'same-origin' })
+            .then(function (x) { if (!x.ok) throw new Error('audio ' + x.status); return x.blob(); })
+            .catch(function (e) { delete r._ablob[pt]; throw e; }));
+        };
+        var toca = function (t) {
+          var mv = ++pb.vez; solta();
+          var i = -1; for (var q = 0; q < pb.partes.length; q++) if (t < pb.partes[q].upto - 0.05) { i = q; break; }
+          if (i < 0) { r.pos = dur; recSeekUi(r); recStopPb(); return; }
+          var p = pb.partes[i];
+          blobDe(p.part).then(function (b) {
+            if (recPb !== pb || mv !== pb.vez) return;
+            var url = URL.createObjectURL(b), a = new Audio(url); a._url = url; a._p = p; a.muted = !!r.mute; pb.aud = a;
+            var vai = function () {
+              var ini = Math.max(0, t - p.at); if (ini > 0.2) { try { a.currentTime = ini; } catch (_) {} }
+              a.play().catch(function () { falha('Não foi possível tocar o áudio desta consulta.'); });
+            };
+            if (a.readyState >= 1) vai(); else a.addEventListener('loadedmetadata', vai, { once: true });
+            a.addEventListener('ended', function () { if (recPb === pb && mv === pb.vez) { r.pos = Math.min(dur, p.upto); pb.last = r.pos; recSeekUi(r); toca(p.upto); } });
+            if (pb.partes[i + 1]) blobDe(pb.partes[i + 1].part).catch(function () {});     // a próxima parte já vem
+          }, function () { falha('Não foi possível abrir o áudio desta consulta.'); });
+        };
+        pb.solta = solta;
+        api('POST', '/prontuario/recordings/state', { patient_id: r.pid, event_id: r.cx.event_id || null, note_id: r.cx.note_id || null, rec_ids: [r.recId] })
+          .then(function (res) {
+            if (recPb !== pb) return;
+            var g = ((res.ok && res.j && res.j.recordings) || []).filter(function (x) { return x.rec_id === r.recId; })[0];
+            pb.partes = ((g && g.audio) || []).filter(function (a) { return a.upto > a.at; }).sort(function (a, b) { return a.at - b.at; });
+            if (!pb.partes.length) {                   // o áudio ainda não subiu (ou não foi gravado): percorre sem som
+              recStopPb(); toast('O áudio desta consulta ainda não chegou ao servidor: percorrendo a transcrição sem som.');
+              r.temAudio = false; recPlay(r); r.temAudio = true; return;
+            }
+            toca(pb.last);
+            pb.iv = setInterval(function () {
+              if (recPb !== pb) return;
+              if (Math.abs((r.pos || 0) - pb.last) > 0.6) { pb.last = r.pos || 0; toca(pb.last); return; }   // clicou na trilha ou no Ouvir
+              var a = pb.aud; if (a && !a.paused) { r.pos = Math.min(dur, a._p.at + a.currentTime); pb.last = r.pos; recSeekUi(r); }
+            }, 100);
+          }, function () { falha('Não foi possível abrir o áudio desta consulta.'); });
+      }
       function recStopPb() {
         if (!recPb) return;
+        if (recPb.solta) recPb.solta();
         var r = recPb.r; clearInterval(recPb.iv); recPb = null;
         $('rcTx').classList.remove('pb'); csIcons(r);
       }
@@ -5784,7 +5858,7 @@
       api('GET', '/me').then(function (res) {
         RR.on = !!(res.ok && res.j && res.j.scribe); RR.uid = (res.j && res.j.user && res.j.user.id) || '';
         rrPurga();                                         // também com a gravação desligada na conta
-        if (RR.on) { qKick(); if (isOpen() && ready) recRender(); }
+        if (RR.on) { qKick(); aKick(); if (isOpen() && ready) recRender(); }
       }).catch(function () {});
       // áudio que não subiu em 48 h sai do aparelho mesmo com a gravação desligada na conta (a fila não roda) e com a aba
       // aberta por dias. Conta que nunca gravou não ganha o banco do aparelho só para isso
@@ -5882,8 +5956,8 @@
             it.setAttribute('role', 'menuitem');
           it.addEventListener('click', function (e) {
             e.stopPropagation(); m.remove(); RR.dev = d.deviceId; var r = rrCur();
-            if (r && r.st === 'live') { rrCutAll(r); aeStart(function (p, v) { rrBlock(r, p, v); }, function () { rrMicLost(r);
-              }).then(function () { rrRender(r); }, function () { rrMicLost(r); }); }
+            if (r && r.st === 'live') { rrCutAll(r); audStop(r); aeStart(function (p, v) { rrBlock(r, p, v); }, function () { rrMicLost(r);
+              }).then(function () { if (r.st === 'live') audStart(r); rrRender(r); }, function () { rrMicLost(r); }); }
             else if (r) { r.warn = ''; rrTest(r); }
           });
           m.appendChild(it);
@@ -5978,15 +6052,29 @@
       var IDB = null;
       function idb() {
         if (!IDB) IDB = new Promise(function (ok, no) {
-          var rq = indexedDB.open('od_gravacao_' + (RR.uid || 'conta'), 1);
-          rq.onupgradeneeded = function () { rq.result.createObjectStore('seg', { keyPath: 'k' }); };
-          rq.onsuccess = function () { ok(rq.result); }; rq.onerror = function () { no(rq.error); };
+          // versão 2: a store "aud" guarda os pedaços do áudio original até o servidor confirmar (como "seg" com os trechos)
+          var rq = indexedDB.open('od_gravacao_' + (RR.uid || 'conta'), 2);
+          rq.onupgradeneeded = function () {
+            var d = rq.result;
+            if (!d.objectStoreNames.contains('seg')) d.createObjectStore('seg', { keyPath: 'k' });
+            if (!d.objectStoreNames.contains('aud')) d.createObjectStore('aud', { keyPath: 'k' });
+          };
+          rq.onsuccess = function () {
+            var d = rq.result;
+            d.onversionchange = function () { d.close(); IDB = null; };      // outra aba com a versão nova: solta o banco
+            IDB = Promise.resolve(d);                  // destravou depois do onblocked: as próximas chamadas usam esta conexão
+            ok(d);
+          };
+          rq.onerror = function () { IDB = null; no(rq.error); };
+          // uma aba antiga (versão 1) ainda aberta: o mesmo pedido segue esperando; até lá, os trechos sobem da memória
+          rq.onblocked = function () { no(new Error('banco do aparelho em uso por outra aba')); };
         });
         return IDB;
       }
-      function idbTx(mode, fn) {
+      function idbTx(mode, fn, store) {
+        store = store || 'seg';
         return idb().then(function (db) { return new Promise(function (ok, no) {
-          var t = db.transaction('seg', mode), st = t.objectStore('seg'), out = fn(st);
+          var t = db.transaction(store, mode), st = t.objectStore(store), out = fn(st);
           t.oncomplete = function () { ok(out && out.result !== undefined ? out.result : out); };
           t.onerror = function () { no(t.error); }; t.onabort = function () { no(t.error || new Error('transação abortada')); };
         }); });
@@ -5996,7 +6084,132 @@
       function idbAll() { return idbTx('readonly', function (st) { return st.getAll(); }); }
       function idbPurge() {                    // áudio que não subiu em 48 h é apagado (dado de saúde não fica no aparelho)
         idbAll().then(function (rows) { rows.forEach(function (x) { if (Date.now() - x.created > 48 * 3600e3) idbDel(x.k); }); }).catch(function () {});
+        audAll().then(function (rows) { rows.forEach(function (x) { if (Date.now() - x.created > 48 * 3600e3) audDel(x.k); }); }).catch(function () {});
       }
+
+      // ----- áudio original (guardado 1 ano no servidor, para o player do prontuário tocar a consulta) -----
+      // Um MediaRecorder (opus 24 kbps) no mesmo microfone do worklet, um por sessão do microfone (iniciar, continuar,
+      // trocar de microfone): cada sessão é uma "parte", que começa no relógio da gravação (r.samples, o mesmo dos
+      // trechos). Pedaços de 5 s vão ao IndexedDB (store "aud") e sobem por uma fila própria a /prontuario/recordings/audio,
+      // em ordem. O áudio não segura a geração da evolução. 409 (o primeiro trecho de texto ainda não criou a gravação no
+      // servidor): tenta de novo depois. Recarregar a página no meio perde no máximo os últimos 5 s do som.
+      var AUD_MIME = (function () {
+        var l = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus'];
+        try { for (var i = 0; i < l.length; i++) if (window.MediaRecorder && MediaRecorder.isTypeSupported(l[i])) return l[i]; } catch (_) {}
+        return '';
+      })();
+      var AQ = { busy: false, timer: null, fails: 0, auth: false };
+      RR.amem = [];                            // pedaço que o navegador não conseguiu guardar: sobe da memória
+      RR.agone = {};                           // gravações apagadas nesta aba: nenhum pedaço delas volta a ser guardado ou enviado
+      var AUD_PARTE_MS = 30 * 60e3;            // uma parte nova a cada 30 min de gravação (o servidor aceita até 32 MB por parte)
+      function audAll() { return idbTx('readonly', function (st) { return st.getAll(); }, 'aud'); }
+      function audPut(row) { return RR.agone[row.recId] ? Promise.resolve() : idbTx('readwrite', function (st) { st.put(row); }, 'aud'); }
+      function audDel(k) { return idbTx('readwrite', function (st) { st.delete(k); }, 'aud'); }
+      function audSave(row) { return RR.agone[row.recId] || RR.amem.indexOf(row) >= 0 ? Promise.resolve() : audPut(row).catch(function () {}); }
+      function audDrop(row) {
+        var i = RR.amem.indexOf(row); if (i >= 0) { RR.amem.splice(i, 1); return Promise.resolve(); }
+        return audDel(row.k).catch(function () {});
+      }
+      function audForget(ids) {                // "Apagar transcrição": o som dessas gravações que ainda não subiu sai do aparelho
+        ids.forEach(function (id) { RR.agone[id] = 1; });
+        RR.amem = RR.amem.filter(function (x) { return ids.indexOf(x.recId) < 0; });
+        return audAll().then(function (rows) { rows.forEach(function (x) { if (ids.indexOf(x.recId) >= 0) audDel(x.k); }); }, function () {});
+      }
+      function audSessId() {
+        try { return crypto.randomUUID(); } catch (_) { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12); }
+      }
+      function audStop(r) {
+        var mr = r && r.mr; if (!mr) return;
+        r.mr = null; clearTimeout(r.audTroca);
+        try { if (mr.state !== 'inactive') mr.stop(); } catch (_) {}      // o último pedaço ainda chega pelo ondataavailable
+      }
+      function audStart(r) {                   // com a gravação "live" e o microfone aberto (AE)
+        audStop(r);
+        if (!AUD_MIME || !AE || !r.recId || !r.pid || RR.agone[r.recId]) return;
+        var mr;
+        try { mr = new MediaRecorder(AE.stream, { mimeType: AUD_MIME, audioBitsPerSecond: 24000 }); } catch (_) { return; }
+        if (r.audPart == null) r.audPart = r.audMax != null ? r.audMax : -1;
+        // a parte (pt) fica em "s": se o servidor disser que o número já é de outra sessão, a sessão inteira é renumerada
+        var s = { pt: ++r.audPart, sess: audSessId() }, at0 = r.samples / SR16, n = 0,
+            base = { recId: r.recId, rk: r.k, pid: r.pid, eid: r.cx.event_id || '' };
+        RR.asess[s.sess] = s;
+        mr.ondataavailable = function (e) {
+          if (!e.data || !e.data.size) return;
+          var row = Object.assign({ k: base.recId + ':' + s.sess + ':' + n, pt: s.pt, sess: s.sess, n: n++, at: at0, upto: r.samples / SR16,
+                                    blob: e.data, created: Date.now() }, base);
+          audPut(row).then(aKick, function () { RR.amem.push(row); aKick(); });
+        };
+        try { mr.start(5000); } catch (_) { return; }
+        r.mr = mr; r.temAudio = true;
+        r.audTroca = setTimeout(function () { if (r.mr === mr && r.st === 'live') audStart(r); }, AUD_PARTE_MS);
+      }
+      RR.asess = {};                           // sessões do MediaRecorder desta aba (para renumerar a parte da que está gravando)
+      window.addEventListener('pagehide', function () { var r = RR.live; if (r && r.mr && r.mr.state === 'recording') try { r.mr.requestData(); } catch (_) {} });
+      // outra sessão já tem esse número de parte (outra aba, ou o estado lido antes de outra subir): a sessão vai para o
+      // próximo número livre, com todos os pedaços dela — os que estão no aparelho e os que ainda vão chegar
+      function audRenumera(rows, sess) {
+        var x = rows.filter(function (q) { return q.sess === sess; }), rid = x[0] && x[0].recId;
+        var maior = rows.reduce(function (m, q) { return q.recId === rid ? Math.max(m, q.pt) : m; }, -1);
+        Object.keys(RR.by).forEach(function (k) { var r = RR.by[k]; if (r.recId === rid) maior = Math.max(maior, r.audPart != null ? r.audPart : -1); });
+        var novo = maior + 1, s = RR.asess[sess];
+        if (s) s.pt = novo;
+        Object.keys(RR.by).forEach(function (k) { var r = RR.by[k]; if (r.recId === rid) r.audPart = Math.max(r.audPart != null ? r.audPart : -1, novo); });
+        return Promise.all(x.map(function (q) { q.pt = novo; q.falhas = 0; q.depois = 0; return audSave(q); }));
+      }
+      function audMata(rows, ok) {             // pedaços que nunca vão entrar: ficam marcados (saem do aparelho em 48 h)
+        return Promise.all(rows.filter(ok).map(function (q) { q.dead = q.dead || 409; return audSave(q); }));
+      }
+      function aKick() {
+        if (AQ.busy || !RR.on) return;
+        clearTimeout(AQ.timer); AQ.busy = true;
+        var fim = function () { AQ.busy = false; aKick(); };
+        audAll().catch(function () { return []; }).then(function (todas) {
+          todas = todas.concat(RR.amem);
+          var rows = todas.filter(function (x) { return !x.dead && x.pid && x.sess && !RR.agone[x.recId]; });
+          // a parte cujo primeiro pedaço foi recusado nunca completa: o resto dela também sai da fila
+          var mortas = {}; todas.forEach(function (x) { if (x.dead && x.n === 0) mortas[x.sess] = 1; });
+          var presos = rows.filter(function (x) { return mortas[x.sess]; });
+          if (presos.length) return audMata(presos, function () { return true; }).then(fim);
+          var now = Date.now(), next = rows.filter(function (x) { return !x.depois || x.depois <= now; })
+            .sort(function (a, b) { return a.created - b.created || a.n - b.n; })[0];
+          if (!next) {
+            AQ.busy = false; AQ.fails = 0;
+            var w = rows.reduce(function (m, x) { return Math.min(m, x.depois || Infinity); }, Infinity);
+            if (w < Infinity) AQ.timer = setTimeout(aKick, Math.max(1000, w - now));
+            return;
+          }
+          return fetch('/prontuario/recordings/audio', { method: 'POST', credentials: 'same-origin', body: next.blob,
+            headers: { 'Content-Type': 'application/octet-stream', 'X-Patient-Id': String(next.pid), 'X-Rec-Id': next.recId,
+                       'X-Part': String(next.pt), 'X-N': String(next.n), 'X-Sess': next.sess, 'X-At': String(Math.round(next.at * 10) / 10),
+                       'X-Upto': String(Math.round(next.upto * 10) / 10), 'X-Event-Id': next.eid } })
+            .then(function (resp) {
+              AQ.fails = 0;
+              if (resp.ok) return audDrop(next).then(fim);
+              if (resp.status === 401) { AQ.busy = false; AQ.auth = true; return; }          // sobe ao entrar de novo
+              return resp.json().catch(function () { return {}; }).then(function (j) {
+                if (RR.agone[next.recId]) return audDrop(next).then(fim);
+                if (j.parte_ocupada) return audRenumera(todas, next.sess).then(fim);
+                // a consulta é de outro paciente: nada desta gravação entra
+                if (j.other_patient) return audMata(rows, function (q) { return q.recId === next.recId; }).then(fim);
+                // a parte encheu (32 MB): o resto desta sessão não entra; a gravação segue numa parte nova
+                if (j.teto_parte) {
+                  Object.keys(RR.by).forEach(function (k) { var r = RR.by[k]; if (r.mr && RR.asess[next.sess] && r.recId === next.recId && r.st === 'live') audStart(r); });
+                  return audMata(rows, function (q) { return q.sess === next.sess; }).then(fim);
+                }
+                next.falhas = (next.falhas || 0) + 1;
+                if ([400, 404, 413, 415].indexOf(resp.status) >= 0 || next.falhas > 15) { next.dead = resp.status; return audSave(next).then(fim); }
+                // 409 (a gravação ainda não existe no servidor), 5xx, 429 e 403: guarda e tenta mais tarde
+                next.depois = Date.now() + Math.min(600000, 4000 * Math.pow(2, Math.min(next.falhas - 1, 8)));
+                return audSave(next).then(fim);
+              });
+            });
+        }).catch(function () {                       // sem rede
+          AQ.busy = false; AQ.fails++;
+          AQ.timer = setTimeout(aKick, Math.min(30000, 1000 * Math.pow(2, Math.min(AQ.fails, 5))));
+        });
+      }
+      window.addEventListener('online', function () { AQ.fails = 0; aKick(); });
+      window.addEventListener('focus', function () { if (AQ.auth) { AQ.auth = false; aKick(); } });
 
       // ----- fila de envio: um trecho por vez, do mais antigo; espera crescente; volta sozinha com a internet -----
       // Erro de rede (fetch falhou): espera crescente para todos. Erro do servidor (5xx, 429 e 403) num trecho: tenta de novo e,
@@ -6041,7 +6254,7 @@
               return resp.json().catch(function () { return {}; }).then(function (j) {
                 Q.down = false;
                 if (resp.ok && j.ok) {
-                  if (seg) { seg.st = 'ok'; seg.text = j.text || ''; seg.duvidas = j.duvidas || []; }
+                  if (seg) { seg.st = 'ok'; seg.text = j.text || ''; seg.duvidas = j.duvidas || []; seg.falas = j.falas || []; }
                   Q.fails = 0; Q.auth = false;
                   if (next.falhas) Q.erro = Math.max(0, Q.erro - 1);
                   return qDrop(next).then(function () { Q.busy = false; qState(false); qKick(); });
@@ -6090,6 +6303,7 @@
           if (r !== rrCur() || !isOpen() || locked() || !r.consent) { aeStop(); rrRender(r); return; }
           if (!r.recId) { r.recId = uuid(); r.consentAt = new Date().toISOString(); }
           r.st = 'live'; RR.live = r; r.blocos = []; r.blocosRms = [];
+          audStart(r);
           rrWake(); rrRender(r);
         }, function (e) {
           r.starting = false; r.err = (e && e.name) || '';
@@ -6105,7 +6319,7 @@
       document.addEventListener('visibilitychange', function () { if (RR.live && RR.live.st === 'live') rrWake(); });
       function rrPause(r) {
         if (r.st !== 'live') return;
-        rrCutAll(r); aeStop(); r.st = 'paused'; RR.live = null; r.quiet = 0; if (r.warn === 'silencio') r.warn = ''; rrPill();
+        rrCutAll(r); audStop(r); aeStop(); r.st = 'paused'; RR.live = null; r.quiet = 0; if (r.warn === 'silencio') r.warn = ''; rrPill();
         if (RR.lock) { RR.lock.release().catch(function () {}); RR.lock = null; }
         rrRender(r);
       }
@@ -6303,12 +6517,12 @@
                  !r.segTable.some(function (t) { return t.rec_id === r.recId && t.seq === s.seq; });
         });
       }
-      // assinar com pontos ainda não conferidos (ou trechos fora da evolução) avisa abaixo do cartão (uma vez); com o aviso
-      // na tela, o mesmo "Assinar" do cartão assina mesmo assim (um botão só)
+      // assinar com trechos da gravação fora da evolução avisa abaixo do cartão (uma vez); com o aviso na tela, o mesmo
+      // "Assinar" do cartão assina mesmo assim (um botão só). A lista "Para conferir na evolução" saiu da tela (13/11/2026)
       function rrHoldFinalize() {
         var r = rrActive() && rrCur(); if (!r || r.st !== 'done' || r.finalOk) return false;
         if (!$('rcFinal').hidden) { $('rcFinal').hidden = true; r.finalOk = true; return false; }
-        var open = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; }), falta = rrFaltam(r).length;
+        var open = [], falta = rrFaltam(r).length;
         if (!open.length && !falta) return false;
         var hi = open.filter(function (f) { return f.nivel === 'alto'; }).length, box = $('rcFinal'); box.innerHTML = ''; box.hidden = false;
         box.appendChild(el('span', 't')).innerHTML = (open.length ? '<b>Ainda há ' + open.length + (open.length === 1 ? ' ponto' : ' pontos') +
@@ -6317,7 +6531,7 @@
           (falta ? (open.length ? ' e ' : '<b>') + falta + (falta === 1 ? ' trecho da gravação não entrou' : ' trechos da gravação não entraram') +
                    ' na evolução' + (open.length ? '' : '</b>') : '') + '. Para assinar mesmo assim, toque em Assinar de novo.';
         var b1 = el('button', 'pr-ghost', 'Voltar e conferir'); b1.type = 'button';
-        b1.addEventListener('click', function () { box.hidden = true; $('rcReview').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+        b1.addEventListener('click', function () { box.hidden = true; $('csCard').scrollIntoView({ behavior: 'smooth', block: 'center' }); });
         box.appendChild(b1); box.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return true;
       }
@@ -6345,8 +6559,15 @@
               if (my.st !== 'idle') return;
               var rid = last ? last.rec_id : mine[0].recId;
               my.recId = rid; my.consent = true; my.consentAt = (last && last.consent_at) || (mine[0] && mine[0].consentAt) || '';
+              my.audMax = ((last && last.audio) || []).reduce(function (m, a) { return Math.max(m, a.part); }, -1);
+              my.temAudio = my.audMax >= 0;
+              audAll().then(function (ar) { ar.forEach(function (x) {
+                if (x.recId !== rid) return;
+                my.audMax = Math.max(my.audMax, x.pt); my.temAudio = true;
+                if (my.st !== 'live') my.samples = Math.max(my.samples, Math.round((x.upto || 0) * SR16));
+              }); }, function () {});
               my.segs = ((last && last.segments) || []).map(function (s) { return { seq: s.seq, at: s.at, dur: s.dur || 0, st: 'ok', text: s.text ||
-                '', duvidas: s.duvidas || [] }; });
+                '', duvidas: s.duvidas || [], falas: s.falas || [] }; });
               var promote = [];
               mine.filter(function (x) { return x.recId === rid; }).forEach(function (x) {
                 if (my.segs.some(function (s) { return s.seq === x.seq; })) { if (x.part) promote.push([null, x.k]); return; }
@@ -6359,7 +6580,8 @@
               my.segs.sort(function (a, b) { return a.seq - b.seq; });
               my.seq = my.segs.reduce(function (m, s) { return Math.max(m, s.seq); }, 0);
               var end = my.segs.reduce(function (m, s) { return Math.max(m, s.at + (s.dur || 0)); }, 0);
-              my.samples = Math.round(Math.max((last && last.seconds) || 0, end) * SR16);
+              var aEnd = ((last && last.audio) || []).reduce(function (m, a) { return Math.max(m, a.upto || 0); }, 0);
+              my.samples = Math.round(Math.max((last && last.seconds) || 0, end, aEnd) * SR16);
               var sc = last && last.scribe, sa = sc && sc.saida, nd = cur && cur.data && cur.data.scribe;
               if (sa) {      // a última geração (também quando gravou mais depois dela): evolução, pontos e o que já está no texto
                 my.result = sa.result; my.flags = sa.flags || []; my.segTable = sa.segs || [];
@@ -6378,7 +6600,7 @@
         }).catch(function () {}).then(function () { my.loading = false; });
       }
       window.addEventListener('beforeunload', function (e) {
-        var busy = RR.mem.length || Object.keys(RR.by).some(function (k) { var r = RR.by[k]; return r.st === 'live' || rrPending(r); });
+        var busy = RR.mem.length || RR.amem.length || Object.keys(RR.by).some(function (k) { var r = RR.by[k]; return r.st === 'live' || rrPending(r); });
         if (RR.on && busy) { e.preventDefault(); e.returnValue = ''; }
       });
       document.addEventListener('keydown', function (e) {               // ⌘/Ctrl + Shift + Espaço: pausa/continua
@@ -6394,20 +6616,62 @@
         vital: 'Sinal vital impossível', dose_incomum: 'Dose fora do usual', duvida_grave: 'Ouvido com dúvida', privacidade: 'Dado pessoal retirado',
         dose_longe: 'Número longe do remédio', vital_longe: 'Valor longe do rótulo', sem_origem: 'Frase sem trecho de origem',
         inferido: 'Frase deduzida, não dita', cid: 'CID-10', pendencia: 'Pendência', duvida: 'Palavra ouvida com dúvida', cadastro: 'Veio do cadastro' };
+      // ----- quem fala (Médico / Paciente / Acompanhante): cada trecho pode vir com "falas", do rotulador do servidor -----
+      var QUEM = { m: 'Médico', p: 'Paciente', a: 'Acompanhante' };
+      function txMarca(text, duvidas) {               // o texto, com as palavras ouvidas com dúvida marcadas
+        var html = (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        var ws = (duvidas || []).filter(Boolean).map(function (w) { return String(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); });
+        if (!ws.length) return html;
+        ws.sort(function (a, b) { return b.length - a.length; });
+        return html.replace(new RegExp('(^|[^\\wÀ-ÿ])(' + ws.join('|') + ')(?![\\wÀ-ÿ])', 'g'),
+          '$1<mark class="rc-dv" title="Ouvido com dúvida: confira">$2</mark>');
+      }
+      // menu do rótulo: troca quem fala nesta fala (fica gravado e marcado como corrigido pelo médico)
+      function txQuemMenu(btn, sg, i, ctx2, depois) {
+        var old = document.querySelector('.rc-qmenu'); if (old) { var era = old._btn; old.remove(); if (era === btn) return; }
+        var m = el('div', 'gq-menu rc-qmenu'); m.setAttribute('role', 'menu'); m._btn = btn;
+        m.addEventListener('click', function (e) { e.stopPropagation(); });
+        ['m', 'p', 'a'].forEach(function (q) {
+          var it = el('button', 'gq-mi' + (sg.falas[i].q === q ? ' on' : ''), QUEM[q]); it.type = 'button'; it.setAttribute('role', 'menuitem');
+          it.addEventListener('click', function (e) {
+            e.stopPropagation(); m.remove();
+            if (sg.falas[i].q === q) return;
+            var antes = sg.falas[i].q; sg.falas[i].q = q; sg.falas[i].manual = true; depois();
+            api('POST', '/prontuario/recordings/fala', { patient_id: ctx2.pid, rec_id: ctx2.recId, seq: sg.seq, i: i, q: q }).then(function (res) {
+              if (res.ok) return;
+              sg.falas[i].q = antes; depois(); toast('Não foi possível trocar quem fala. Tente de novo.');
+            }, function () { sg.falas[i].q = antes; depois(); toast('Sem conexão: não foi possível trocar quem fala.'); });
+          });
+          m.appendChild(it);
+        });
+        m.style.left = btn.offsetLeft + 'px'; m.style.top = (btn.offsetTop + btn.offsetHeight + 4) + 'px';
+        btn.parentNode.parentNode.appendChild(m);
+        setTimeout(function () { document.addEventListener('click', function f(e) { if (!m.contains(e.target)) { m.remove(); document.removeEventListener('click', f); } }); }, 0);
+      }
+      // as falas de um trecho dentro da linha dele (d): "Médico 0:12" e o texto, uma embaixo da outra.
+      // base: soma ao minuto (várias gravações na mesma evolução). Sem falas: devolve false (desenho de antes)
+      function txFalas(d, sg, base, ctx2, depois) {
+        var fs = sg.falas || [];
+        if (!fs.length) return false;
+        fs.forEach(function (f, i) {
+          var w = el('div', 'rc-f'), h = el('div', 'rc-h'), b = el('button', 'rc-q', QUEM[f.q] || 'Fala'); b.type = 'button';
+          b.title = 'Trocar quem fala'; b.setAttribute('aria-haspopup', 'menu');
+          b.addEventListener('click', function (e) { e.stopPropagation(); txQuemMenu(b, sg, i, ctx2, depois); });
+          h.appendChild(b); h.appendChild(el('small', null, mmss(base + (f.at != null ? f.at : sg.at))));
+          var t = el('div', 'rc-t'); t.innerHTML = txMarca(f.t, sg.duvidas);
+          w.appendChild(h); w.appendChild(t); d.appendChild(w);
+        });
+        return true;
+      }
       function rrTx(r, hlSeq) {
         var tx = $('rcTx'); tx.innerHTML = '';
         r.segs.forEach(function (sg) {
           if (sg.st === 'silent') return;
           var d = el('div', 'rc-u' + (hlSeq === sg.seq ? ' hl' : '')), t = el('div', 'rc-t'); d._seq = sg.seq;
+          if (sg.st === 'ok' && txFalas(d, sg, 0, { pid: r.pid, recId: r.recId }, function () { rrTx(r); })) { tx.appendChild(d); return; }
           d.appendChild(el('div', 'rc-h', mmss(sg.at)));
           if (sg.st === 'ok') {
-            var html = (sg.text || '(sem fala)').replace(/&/g, '&amp;').replace(/</g, '&lt;');
-            (sg.duvidas || []).forEach(function (w) {
-              var esc = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-              html = html.replace(new RegExp('(^|[^\\wÀ-ÿ])(' + esc + ')(?![\\wÀ-ÿ])', 'g'),
-                '$1<mark class="rc-dv" title="Ouvido com dúvida: confira">$2</mark>');
-            });
-            t.innerHTML = html;
+            t.innerHTML = sg.text ? txMarca(sg.text, sg.duvidas) : '(sem fala)';
           } else {
             t.textContent = sg.st === 'err' ? 'Trecho com erro: ' + (sg.err || 'não foi transcrito') : Q.down || Q.auth ?
               'Guardado neste computador: é transcrito quando a conexão voltar'
@@ -6425,35 +6689,6 @@
           []).length; }, 0);
         return n + (n === 1 ? ' trecho' : ' trechos') + ' · ' + mmss(r.samples / SR16) + (dv ? ' · ' + dv + (dv === 1 ? ' palavra' : ' palavras') +
           ' com dúvida' : '');
-      }
-      function rrReview(r) {
-        var box = $('rcReview'); box.innerHTML = '';
-        if (!r.flags.length) { box.hidden = true; return; }
-        box.hidden = false;
-        var h = el('div', 'rc-rv-h'), left = r.flags.filter(function (f, i) { return !r.checked[i] && f.nivel !== 'info'; }).length;
-        h.appendChild(document.createTextNode('Para conferir na evolução')); h.appendChild(el('span', null, String(left)));
-        h.appendChild(el('small', null, 'os mais importantes primeiro')); box.appendChild(h);
-        r.flags.forEach(function (f, i) {
-          var row = el('div', 'rc-pt ' + f.nivel + (r.checked[i] ? ' ok' : '')), t = el('div', 't');
-          row.appendChild(el('i')); t.appendChild(document.createTextNode(f.texto));
-          var refs = (f.src || []).map(function (q) { return rrRef(r, q); }), at = refs.filter(function (x) { return x.at != null; });
-          t.appendChild(el('small', null, (FLAGTXT[f.tipo] || f.tipo) + (at.length ? ' · trecho ' + at.map(function (x) { return mmss(x.at);
-            }).join(', ') : '')));
-          row.appendChild(t);
-          var a = el('div', 'a'), ok = el('button', 'pr-ghost', r.checked[i] ? 'Conferido ✓' : 'Conferido'); ok.type = 'button';
-          var go = refs.filter(function (x) { return x.seq != null; })[0];
-          if (go) {
-            var ver = el('button', 'pr-ghost lk', 'Ver na transcrição'); ver.type = 'button';
-            ver.addEventListener('click', function () {
-              csTab('tx'); rrTx(r, go.seq);
-              var u = [].filter.call($('rcTx').children, function (c) { return c._seq === go.seq; })[0];
-              if (u) $('csTx').scrollTop = Math.max(0, u.offsetTop - 16);
-            });
-            a.appendChild(ver);
-          }
-          ok.addEventListener('click', function () { r.checked[i] = !r.checked[i]; rrReview(r); changed(); });
-          a.appendChild(ok); row.appendChild(a); box.appendChild(row);
-        });
       }
       function rrRender(r) {
         if (!r || r !== rrCur() || recDemo()) return;
@@ -6501,16 +6736,15 @@
           csGo('Gerar de novo', function () { rrGenerate(r); });
           rcAlert('bad', 'err', /outro paciente/.test(r.err || '') ? RRTXT.outro
             : '<b>Não foi possível gerar a evolução agora.</b> A transcrição está guardada; tente de novo ou escreva a evolução à mão.');
-        } else if (gravada) {                          // o player percorre as falas no tempo, sem som (o áudio foi descartado)
+        } else if (gravada) {                          // o player toca o áudio guardado; sem ele, percorre as falas no tempo, sem som
           csSoFim();
-          csPlayer(r, rrMarcas(r), false);
+          csPlayer(r, rrMarcas(r), !!r.temAudio);
           if (r.st === 'done' && !lk) {
             $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise na aba SOAP.' +
               (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') :
                 'A evolução gerada pela gravação não está no texto.';
             $('rcNoteBtn').textContent = 'Preencher a evolução'; $('rcNoteBtn').hidden = !!r.applied;   // preenchida: só o X para fechar
             $('rcNote').hidden = !!r.notaFechada;
-            rrReview(r);
           }
         }
         csDot(r);
@@ -7703,7 +7937,7 @@
         [].forEach.call($('prVisits').querySelectorAll('.pr-item.hc'), function (c) { c.remove(); });
         [].forEach.call($('prVisits').querySelectorAll('.pr-trow.open'), function (r) { r.classList.remove('open'); r.setAttribute('aria-expanded', 'false'); });
         if (was && !keep) return null;
-        var c = histCard(b._note); c.classList.add('in-cs'); b.parentNode.insertBefore(c, b.nextSibling);
+        var c = histCard(b._note, true); c.classList.add('in-cs'); b.parentNode.insertBefore(c, b.nextSibling);
         b.classList.add('open'); b.setAttribute('aria-expanded', 'true');
         return c;
       }
@@ -7758,17 +7992,47 @@
         h.push(n.signed_at ? 'Finalizada em ' + fmtDT(n.signed_at) + '.' : 'Rascunho: ainda não finalizada.');
         return h;
       }
-      function histCard(n) {
+      // o resumo curto de uma consulta registrada: a 1ª frase do Subjetivo, da Avaliação e do Plano (sem IA, do próprio texto)
+      function resumoConsulta(n, hl) {
+        var d = n.data || {};
+        if (isLabRec(n)) return hl[0] || '';
+        if (d.mode === 'soap') {
+          var fr = function (t, k) { return (strip(t).match(/[^.!?]+[.!?]+/g) || (strip(t) ? [strip(t)] : [])).slice(0, k).join(' ').trim(); };
+          var v = d.vitals || {}, ex = [];
+          if (v.pa_s && v.pa_d) ex.push('PA ' + v.pa_s + '/' + v.pa_d + ' mmHg');
+          if (v.glicemia) ex.push('glicemia ' + v.glicemia + ' mg/dL');
+          var cid = (d.cid || []).map(function (x) { return x.desc || x.code; }).filter(Boolean);
+          var f = [fr(d.s, 2), ex.length ? ex.join(' e ') + '.' : '', fr(d.a, 1) || (cid.length ? 'Diagnósticos: ' + cid.join(', ') + '.' : ''), fr(d.p, 2)].filter(Boolean);
+          if (f.length) return f.join(' ').replace(/^./, function (c) { return c.toUpperCase(); });
+        }
+        return firstSentence(n.content) || 'Evolução sem texto.';
+      }
+      // o cartão do destaque da lista fecha ao tocar fora dele e no Esc
+      document.addEventListener('click', function (e) {
+        if (!e.target.closest || e.target.closest('.hc-pop') || e.target.closest('.hc-mk')) return;
+        [].forEach.call(document.querySelectorAll('.pr-item.hc'), function (c) { if (c._popClose && c.querySelector('.hc-pop')) c._popClose(); });
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') [].forEach.call(document.querySelectorAll('.pr-item.hc'), function (c) { if (c._popClose && c.querySelector('.hc-pop')) c._popClose(); });
+      });
+      function histCard(n, inList) {
+        // na lista de Consultas o nome da linha vai no começo da frase, depois do ícone: "Evolução · …"
+        function trFrase(nome, txt) {
+          var sp = el('span'); if (!inList) { sp.textContent = txt; return sp; }
+          var D = '\u2002·\u2002';                                    // espaço duplo dos dois lados do ponto
+          sp.appendChild(el('b', 'hc-trl', nome)); sp.appendChild(document.createTextNode(txt ? D + txt.split(' · ').join(D) : '')); return sp;
+        }
         var lab = isLabRec(n), d = noteDate(n), secs = noteSections(n), hl = noteHighlights(n);
         var it = el('div', 'pr-item hc'); it._note = n;
         it._q = norm([n.content, n.event_title].concat((n.addenda || []).map(function (a) { return a.content; })).join(' '));
         // cabeçalho: título (16/24 500) + situação + "Documentos e ações" (28px)
         var hd = el('div', 'hc-hd'), tt = el('div', 'hc-t');
-        tt.appendChild(el('span', null, lab ? 'Resultado de exames' : eventTitle(n.event_title || (n.event_id ? '' : 'Evolução avulsa'))));
-        if (d) tt.appendChild(el('small', null, fmtDay(d)));
-        tt.appendChild(el('span', 'pr-badge ' + (lab ? 'lab' : n.signed_at ? 'ok' : 'draft'), lab ? 'Exames' : n.signed_at ? 'Finalizada' : 'Rascunho'));
+        if (!inList) {                                                // na lista de Consultas a linha de cima já diz o título e a data
+          tt.appendChild(el('span', null, lab ? 'Resultado de exames' : eventTitle(n.event_title || (n.event_id ? '' : 'Evolução avulsa'))));
+          if (d) tt.appendChild(el('small', null, fmtDay(d)));
+        }
         var scr = !lab && n.data && n.data.scribe;                   // gerada pela gravação: CFM 2.454/2026 pede o aviso
-        if (scr) tt.appendChild(el('span', 'pr-badge ia', 'Transcrição automática (IA)'));
+        if (scr && !inList) tt.appendChild(el('span', 'pr-badge ia', 'Transcrição automática (IA)'));   // na lista o aviso vai na Evolução e na Transcrição
         hd.appendChild(tt);
         var dd = el('div', 'gq-dd hc-dd'), db = el('button', 'hc-docs'), dm = el('div', 'gq-menu'); db.type = 'button';
         db.setAttribute('aria-haspopup', 'menu'); db.setAttribute('aria-expanded', 'false'); dm.setAttribute('role', 'menu'); dm.hidden = true;
@@ -7778,9 +8042,10 @@
         else if (n.signed_at) item('Adicionar adendo', function () { expand(true); var host = it.querySelector('.hc-body'); addendum(n, host, function (ok) { if (ok) renderHist(); }); });
         else item('Abrir para editar', function () { switchTo(n.event_id ? { event_id: n.event_id, title: eventTitle(n.event_title), start: n.event_start } : { note_id: n.id }); });
         item('Copiar texto', function () { try { navigator.clipboard.writeText(n.content || ''); toast('Texto copiado'); } catch (_) {} });
-        if (scr && (scr.rec_ids || []).length) {
-          item('Ver transcrição', function () { histTx(n, body, expand); });
-          item('Apagar transcrição', function () { histTxDelete(n, body); });
+        var temTx = !!(scr && (scr.rec_ids || []).length);
+        if (temTx) {
+          item('Ver transcrição', function () { txOpen(true); ttr.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); });
+          item('Apagar transcrição', function () { histTxDelete(n, function () { ttr.remove(); tb.remove(); }); });
         }
         var day = d ? d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) : '';
         (files || []).filter(function (f) { var c = new Date(f.created_at); return day && c.getFullYear() + '-' + pad(c.getMonth() + 1) + '-' + pad(c.getDate()) === day; }).forEach(function (f, i) {
@@ -7788,34 +8053,226 @@
           item(f.name, function () { window.open('/prontuario/files/' + f.id, '_blank', 'noopener'); });
         });
         db.addEventListener('click', function (e) { e.stopPropagation(); var o = dm.hidden; closeMenus(); [].forEach.call(document.querySelectorAll('.hc-dd .gq-menu'), function (m) { m.hidden = true; }); dm.hidden = !o; db.setAttribute('aria-expanded', o ? 'true' : 'false'); });
-        dd.appendChild(db); dd.appendChild(dm); hd.appendChild(dd); it.appendChild(hd);
+        dd.appendChild(db); dd.appendChild(dm);
+        if (!inList) { hd.appendChild(dd); it.appendChild(hd); }     // na lista, o botão vai embaixo (depois da Transcrição)
+        if (inList) {                                                 // o resumo da consulta, no formato de "Pontos positivos e de atenção"
+          var rs = el('div', 'hc-sum'), rp = el('p', 'hc-sump');          // "Resumo da consulta · …" em Bold, na mesma linha do texto
+          rp.appendChild(el('b', 'hc-sumt', lab ? 'Resumo dos exames' : 'Resumo da consulta'));
+          rp.appendChild(document.createTextNode('\u2002·\u2002' + resumoConsulta(n, hl)));   // o ponto no meio, com o espaço duplo das linhas de baixo
+          rs.appendChild(rp); it.appendChild(rs);
+        }
         // player: trilha com marcadores (S, O, A, P) — a gravação da consulta entra aqui quando existir
-        var pw = el('div', 'hc-pw'), pl = el('div', 'hc-player'), tk = el('div', 'hc-trk'), mks = el('div', 'hc-mks');
+        var pw = el('div', 'hc-pw'), pl = el('div', 'hc-player'), tk = el('div', 'hc-trk'), mks = el('div', 'hc-mks'), mkBtns = [], popI = -1;
         var total = secs.reduce(function (x, sc) { return x + sc.t.length + 40; }, 0) || 1, acc = 0;
         var line = el('div', 'hc-line'), played = el('i', 'hc-played'), rest = el('i', 'hc-rest'), thumb = el('span', 'hc-thumb');
         secs.forEach(function (sc, k) {
           var at = acc / total; acc += sc.t.length + 40;
           if (!k) return;                                              // o primeiro trecho começa no 0 (no cursor)
           var m = el('button', 'hc-mk'); m.type = 'button'; m.style.left = 'calc((100% - 13px) * ' + at.toFixed(4) + ' + 6.5px)';
-          m.title = sc.h; m.setAttribute('aria-label', 'Ir para ' + sc.h); m.appendChild(el('i'));
-          m.addEventListener('click', function () { seek(at); expand(true); var s2 = it.querySelectorAll('.hc-sp')[k]; if (s2) s2.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+          m.setAttribute('aria-label', 'Destaque: ' + sc.h); m.appendChild(el('i'));
+          if (!inList) { m.title = sc.h; m.addEventListener('click', function () { seek(at); expand(true); var s2 = it.querySelectorAll('.hc-sp')[k]; if (s2) s2.scrollIntoView({ behavior: 'smooth', block: 'center' }); }); }
+          else {                                                       // na lista: o cartão do destaque, como na tela da gravação
+            var j = mkBtns.length; m._sc = sc; m._at = at; m.setAttribute('aria-haspopup', 'dialog'); m.setAttribute('aria-expanded', 'false');
+            m.addEventListener('mouseenter', function () { if (popI !== j) popOpen(j); });
+            m.addEventListener('click', function (e) { e.stopPropagation(); if (popI !== j) popOpen(j); });   // o mouse já abriu: o clique não fecha
+            mkBtns.push(m);
+          }
           mks.appendChild(m);
         });
+        // o cartão do destaque (o mesmo .cs-pop da tela da gravação): o nome da parte, o texto e as setas entre os destaques
+        function popClose() {
+          var x = it.querySelector('.hc-pop'); if (x) x.remove(); popI = -1;
+          mkBtns.forEach(function (b) { b.classList.remove('on'); b.setAttribute('aria-expanded', 'false'); });
+        }
+        function popOpen(j) {
+          var b = mkBtns[j]; if (!b) return; popI = j; seek(b._at);
+          var box = it.querySelector('.hc-pop'); if (!box) { box = el('div', 'cs-pop hc-pop'); box.setAttribute('role', 'dialog'); pw.after(box); }
+          box.innerHTML = ''; box.setAttribute('aria-label', 'Destaque: ' + b._sc.h);
+          var h = el('div', 'cs-pop-h'); h.appendChild(el('span', 'cs-pop-t', b._sc.h)); box.appendChild(h);
+          box.appendChild(el('div', 'cs-pop-x', b._sc.t || ''));
+          var f = el('div', 'cs-pop-f'), pg = el('div', 'cs-pop-pg'), ant = el('button', 'cs-ant'), prox = el('button', 'cs-prox');
+          ant.type = prox.type = 'button';
+          ant.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          prox.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="m6 3 5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+          ant.setAttribute('aria-label', 'Destaque anterior'); prox.setAttribute('aria-label', 'Próximo destaque');
+          ant.disabled = j === 0; prox.disabled = j >= mkBtns.length - 1;
+          ant.addEventListener('click', function (e) { e.stopPropagation(); popOpen(j - 1); });
+          prox.addEventListener('click', function (e) { e.stopPropagation(); popOpen(j + 1); });
+          pg.appendChild(ant); pg.appendChild(el('span', null, (j + 1) + ' / ' + mkBtns.length)); pg.appendChild(prox);
+          f.appendChild(pg); box.appendChild(f);
+          mkBtns.forEach(function (x, q) { x.classList.toggle('on', q === j); x.setAttribute('aria-expanded', q === j ? 'true' : 'false'); });
+          var cr = it.getBoundingClientRect(), pr = pw.getBoundingClientRect(), mr = b.getBoundingClientRect();
+          var w = box.offsetWidth, cx = mr.left + mr.width / 2 - cr.left, left = Math.max(0, Math.min(cr.width - w, cx - 44));
+          box.style.left = left + 'px'; box.style.top = (pr.bottom - cr.top + 4) + 'px';
+          box.style.setProperty('--cx', Math.max(24, Math.min(w - 24, cx - left)) + 'px');
+        }
+        it._popClose = popClose;
         function seek(x) { played.style.width = 'calc((100% - 13px) * ' + x + ')'; thumb.style.left = 'calc((100% - 13px) * ' + x + ')'; rest.style.left = 'calc((100% - 13px) * ' + x + ' + 13px)'; }
         line.appendChild(played); line.appendChild(rest); tk.appendChild(mks); tk.appendChild(line); tk.appendChild(thumb);
         var lb = el('div', 'hc-lab'); lb.appendChild(el('span', 'hc-chip', scr ? 'Gravada' : 'Sem gravação')); lb.appendChild(el('span', null, '0:00'));
         lb.appendChild(el('span', 'hc-dur', scr && scr.segundos ? mmss(scr.segundos) : '—:—'));
         tk.appendChild(lb); pl.appendChild(tk);
-        var why = scr ? 'O áudio não é guardado: só a transcrição' : 'Gravação da consulta — em breve';
-        [['vol', 'Volume'], ['play', 'Ouvir']].forEach(function (b) {
+        var why = scr ? 'Velocidade normal' : 'Gravação da consulta — em breve';
+        if (!inList) [['vol', 'Volume'], ['play', 'Ouvir']].forEach(function (b) {
           var x = el('button', 'hc-btn'); x.type = 'button'; x.disabled = true; x.title = why; x.setAttribute('aria-label', b[1]); x.innerHTML = HI[b[0]]; pl.appendChild(x);
         });
+        else {
+          // na lista: o play toca a consulta. Gravada depois de 13/11/2026: o áudio original (guardado 1 ano), parte por
+          // parte (/prontuario/recordings/audio), e o botão de som deixa mudo. Sem áudio (consulta mais antiga, áudio já
+          // apagado pelo prazo, ou sem gravação): a transcrição (ou a evolução) é lida por uma voz instalada NO COMPUTADOR
+          // (localService: o texto não sai da máquina). A bolinha acompanha, cada destaque abre ao passar e, com a
+          // Transcrição aberta, a fala do momento fica em destaque. Som desligado sem áudio: percorre em silêncio.
+          var pbBtn = el('button', 'hc-btn rc-b'), volBtn = el('button', 'hc-btn rc-b'), tmEl = lb.children[1];
+          var pbOn = false, pbPos = 0, pbLast = 0, pbIv = null, mudo = false, pbSegs = null, fala = null, vez = 0, avisou = false;
+          var pbAud = null, partes = {}, tocando = null, tocI = -1;
+          var pbDur = scr && scr.segundos ? scr.segundos : Math.max(20, Math.round(total / 25));
+          pbBtn.type = volBtn.type = 'button';
+          function pbIcon() { pbBtn.innerHTML = pbOn ? RI.pause : HI.play; pbBtn.setAttribute('aria-label', pbOn ? 'Pausar' : 'Ouvir a consulta'); pbBtn.title = pbBtn.getAttribute('aria-label'); }
+          function volIcon() { volBtn.innerHTML = mudo ? RI.mute : HI.vol; volBtn.setAttribute('aria-label', mudo ? 'Ligar o som' : 'Desligar o som'); volBtn.title = volBtn.getAttribute('aria-label'); }
+          function vozLocal() {
+            try { var vs = window.speechSynthesis.getVoices().filter(function (v) { return v.localService && /^pt/i.test(v.lang); });
+                  var br = vs.filter(function (v) { return /pt[-_]BR/i.test(v.lang); });
+                  return br.filter(function (v) { return /premium|enhanced|aprimorad|melhorad/i.test(v.name); })[0] || br[0] || vs[0] || null; } catch (_) { return null; }
+          }
+          function calar() {
+            vez++; fala = null; tocI = -1;
+            if (tocando) { try { tocando.pause(); URL.revokeObjectURL(tocando._url); } catch (_) {} tocando = null; }
+            try { window.speechSynthesis.cancel(); } catch (_) {}
+          }
+          function pbFala(t) {
+            var us = [].slice.call(it.querySelectorAll('.hc-txb .rc-u')), on = null;
+            us.forEach(function (u) { if (u._at != null && u._at <= t) on = u; });
+            us.forEach(function (u) { u.classList.toggle('on', u === on); });
+            var bx = it.querySelector('.hc-txb .rc-tx'); if (bx) bx.classList.toggle('pb', pbOn || pbPos > 0);
+          }
+          function pbMostra(antes) {
+            seek(pbPos); tmEl.textContent = mmss(Math.floor(pbPos * pbDur)); pbFala(pbPos * pbDur);
+            mkBtns.forEach(function (b, j) { if (b._at > antes && b._at <= pbPos) popOpen(j); });
+          }
+          function pbStop(fim) {
+            pbOn = false; clearInterval(pbIv); pbIv = null; calar(); pbIcon();
+            if (fim) { pbPos = 0; seek(0); tmEl.textContent = '0:00'; pbFala(-1); var bx = it.querySelector('.hc-txb .rc-tx'); if (bx) bx.classList.remove('pb'); }
+          }
+          // as falas da transcrição e as partes do áudio. Várias gravações na mesma evolução: cada uma começa onde a
+          // anterior terminou (o relógio de cada gravação começa do zero)
+          function pbCarrega(cb) {
+            if (pbSegs) { cb(); return; }
+            var daEvo = function () {
+              var a2 = 0; pbSegs = secs.map(function (sc) { var x = { at: a2 / total * pbDur, text: sc.h.replace(/^[SOAP] — /, '') + '. ' + sc.t }; a2 += sc.t.length + 40; return x; });
+              pbAud = []; cb();
+            };
+            if (!temTx) { daEvo(); return; }
+            api('POST', '/prontuario/recordings/state', { patient_id: patient && patient.id, note_id: n.id, event_id: n.event_id || null, rec_ids: (scr.rec_ids || []) })
+              .then(function (res) {
+                var sg = [], au = [], base = 0;
+                ((res.ok && res.j && res.j.recordings) || []).forEach(function (r) {
+                  var fim = r.seconds || 0;
+                  (r.segments || []).forEach(function (x) { if ((x.text || '').trim()) sg.push({ at: base + x.at, text: x.text }); fim = Math.max(fim, x.at + (x.dur || 0)); });
+                  (r.audio || []).forEach(function (a) { if (a.upto > a.at) au.push({ rid: r.rec_id, part: a.part, at: base + a.at, upto: base + a.upto }); fim = Math.max(fim, a.upto); });
+                  base += fim;
+                });
+                sg.sort(function (a, b) { return a.at - b.at; }); au.sort(function (a, b) { return a.at - b.at; });
+                if (au.length) pbDur = Math.max(pbDur, au[au.length - 1].upto);
+                if (!sg.length && !au.length) { daEvo(); return; }
+                pbSegs = sg; pbAud = au; cb();
+              }).catch(daEvo);
+          }
+          function trechoEm(t) { var k = 0; pbSegs.forEach(function (x, q) { if (x.at <= t + .01) k = q; }); return k; }
+          // ----- com áudio: busca a parte (uma vez por cartão, só na memória da página) e toca em sequência -----
+          function parteUrl(i) {
+            var p = pbAud[i];
+            if (!partes[i]) partes[i] = fetch('/prontuario/recordings/audio?rec_id=' + encodeURIComponent(p.rid) + '&part=' + p.part, { credentials: 'same-origin' })
+              .then(function (r) { if (!r.ok) throw new Error('audio ' + r.status); return r.blob(); })
+              .catch(function (e) { delete partes[i]; throw e; });
+            return partes[i];
+          }
+          function parteEm(t) {                        // a parte que toca no minuto t (ou a próxima depois dele)
+            for (var i = 0; i < pbAud.length; i++) if (t < pbAud[i].upto - 0.05) return i;
+            return -1;
+          }
+          function tocarDe(t) {
+            calar();
+            if (!pbOn) return;
+            var i = parteEm(t);
+            if (i < 0) { pbStop(true); return; }
+            var mv = vez, p = pbAud[i];
+            parteUrl(i).then(function (blob) {
+              if (mv !== vez || !pbOn) return;
+              var url = URL.createObjectURL(blob), a = new Audio(url); a._url = url; a.muted = mudo; tocando = a; tocI = i;
+              var ini = Math.max(0, t - p.at);
+              var vai = function () {
+                if (ini > 0.2) { try { a.currentTime = ini; } catch (_) {} }
+                a.play().catch(function () { if (mv === vez) { toast('Não foi possível tocar o áudio desta consulta.'); pbStop(); } });
+              };
+              if (a.readyState >= 1) vai(); else a.addEventListener('loadedmetadata', vai, { once: true });
+              a.addEventListener('ended', function () { if (mv !== vez) return; var antes = pbPos; pbPos = Math.min(1, p.upto / pbDur); pbMostra(antes); tocarDe(p.upto); });
+              if (i + 1 < pbAud.length) parteUrl(i + 1).catch(function () {});   // a próxima parte já vem enquanto esta toca
+            }, function () {
+              if (mv !== vez) return;
+              toast('Não foi possível abrir o áudio desta consulta.'); pbStop();
+            });
+          }
+          // ----- sem áudio: a voz do computador lê -----
+          function falarDe(k) {
+            calar();
+            if (!pbOn || mudo) return;
+            if (k >= pbSegs.length) { pbStop(true); return; }
+            var v = vozLocal();
+            if (!v && !falarDe.esperou) {                          // a lista de vozes chega depois: espera por ela uma vez
+              falarDe.esperou = true; var ok = false, vai = function () { if (ok) return; ok = true; if (pbOn && !mudo) falarDe(k); };
+              try { window.speechSynthesis.addEventListener('voiceschanged', vai, { once: true }); } catch (_) {}
+              setTimeout(vai, 1500); return;
+            }
+            if (!v) {                                              // sem voz no computador: segue sem som (nunca a voz da internet)
+              mudo = true; volIcon();
+              if (!avisou) { avisou = true; toast('Sem voz em português instalada neste computador: a consulta segue sem som.'); }
+              return;
+            }
+            var minha = ++vez, x = pbSegs[k], u = new SpeechSynthesisUtterance(x.text);
+            u.voice = v; u.lang = v.lang;
+            u.onstart = function () { if (minha !== vez) return; var antes = pbPos; pbPos = Math.min(1, x.at / pbDur); fala = { k: k, t0: performance.now(), est: Math.max(1.5, x.text.length / 14) }; pbMostra(antes); };
+            u.onend = u.onerror = function () { if (minha === vez) falarDe(k + 1); };
+            try { window.speechSynthesis.speak(u); } catch (_) { mudo = true; volIcon(); }
+          }
+          pbBtn.addEventListener('click', function () {
+            if (pbOn) { pbStop(); return; }
+            pbOn = true; pbLast = performance.now(); pbIcon();
+            pbCarrega(function () {
+              if (!pbOn) return;
+              if (pbPos >= 1) pbPos = 0;
+              if (pbAud.length) tocarDe(pbPos * pbDur);
+              else if (!mudo) falarDe(trechoEm(pbPos * pbDur));
+              clearInterval(pbIv);
+              pbIv = setInterval(function () {
+                if (!it.isConnected) { pbStop(); return; }
+                var now = performance.now(), antes = pbPos;
+                if (pbAud.length) {                                // tocando o áudio: a bolinha segue o som
+                  if (tocando && tocI >= 0 && !tocando.paused) pbPos = Math.min(1, (pbAud[tocI].at + tocando.currentTime) / pbDur);
+                } else if (!mudo && fala) {                        // lendo: a bolinha vai do começo deste trecho até o próximo
+                  var x = pbSegs[fala.k], prox = pbSegs[fala.k + 1] ? pbSegs[fala.k + 1].at : pbDur;
+                  pbPos = Math.min(1, (x.at + Math.min(1, (now - fala.t0) / 1000 / fala.est) * (prox - x.at)) / pbDur);
+                } else if (mudo) pbPos = Math.min(1, pbPos + (now - pbLast) / 1000 / pbDur);
+                pbLast = now; pbMostra(antes);
+                if (!pbAud.length && mudo && pbPos >= 1) pbStop(true);
+              }, 100);
+            });
+          });
+          volBtn.addEventListener('click', function () {
+            mudo = !mudo; volIcon();
+            if (tocando) { tocando.muted = mudo; return; }          // com áudio: só tira o som; a consulta continua tocando
+            if (!pbOn || !pbSegs || (pbAud && pbAud.length)) return;
+            if (mudo) calar(); else falarDe(trechoEm(pbPos * pbDur));
+          });
+          try { window.speechSynthesis.getVoices(); } catch (_) {}    // o Chrome carrega a lista de vozes na primeira chamada
+          volIcon(); pl.appendChild(volBtn);
+          pbIcon(); pl.appendChild(pbBtn);
+        }
         var sp = el('span', 'hc-btn hc-spd', '1x'); sp.title = why; pl.appendChild(sp);
         pw.appendChild(pl); it.appendChild(pw); seek(0);
         // "Evolução" (como "Transcrição da divulgação"): recolhida com a prévia do 1º destaque
         var tr = el('button', 'hc-tr'); tr.type = 'button'; tr.setAttribute('aria-expanded', 'false');
-        tr.appendChild(el('span', 'hc-trt', lab ? 'Resultado' : 'Evolução'));
-        var pv = el('span', 'hc-prev'); pv.innerHTML = HI.sum; pv.appendChild(el('span', null, hl[0] || '')); tr.appendChild(pv);
+        if (!inList) tr.appendChild(el('span', 'hc-trt', lab ? 'Resultado' : 'Evolução'));
+        var pv = el('span', 'hc-prev'); pv.innerHTML = HI.sum; pv.appendChild(trFrase(lab ? 'Resultado' : 'Evolução', hl[0] || '')); tr.appendChild(pv);
         var cv = el('span', 'hc-chev'); cv.innerHTML = HI.down; tr.appendChild(cv);
         it.appendChild(tr);
         var body = el('div', 'hc-body'); body.hidden = true;
@@ -7831,6 +8288,7 @@
           body.appendChild(mr);
         }
         var tx = el('div', 'hc-tx');
+        if (scr && inList) tx.appendChild(el('div', 'hc-ia', 'Transcrição automática (IA), revisada pelo médico.'));   // o aviso do CFM 2.454/2026
         secs.forEach(function (sc) { tx.appendChild(el('div', 'hc-sp' + (sc.add ? ' add' : ''), sc.h)); tx.appendChild(el('div', 'hc-p', sc.t)); });
         rxDaEvolucao(n).forEach(function (r) {
           tx.appendChild(el('div', 'hc-sp', TIPO[r.tipo] + ' · emitida em ' + rxDia(r.emitida_em) + (r.status === 'cancelada' ? ' · cancelada' : '')));
@@ -7841,31 +8299,70 @@
           body.hidden = !on; tr.setAttribute('aria-expanded', on ? 'true' : 'false'); it.classList.toggle('open', on);
         }
         tr.addEventListener('click', function () { expand(body.hidden); });
+        // "Transcrição" (só nas consultas gravadas): as falas como foram transcritas, abaixo da evolução em SOAP
+        var ttr = el('button', 'hc-tr'), tb = el('div', 'hc-body hc-txb'), txLido = false; tb.hidden = true;
+        function txOpen(on) {
+          tb.hidden = !on; ttr.setAttribute('aria-expanded', on ? 'true' : 'false');
+          if (on && !txLido) { txLido = true; histTx(n, tb); }
+        }
+        if (temTx) {
+          ttr.type = 'button'; ttr.setAttribute('aria-expanded', 'false');
+          if (!inList) ttr.appendChild(el('span', 'hc-trt', 'Transcrição'));
+          var tpv = el('span', 'hc-prev'); tpv.innerHTML = RI.mic;
+          tpv.appendChild(trFrase('Transcrição', (scr.segundos ? mmss(scr.segundos) + ' gravados · ' : '') + 'automática (IA)'));
+          ttr.appendChild(tpv);
+          var tcv = el('span', 'hc-chev'); tcv.innerHTML = HI.down; ttr.appendChild(tcv);
+          ttr.addEventListener('click', function () { txOpen(tb.hidden); });
+          it.appendChild(ttr); it.appendChild(tb);
+        }
         it._open = function () { expand(true); };
+        if (inList) {                                                 // na lista: um botão só, com a ação da consulta (sem o menu)
+          var ft = el('div', 'hc-foot'), ah = el('div', 'hc-addh'), act = el('button', 'hc-act');
+          act.type = 'button'; act.textContent = 'Adicionar adendo'; act.hidden = lab || !n.signed_at;   // só nas finalizadas
+          act.addEventListener('click', function () {
+            if (ah.children.length) return;
+            act.hidden = true;
+            addendum(n, ah, function (ok) { act.hidden = false; if (ok) renderHist(); });
+          });
+          ft.appendChild(act); it.appendChild(ah); if (!act.hidden) it.appendChild(ft);
+        }
         return it;
       }
-      // transcrição de uma consulta já registrada (só texto; o áudio nunca foi guardado)
-      function histTx(n, body, expand) {
-        var old = body.querySelector('.hc-rtx'); if (old) { old.remove(); return; }
+      // transcrição de uma consulta já registrada (o texto; o áudio, quando existe, toca no player do cartão)
+      function histTx(n, host) {
         var box = el('div', 'rc-tx hc-rtx'); box.appendChild(el('div', 'rc-h', 'Carregando a transcrição…'));
-        body.insertBefore(box, body.firstChild); expand(true);
+        host.appendChild(box);
         api('POST', '/prontuario/recordings/state', { patient_id: patient && patient.id, note_id: n.id, event_id: n.event_id || null,
                                                       rec_ids: (n.data.scribe.rec_ids || []) }).then(function (res) {
-          var recs = (res.ok && res.j && res.j.recordings) || []; box.innerHTML = '';
-          recs.forEach(function (r) { (r.segments || []).forEach(function (sg) {
-            if (!(sg.text || '').trim()) return;
-            var d = el('div', 'rc-u'); d.appendChild(el('div', 'rc-h', mmss(sg.at))); d.appendChild(el('div', 'rc-t', sg.text)); box.appendChild(d);
-          }); });
+          var recs = (res.ok && res.j && res.j.recordings) || [], base = 0; box.innerHTML = '';
+          recs.forEach(function (r) {
+            var fim = r.seconds || 0;
+            var b0 = base;
+            (r.segments || []).forEach(function (sg) {
+              fim = Math.max(fim, sg.at + (sg.dur || 0));
+              if (!(sg.text || '').trim()) return;
+              var d = el('div', 'rc-u'); d._at = b0 + sg.at;
+              var redesenha = function () { d.innerHTML = ''; txFalas(d, sg, b0, { pid: patient && patient.id, recId: r.rec_id }, redesenha); };
+              if (!txFalas(d, sg, b0, { pid: patient && patient.id, recId: r.rec_id }, redesenha)) {
+                d.appendChild(el('div', 'rc-h', mmss(b0 + sg.at))); d.appendChild(el('div', 'rc-t', sg.text));
+              }
+              box.appendChild(d);
+            });
+            (r.audio || []).forEach(function (a) { fim = Math.max(fim, a.upto); });
+            base += fim;
+          });
           if (!box.children.length) box.appendChild(el('div', 'rc-h', 'A transcrição desta consulta foi apagada.'));
         }).catch(function () { box.innerHTML = ''; box.appendChild(el('div', 'rc-h', 'Não foi possível abrir a transcrição.')); });
       }
-      function histTxDelete(n, body) {
-        if (!confirm('Apagar a transcrição desta consulta?\n\nA evolução continua como está. A exclusão fica no registro de acessos e não pode ser desfeita.')) return;
-        Promise.all((n.data.scribe.rec_ids || []).map(function (id) { return api('DELETE', '/prontuario/recordings/' + encodeURIComponent(id)); }))
+      function histTxDelete(n, done) {
+        if (!confirm('Apagar a transcrição e o áudio desta consulta?\n\nA evolução continua como está. A exclusão fica no registro de acessos e não pode ser desfeita.')) return;
+        var ids = n.data.scribe.rec_ids || [];
+        Promise.all(ids.map(function (id) { return api('DELETE', '/prontuario/recordings/' + encodeURIComponent(id)); }))
           .then(function (rs) {
             if (!rs.every(function (r) { return r.ok || r.status === 404; })) throw new Error('falhou');
-            var old = body.querySelector('.hc-rtx'); if (old) old.remove();
-            toast('Transcrição apagada');
+            audForget(ids);                                 // o som que ainda não tinha subido sai do aparelho também
+            done();
+            toast('Transcrição e áudio apagados');
           }).catch(function () { toast('Não foi possível apagar a transcrição. Tente de novo.'); });
       }
 

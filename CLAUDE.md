@@ -23,9 +23,12 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
      Junto vão, como contexto, o fim do trecho anterior (sem CPF, telefone e e-mail: `scribe.mask_docs`; o nome
      fica, o áudio já o tem) e os nomes de remédios, problemas e alergias do cadastro. Todo outro **texto** que vai
      a um modelo passa antes por `scribe.mask` (nome → `[PACIENTE]`, CPF, telefone, e-mail) — inclusive a
-     transcrição e a evolução anterior. O áudio nunca é gravado em disco, banco ou log;
-     o log da gravação só leva números. Mudar isso (outro provedor, guardar áudio) pede revisão do
-     `docs/ripd-gravacao.md` e da Política de Privacidade.
+     transcrição e a evolução anterior. Desde 13/11/2026 (decisão do usuário) o áudio original da consulta fica
+     guardado por **1 ano** em `recording_audio` (RLS, filtro por `user_id`, só ids na URL), para o player do
+     prontuário; sai com "Apagar transcrição", com a exclusão da conta e pela limpeza diária. Contrato:
+     `docs/audio-contrato.md`. Fora dessa tabela o áudio nunca é gravado em disco do servidor nem em log, e não vai a
+     nenhum outro provedor; o log da gravação só leva números. Mudar isso (outro provedor, outro prazo, outro lugar)
+     pede revisão do `docs/ripd-gravacao.md` e da Política de Privacidade.
    - Possíveis prescrições (aba Prescrições, contas da gravação): vai ao modelo o perfil sem nome (sexo, idade, cadastro
      clínico, remédios das receitas anteriores, últimos sinais e exames; ainda por `scribe.mask`) e trechos da base do
      assistente. Como funciona e as
@@ -42,7 +45,8 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
    Bibliotecas de terceiros ficam em `web/vendor/<nome>-<versão>/` (só com login), copiadas do pacote
    oficial com o hash conferido e a LICENSE junto — nunca carregadas de fora em tempo de execução.
 8. **Retenção** (`db.RETENTION`, limpeza diária no servidor): códigos de e-mail 1 dia, registro de
-   acessos 1 ano. Prontuário, pacientes e `access_log` nunca entram na limpeza.
+   acessos 1 ano, áudio das consultas (`recording_audio`) 1 ano. Prontuário, pacientes, a transcrição
+   (`recordings`, `recording_segments`) e `access_log` nunca entram na limpeza.
 
 ## Antes de dizer que terminou
 

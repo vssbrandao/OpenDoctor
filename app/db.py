@@ -433,8 +433,10 @@ def record_login(user_id, event, method, ip=None, user_agent=None, device=None):
 
 # ----- limpeza (LGPD: não guardar além do necessário) -----
 # Códigos de e-mail: 1 dia. Registro de acessos: 1 ano (o Marco Civil exige pelo menos 6 meses).
-# O registro de acesso ao PRONTUÁRIO (access_log) não entra aqui: faz parte do prontuário.
-RETENTION = {"login_codes": "1 day", "login_events": "1 year", "cfm_tentativas": "2 days"}
+# O registro de acesso ao PRONTUÁRIO (access_log) não entra aqui: faz parte do prontuário. Nem a transcrição da
+# gravação (recordings, recording_segments: prontuário, 20 anos); só o ÁUDIO dela (recording_audio, migração 0022),
+# guardado 1 ano para o player do prontuário (decisão de 13/11/2026).
+RETENTION = {"login_codes": "1 day", "login_events": "1 year", "cfm_tentativas": "2 days", "recording_audio": "1 year"}
 
 
 def cleanup_old_records():
@@ -442,6 +444,8 @@ def cleanup_old_records():
     out = {}
     with connection() as conn:
         for table, keep in RETENTION.items():
+            if table == "recording_audio" and not tem_audio(conn):
+                continue                                # sem a migração 0022: não há o que limpar
             cur = conn.execute(f"delete from {table} where created_at < now() - interval '{keep}'")
             out[table] = cur.rowcount
         # conta recusada não guarda a agenda: a recusa já apaga; isto cobre a falha dela e uma volta do Google que a
@@ -475,8 +479,9 @@ def set_password(user_id, password_hash, sv=None):
 
 def excluir_conta(user_id, email):
     """Exclui a conta a pedido do médico (Perfil, com o e-mail digitado). A linha NÃO é apagada: as tabelas do
-    prontuário apontam para users com on delete cascade, e prontuários, pacientes, receitas, gravações, exames e o
-    registro de acessos ficam pelo prazo legal (Lei 13.787/2018), sem acesso pelo app. Numa transação:
+    prontuário apontam para users com on delete cascade, e prontuários, pacientes, receitas, gravações (o texto),
+    exames e o registro de acessos ficam pelo prazo legal (Lei 13.787/2018), sem acesso pelo app. Numa transação:
+    - sai o áudio das gravações (recording_audio, migração 0022): não é prontuário, só servia ao player;
     - o e-mail e a conta Google saem da linha (vão para email_excluido e google_sub_excluido; no lugar do e-mail fica
       'excluida:<id>', que não é e-mail e nunca é achado): o mesmo médico pode criar uma conta nova, vazia;
     - sem senha nem foto, e as sessões caem em todos os aparelhos (session_version + 1; get_user já não a acha);
@@ -499,6 +504,8 @@ def excluir_conta(user_id, email):
             conn.rollback()
             return None
         conn.execute("delete from oauth_tokens where user_id = %s", (user_id,))
+        if tem_audio(conn):
+            conn.execute("delete from recording_audio where user_id = %s", (user_id,))
         conn.execute("delete from login_codes where lower(email) = %s", (email,))
         conn.execute("delete from cfm_tentativas where chave = %s", ("conf:" + str(user_id),))
         conn.execute("insert into access_log (user_id, action) values (%s, 'conta_excluida')", (user_id,))
@@ -971,6 +978,11 @@ def delete_patient(user_id, patient_id):
                            where r.user_id = %s and r.patient_id = %s limit 1""", (user_id, patient_id))
             if cur.fetchone():                          # transcrição de consulta também (gravação vazia sai junto)
                 return "has_notes"
+            if tem_audio(conn):                         # e a gravação só com áudio (o texto ainda não chegou)
+                cur.execute("""select 1 from recording_audio a join recordings r on r.id = a.rec_id
+                               where r.user_id = %s and r.patient_id = %s limit 1""", (user_id, patient_id))
+                if cur.fetchone():
+                    return "has_notes"
             cur.execute("""select 1 from receitas where user_id = %s and patient_id = %s and status <> 'rascunho'
                            limit 1""", (user_id, patient_id))
             if cur.fetchone():                          # receita emitida também (rascunho sai junto, em cascata)
@@ -1594,7 +1606,37 @@ def delete_file(user_id, file_id):
     return r[0] if r else None
 
 
-# --- gravação da consulta: só o texto de cada trecho (o áudio nunca chega aqui) ---
+# --- gravação da consulta: o texto de cada trecho (prontuário) e, com a migração 0022, o áudio original (1 ano) ---
+_AUDIO = {"ok": None, "t": 0.0}
+
+
+def tem_audio(conn):
+    """A migração 0022 (recording_audio: o áudio da gravação, 1 ano) já foi aplicada? Sem ela a gravação segue só com o
+    texto: o envio do áudio espera (MigracaoPendente → 503, a página tenta de novo), o player usa a voz do computador e
+    a limpeza, a exclusão da conta e a do paciente não citam a tabela. Guardado como tem_dispensa."""
+    if _AUDIO["ok"] or (_AUDIO["ok"] is False and time.monotonic() - _AUDIO["t"] < DISPENSA_RECHECA_S):
+        return _AUDIO["ok"]
+    ok = bool(conn.execute("select to_regclass('public.recording_audio') is not null").fetchone()[0])
+    _AUDIO.update(ok=ok, t=time.monotonic())
+    return ok
+
+
+_FALAS = {"ok": None, "t": 0.0}
+FALA_Q = ("m", "p", "a")                              # médico, paciente, acompanhante (docs/falante-contrato.md)
+
+
+def tem_falas(conn):
+    """A migração 0023 (recording_segments.falas: quem fala em cada fala) já foi aplicada? Sem ela os trechos seguem sem
+    rótulo: nada é gravado nem lido da coluna e a troca do rótulo à mão espera (MigracaoPendente → 503). Guardado como
+    tem_audio."""
+    if _FALAS["ok"] or (_FALAS["ok"] is False and time.monotonic() - _FALAS["t"] < DISPENSA_RECHECA_S):
+        return _FALAS["ok"]
+    ok = bool(conn.execute("""select 1 from information_schema.columns where table_schema = 'public'
+                              and table_name = 'recording_segments' and column_name = 'falas'""").fetchone())
+    _FALAS.update(ok=ok, t=time.monotonic())
+    return ok
+
+
 def _ligar(conn, user_id, patient_id, rec_ids, note_id, trocar=False):
     """A regra (única) de ligar gravação e evolução: só evolução deste médico e deste paciente (id inexistente ou de
     outro é ignorado); sem trocar, só a gravação que ainda não tem evolução ganha esta — a que já tem fica com a dela.
@@ -1622,11 +1664,12 @@ def rec_open(user_id, patient_id, rec_id, event_id=None, note_id=None, consent_a
 
 
 def rec_segment(user_id, rec_id, seq):
-    """Trecho já transcrito (reenvio): {text, duvidas} ou None."""
+    """Trecho já transcrito (reenvio): {text, duvidas, falas} ou None (falas = [] sem a 0023 ou sem rótulo)."""
     with connection() as conn:
-        r = conn.execute("""select s.text, s.duvidas from recording_segments s join recordings r on r.id = s.rec_id
-                            where r.user_id = %s and s.rec_id = %s and s.seq = %s""", (user_id, rec_id, seq)).fetchone()
-    return {"text": r[0], "duvidas": r[1] or []} if r else None
+        f = "s.falas" if tem_falas(conn) else "'[]'::jsonb"
+        r = conn.execute(f"""select s.text, s.duvidas, {f} from recording_segments s join recordings r on r.id = s.rec_id
+                             where r.user_id = %s and s.rec_id = %s and s.seq = %s""", (user_id, rec_id, seq)).fetchone()
+    return {"text": r[0], "duvidas": r[1] or [], "falas": r[2] or []} if r else None
 
 
 def rec_prev_text(user_id, rec_id, seq):
@@ -1638,17 +1681,141 @@ def rec_prev_text(user_id, rec_id, seq):
     return r[0] if r else ""
 
 
-def rec_add_segment(user_id, rec_id, seq, at, dur, text, duvidas):
-    """Guarda o texto do trecho (uma vez só por rec_id + seq) e avança a gravação."""
+def rec_prev_segment(user_id, rec_id, seq):
+    """O trecho anterior: {text, falas} ("" e [] se não há). O texto vai como contexto da transcrição do próximo; o fim
+    dele com os rótulos, como contexto do rotulador (app/falante.py)."""
+    with connection() as conn:
+        f = "s.falas" if tem_falas(conn) else "'[]'::jsonb"
+        r = conn.execute(f"""select s.text, {f} from recording_segments s join recordings r on r.id = s.rec_id
+                             where r.user_id = %s and s.rec_id = %s and s.seq < %s order by s.seq desc limit 1""",
+                         (user_id, rec_id, seq)).fetchone()
+    return {"text": r[0], "falas": r[1] or []} if r else {"text": "", "falas": []}
+
+
+def rec_add_segment(user_id, rec_id, seq, at, dur, text, duvidas, falas=()):
+    """Guarda o texto do trecho (uma vez só por rec_id + seq) e avança a gravação. falas: quem fala em cada fala
+    (app/falante.py; vazia = sem rótulo); sem a 0023 não é gravada. Devolve se gravou (False: outro pedido já tinha
+    gravado este trecho — vale o do banco)."""
     from psycopg.types.json import Jsonb
     with connection() as conn:
-        conn.execute("""insert into recording_segments (rec_id, seq, at_s, dur_s, text, duvidas)
-                        select %s,%s,%s,%s,%s,%s where exists (select 1 from recordings where id = %s and user_id = %s)
-                        on conflict (rec_id, seq) do nothing""",
-                     (rec_id, seq, at, dur, text, Jsonb(list(duvidas or [])), rec_id, user_id))
+        if tem_falas(conn):
+            cur = conn.execute("""insert into recording_segments (rec_id, seq, at_s, dur_s, text, duvidas, falas)
+                            select %s,%s,%s,%s,%s,%s,%s where exists (select 1 from recordings where id = %s and user_id = %s)
+                            on conflict (rec_id, seq) do nothing""",
+                         (rec_id, seq, at, dur, text, Jsonb(list(duvidas or [])), Jsonb(list(falas or [])), rec_id, user_id))
+        else:
+            cur = conn.execute("""insert into recording_segments (rec_id, seq, at_s, dur_s, text, duvidas)
+                            select %s,%s,%s,%s,%s,%s where exists (select 1 from recordings where id = %s and user_id = %s)
+                            on conflict (rec_id, seq) do nothing""",
+                         (rec_id, seq, at, dur, text, Jsonb(list(duvidas or [])), rec_id, user_id))
         conn.execute("""update recordings set seconds = greatest(seconds, %s), status = 'gravando', updated_at = now()
                         where id = %s and user_id = %s""", (at + dur, rec_id, user_id))
         conn.commit()
+        return cur.rowcount > 0
+
+
+def rec_set_fala(user_id, patient_id, rec_id, seq, i, q):
+    """O médico troca à mão quem fala na fala i do trecho seq (manual: true). Só na gravação deste médico e paciente e só
+    numa fala que existe. Devolve as falas do trecho, já trocadas, ou None. Sem a 0023: MigracaoPendente."""
+    if q not in FALA_Q:
+        raise ValueError("q")
+    with connection() as conn:
+        if not tem_falas(conn):
+            raise MigracaoPendente("0023_falantes.sql")
+        r = conn.execute("""update recording_segments s
+                            set falas = jsonb_set(s.falas, array[%s::text], (s.falas -> %s) || jsonb_build_object('q', %s::text, 'manual', true))
+                            from recordings r
+                            where r.id = s.rec_id and r.user_id = %s and r.patient_id = %s and s.rec_id = %s and s.seq = %s
+                              and jsonb_typeof(s.falas) = 'array' and %s < jsonb_array_length(s.falas)
+                            returning s.falas""",
+                         (str(i), i, q, user_id, patient_id, rec_id, seq, i)).fetchone()
+        conn.commit()
+    return r[0] if r else None
+
+
+def rec_add_audio(user_id, patient_id, rec_id, part, n, at, upto, mime, data, max_day_bytes, *, sess, max_part_bytes):
+    """Guarda um pedaço do áudio da gravação (uma vez só por rec_id + part + n). NUNCA cria a gravação: ela nasce no
+    primeiro trecho transcrito (rec_open). sess: o id da sessão do MediaRecorder que a página gerou (o n = 0 grava; os
+    outros pedaços da parte precisam ter o mesmo). Devolve:
+    - "sem_gravacao": a gravação deste médico e paciente ainda não existe (a página tenta de novo depois);
+    - "repetido": o pedaço já estava guardado, da mesma sessão;
+    - "ocupada": a parte é de outra sessão (o n = 0 dela tem outro sess; ou este pedaço já existe com outro sess):
+      a página renumera a sessão para uma parte livre, e nada se mistura;
+    - "sem_inicio": n > 0 sem o pedaço n = 0 da parte (é dele que vem o tipo e a sessão: os outros herdam);
+    - "teto": passaria de max_day_bytes de áudio nas últimas 24 h deste médico;
+    - "teto_parte": a parte passaria de max_part_bytes (o GET junta a parte inteira na memória);
+    - "ok".
+    mime só vale para n = 0 (o servidor confere pelos bytes); n > 0 herda o da parte. Sem a 0022: MigracaoPendente."""
+    with connection() as conn:
+        if not tem_audio(conn):
+            raise MigracaoPendente("0022_gravacao_audio.sql")
+        if not conn.execute("select 1 from recordings where id = %s and user_id = %s and patient_id = %s",
+                            (rec_id, user_id, patient_id)).fetchone():
+            return "sem_gravacao"
+        ja = {r[0]: (r[1], r[2]) for r in conn.execute(
+            "select n, sess, mime from recording_audio where rec_id = %s and part = %s and n in (0, %s)",
+            (rec_id, part, n)).fetchall()}
+        if n in ja:
+            return "repetido" if ja[n][0] == sess else "ocupada"
+        if n > 0:
+            if 0 not in ja:
+                return "sem_inicio"
+            if ja[0][0] != sess:
+                return "ocupada"
+            mime = ja[0][1]
+        hoje = conn.execute("""select coalesce(sum(size), 0) from recording_audio
+                               where user_id = %s and created_at > now() - interval '1 day'""", (user_id,)).fetchone()[0]
+        if int(hoje) + len(data) > max_day_bytes:
+            return "teto"
+        na_parte = conn.execute("select coalesce(sum(size), 0) from recording_audio where rec_id = %s and part = %s",
+                                (rec_id, part)).fetchone()[0]
+        if int(na_parte) + len(data) > max_part_bytes:
+            return "teto_parte"
+        cur = conn.execute("""insert into recording_audio (rec_id, part, n, user_id, at_s, upto_s, mime, size, data, sess)
+                              values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) on conflict (rec_id, part, n) do nothing""",
+                           (rec_id, part, n, user_id, at, upto, mime, len(data), bytes(data), sess))
+        if not cur.rowcount:                          # outro pedido gravou o mesmo pedaço entre a conferência e aqui
+            r = conn.execute("select sess from recording_audio where rec_id = %s and part = %s and n = %s",
+                             (rec_id, part, n)).fetchone()
+            conn.commit()
+            return "repetido" if r and r[0] == sess else "ocupada"
+        conn.commit()
+    return "ok"
+
+
+def rec_audio(user_id, rec_id, part):
+    """O áudio de uma parte da gravação (só do médico dono): os pedaços contíguos a partir de n = 0, juntos (para no
+    primeiro buraco). {mime, data, patient_id} ou None (sem áudio, de outro médico ou sem a 0022). A parte tem no
+    máximo MAX_PART_BYTES (server), então cabe na memória."""
+    with connection() as conn:
+        if not tem_audio(conn):
+            return None
+        rows = conn.execute("""select a.n, a.mime, a.data, r.patient_id from recording_audio a join recordings r on r.id = a.rec_id
+                               where r.user_id = %s and a.user_id = %s and a.rec_id = %s and a.part = %s order by a.n""",
+                            (user_id, user_id, rec_id, part)).fetchall()
+    if not rows or rows[0][0] != 0:
+        return None
+    k = 0
+    while k < len(rows) and rows[k][0] == k:          # só os contíguos a partir de n = 0
+        k += 1
+    return {"mime": rows[0][1], "data": b"".join(bytes(r[2]) for r in rows[:k]), "patient_id": rows[0][3]}
+
+
+def _audio_partes(linhas):
+    """[(part, n, at_s, upto_s)] em ordem → [{part, at, upto}]: só as partes com n = 0; upto = o maior dos contíguos."""
+    out, atual, prox = [], None, 0
+    for part, n, at, upto in linhas:
+        if atual is None or atual["part"] != part:
+            atual, prox = None, 0
+            if n != 0:
+                continue
+            atual = {"part": part, "at": float(at), "upto": float(upto)}
+            out.append(atual)
+        elif n != prox:
+            continue                                  # depois de um buraco (o resto da parte não toca)
+        atual["upto"] = max(atual["upto"], float(upto))
+        prox = n + 1
+    return out
 
 
 def rec_seconds_today(user_id):
@@ -1667,10 +1834,11 @@ def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=(), orpha
     if not (event_id or note_id or ids or orphans):
         return []
     with connection() as conn:
+        falas = "s.falas" if tem_falas(conn) else "'[]'::jsonb"      # sem a 0023: os trechos vêm sem rótulo
         rows = conn.execute(
             """select r.id::text, r.status, r.consent_at, r.seconds, r.updated_at, r.event_id, r.note_id, r.scribe,
                       coalesce((select json_agg(json_build_object('seq', s.seq, 'at', s.at_s, 'dur', s.dur_s, 'text', s.text,
-                                                                  'duvidas', s.duvidas) order by s.seq)
+                                                                  'duvidas', s.duvidas, 'falas', """ + falas + """) order by s.seq)
                                 from recording_segments s where s.rec_id = r.id), '[]'::json)
                from recordings r
                where r.user_id = %s and r.patient_id = %s
@@ -1679,8 +1847,16 @@ def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=(), orpha
                       or (%s and r.event_id is null and r.note_id is null and r.updated_at > now() - interval '12 hours'))
                order by r.created_at""",
             (user_id, patient_id, event_id, event_id, note_id, note_id, ids, bool(orphans))).fetchall()
+        aud = {}
+        if rows and tem_audio(conn):                    # só os números de cada parte: os bytes ficam no banco
+            for rid, part, n, at, upto in conn.execute(
+                    """select rec_id::text, part, n, at_s, upto_s from recording_audio
+                       where user_id = %s and rec_id = any(%s::uuid[]) order by rec_id, part, n""",
+                    (user_id, [r[0] for r in rows])).fetchall():
+                aud.setdefault(rid, []).append((part, n, at, upto))
     return [{"rec_id": r[0], "status": r[1], "consent_at": r[2].isoformat(), "seconds": r[3],
-             "updated_at": r[4].isoformat(), "event_id": r[5], "note_id": r[6], "scribe": r[7], "segments": r[8] or []}
+             "updated_at": r[4].isoformat(), "event_id": r[5], "note_id": r[6], "scribe": r[7], "segments": r[8] or [],
+             "audio": _audio_partes(aud.get(r[0], []))}
             for r in rows]
 
 
@@ -1711,7 +1887,7 @@ def rec_link_orphans(user_id, patient_id, rec_ids, note_id):
 
 
 def rec_delete(user_id, rec_id):
-    """Apaga a transcrição (gravação + trechos). Devolve o patient_id ou None."""
+    """Apaga a transcrição (gravação + trechos + o áudio, pela cascata de recording_audio). Devolve o patient_id ou None."""
     with connection() as conn:
         r = conn.execute("delete from recordings where user_id = %s and id = %s returning patient_id", (user_id, rec_id)).fetchone()
         conn.commit()

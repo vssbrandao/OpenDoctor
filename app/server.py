@@ -33,7 +33,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer, exemplo
-from . import medicamentos, prescricao, scribe, stt, cfm
+from . import medicamentos, prescricao, scribe, stt, cfm, falante
 
 mimetypes.add_type("text/javascript", ".mjs")   # pdf.js (web/vendor) é módulo: o navegador exige esse tipo
 
@@ -118,6 +118,8 @@ _CSP = "; ".join((
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "connect-src 'self'",
+    # o player do prontuário busca o áudio guardado da consulta (fetch, mesmo site) e toca por blob:; nada de fora
+    "media-src 'self' blob:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -196,7 +198,8 @@ async def _no_cache_html(request: Request, call_next):
     elif path.endswith(".html") or path == "/":
         resp.headers["Cache-Control"] = "no-cache, must-revalidate"
     elif path.startswith(_NO_STORE):
-        resp.headers["Cache-Control"] = "no-store"
+        if "no-store" not in (resp.headers.get("Cache-Control") or ""):   # a rota pode ter posto "private, no-store"
+            resp.headers["Cache-Control"] = "no-store"
     elif path.startswith("/assets/icons/"):
         # ícones mudam com o design: o navegador sempre confere (304 se igual), nunca usa cópia velha
         resp.headers["Cache-Control"] = "no-cache"
@@ -207,7 +210,7 @@ async def _no_cache_html(request: Request, call_next):
 # próprios: só a raiz libera esses domínios, como imagem e vídeo; o resto do app segue com a política fechada
 _CSP_SITE = _CSP.replace("img-src 'self' data: blob:",
                          "img-src 'self' data: blob: https://images.unsplash.com https://images.pexels.com") \
-    + "; media-src 'self' https://videos.pexels.com"
+    .replace("media-src 'self' blob:", "media-src 'self' https://videos.pexels.com")   # troca: uma diretiva media-src só
 
 
 @app.get("/")
@@ -415,6 +418,8 @@ def _clean_history(raw):
 RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em s)
                "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600),
                "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600),      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
+               "audio": (480, 600),
+               "fala": (120, 600),    # por conta: trocas do rótulo de uma fala à mão (quem fala), com folga   # por conta: pedaço do áudio guardado a cada 5 s (120 em 10 min), com folga para a fila depois da internet cair
                "cfm": (10, 3600),     # conferências do CRM no CFM (cadastro): o Validar responde se um CPF é de um CRM
                "codigo_email": (5, 3600),
                "excluir_conta": (5, 3600),   # e-mails digitados para excluir a conta (por conta)
@@ -1554,7 +1559,7 @@ def me_boas_vindas(request: Request):
 @app.post("/me/excluir")
 async def me_excluir(request: Request):
     """Excluir a conta (Perfil), com o e-mail da conta digitado como confirmação (db.excluir_conta: a conta é encerrada e
-    o prontuário fica pelo prazo legal). Só a conta da sessão; pedido de outro site não passa (JSON e Sec-Fetch-Site)."""
+    o prontuário fica pelo prazo legal; o áudio guardado das gravações sai). Só a conta da sessão; pedido de outro site não passa (JSON e Sec-Fetch-Site)."""
     u, err = _auth_or_401(request)
     if err:
         return err
@@ -2994,22 +2999,42 @@ def prontuario_file_delete(file_id: int, request: Request):
 
 
 # --- gravação da consulta (só contas liberadas: SCRIBE_EMAILS / SCRIBE_ALL; SCRIBE_OFF desliga) ---
-# O áudio vem em trechos WAV, fica só na memória durante a transcrição e some; guarda-se o texto.
+# Para a transcrição, o áudio vem em trechos WAV, fica só na memória durante ela e some; guarda-se o texto (prontuário).
+# O áudio original vem à parte (POST /prontuario/recordings/audio, opus em pedaços de 5 s) e fica 1 ano (db.RETENTION)
+# para o player do prontuário (decisão de 13/11/2026; docs/audio-contrato.md).
 MAX_SEG_BYTES = 5 * 1024 * 1024
+MAX_AUDIO_BYTES = 512 * 1024            # um pedaço do áudio guardado (5 s de opus a 24 kbps são ~15 KB)
+AUDIO_DAY_BYTES = 300 * 1024 * 1024     # teto de áudio guardado por médico em 24 h
+MAX_PART_BYTES = 32 * 1024 * 1024       # teto de uma parte (o GET junta a parte inteira na memória; a página troca a cada 30 min)
+_SESS = re.compile(r"[A-Za-z0-9-]{8,64}")  # id da sessão do MediaRecorder (X-Sess), gerado pela página
+_AUDIO_MIMES = ("audio/webm", "audio/ogg", "audio/mp4")
 _EM_ANDAMENTO = {}                      # (médico, gravação, trecho) → transcrição em curso (um processo só no Render)
 MAX_SEG_S = 60                          # trecho normal: 15–30 s
+FALANTE_TETO_S = 8                      # teto do rotulador de quem fala (app/falante.py): passou, o trecho fica sem rótulo
 SCRIBE_DAY_S = 6 * 3600                 # teto por médico em 24 h
 
 
-def _scribe_gate(u):
+def _scribe_gate(u, chave=True):
     """None se a conta pode gravar; senão a resposta. Desligado (SCRIBE_OFF) ou sem chave → 503: a página
-    guarda os trechos e tenta de novo depois. Conta sem a gravação → 403."""
+    guarda os trechos e tenta de novo depois. Conta sem a gravação → 403. chave=False: o que não vai à OpenAI (guardar
+    o áudio) não depende da chave."""
     if config.SCRIBE_OFF:
         return JSONResponse({"error": "gravação desligada no momento"}, status_code=503)
     if not scribe_on(u):
         return JSONResponse({"error": "gravação não liberada para esta conta"}, status_code=403)
-    if not config.OPENAI_API_KEY:
+    if chave and not config.OPENAI_API_KEY:
         return JSONResponse({"error": "transcrição indisponível no momento"}, status_code=503)
+    return None
+
+
+def _audio_mime(b):
+    """Tipo do áudio guardado pelos bytes do começo do pedaço n = 0 (nunca pelo Content-Type do navegador) ou None."""
+    if b[:4] == b"\x1a\x45\xdf\xa3":
+        return "audio/webm"
+    if b[:4] == b"OggS":
+        return "audio/ogg"
+    if b[4:8] == b"ftyp":
+        return "audio/mp4"
     return None
 
 
@@ -3076,7 +3101,7 @@ async def prontuario_transcribe(request: Request):
     if outro:                                # o paciente do evento foi trocado: a gravação não vai para a consulta do outro
         return _outro_paciente()
     if done:
-        return {"ok": True, "text": done["text"], "duvidas": done["duvidas"], "repetido": True}
+        return {"ok": True, "text": done["text"], "duvidas": done["duvidas"], "falas": done.get("falas") or [], "repetido": True}
     if _rate_limited(request, "transcribe"):
         return JSONResponse({"error": "muitos trechos em pouco tempo"}, status_code=429)
     cl = h.get("content-length") or ""
@@ -3099,7 +3124,7 @@ async def prontuario_transcribe(request: Request):
             return "teto", None
         if not db.rec_open(u["id"], p["id"], rid, eid, int(nid) if nid.isdigit() else None, consent):
             return "outra", None
-        return None, db.rec_prev_text(u["id"], rid, seq)
+        return None, db.rec_prev_segment(u["id"], rid, seq)
     why, prev = await run_in_threadpool(prepare)
     if why == "teto":
         return JSONResponse({"error": "limite de 6 horas de gravação em 24 horas"}, status_code=429)
@@ -3110,17 +3135,30 @@ async def prontuario_transcribe(request: Request):
         r = await asyncio.shield(_EM_ANDAMENTO[key])
         if not r:
             return JSONResponse({"error": "a transcrição falhou; o trecho fica guardado e é enviado de novo"}, status_code=502)
-        return {"ok": True, "text": r["text"], "duvidas": r["duvidas"], "repetido": True}
+        return {"ok": True, "text": r["text"], "duvidas": r["duvidas"], "falas": r.get("falas") or [], "repetido": True}
     fut = _EM_ANDAMENTO[key] = asyncio.get_running_loop().create_future()
     t0 = time.time()
     try:
         # contexto: o fim do trecho anterior, sem CPF, telefone e e-mail; o nome falado fica (o áudio já o tem)
-        r = await stt.atranscribe(bytes(body), "audio/wav", prompt=scribe.mask_docs(prev), keywords=scribe.keywords(p))
+        r = await stt.atranscribe(bytes(body), "audio/wav", prompt=scribe.mask_docs(prev["text"]), keywords=scribe.keywords(p))
+        at = _num_or_none(h.get("x-at"), 0, 24 * 3600) or 0.0
+        # quem fala em cada fala (docs/falante-contrato.md): só o texto mascarado vai ao modelo; falhou ou passou de
+        # FALANTE_TETO_S, o trecho segue sem rótulo (nunca derruba a transcrição)
+        falas = []
+        if (r.get("text") or "").strip():
+            try:
+                falas = await asyncio.wait_for(falante.arotular(r["text"], p["name"], at, dur, prev), FALANTE_TETO_S)
+            except Exception as e:                          # o log nunca leva conteúdo
+                print("[falante] sem rótulo:", type(e).__name__, flush=True)
+        r = dict(r, falas=falas or [])
 
         def save():
-            db.rec_add_segment(u["id"], rid, seq, _num_or_none(h.get("x-at"), 0, 24 * 3600) or 0.0, dur, r["text"], r["duvidas"])
+            gravou = db.rec_add_segment(u["id"], rid, seq, at, dur, r["text"], r["duvidas"], r["falas"])
             db.log_access(u["id"], "recording", p["id"], dedupe_minutes=180)
-        await run_in_threadpool(save)
+            return None if gravou is not False else db.rec_segment(u["id"], rid, seq)
+        ja = await run_in_threadpool(save)
+        if ja:                                  # outro pedido gravou este trecho antes: vale o texto e as falas do banco
+            r = dict(r, text=ja["text"], duvidas=ja["duvidas"], falas=ja.get("falas") or [])
         fut.set_result(r)
     except Exception as e:                                  # o log nunca leva conteúdo
         print("[gravacao] transcrição falhou:", type(e).__name__, flush=True)
@@ -3129,8 +3167,8 @@ async def prontuario_transcribe(request: Request):
         if not fut.done():
             fut.set_result(None)
         _EM_ANDAMENTO.pop(key, None)
-    print(f"[gravacao] trecho {seq}: {dur:.1f} s transcritos em {time.time() - t0:.1f} s", flush=True)
-    return {"ok": True, "text": r["text"], "duvidas": r["duvidas"]}
+    print(f"[gravacao] trecho {seq}: {dur:.1f} s transcritos em {time.time() - t0:.1f} s, {len(r['falas'])} falas", flush=True)
+    return {"ok": True, "text": r["text"], "duvidas": r["duvidas"], "falas": r["falas"]}
 
 
 def _rec_patient(u, b):
@@ -3157,8 +3195,123 @@ async def prontuario_recordings_state(request: Request):
     if not p:
         return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
     recs = await run_in_threadpool(db.rec_list, u["id"], p["id"], *_rec_where(b))
-    return {"recordings": [{k: r[k] for k in ("rec_id", "status", "consent_at", "seconds", "updated_at", "segments", "scribe")}
-                           for r in recs]}
+    # audio: as partes do áudio guardado ({part, at, upto}, só números); vazio nas gravações de antes da mudança
+    return {"recordings": [dict({k: r[k] for k in ("rec_id", "status", "consent_at", "seconds", "updated_at", "segments", "scribe")},
+                                audio=r.get("audio") or []) for r in recs]}
+
+
+@app.post("/prontuario/recordings/fala")
+async def prontuario_recording_fala(request: Request):
+    """O médico troca à mão quem fala em uma fala da transcrição: {patient_id, rec_id, seq, i, q} (q: m, p ou a). Só na
+    gravação deste médico e paciente e numa fala que existe; fica marcada manual e no histórico de acessos."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    b = await _json(request)
+    rid, seq, i, q = str(b.get("rec_id") or "").lower(), b.get("seq"), b.get("i"), b.get("q")
+    inteiro = lambda x, lo, hi: isinstance(x, int) and not isinstance(x, bool) and lo <= x <= hi
+    if not (_UUID.fullmatch(rid) and inteiro(seq, 1, 2000) and inteiro(i, 0, 999) and q in db.FALA_Q):
+        return JSONResponse({"error": "fala sem identificação"}, status_code=400)
+    p = await run_in_threadpool(_rec_patient, u, b)
+    if not p:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    if _rate_limited(request, "fala", key=u["id"]):
+        return JSONResponse({"error": "muitas trocas em pouco tempo"}, status_code=429)
+    try:
+        falas = await run_in_threadpool(db.rec_set_fala, u["id"], p["id"], rid, seq, i, q)
+    except db.MigracaoPendente:
+        return JSONResponse({"error": "rótulos indisponíveis no momento"}, status_code=503)
+    if falas is None:
+        return JSONResponse({"error": "fala não encontrada"}, status_code=404)
+    await run_in_threadpool(db.log_access, u["id"], "recording_edit", p["id"])
+    return {"ok": True, "falas": falas}
+
+
+@app.post("/prontuario/recordings/audio")
+async def prontuario_recording_audio_add(request: Request):
+    """Guarda um pedaço do áudio original da gravação (1 ano, para o player do prontuário). O corpo são os bytes do
+    pedaço (application/octet-stream: tipo não-JSON + cabeçalhos próprios obrigam o pre-flight); paciente, gravação,
+    parte e pedaço vão em cabeçalhos (nunca o nome). Nunca cria a gravação: antes do primeiro trecho transcrito → 409
+    e a página tenta de novo. Não vai à OpenAI: não depende da chave."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    gate = _scribe_gate(u, chave=False)
+    if gate:
+        return gate
+    h = request.headers
+    pid, rid = str(h.get("x-patient-id") or ""), str(h.get("x-rec-id") or "").lower()
+    part, n, sess = str(h.get("x-part") or ""), str(h.get("x-n") or ""), str(h.get("x-sess") or "")
+    at, upto = _num_or_none(h.get("x-at"), 0, 24 * 3600), _num_or_none(h.get("x-upto"), 0, 24 * 3600)
+    if not (re.fullmatch(r"[0-9]{1,18}", pid) and _UUID.fullmatch(rid) and re.fullmatch(r"[0-9]{1,3}", part)
+            and re.fullmatch(r"[0-9]{1,4}", n) and _SESS.fullmatch(sess) and at is not None and upto is not None
+            and upto >= at):
+        return JSONResponse({"error": "pedaço sem identificação"}, status_code=400)
+    part, n, eid = int(part), int(n), str(h.get("x-event-id") or "")[:300] or None
+
+    def paciente():
+        pt = db.get_patient(u["id"], int(pid))
+        return pt, bool(pt) and db.event_note_other_patient(u["id"], eid, pt["id"], pt["key"])
+    p, outro = await run_in_threadpool(paciente)
+    if not p:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    if outro:                                # o paciente do evento foi trocado: o áudio não vai para a consulta do outro
+        return _outro_paciente()
+    if _rate_limited(request, "audio", key=u["id"]):     # por conta, não por IP: clínica com vários médicos atrás de um NAT
+        return JSONResponse({"error": "muitos pedaços em pouco tempo"}, status_code=429)
+    cl = h.get("content-length") or ""
+    if cl.isdigit() and int(cl) > MAX_AUDIO_BYTES:
+        return JSONResponse({"error": "pedaço grande demais"}, status_code=413)
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > MAX_AUDIO_BYTES:
+            return JSONResponse({"error": "pedaço grande demais"}, status_code=413)
+    if not body:
+        return JSONResponse({"error": "pedaço vazio"}, status_code=400)
+    mime = None
+    if n == 0:                               # o tipo vem dos bytes do primeiro pedaço da parte; os outros herdam
+        mime = _audio_mime(bytes(body[:12]))
+        if not mime:
+            return JSONResponse({"error": "formato não aceito: webm, ogg ou mp4"}, status_code=415)
+    try:
+        st = await run_in_threadpool(db.rec_add_audio, u["id"], p["id"], rid, part, n, at, upto, mime, bytes(body),
+                                     AUDIO_DAY_BYTES, sess=sess, max_part_bytes=MAX_PART_BYTES)
+    except db.MigracaoPendente:
+        return JSONResponse({"error": "áudio indisponível no momento"}, status_code=503)
+    if st == "sem_gravacao":
+        return JSONResponse({"error": "gravação ainda não começou"}, status_code=409)
+    if st == "sem_inicio":
+        return JSONResponse({"error": "o começo desta parte ainda não chegou"}, status_code=409)
+    if st == "ocupada":                      # outra sessão (outra aba) já usa este número de parte: a página renumera
+        return JSONResponse({"error": "parte ocupada", "parte_ocupada": True}, status_code=409)
+    if st == "teto":
+        return JSONResponse({"error": "limite de áudio guardado em 24 horas"}, status_code=429)
+    if st == "teto_parte":                   # a página começa outra parte
+        return JSONResponse({"error": "limite de áudio desta parte", "teto_parte": True}, status_code=429)
+    if st == "repetido":
+        return {"ok": True, "repetido": True}
+    print(f"[audio] pedaço {part}/{n}: {len(body)} bytes", flush=True)   # o log só leva números
+    return {"ok": True}
+
+
+@app.get("/prontuario/recordings/audio")
+def prontuario_recording_audio_get(request: Request, rec_id: str = "", part: str = ""):
+    """Toca uma parte do áudio guardado (só o médico dono): os pedaços contíguos a partir do primeiro. Na URL só ids.
+    Fica registrado no histórico de acessos."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    rid = str(rec_id or "").lower()
+    if not (_UUID.fullmatch(rid) and re.fullmatch(r"[0-9]{1,3}", str(part or ""))):
+        return JSONResponse({"error": "áudio sem identificação"}, status_code=400)
+    a = db.rec_audio(u["id"], rid, int(part))
+    if not a or a["mime"] not in _AUDIO_MIMES:
+        return JSONResponse({"error": "áudio não encontrado"}, status_code=404)
+    db.log_access(u["id"], "recording_listen", a["patient_id"], dedupe_minutes=10)
+    return Response(a["data"], media_type=a["mime"], headers={
+        "Cache-Control": "private, no-store", "Content-Disposition": "inline",
+        "Cross-Origin-Resource-Policy": "same-origin"})
 
 
 def _line(obj):

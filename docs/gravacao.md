@@ -13,8 +13,21 @@ trocados entre página, servidor e banco, como testar e avaliar, e as decisões 
    falhar, fica na memória (`RR.mem`). Uma fila sobe um trecho por vez para `POST /prontuario/transcribe` e só apaga o
    trecho quando o servidor devolve o texto. O trecho em andamento também é guardado a cada 2 s.
 3. **Servidor → transcrição.** O servidor confere login, paciente, a hora do início (`X-Consent`) e o formato, e manda o áudio à OpenAI
-   (`app/stt.py`) com o fim do trecho anterior como contexto. Guarda só o texto (`recording_segments`); o áudio é
+   (`app/stt.py`) com o fim do trecho anterior como contexto. Guarda o texto (`recording_segments`); o WAV é
    descartado.
+   **Quem fala (desde 13/11/2026).** Antes de guardar, `app/falante.py` divide o texto em frases, mascara cada uma
+   (`scribe.mask`) e pede a um modelo barato (`OPENAI_FALANTE_MODEL`, padrão `gpt-5.4-mini`) só onde cada fala termina e
+   quem fala (médico, paciente ou acompanhante), com o fim do trecho anterior já rotulado como contexto. O servidor
+   confere a resposta e corta o texto original nas mesmas frases (`falas`, migração 0023). Teto de 8 s; qualquer erro
+   deixa o trecho sem rótulo, como antes. O médico troca o rótulo à mão (`POST /prontuario/recordings/fala`, fica
+   `manual` e no registro de acessos). A evolução ainda lê o texto sem rótulo. Contrato:
+   [`falante-contrato.md`](falante-contrato.md); avaliação: `python -m scripts.falante_eval` (gasta crédito; `--dry-run`).
+   **Áudio original (desde 13/11/2026).** Ao mesmo tempo, um `MediaRecorder` grava o som da consulta (opus 24 kbps),
+   uma parte por sessão do microfone, em pedaços de 5 s que passam pelo IndexedDB e sobem por uma fila própria para
+   `POST /prontuario/recordings/audio`. O servidor guarda em `recording_audio` por 1 ano, para o player do prontuário.
+   O áudio não segura a geração da evolução. Cada parte tem teto de 32 MB (a página troca de parte sozinha a cada
+   30 min), o limite de pedidos é por conta (não por IP, por causa das clínicas atrás de NAT), e as audições ficam no
+   registro de acessos, agrupadas em 10 minutos. Contrato completo: [`audio-contrato.md`](audio-contrato.md).
 4. **Finalizar → evolução.** O "Finalizar" do cartão encerra a gravação. `POST /prontuario/scribe` junta os trechos
    da consulta, mascara o texto (`scribe.mask`) e pede a evolução ao modelo (`app/scribe.py`). Confere a resposta sem
    IA (números, remédios, doses, alergias, sinais vitais, CID) e responde em linhas JSON, com progresso e depois o
@@ -32,9 +45,10 @@ trocados entre página, servidor e banco, como testar e avaliar, e as decisões 
 |---|---|---|
 | Captura | `web/rec-worklet.js` | 16 kHz, blocos de 100 ms, volume (RMS) |
 | Tela e fila | `web/opendoctor-agenda.html`, seção "gravação da consulta" | cartão da aba Consulta (funções `cs*`), demonstração (paciente de exemplo) e gravação real |
-| Rotas | `app/server.py` | `transcribe`, `recordings/state`, `scribe`, `DELETE recordings/{id}`, `_scribe_rastreio`, ligação ao salvar a evolução |
-| Banco | `app/db.py` (`rec_*`, `_ligar`), `supabase/migrations/0013_scribe.sql` | `recordings`, `recording_segments` |
+| Rotas | `app/server.py` | `transcribe`, `recordings/audio` (enviar e tocar), `recordings/state`, `recordings/fala`, `scribe`, `DELETE recordings/{id}`, `_scribe_rastreio`, ligação ao salvar a evolução |
+| Banco | `app/db.py` (`rec_*`, `_ligar`, `RETENTION`), `supabase/migrations/0013_scribe.sql`, `0022_gravacao_audio.sql`, `0023_falantes.sql` | `recordings`, `recording_segments` (com `falas`), `recording_audio` (1 ano) |
 | Transcrição | `app/stt.py` | chamada, limpeza de frases-fantasma, confiança por palavra (`DUVIDA`) |
+| Quem fala | `app/falante.py`, `app/data/falante_prompt.txt` | frases, máscara, validação estrita, corte do texto original |
 | Evolução | `app/scribe.py` | máscara, leitor de números, remédios e alergias, prompt, conferências (`_Conferencia`) |
 | Tabelas clínicas | `app/data/` | `remedios.txt`, `doses.tsv`, `composicao.tsv`, `alergias.tsv`, `siglas.txt`, `termos_exame.txt`, `escriba_prompt.txt` |
 | Avaliação | `app/scribe_eval.py`, `evals/scribe/` | 31 consultas fictícias, gabaritos, relatórios; histórico em [`eval-gravacao.md`](eval-gravacao.md) |
@@ -72,16 +86,19 @@ confirmação ao finalizar.
 - **Depois da consulta:**
   - o player aparece em cima do cartão: a trilha, o tempo e o botão que percorre a transcrição. O cursor anda e a fala
     do momento fica em destaque. Tocar numa fala ou na trilha leva o player até ali;
-  - na gravação real, o player não tem som: o áudio foi descartado. A demonstração mostra também o botão de som;
+  - na gravação real, o player toca o áudio guardado (1 ano). Consulta sem áudio (gravada antes de 13/11/2026, com o
+    áudio apagado ou com mais de 1 ano) é lida pela voz instalada no computador (`speechSynthesis`, só vozes locais;
+    nenhum texto sai da máquina). A demonstração mostra também o botão de som;
   - os marcadores laranja são os destaques: um por parte do SOAP, no trecho de onde ela veio (na gravação real, o primeiro
     trecho desta gravação citado pela parte, de `result.fields_src`; na demonstração, a primeira fala de cada parte).
     Tocar num marcador abre o card: o nome da parte, o minuto, o texto que a IA escreveu para ela, "Ouvir" (o player
     vai até ali e toca) e as setas entre os destaques. Esc, tocar fora ou ir para a aba SOAP fecha o card;
   - o aviso da IA ("Evolução preenchida pela gravação: revise na aba SOAP", que fecha no X) e o "Assinar" flutuam no
     pé, por cima do texto, sem máscara;
-  - na gravação real, abaixo do cartão, os pontos "Para conferir na evolução" ("Ver na transcrição" abre a fala na aba
-    Transcrição). O card "Consulta gravada" e o "Gravar mais um trecho" saíram (20/10/2026): depois de gerada a evolução,
-    não se grava outro trecho na mesma consulta.
+  - a lista "Para conferir na evolução" saiu da tela (13/11/2026, pedido do usuário): as conferências (`scribe.check`)
+    continuam no servidor e nos números da revisão, mas não aparecem; o Assinar só avisa dos trechos fora da evolução.
+    O card "Consulta gravada" e o "Gravar mais um trecho" saíram (20/10/2026): depois de gerada a evolução, não se grava
+    outro trecho na mesma consulta.
 - **Evolução:**
   - só em SOAP. Um rascunho antigo em texto livre aparece no S;
   - salva sozinha ao parar de digitar. Não há Salvar, "Copiar da última" nem "Finalizar evolução" na tela;
@@ -223,7 +240,7 @@ python -m app.scribe_eval --comparar
 | Data | Decisão | Por quê |
 |---|---|---|
 | 15/10/2026 | Transcritor `gpt-transcribe`, evolução `gpt-5.4` | melhor par na avaliação (comparação em `evals/scribe/relatorios/`) |
-| 15/10/2026 | Áudio não é guardado; a transcrição fica com o prontuário | privacidade; o prontuário precisa do texto |
+| 15/10/2026 | Áudio não é guardado; a transcrição fica com o prontuário | privacidade; o prontuário precisa do texto (substituída em 13/11/2026) |
 | 15/10/2026 | Palavras-chave de exame físico desligadas (`SCRIBE_KW_EXAME`) | acertam termos, mas a dúvida cai de 20% para 6% dos erros |
 | 15/10/2026 | Limite de dúvida 0,8 (era 0,6) | marca 40% dos erros do transcritor, contra 14%, com a mesma precisão; custa ~1 ponto a mais por consulta. Confirmar com consultas encenadas |
 | 15/10/2026 | Prompt `2026-10-15.7` | passou nos critérios de segurança nos dois limites de dúvida |
@@ -232,7 +249,7 @@ python -m app.scribe_eval --comparar
 | 19/10/2026 | Aba Consulta no design do Figma "Consulta" (nó 1089:32631): Transcrição \| SOAP, o pé com Iniciar consulta ou a barra, o player depois | pedido do usuário, que desenha a tela no Figma |
 | 19/10/2026 | Evolução só em SOAP; sem Salvar, "Copiar da última", "Finalizar evolução" e o relógio "Iniciar consulta" | a evolução salva sozinha; um "Finalizar" só: gravando, encerra e gera; pronta, assina |
 | 19/10/2026 | "Adicionar adendo" e o aviso da IA flutuam por cima do texto, sem máscara; a finalizada aparece só na aba SOAP | como no Figma (1090:32797) |
-| 19/10/2026 | Na gravação real, o player percorre a transcrição sem som | o áudio não é guardado |
+| 19/10/2026 | Na gravação real, o player percorre a transcrição sem som | o áudio não é guardado (substituída em 13/11/2026) |
 | 20/10/2026 | O aviso "Evolução preenchida pela gravação" perde o Desfazer e ganha um X para fechar | pedido do usuário |
 | 20/10/2026 | Destaques do player com card (parte do SOAP, minuto, texto, Ouvir, setas), também na gravação real | referência do usuário (o card do player da divulgação); sem "Saiba mais" |
 | 20/10/2026 | Sai a marca "O paciente autorizou a gravação": "Iniciar consulta" grava direto | pedido do usuário; o RIPD registra a mudança e fica pendente de revisão jurídica |
@@ -240,11 +257,14 @@ python -m app.scribe_eval --comparar
 | 20/10/2026 | Sai o "Finalizar mesmo assim" do aviso de pontos: o 2º toque no botão do cartão assina | pedido do usuário (um botão só na tela) |
 | 22/10/2026 | Gravação sem fala: aviso próprio e "Gravar de novo", em vez do erro genérico que dizia "a transcrição está guardada" | o usuário testou com o microfone sem som e recebeu o erro genérico |
 | 20/10/2026 | O botão que assina a evolução passa de "Finalizar" para "Assinar" (também a confirmação e os avisos) | pedido do usuário: "Finalizar" fica só o da gravação, que encerra e gera; assinar sozinho ao finalizar trancaria o texto da IA antes da revisão |
+| 13/11/2026 | O áudio original de cada consulta fica guardado por 1 ano (`recording_audio`), e o player toca o som real; consultas sem áudio são lidas pela voz do computador | decisão do usuário. A leitura pela voz da OpenAI, testada no mesmo dia, foi descartada. O RIPD e a Política foram revistos; o prazo fica pendente de revisão jurídica |
+| 13/11/2026 | Desenho do áudio: uma parte por sessão do microfone, pedaços de 5 s (`part`, `n`, `at_s`, `upto_s`); tipo fixado pelos bytes do 1º pedaço (webm, ogg, mp4); a rota do áudio nunca cria a gravação (409 até ela existir); sai com "Apagar transcrição" (cascata), com a exclusão da conta e pela limpeza de 1 ano; o player busca a parte por `fetch` e toca por `blob:` (`media-src 'self' blob:`) | pedaços pequenos tocam sozinhos e sem buracos (os silêncios também têm som); um áudio atrasado não recria a gravação apagada; o tipo do navegador não decide o que o servidor devolve |
 
 ## Pendências
 
 - **Antes de pacientes reais fora da conta do fundador:** DPA da OpenAI, pedido de ZDR e cláusulas-padrão da ANPD.
-  Também a revisão jurídica do RIPD, da Política e dos Termos.
+  Também a revisão jurídica do RIPD, da Política e dos Termos, inclusive do prazo de 1 ano do áudio frente ao do
+  prontuário e do acesso do paciente ao som (hoje só ouvindo com o médico).
 - **Validação:** médico revisor para os gabaritos e as regras do prompt, e pelo menos 8 consultas encenadas por pessoas
   (elas também confirmam o limite de dúvida).
 - **Lista da CMED:** `scripts/cmed_import.py` está pronto. Baixar a planilha depende de ok.

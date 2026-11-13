@@ -1,12 +1,13 @@
 """Rotas da gravação da consulta (transcrever, estado, gerar, apagar) com banco em memória e transcritor/modelo
 falsos: nada sai para a OpenAI nem toca banco."""
 import json
+import re
 import struct
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app import auth, config, db, scribe, server, stt
+from app import auth, config, db, falante, scribe, server, stt
 from tests.fake_gravacao import FakeGravacao
 from tests.fake_receitas import FakeReceitas
 
@@ -75,6 +76,15 @@ def fake(monkeypatch):
         return {"text": ["Pressão 128 por 82, frequência 74.", "Vamos manter a losartana 50 mg de 12 em 12 horas."][min(n, 2) - 1],
                 "raw": "", "usage": {}, "duvidas": ["74"] if n == 1 else [], "confianca": 0.9}
     monkeypatch.setattr(stt, "atranscribe", atranscribe)
+    # o rotulador de quem fala (app/falante.py) com o modelo falso: cada frase numerada vira uma fala, alternando
+    # médico e paciente; f.falante guarda o que iria ao modelo. Nada sai para a OpenAI.
+    f.falante = []
+
+    def rotulador(msgs, model=None):
+        f.falante.append(msgs)
+        n = len(re.findall(r"^\[\d+\] ", msgs[-1]["content"], re.M))
+        return json.dumps({"falas": [{"ate": i, "q": "mp"[(i - 1) % 2]} for i in range(1, n + 1)]})
+    monkeypatch.setattr(falante, "ask_model", rotulador)
     server._RL.clear()
     return f
 
@@ -122,7 +132,8 @@ def test_transcrever_so_aceita_o_wav_da_pagina(fake, monkeypatch):
 def test_transcrever_guarda_o_texto_e_reenvio_nao_cobra_de_novo(fake):
     c = TestClient(server.app)
     r = c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1))
-    assert r.status_code == 200 and r.json() == {"ok": True, "text": "Pressão 128 por 82, frequência 74.", "duvidas": ["74"]}
+    assert r.status_code == 200 and r.json() == {"ok": True, "text": "Pressão 128 por 82, frequência 74.", "duvidas": ["74"],
+                                                 "falas": [{"q": "m", "t": "Pressão 128 por 82, frequência 74.", "at": 0.0}]}
     assert fake.segs[(REC, 1)]["dur"] == 20 and fake.recs[REC]["consent_at"] == "2026-10-15T10:00:00.000Z"
     assert fake.recs[REC]["event_id"] == "ev9" and ("recording", 7, None) in fake.log
     again = c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1)).json()

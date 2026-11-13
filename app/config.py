@@ -36,6 +36,9 @@ OPENAI_FAST_MODEL = os.environ.get("OPENAI_FAST_MODEL", "gpt-4o-mini").strip()
 OPENAI_STT_MODEL = os.environ.get("OPENAI_STT_MODEL", "gpt-transcribe").strip()
 OPENAI_SCRIBE_MODEL = os.environ.get("OPENAI_SCRIBE_MODEL", "gpt-5.4").strip()
 OPENAI_PRESC_MODEL = os.environ.get("OPENAI_PRESC_MODEL", "gpt-5.4").strip()   # possíveis prescrições (aba Prescrições)
+# quem fala em cada fala da transcrição (app/falante.py): modelo barato, só texto mascarado, resposta curta
+OPENAI_FALANTE_MODEL = os.environ.get("OPENAI_FALANTE_MODEL", "gpt-5.4-mini").strip()
+OPENAI_FALANTE_REASONING = os.environ.get("OPENAI_FALANTE_REASONING", "low").strip()
 # quem tem a gravação real: e-mails separados por vírgula, ou todos (SCRIBE_ALL=1); SCRIBE_OFF=1 desliga na hora
 SCRIBE_EMAILS = {e.strip().lower() for e in os.environ.get("SCRIBE_EMAILS", "").split(",") if e.strip()}
 SCRIBE_ALL = os.environ.get("SCRIBE_ALL", "").strip() == "1"

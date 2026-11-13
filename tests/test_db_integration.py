@@ -3,6 +3,7 @@ TEST_DATABASE_URL eles são pulados; nunca tocam produção. Cada teste cria os 
 apaga tudo no fim."""
 import contextlib
 import datetime
+import os
 import re
 import uuid
 
@@ -150,7 +151,7 @@ def test_gravacao_da_consulta(novo_usuario):
     db.rec_add_segment(ana, rid, 1, 0.0, 20.0, "outro texto", [])     # reenvio: fica o primeiro
     db.rec_add_segment(beto, rid, 2, 20.0, 20.0, "invasão", [])       # gravação de outro médico: ignorado
     db.rec_add_segment(ana, rid, 2, 20.0, 18.5, "Manter losartana.", [])
-    assert db.rec_segment(ana, rid, 1) == {"text": "Pressão 128 por 82.", "duvidas": ["82"]}
+    assert db.rec_segment(ana, rid, 1) == {"text": "Pressão 128 por 82.", "duvidas": ["82"], "falas": []}   # sem rótulo (0023)
     assert db.rec_segment(beto, rid, 1) is None
     assert db.rec_prev_text(ana, rid, 2) == "Pressão 128 por 82."
     assert 38 <= db.rec_seconds_today(ana) <= 39 and db.rec_seconds_today(beto) == 0
@@ -1015,3 +1016,249 @@ def test_sem_a_migracao_0021_o_cadastro_segue(novo_usuario, monkeypatch):
     assert db.find_patients(uid, "Outro Nome Teste") and vistos
     citam = [q for q in vistos if re.search(r"\b(email|coverage|health_plan)\b", q)]
     assert not citam, citam
+
+
+WEBM = b"\x1a\x45\xdf\xa3" + bytes(64)
+SESS, OUTRA = "sessao-aba-a-0001", "sessao-aba-b-0002"
+
+
+def _add(*a, sess=SESS, max_part_bytes=10 ** 9):
+    return db.rec_add_audio(*a, sess=sess, max_part_bytes=max_part_bytes)
+
+
+def test_audio_da_gravacao(novo_usuario):
+    """Migração 0022: o pedaço só entra na gravação deste médico e paciente (nunca a cria), uma vez só; o do meio precisa
+    do começo da parte e herda o tipo; o teto de 24 h; só o dono ouve; apagar a transcrição leva o áudio (cascata)."""
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p, outro = db.create_patient(ana, "Paciente da Ana"), db.create_patient(ana, "Outro da Ana")
+    rid, teto = str(uuid.uuid4()), 10 ** 9
+    assert _add(ana, p["id"], rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, teto) == "sem_gravacao"
+    with db.connection() as c:
+        assert c.execute("select count(*) from recordings where id = %s", (rid,)).fetchone()[0] == 0
+    assert db.rec_open(ana, p["id"], rid, "ev1", None, "2026-10-15T10:00:00Z")
+    assert _add(beto, p["id"], rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, teto) == "sem_gravacao"
+    assert _add(ana, outro["id"], rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, teto) == "sem_gravacao"
+    assert _add(ana, p["id"], rid, 0, 1, 0.0, 10.0, None, b"meio-1", teto) == "sem_inicio"
+    assert _add(ana, p["id"], rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, teto) == "ok"
+    assert _add(ana, p["id"], rid, 0, 0, 0.0, 5.0, "audio/ogg", b"OggS outro", teto) == "repetido"
+    assert _add(ana, p["id"], rid, 0, 1, 0.0, 10.0, None, b"meio-1", teto) == "ok"
+    assert _add(ana, p["id"], rid, 0, 3, 0.0, 20.0, None, b"meio-3", teto) == "ok"   # buraco no 2
+    assert _add(ana, p["id"], rid, 0, 2, 0.0, 15.0, None, b"x" * 100, len(WEBM) + 20) == "teto"
+    assert _add(ana, p["id"], rid, 1, 0, 40.0, 45.0, "audio/ogg", b"OggS" + bytes(8), teto) == "ok"
+    with db.connection() as c:
+        assert c.execute("select mime from recording_audio where rec_id = %s and part = 0 and n = 1",
+                         (rid,)).fetchone()[0] == "audio/webm"                    # herdou da parte
+    a = db.rec_audio(ana, rid, 0)
+    assert a == {"mime": "audio/webm", "data": WEBM + b"meio-1", "patient_id": p["id"]}   # para no buraco
+    assert db.rec_audio(ana, rid, 1)["mime"] == "audio/ogg" and db.rec_audio(ana, rid, 2) is None
+    assert db.rec_audio(beto, rid, 0) is None
+    (r,) = db.rec_list(ana, p["id"], event_id="ev1")
+    assert r["audio"] == [{"part": 0, "at": 0.0, "upto": 10.0}, {"part": 1, "at": 40.0, "upto": 45.0}]
+    assert db.delete_patient(ana, p["id"]) == "has_notes"            # gravação só com áudio também é prontuário
+    assert db.rec_delete(ana, rid) == p["id"]
+    with db.connection() as c:
+        assert c.execute("select count(*) from recording_audio where rec_id = %s", (rid,)).fetchone()[0] == 0
+    assert db.rec_audio(ana, rid, 0) is None
+    assert db.delete_patient(ana, p["id"]) == "ok"
+
+
+def test_audio_sessao_da_parte_e_teto_da_parte(novo_usuario):
+    """Correções da revisão (docs/audio-contrato.md): o n = 0 grava o sess; outra sessão na mesma parte é "ocupada" (n = 0
+    ou n > 0), "repetido" só com o mesmo sess; o teto por parte; o GET junta só os contíguos; rec_list pela PK (uuid[])."""
+    ana = novo_usuario("Ana")["id"]
+    p = db.create_patient(ana, "Paciente da Ana")
+    rid = str(uuid.uuid4())
+    assert db.rec_open(ana, p["id"], rid, "ev1", None, "2026-10-15T10:00:00Z")
+    assert _add(ana, p["id"], rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, 10 ** 9) == "ok"
+    assert _add(ana, p["id"], rid, 0, 0, 0.0, 5.0, "audio/ogg", b"OggS x", 10 ** 9, sess=OUTRA) == "ocupada"
+    assert _add(ana, p["id"], rid, 0, 1, 0.0, 10.0, None, b"de-b", 10 ** 9, sess=OUTRA) == "ocupada"
+    assert _add(ana, p["id"], rid, 0, 1, 0.0, 10.0, None, b"meio-1", 10 ** 9) == "ok"
+    assert _add(ana, p["id"], rid, 0, 1, 0.0, 10.0, None, b"meio-1", 10 ** 9) == "repetido"
+    assert _add(ana, p["id"], rid, 0, 1, 0.0, 10.0, None, b"de-b", 10 ** 9, sess=OUTRA) == "ocupada"
+    with db.connection() as c:
+        linhas = c.execute("select n, sess, data from recording_audio where rec_id = %s and part = 0 order by n",
+                           (rid,)).fetchall()
+    assert [(n, sess, bytes(d)) for n, sess, d in linhas] == [(0, SESS, WEBM), (1, SESS, b"meio-1")]
+    teto = len(WEBM) + len(b"meio-1") + 10                          # a parte 0 já tem quase tudo
+    assert _add(ana, p["id"], rid, 0, 2, 0.0, 15.0, None, b"x" * 11, 10 ** 9, max_part_bytes=teto) == "teto_parte"
+    assert _add(ana, p["id"], rid, 0, 2, 0.0, 15.0, None, b"x" * 10, 10 ** 9, max_part_bytes=teto) == "ok"
+    assert _add(ana, p["id"], rid, 1, 0, 20.0, 25.0, "audio/webm", WEBM, 10 ** 9, max_part_bytes=10) == "teto_parte"
+    assert _add(ana, p["id"], rid, 1, 0, 20.0, 25.0, "audio/ogg", b"OggS" + bytes(8), 10 ** 9, sess=OUTRA) == "ok"
+    assert _add(ana, p["id"], rid, 1, 2, 20.0, 35.0, None, b"depois-do-buraco", 10 ** 9, sess=OUTRA) == "ok"
+    assert db.rec_audio(ana, rid, 0)["data"] == WEBM + b"meio-1" + b"x" * 10
+    assert db.rec_audio(ana, rid, 1)["data"] == b"OggS" + bytes(8)          # para no buraco (n = 1 não chegou)
+    (r,) = db.rec_list(ana, p["id"], rec_ids=[rid])
+    assert r["audio"] == [{"part": 0, "at": 0.0, "upto": 15.0}, {"part": 1, "at": 20.0, "upto": 25.0}]
+
+
+def test_audio_migracao_0022_tem_a_coluna_sess_e_e_idempotente(novo_usuario):
+    """A 0022 cria a tabela já com sess e, no banco que já tinha a tabela, acrescenta a coluna; rodar de novo não muda
+    nada (o setup_test_db aplica todas as migrações a cada vez)."""
+    sql = open(os.path.join(os.path.dirname(__file__), "..", "supabase", "migrations", "0022_gravacao_audio.sql")).read()
+    assert "add column if not exists sess text" in sql
+    with db.connection() as c:
+        c.execute(sql)
+        c.commit()
+        tipo = c.execute("""select data_type from information_schema.columns
+                            where table_schema = 'public' and table_name = 'recording_audio' and column_name = 'sess'""").fetchone()
+    assert tipo == ("text",)
+
+
+def test_limpeza_apaga_o_audio_de_mais_de_um_ano_e_nunca_a_transcricao(novo_usuario):
+    uid = novo_usuario()["id"]
+    p = db.create_patient(uid, "Paciente Teste")
+    rid = str(uuid.uuid4())
+    assert db.rec_open(uid, p["id"], rid, "ev1", None, "2025-10-15T10:00:00Z")
+    with db.connection() as c:
+        c.execute("""insert into recording_segments (rec_id, seq, at_s, dur_s, text, created_at)
+                     values (%s, 1, 0, 30, 'trecho antigo', now() - interval '13 months')""", (rid,))
+        c.execute("""insert into recording_audio (rec_id, part, n, user_id, at_s, upto_s, mime, size, data, created_at) values
+                     (%s, 0, 0, %s, 0, 5, 'audio/webm', 4, %s, now() - interval '13 months'),
+                     (%s, 1, 0, %s, 60, 65, 'audio/webm', 4, %s, now() - interval '11 months')""",
+                  (rid, uid, WEBM[:4], rid, uid, WEBM[:4]))
+        c.commit()
+    db.cleanup_old_records()
+    with db.connection() as c:
+        partes = [x[0] for x in c.execute("select part from recording_audio where rec_id = %s", (rid,)).fetchall()]
+        trechos = c.execute("select count(*) from recording_segments where rec_id = %s", (rid,)).fetchone()[0]
+        gravacoes = c.execute("select count(*) from recordings where id = %s", (rid,)).fetchone()[0]
+    assert partes == [1] and trechos == 1 and gravacoes == 1     # só o áudio de 13 meses saiu
+
+
+def test_excluir_conta_apaga_o_audio_e_deixa_a_transcricao(novo_usuario):
+    u = novo_usuario("Ana Souza")
+    uid = u["id"]
+    p = db.create_patient(uid, "Paciente Fictícia")
+    rid = str(uuid.uuid4())
+    assert db.rec_open(uid, p["id"], rid, "ev1", None, "2026-10-15T10:00:00Z")
+    db.rec_add_segment(uid, rid, 1, 0.0, 20.0, "Pressão 128 por 82.", [])
+    assert _add(uid, p["id"], rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, 10 ** 9) == "ok"
+    assert db.excluir_conta(uid, u["email"])
+    with db.connection() as c:
+        audio = c.execute("select count(*) from recording_audio where user_id = %s", (uid,)).fetchone()[0]
+        grav = c.execute("select count(*) from recordings where user_id = %s", (uid,)).fetchone()[0]
+        trechos = c.execute("select count(*) from recording_segments where rec_id = %s", (rid,)).fetchone()[0]
+    assert (audio, grav, trechos) == (0, 1, 1)
+
+
+def test_sem_a_migracao_0022_a_gravacao_segue(novo_usuario, monkeypatch):
+    """Sem a 0022 (db.tem_audio falso): o áudio espera (MigracaoPendente), ninguém ouve, a lista vem sem áudio, e a
+    limpeza, a exclusão do paciente e a da conta não citam a tabela nova."""
+    u = novo_usuario()
+    uid = u["id"]
+    p = db.create_patient(uid, "Paciente Teste")
+    rid = str(uuid.uuid4())
+    assert db.rec_open(uid, p["id"], rid, "ev1", None, "2026-10-15T10:00:00Z")
+    monkeypatch.setattr(db, "tem_audio", lambda conn: False)
+    vistos, real = [], db.connection
+
+    class _Grava:
+        def __init__(self, c):
+            self.c = c
+
+        def execute(self, sql, *a, **k):
+            vistos.append(str(sql))
+            return self.c.execute(sql, *a, **k)
+
+        def __getattr__(self, nome):
+            return getattr(self.c, nome)
+
+    @contextlib.contextmanager
+    def grava():
+        with real() as c:
+            yield _Grava(c)
+    monkeypatch.setattr(db, "connection", grava)
+    with pytest.raises(db.MigracaoPendente):
+        _add(uid, p["id"], rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, 10 ** 9)
+    assert db.rec_audio(uid, rid, 0) is None
+    assert db.rec_list(uid, p["id"], event_id="ev1")[0]["audio"] == []
+    db.cleanup_old_records()
+    assert db.delete_patient(uid, p["id"]) == "ok"                 # gravação vazia sai junto, como antes
+    assert db.excluir_conta(uid, u["email"])
+    citam = [q for q in vistos if "recording_audio" in q]
+    assert vistos and not citam, citam
+
+
+FALAS_T = [{"q": "m", "t": "Bom dia. Como passou?", "at": 0.0}, {"q": "p", "t": "Bem, doutora.", "at": 4.1}]
+
+
+def test_falas_da_gravacao(novo_usuario):
+    """Migração 0023: as falas entram com o trecho e voltam no reenvio, no trecho anterior e no estado; a troca do
+    rótulo à mão marca manual e só vale para o médico dono, o paciente da gravação e uma fala que existe."""
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p, outro = db.create_patient(ana, "Paciente da Ana"), db.create_patient(ana, "Outro da Ana")
+    rid = str(uuid.uuid4())
+    assert db.rec_open(ana, p["id"], rid, "ev1", None, "2026-10-15T10:00:00Z")
+    db.rec_add_segment(ana, rid, 1, 0.0, 20.0, "Bom dia. Como passou? Bem, doutora.", [], FALAS_T)
+    db.rec_add_segment(ana, rid, 2, 20.0, 20.0, "Sem rótulo.", [])                     # o rotulador falhou
+    assert db.rec_segment(ana, rid, 1)["falas"] == FALAS_T
+    assert db.rec_segment(ana, rid, 2)["falas"] == []
+    assert db.rec_prev_segment(ana, rid, 2) == {"text": "Bom dia. Como passou? Bem, doutora.", "falas": FALAS_T}
+    assert db.rec_prev_segment(ana, rid, 1) == {"text": "", "falas": []}
+    assert db.rec_prev_segment(beto, rid, 2) == {"text": "", "falas": []}
+    (r,) = db.rec_list(ana, p["id"], event_id="ev1")
+    assert [s["falas"] for s in r["segments"]] == [FALAS_T, []]
+    assert db.rec_set_fala(beto, p["id"], rid, 1, 0, "p") is None                     # outro médico
+    assert db.rec_set_fala(ana, outro["id"], rid, 1, 0, "p") is None                  # outro paciente
+    assert db.rec_set_fala(ana, p["id"], rid, 1, 2, "p") is None                      # fala que não existe
+    assert db.rec_set_fala(ana, p["id"], rid, 2, 0, "p") is None                      # trecho sem rótulo
+    assert db.rec_set_fala(ana, p["id"], rid, 3, 0, "p") is None                      # trecho que não existe
+    with pytest.raises(ValueError):
+        db.rec_set_fala(ana, p["id"], rid, 1, 0, "x")
+    assert db.rec_segment(ana, rid, 1)["falas"] == FALAS_T
+    novas = db.rec_set_fala(ana, p["id"], rid, 1, 1, "a")
+    assert novas == [FALAS_T[0], dict(FALAS_T[1], q="a", manual=True)]
+    assert db.rec_segment(ana, rid, 1)["falas"] == novas
+    db.rec_add_segment(ana, rid, 1, 0.0, 20.0, "outro texto", [], [])                 # reenvio não sobrescreve
+    assert db.rec_segment(ana, rid, 1)["falas"] == novas
+
+
+def test_falas_migracao_0023_idempotente(novo_usuario):
+    sql = open(os.path.join(os.path.dirname(__file__), "..", "supabase", "migrations", "0023_falantes.sql")).read()
+    with db.connection() as c:
+        c.execute(sql)
+        c.execute(sql)
+        c.commit()
+        col = c.execute("""select data_type, is_nullable, column_default from information_schema.columns
+                           where table_schema = 'public' and table_name = 'recording_segments' and column_name = 'falas'""").fetchone()
+        rls = c.execute("select relrowsecurity from pg_class where relname = 'recording_segments'").fetchone()[0]
+    assert col[0] == "jsonb" and col[1] == "NO" and "'[]'" in col[2] and rls
+
+
+def test_sem_a_migracao_0023_falas_ficam_de_fora(novo_usuario, monkeypatch):
+    """Sem a 0023 (db.tem_falas falso): o trecho entra sem rótulo, tudo volta com falas = [], a troca dá
+    MigracaoPendente e nenhuma consulta cita a coluna."""
+    uid = novo_usuario()["id"]
+    p = db.create_patient(uid, "Paciente Teste")
+    rid = str(uuid.uuid4())
+    assert db.rec_open(uid, p["id"], rid, "ev1", None, "2026-10-15T10:00:00Z")
+    monkeypatch.setattr(db, "tem_falas", lambda conn: False)
+    vistos, real = [], db.connection
+
+    class _Grava:
+        def __init__(self, c):
+            self.c = c
+
+        def execute(self, sql, *a, **k):
+            vistos.append(str(sql))
+            return self.c.execute(sql, *a, **k)
+
+        def __getattr__(self, nome):
+            return getattr(self.c, nome)
+
+    @contextlib.contextmanager
+    def grava():
+        with real() as c:
+            yield _Grava(c)
+    monkeypatch.setattr(db, "connection", grava)
+    db.rec_add_segment(uid, rid, 1, 0.0, 20.0, "Bom dia. Como passou? Bem, doutora.", [], FALAS_T)
+    assert db.rec_segment(uid, rid, 1) == {"text": "Bom dia. Como passou? Bem, doutora.", "duvidas": [], "falas": []}
+    assert db.rec_prev_segment(uid, rid, 2)["falas"] == []
+    assert db.rec_list(uid, p["id"], event_id="ev1")[0]["segments"][0]["falas"] == []
+    with pytest.raises(db.MigracaoPendente):
+        db.rec_set_fala(uid, p["id"], rid, 1, 0, "p")
+    citam = [q for q in vistos if re.search(r"\bs\.falas\b|duvidas, falas\)", q)]
+    assert vistos and not citam, citam
+    monkeypatch.setattr(db, "connection", real)
+    with db.connection() as c:                                     # com a coluna no banco: entrou vazia (o padrão)
+        assert c.execute("select falas from recording_segments where rec_id = %s", (rid,)).fetchone()[0] == []

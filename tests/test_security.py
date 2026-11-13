@@ -169,4 +169,20 @@ def test_retencao_respeita_a_lei():
     n, unit = keep.split()
     meses = int(n) * {"year": 12, "years": 12, "month": 1, "months": 1}[unit]
     assert meses >= 6
-    assert not set(db.RETENTION) & {"clinical_notes", "note_addenda", "patients", "access_log", "users"}
+    assert not set(db.RETENTION) & {"clinical_notes", "note_addenda", "patients", "access_log", "users",
+                                    "recordings", "recording_segments"}   # a transcrição da gravação é prontuário
+    # o áudio guardado da consulta (0022) é o único da gravação com prazo: 1 ano (decisão de 13/11/2026)
+    assert db.RETENTION["recording_audio"] == "1 year"
+
+
+def test_media_src_so_do_proprio_site():
+    """O player do prontuário toca o áudio guardado pelo mesmo site (fetch → blob:): nenhum host de fora no app. O site de
+    apresentação troca a diretiva (não acrescenta outra: o navegador ignoraria a segunda e bloquearia os vídeos)."""
+    app_ = [d for d in server._CSP.split("; ") if d.startswith("media-src")]
+    assert app_ == ["media-src 'self' blob:"], app_
+    site = [d for d in server._CSP_SITE.split("; ") if d.startswith("media-src")]
+    assert len(site) == 1 and site[0].split()[1:] == ["'self'", "https://videos.pexels.com"], site
+    for csp in (server._CSP, server._CSP_SITE):                   # nenhuma diretiva aparece duas vezes
+        nomes = [d.split()[0] for d in csp.split("; ")]
+        assert len(nomes) == len(set(nomes)), nomes
+    assert TestClient(server.app).get("/").headers["content-security-policy"] == server._CSP_SITE

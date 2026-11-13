@@ -5,7 +5,9 @@ modelo simulados. Só pacientes fictícios; nada toca o banco, a OpenAI nem o Re
     abrir http://localhost:8770/_preview/pr?pid=9003&tab=atual&ev=evnext
 
 O áudio é capturado, cortado e enviado de verdade; a "transcrição" devolve falas de uma consulta fictícia e o
-"modelo" devolve uma evolução pronta, conferida pelas conferências reais (app/scribe.check). O botão "Internet"
+"modelo" devolve uma evolução pronta, conferida pelas conferências reais (app/scribe.check). Quem fala em cada fala
+vem pronto de QUEM (o falante de cada frase das falas simuladas), cortado pelas funções reais de app/falante.py: o
+rotulador (o modelo) nunca roda no preview. O botão "Internet"
 (canto inferior esquerdo) faz as rotas da gravação falharem, para testar a fila; "IA" faz a geração falhar.
 O teste ponta a ponta (tests/e2e/gravacao.mjs) roda contra este servidor.
 """
@@ -28,7 +30,7 @@ from fastapi import APIRouter, Request  # noqa: E402
 from fastapi.responses import HTMLResponse, JSONResponse, Response  # noqa: E402
 from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402
 
-from app import auth, config, db, prescricao, scribe, server, stt  # noqa: E402
+from app import auth, config, db, falante, prescricao, scribe, server, stt  # noqa: E402
 from tests.fake_gravacao import EPOCA, FakeGravacao  # noqa: E402
 from tests.fake_receitas import FakeReceitas  # noqa: E402
 
@@ -114,6 +116,20 @@ def _exemplo():
                     "signed_at": signed and signed.isoformat(), "addenda": [], "exemplo": True}
     RX.rx = {k: r for k, r in RX.rx.items() if r["patient_id"] != 9001}      # as receitas emitidas de cada consulta
     ids = sorted(k for k, n in NOTES.items() if n.get("exemplo") and n["event_title"])
+    # só no preview: a consulta mais recente como se tivesse sido gravada (as falas simuladas de FALAS), para ver a
+    # transcrição no cartão da lista de Consultas. A conta de verdade não tem gravação na paciente de exemplo.
+    # SEM áudio de propósito: é o caso das consultas gravadas antes de o áudio ser guardado (o player lê a transcrição
+    # com a voz do computador).
+    ult = max(ids, key=lambda k: NOTES[k]["event_start"])
+    rid, at = "0e0e0e0e-0000-4000-8000-000000009001", 0
+    GRAV.rec_open(UID, 9001, rid, nid=ult)
+    for seq, (fala, duvidas) in enumerate(FALAS, 1):                 # trechos começam no 1, como na gravação real
+        GRAV.rec_add_segment(UID, rid, seq, at, 30, fala, duvidas, _falas_simuladas(fala, at, 30))
+        at += 30
+    meta = server._scribe_rastreio({"rec_ids": [rid], "segundos": at, "consent_at": NOTES[ult]["event_start"]})
+    GRAV.rec_generated(UID, 9001, [rid], meta, nid=ult)
+    GRAV.rec_link_note(UID, 9001, [rid], ult)
+    NOTES[ult]["data"] = dict(NOTES[ult]["data"] or {}, scribe=meta)
     cs = exemplo.consultas(now)
     RX.add_example_receitas(UID, 9001, [(ids[i], c["signed_at"], exemplo.receita_itens(i)) for i, c in enumerate(cs)])
     recente = min(exemplo.EXAMES)                    # o laudo da coleta mais recente, como na conta nova
@@ -334,6 +350,32 @@ FRASES = [("s", "Refere boa adesão aos medicamentos (losartana, metformina e es
           ("p", "Mantidos losartana, metformina e atorvastatina.", [5], "dito"),
           ("p", "Retorno em 3 meses com os exames.", [5], "dito")]
 _KEYS = [t[20:45] for t, _ in FALAS]                # pedaço do meio de cada fala: reconhece o trecho no texto mascarado
+# quem fala em cada frase de cada fala simulada (m: médico, p: paciente, a: acompanhante), na ordem de falante.frases
+QUEM = ["mmppm", "ppmm", "ppmpp", "mmmm", "mm", "mmmm"]
+
+
+def _falas_simuladas(text, at=0.0, dur=0.0):
+    """As falas rotuladas de uma fala simulada, sem modelo: os rótulos de QUEM, cortados no texto pelas funções reais
+    do rotulador (falante.frases e falante.montar). Texto que não é de FALAS: sem rótulo."""
+    k = next((i for i, (t, _) in enumerate(FALAS) if t == text), None)
+    if k is None:
+        return []
+    pedacos = falante.frases(text)
+    if len(pedacos) != len(QUEM[k]):
+        return []
+    cortes = []
+    for i, q in enumerate(QUEM[k], 1):
+        if cortes and cortes[-1][1] == q:
+            cortes[-1] = (i, q)
+        else:
+            cortes.append((i, q))
+    return falante.montar(text, pedacos, cortes, at, dur) or []
+
+
+async def _fake_rotular(text, patient_name="", at=0.0, dur=0.0, prev=None):
+    if SIM["ia"]:                                    # "IA caiu": o trecho segue sem rótulo, como em produção
+        return []
+    return _falas_simuladas(text, at, dur)
 
 
 async def _fake_stt(audio, mime="audio/wav", prompt="", keywords=None, model=None, confidence=True):
@@ -369,6 +411,8 @@ def _fake_model(msgs, model=None):
 
 stt.atranscribe = _fake_stt
 scribe.ask_model = _fake_model
+falante.arotular = _fake_rotular
+falante.ask_model = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("o rotulador real nunca roda no preview"))
 
 # possíveis prescrições (aba Prescrições): busca e modelo simulados com uma resposta real guardada da Maria
 # (scripts/preview_prescricao.json). O botão "IA" também faz esta geração falhar.
@@ -397,7 +441,8 @@ prescricao.ask_model = _fake_presc
 
 
 class _Rede(BaseHTTPMiddleware):
-    """'Internet caiu' só para as rotas da gravação (o preview roda no próprio computador)."""
+    """'Internet caiu' só para as rotas da gravação (o preview roda no próprio computador): a transcrição, o estado, o
+    envio e a leitura do áudio guardado (/prontuario/recordings/audio), apagar e gerar a evolução."""
     async def dispatch(self, request, call_next):
         EPOCA.set(GRAV.epoca)            # pedido que começou antes de um /_preview/reset não grava nada depois dele
         if SIM["rede"] and request.url.path.startswith(("/prontuario/transcribe", "/prontuario/recordings", "/prontuario/scribe")):
@@ -412,10 +457,12 @@ class _Rede(BaseHTTPMiddleware):
 
 
 server.app.add_middleware(_Rede)
+_MAX_PART0 = server.MAX_PART_BYTES
 
 
 @mock.get("/_preview/sim")
-def _sim(rede: str = "", ia: str = "", lento: str = "", erro_seq: str = None, recusar_seq: str = None, gravacao: str = ""):
+def _sim(rede: str = "", ia: str = "", lento: str = "", erro_seq: str = None, recusar_seq: str = None, gravacao: str = "",
+         teto_parte: str = ""):
     if rede:
         SIM["rede"] = rede == "off"
     if ia:
@@ -424,19 +471,25 @@ def _sim(rede: str = "", ia: str = "", lento: str = "", erro_seq: str = None, re
         config.SCRIBE_OFF = gravacao == "off"
     if lento:
         SIM["lento"] = float(lento)
+    if teto_parte.isdigit():                         # para o teste: teto de uma parte do áudio menor (429 teto_parte)
+        server.MAX_PART_BYTES = int(teto_parte)
     if erro_seq is not None:
         SIM["erro_seq"] = {x for x in erro_seq.split(",") if x}
     if recusar_seq is not None:
         SIM["recusar_seq"] = {x for x in recusar_seq.split(",") if x}
     return {"rede": "off" if SIM["rede"] else "on", "ia": "off" if SIM["ia"] else "on", "lento": SIM["lento"],
-            "erro_seq": sorted(SIM["erro_seq"]), "recusar_seq": sorted(SIM["recusar_seq"])}
+            "erro_seq": sorted(SIM["erro_seq"]), "recusar_seq": sorted(SIM["recusar_seq"]), "teto_parte": server.MAX_PART_BYTES}
 
 
 @mock.get("/_preview/estado")
 def _estado():
-    """Para o teste: gravações (com paciente, consulta e trechos) e evoluções salvas."""
+    """Para o teste: gravações (com paciente, consulta, trechos e os pedaços do áudio guardado, só números e o tipo) e
+    evoluções salvas."""
     return {"gravacoes": {rid: {"pid": r["pid"], "event_id": r["event_id"], "note_id": r["note_id"], "status": r["status"],
-                                "trechos": [{k: s.get(k) for k in ("seq", "at", "dur", "samples")} for (q, _), s in sorted(GRAV.segs.items()) if q == rid]}
+                                "trechos": [{k: s.get(k) for k in ("seq", "at", "dur", "samples")} for (q, _), s in sorted(GRAV.segs.items()) if q == rid],
+                                "audio": [{"part": p, "n": n, "at": a["at"], "upto": a["upto"], "mime": a["mime"], "bytes": a["size"],
+                                           "sess": a.get("sess")}
+                                          for (q, p, n), a in sorted(GRAV.audio.items()) if q == rid]}
                           for rid, r in GRAV.recs.items()},
             "evolucoes": {i: {"pid": n["pid"], "event_id": n["event_id"], "content": n["content"],
                               "scribe": (n["data"] or {}).get("scribe"), "timing": n.get("timing")} for i, n in NOTES.items()}}
@@ -446,6 +499,7 @@ def _estado():
 def _reset():
     GRAV.reset(); NOTES.clear(); FILES.clear(); RX.reset(); PATS.clear(); PATS.update({k: dict(v) for k, v in _PATS0.items()}); prescricao._CACHE.clear(); server._RL.clear(); SIM.update(rede=False, ia=False, lento=1.2, erro_seq=set(), recusar_seq=set())
     config.SCRIBE_OFF = False
+    server.MAX_PART_BYTES = _MAX_PART0
     return {"ok": True}
 
 

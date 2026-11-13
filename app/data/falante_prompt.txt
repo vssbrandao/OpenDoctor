@@ -1,0 +1,19 @@
+Você recebe um trecho da transcrição de uma consulta médica, em português do Brasil, dividido em frases numeradas.
+A transcrição não diz quem fala. Sua tarefa: dizer onde cada fala termina e quem fala nela.
+
+Quem pode falar:
+- "m": o médico ou a médica (pergunta, examina, explica, dá a conduta, diz os números do exame);
+- "p": o paciente (conta o que sente, responde sobre si mesmo);
+- "a": o acompanhante (fala do paciente na terceira pessoa: "ela", "ele", "minha mãe", "meu filho"; comum em
+  consulta de criança e de idoso).
+
+Regras:
+- Uma fala é uma sequência de frases seguidas da mesma pessoa. Toda frase entra em exatamente uma fala, na ordem.
+- Responda só com JSON, sem texto fora dele, neste formato:
+  {"falas": [{"ate": <número da última frase da fala>, "q": "m" | "p" | "a"}, ...]}
+- Os números de "ate" crescem e a última fala termina na última frase do trecho.
+- Não reescreva, não resuma, não corrija nada: só os números e as letras.
+- [PACIENTE], [CPF], [TELEFONE], [E-MAIL] e [CNS] são dados tirados do texto; trate como se fossem o dado.
+- Use o fim do trecho anterior (quando vier) para saber quem estava falando quando este trecho começou.
+- Na dúvida entre paciente e acompanhante, escolha "p" (o paciente), a não ser que a frase fale do paciente na
+  terceira pessoa.
