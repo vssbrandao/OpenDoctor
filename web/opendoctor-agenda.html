@@ -1969,7 +1969,13 @@
     .rp-novo .nv-sec-nome{padding-bottom:0}
     .rp-novo .nv-sec-nome + .nv-sec{padding-top:2px;border-top:0}
     .rp-novo .nv-sec-nome + .nv-sec::before{display:none}
-    #evPop .hd-btn[hidden]{display:none}                 /* a lixeira só ao abrir uma consulta da agenda */
+    #evPop .hd-btn[hidden]{display:none}                 /* a lixeira e o lápis só ao abrir uma consulta da agenda */
+    /* 14/11/2026 (pedido do usuário): a consulta aberta só se lê; o lápis libera os campos e o "Prontuário" vira "Salvar" */
+    .evpop.ro .evpop-row:hover,.evpop.ro .evpop-row:focus-within{background:none}
+    .evpop.ro .evpop-row.click,.evpop.ro .evpop-time{cursor:default}
+    .evpop.ro .evpop-time:hover{background:transparent}
+    .evpop.ro .evpop-time:disabled,.evpop.ro .evpop-opt:disabled{opacity:1;color:#071216}
+    .evpop.ro .evpop-input,.evpop.ro .evpop-name,.evpop.ro .evpop-desc{cursor:default}
     .evpop-row{position:relative;display:flex;align-items:center;gap:12px;min-height:44px;margin:0 12px;padding:0 12px 0 44px;
       border-radius:12px;transition:background-color .12s ease}
     .evpop-row.click{cursor:pointer}
@@ -1988,6 +1994,7 @@
     .evpop-dur{display:none}                           /* sem a duração ao lado dos horários (o valor segue na conta do fim) */
     .evpop-date{position:relative;font-weight:500;font-size:14px;line-height:20px;color:#071216;flex:1}
     .evpop-date input{position:absolute;inset:0;opacity:0;pointer-events:none}
+    .cal-pop.evpop-cal{top:48px;left:12px}                /* o mini calendário da agenda, logo abaixo da linha da data */
     .evpop-opt{border:0;background:none;text-align:left;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#071216}
     .evpop-switch{margin-left:auto;flex:none;width:34px;height:20px;border-radius:999px;background:#D6D6D6;
@@ -2757,6 +2764,7 @@
           <h2 class="rp-title" id="evT">Nova consulta</h2>
           <div class="hd-actions">
             <button class="hd-btn" id="evDelete" type="button" aria-label="Excluir evento" hidden><img src="assets/icons/sf-trash.svg?v=2" width="14.18" height="16.31" alt=""></button>
+            <button class="hd-btn" id="evEdit" type="button" aria-label="Editar consulta" aria-pressed="false" hidden><img src="assets/icons/sf-pencil.svg?v=1" width="11.68" height="11.6" alt=""></button>
             <button class="hd-btn" id="evClose" type="button" aria-label="Fechar"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M1.401 9.761L5.001 6.168L8.594 9.761C8.904 10.071 9.443 10.078 9.760 9.761C10.077 9.444 10.070 8.905 9.760 8.595L6.167 4.995L9.760 1.402C10.070 1.092 10.077 0.553 9.760 0.236C9.443 -0.081 8.904 -0.074 8.594 0.236L5.001 3.829L1.401 0.229C1.091 -0.074 0.552 -0.081 0.235 0.236C-0.082 0.553 -0.075 1.092 0.235 1.402L3.828 4.995L0.235 8.595C-0.075 8.905 -0.082 9.444 0.235 9.761C0.552 10.078 1.091 10.071 1.401 9.761Z" fill="#879196"/></svg></button>
           </div>
         </div>
@@ -2765,7 +2773,18 @@
             <div class="evpop-row"><span class="nv-ico"><svg width="14.75" height="14.72" viewBox="0 0 14.75 14.72" fill="none" aria-hidden="true"><path d="M14.011 1.860L14.520 1.336C14.808 1.041 14.815 0.635 14.535 0.362L14.343 0.163C14.092 -0.080 13.671 -0.044 13.406 0.222L12.882 0.739ZM5.209 9.791L6.714 9.157L13.443 2.421L12.321 1.307L5.592 8.043L4.928 9.496C4.855 9.666 5.039 9.858 5.209 9.791ZM3.165 14.712L10.093 14.712C12.122 14.712 13.258 13.584 13.258 11.547L13.258 4.715C13.258 4.523 13.236 4.339 13.206 4.169L11.783 5.586C11.805 5.704 11.812 5.815 11.812 5.940L11.812 11.510C11.812 12.639 11.178 13.274 10.056 13.274L3.202 13.274C2.081 13.274 1.446 12.639 1.446 11.510L1.446 4.664C1.446 3.542 2.081 2.908 3.202 2.908L8.676 2.908C8.846 2.908 9.016 2.915 9.171 2.937L10.587 1.513C10.418 1.484 10.233 1.469 10.041 1.469L3.165 1.462C1.136 1.462 0.000 2.598 0.000 4.627L0.000 11.547C0.000 13.584 1.136 14.712 3.165 14.712Z" fill="#071216"/></svg></span><input class="evpop-name" id="evTitle" type="text" placeholder="Adicionar título" autocomplete="off" aria-label="Título"></div>
           </div>
           <div class="nv-sec">
-            <label class="evpop-row click" id="evDateLbl"><span class="nv-ico"><svg width="15" height="13.78" viewBox="0 0 15 13.78" fill="none" aria-hidden="true"><path d="M2.420 13.775L12.572 13.775C14.166 13.775 14.992 12.948 14.992 11.377L14.992 2.398C14.992 0.819 14.166 0.000 12.572 0.000L2.420 0.000C0.826 0.000 0.000 0.819 0.000 2.398L0.000 11.377C0.000 12.956 0.826 13.775 2.420 13.775ZM2.398 12.329C1.785 12.329 1.446 12.004 1.446 11.362L1.446 4.545C1.446 3.896 1.785 3.578 2.398 3.578L12.579 3.578C13.199 3.578 13.546 3.896 13.546 4.545L13.546 11.362C13.546 12.004 13.199 12.329 12.579 12.329ZM6.072 6.138L6.507 6.138C6.773 6.138 6.861 6.057 6.861 5.792L6.861 5.364C6.861 5.098 6.773 5.017 6.507 5.017L6.072 5.017C5.814 5.017 5.725 5.098 5.725 5.364L5.725 5.792C5.725 6.057 5.814 6.138 6.072 6.138ZM8.492 6.138L8.920 6.138C9.186 6.138 9.274 6.057 9.274 5.792L9.274 5.364C9.274 5.098 9.186 5.017 8.920 5.017L8.492 5.017C8.226 5.017 8.138 5.098 8.138 5.364L8.138 5.792C8.138 6.057 8.226 6.138 8.492 6.138ZM10.905 6.138L11.332 6.138C11.598 6.138 11.687 6.057 11.687 5.792L11.687 5.364C11.687 5.098 11.598 5.017 11.332 5.017L10.905 5.017C10.639 5.017 10.550 5.098 10.550 5.364L10.550 5.792C10.550 6.057 10.639 6.138 10.905 6.138ZM3.659 8.514L4.095 8.514C4.360 8.514 4.449 8.433 4.449 8.167L4.449 7.739C4.449 7.474 4.360 7.393 4.095 7.393L3.659 7.393C3.401 7.393 3.313 7.474 3.313 7.739L3.313 8.167C3.313 8.433 3.401 8.514 3.659 8.514ZM6.072 8.514L6.507 8.514C6.773 8.514 6.861 8.433 6.861 8.167L6.861 7.739C6.861 7.474 6.773 7.393 6.507 7.393L6.072 7.393C5.814 7.393 5.725 7.474 5.725 7.739L5.725 8.167C5.725 8.433 5.814 8.514 6.072 8.514ZM8.492 8.514L8.920 8.514C9.186 8.514 9.274 8.433 9.274 8.167L9.274 7.739C9.274 7.474 9.186 7.393 8.920 7.393L8.492 7.393C8.226 7.393 8.138 7.474 8.138 7.739L8.138 8.167C8.138 8.433 8.226 8.514 8.492 8.514ZM10.905 8.514L11.332 8.514C11.598 8.514 11.687 8.433 11.687 8.167L11.687 7.739C11.687 7.474 11.598 7.393 11.332 7.393L10.905 7.393C10.639 7.393 10.550 7.474 10.550 7.739L10.550 8.167C10.550 8.433 10.639 8.514 10.905 8.514ZM3.659 10.890L4.095 10.890C4.360 10.890 4.449 10.809 4.449 10.543L4.449 10.115C4.449 9.850 4.360 9.768 4.095 9.768L3.659 9.768C3.401 9.768 3.313 9.850 3.313 10.115L3.313 10.543C3.313 10.809 3.401 10.890 3.659 10.890ZM6.072 10.890L6.507 10.890C6.773 10.890 6.861 10.809 6.861 10.543L6.861 10.115C6.861 9.850 6.773 9.768 6.507 9.768L6.072 9.768C5.814 9.768 5.725 9.850 5.725 10.115L5.725 10.543C5.725 10.809 5.814 10.890 6.072 10.890ZM8.492 10.890L8.920 10.890C9.186 10.890 9.274 10.809 9.274 10.543L9.274 10.115C9.274 9.850 9.186 9.768 8.920 9.768L8.492 9.768C8.226 9.768 8.138 9.850 8.138 10.115L8.138 10.543C8.138 10.809 8.226 10.890 8.492 10.890Z" fill="#071216"/></svg></span><span class="evpop-date"><span id="evDateTxt"></span><input id="evDate" type="date" aria-label="Data"></span></label>
+            <label class="evpop-row click" id="evDateLbl" tabindex="0" role="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Data"><span class="nv-ico"><svg width="15" height="13.78" viewBox="0 0 15 13.78" fill="none" aria-hidden="true"><path d="M2.420 13.775L12.572 13.775C14.166 13.775 14.992 12.948 14.992 11.377L14.992 2.398C14.992 0.819 14.166 0.000 12.572 0.000L2.420 0.000C0.826 0.000 0.000 0.819 0.000 2.398L0.000 11.377C0.000 12.956 0.826 13.775 2.420 13.775ZM2.398 12.329C1.785 12.329 1.446 12.004 1.446 11.362L1.446 4.545C1.446 3.896 1.785 3.578 2.398 3.578L12.579 3.578C13.199 3.578 13.546 3.896 13.546 4.545L13.546 11.362C13.546 12.004 13.199 12.329 12.579 12.329ZM6.072 6.138L6.507 6.138C6.773 6.138 6.861 6.057 6.861 5.792L6.861 5.364C6.861 5.098 6.773 5.017 6.507 5.017L6.072 5.017C5.814 5.017 5.725 5.098 5.725 5.364L5.725 5.792C5.725 6.057 5.814 6.138 6.072 6.138ZM8.492 6.138L8.920 6.138C9.186 6.138 9.274 6.057 9.274 5.792L9.274 5.364C9.274 5.098 9.186 5.017 8.920 5.017L8.492 5.017C8.226 5.017 8.138 5.098 8.138 5.364L8.138 5.792C8.138 6.057 8.226 6.138 8.492 6.138ZM10.905 6.138L11.332 6.138C11.598 6.138 11.687 6.057 11.687 5.792L11.687 5.364C11.687 5.098 11.598 5.017 11.332 5.017L10.905 5.017C10.639 5.017 10.550 5.098 10.550 5.364L10.550 5.792C10.550 6.057 10.639 6.138 10.905 6.138ZM3.659 8.514L4.095 8.514C4.360 8.514 4.449 8.433 4.449 8.167L4.449 7.739C4.449 7.474 4.360 7.393 4.095 7.393L3.659 7.393C3.401 7.393 3.313 7.474 3.313 7.739L3.313 8.167C3.313 8.433 3.401 8.514 3.659 8.514ZM6.072 8.514L6.507 8.514C6.773 8.514 6.861 8.433 6.861 8.167L6.861 7.739C6.861 7.474 6.773 7.393 6.507 7.393L6.072 7.393C5.814 7.393 5.725 7.474 5.725 7.739L5.725 8.167C5.725 8.433 5.814 8.514 6.072 8.514ZM8.492 8.514L8.920 8.514C9.186 8.514 9.274 8.433 9.274 8.167L9.274 7.739C9.274 7.474 9.186 7.393 8.920 7.393L8.492 7.393C8.226 7.393 8.138 7.474 8.138 7.739L8.138 8.167C8.138 8.433 8.226 8.514 8.492 8.514ZM10.905 8.514L11.332 8.514C11.598 8.514 11.687 8.433 11.687 8.167L11.687 7.739C11.687 7.474 11.598 7.393 11.332 7.393L10.905 7.393C10.639 7.393 10.550 7.474 10.550 7.739L10.550 8.167C10.550 8.433 10.639 8.514 10.905 8.514ZM3.659 10.890L4.095 10.890C4.360 10.890 4.449 10.809 4.449 10.543L4.449 10.115C4.449 9.850 4.360 9.768 4.095 9.768L3.659 9.768C3.401 9.768 3.313 9.850 3.313 10.115L3.313 10.543C3.313 10.809 3.401 10.890 3.659 10.890ZM6.072 10.890L6.507 10.890C6.773 10.890 6.861 10.809 6.861 10.543L6.861 10.115C6.861 9.850 6.773 9.768 6.507 9.768L6.072 9.768C5.814 9.768 5.725 9.850 5.725 10.115L5.725 10.543C5.725 10.809 5.814 10.890 6.072 10.890ZM8.492 10.890L8.920 10.890C9.186 10.890 9.274 10.809 9.274 10.543L9.274 10.115C9.274 9.850 9.186 9.768 8.920 9.768L8.492 9.768C8.226 9.768 8.138 9.850 8.138 10.115L8.138 10.543C8.138 10.809 8.226 10.890 8.492 10.890Z" fill="#071216"/></svg></span><span class="evpop-date"><span id="evDateTxt"></span><input id="evDate" type="date" aria-label="Data" tabindex="-1"></span></label>
+            <!-- 14/11/2026 (pedido do usuário): a data abre o mesmo mini calendário do botão de cima da agenda (não o do sistema) -->
+            <div class="cal-pop evpop-cal" id="evCal" hidden>
+              <div class="cp-head">
+                <button class="cp-nav" id="evCpPrev" type="button" aria-label="Mês anterior">‹</button>
+                <span class="cp-title" id="evCpTitle"></span>
+                <button class="cp-nav" id="evCpNext" type="button" aria-label="Próximo mês">›</button>
+              </div>
+              <div class="cp-dows"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+              <div class="cp-grid" id="evCpGrid"></div>
+              <button class="cp-today" id="evCpToday" type="button">Hoje</button>
+            </div>
             <div class="evpop-row evpop-times"><span class="nv-ico"><svg width="15.25" height="15.25" viewBox="0 0 15.25 15.25" fill="none" aria-hidden="true"><path d="M7.621 15.243C11.827 15.243 15.243 11.827 15.243 7.621C15.243 3.416 11.827 0.000 7.621 0.000C3.416 0.000 0.000 3.416 0.000 7.621C0.000 11.827 3.416 15.243 7.621 15.243ZM7.621 13.738C4.235 13.738 1.498 11.008 1.498 7.621C1.498 4.235 4.235 1.498 7.621 1.498C11.008 1.498 13.745 4.235 13.745 7.621C13.745 11.008 11.008 13.738 7.621 13.738ZM3.888 8.536L7.614 8.536C7.946 8.536 8.204 8.278 8.204 7.953L8.204 3.113C8.204 2.789 7.946 2.531 7.614 2.531C7.289 2.531 7.031 2.789 7.031 3.113L7.031 7.371L3.888 7.371C3.556 7.371 3.305 7.621 3.305 7.953C3.305 8.278 3.556 8.536 3.888 8.536Z" fill="#071216"/></svg></span><select class="evpop-input evpop-time" id="evStart" aria-label="Início"></select>
               <span class="evpop-arrow" aria-hidden="true">–</span>
               <select class="evpop-input evpop-time" id="evEnd" aria-label="Fim"></select><span class="evpop-dur" id="evDur"></span></div>
@@ -3037,9 +3056,9 @@
       if (ev._rascunho) { b.classList.add('draft'); return b; }   // a prévia da consulta sendo criada
       b.setAttribute('data-evkey', k); window.__evData[k] = ev;
       b.title = (ev.title || '(sem título)') + ' · dia todo';
-      b.addEventListener('click', function (e) {            // seleciona e abre a janela preenchida (como os outros eventos)
+      b.addEventListener('click', function (e) {            // abre a janela preenchida e seleciona (como os outros eventos)
+        if (window.__openEventEdit && window.__openEventEdit(e.clientX, e.clientY, ev) === false) return;   // ficou na outra (alteração não salva)
         window.__selEv = null; window.__evSelect(k);
-        if (window.__openEventEdit) window.__openEventEdit(e.clientX, e.clientY, ev);
       });
       return b;
     }
@@ -3059,7 +3078,10 @@
       window.__selEv = (key && key !== window.__selEv) ? key : null;   // clicar de novo desmarca
       applySel();
     };
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && window.__selEv) window.__evSelect(null); });
+    document.addEventListener('keydown', function (e) {
+      var ep = document.getElementById('evPop');
+      if (e.key === 'Escape' && window.__selEv && (!ep || ep.hidden)) window.__evSelect(null);   // aberta: a janela desmarca ao fechar
+    });
 
     // abre a agenda com o traço da hora atual no MEIO da área visível;
     // fora da faixa 1h–23h (traço escondido), cai no primeiro compromisso no topo (dia sem compromisso: nas 8h)
@@ -3274,10 +3296,66 @@
         var min = spanMin();
         if (min > 0) elDur.dataset.min = min;
       }
+      // a data: o mesmo mini calendário do botão de cima da agenda (mês, ‹ ›, D S T Q Q S S, hoje em azul, o dia escolhido
+      // preenchido e o "Hoje" embaixo); escolher um dia fecha e muda a data (a prévia anda junto)
+      var elCal = document.getElementById('evCal'), calView = null;
+      var MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      function diaDe(v) { var q = (v || '').split('-'); return q.length === 3 ? new Date(+q[0], +q[1] - 1, +q[2]) : null; }
+      function mesmoDia(a, b) { return !!a && !!b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+      function escolheDia(d) {
+        elDate.value = fmtDate(d); fechaCal();
+        elDate.dispatchEvent(new Event('change'));        // o rótulo e a prévia
+      }
+      function desenhaCal() {
+        var hoje = new Date(), sel = diaDe(elDate.value);
+        document.getElementById('evCpTitle').textContent = MESES[calView.getMonth()] + ' ' + calView.getFullYear();
+        var grid = document.getElementById('evCpGrid'); grid.innerHTML = '';
+        var ini = new Date(calView.getFullYear(), calView.getMonth(), 1 - calView.getDay());
+        for (var i = 0; i < 42; i++) {
+          var d = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate() + i);
+          var b = document.createElement('button'); b.type = 'button'; b.className = 'cp-day'; b.textContent = d.getDate();
+          if (d.getMonth() !== calView.getMonth()) b.classList.add('other');
+          if (mesmoDia(d, hoje)) b.classList.add('today');
+          if (mesmoDia(d, sel)) { b.classList.add('sel'); b.setAttribute('aria-current', 'date'); }
+          b.addEventListener('click', (function (dd) { return function () { escolheDia(dd); }; })(d));
+          grid.appendChild(b);
+        }
+      }
+      function abreCal() {
+        var d = diaDe(elDate.value) || new Date();
+        calView = new Date(d.getFullYear(), d.getMonth(), 1);
+        desenhaCal(); elCal.hidden = false;
+        document.getElementById('evDateLbl').setAttribute('aria-expanded', 'true');
+        try { elCal.scrollIntoView({ block: 'nearest' }); } catch (_) {}   // painel baixo: o corpo rola até o calendário inteiro
+      }
+      function fechaCal(foco) {
+        if (elCal.hidden) return;
+        var dentro = elCal.contains(document.activeElement);
+        elCal.hidden = true; document.getElementById('evDateLbl').setAttribute('aria-expanded', 'false');
+        if (dentro || foco) document.getElementById('evDateLbl').focus();   // pelo teclado: o foco volta para a data
+      }
       document.getElementById('evDateLbl').addEventListener('click', function (e) {
         e.preventDefault();
-        try { elDate.showPicker(); } catch (_) { elDate.focus(); }
+        if (pop.classList.contains('ro')) return;          // consulta aberta sem o lápis: só leitura
+        if (elCal.hidden) abreCal(); else fechaCal();
       });
+      document.getElementById('evDateLbl').addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        if (pop.classList.contains('ro')) return;
+        if (elCal.hidden) { abreCal(); var b = elCal.querySelector('.cp-day.sel') || elCal.querySelector('.cp-day.today'); if (b) b.focus(); }
+        else fechaCal(true);
+      });
+      document.getElementById('evCpPrev').addEventListener('click', function () { calView.setMonth(calView.getMonth() - 1); desenhaCal(); });
+      document.getElementById('evCpNext').addEventListener('click', function () { calView.setMonth(calView.getMonth() + 1); desenhaCal(); });
+      document.getElementById('evCpToday').addEventListener('click', function () { escolheDia(new Date()); });
+      // clique fora do calendário (e fora da data) fecha só ele; o Esc fecha ele antes da consulta
+      document.addEventListener('mousedown', function (e) {
+        if (!elCal.hidden && !elCal.contains(e.target) && !e.target.closest('#evDateLbl')) fechaCal();
+      }, true);
+      window.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !elCal.hidden) { e.stopImmediatePropagation(); e.preventDefault(); fechaCal(true); }
+      }, true);
       elDate.addEventListener('change', dateLabel);
       elAllDay.addEventListener('click', function () { setAllDay(!allDay); extraDays = 0; longOk = false; endFromTimes(); durLabel(); remember(); });
       // ===== paciente: escolher um do cadastro ou criar um novo (ligado ao prontuário dele) =====
@@ -3296,7 +3374,7 @@
       var elPClear = document.getElementById('evPClear');
       // o ícone de pessoa fica sempre (sem as iniciais no círculo azul); o × para tirar só com o paciente escolhido
       function avatar() {
-        elPClear.hidden = !selPatient;
+        elPClear.hidden = !selPatient || (pop.classList.contains('ro') && !pop.classList.contains('pac'));   // só leitura: sem o × (o lápis libera)
       }
       elPClear.addEventListener('mousedown', function (e) { e.preventDefault(); });
       elPClear.addEventListener('click', function () { setPatient(null); elPatient.focus(); });
@@ -3337,6 +3415,7 @@
       }
       function setPatient(p) {
         selPatient = p; elPatient.value = p ? p.name : ''; avatar(); hideList();
+        if (p && pop.classList.contains('pac')) elMsg.hidden = true;   // o paciente que o Prontuário pediu
         if (typeof previa === 'function') previa();
       }
       function hideList() { plTok++; elPList.hidden = true; elPList.innerHTML = ''; plItems = []; plKeys = []; plActive = -1; plFor = null; elPatient.setAttribute('aria-expanded', 'false'); }
@@ -3414,7 +3493,7 @@
           if (!semFoco && my === seq && !pop.hidden) elPatient.focus();
         }, outro);
       }
-      elPatient.addEventListener('focus', showList);
+      elPatient.addEventListener('focus', function () { if (!pop.classList.contains('ro') || pop.classList.contains('pac')) showList(); });
       elPatient.addEventListener('input', function () {
         if (selPatient && elPatient.value.trim() !== selPatient.name) { selPatient = null; avatar(); }
         elMsg.hidden = true; showList();
@@ -3445,8 +3524,9 @@
 
       function openAt(clientX, clientY, h, m, day) {
         if (!pop.hidden && !close()) return;
-        mode = 'create'; editEv = null;
+        mode = 'create'; editEv = null; salvando = false; trava(false);
         if (elDel) elDel.hidden = true;
+        if (elEdit) elEdit.hidden = true;
         var now = day || new Date();
         elTitle.value = ''; elDesc.value = ''; elPatient.value = ''; elLoc.value = '';
         setAllDay(false); extraDays = 0; delete elDur.dataset.min;
@@ -3464,6 +3544,54 @@
       }
       var mode = 'create', editEv = null, original = null, seq = 0;   // seq: qual abertura da janela está ativa
       var elDel = document.getElementById('evDelete');
+      // consulta aberta: só leitura até o lápis; com ele, os campos abrem e o "Prontuário" vira "Salvar" (14/11/2026, pedido
+      // do usuário). Fechar com alteração não salva avisa uma vez; fechar de novo (ou o lápis outra vez) descarta
+      var elEdit = document.getElementById('evEdit'), editando = false, avisoFechar = false, salvando = false, base = null;
+      function trava(on) {                                   // on = só leitura (vale só para a consulta aberta)
+        var ro = mode === 'edit' && on;
+        editando = mode === 'edit' && !on; avisoFechar = false;
+        pop.classList.toggle('ro', ro); pop.classList.remove('pac');
+        [elTitle, elPatient, elLoc, elDesc].forEach(function (x) { x.readOnly = ro; });
+        [elStart, elEnd, elAllDay, elDate].forEach(function (x) { x.disabled = ro; });
+        elEdit.classList.toggle('on', editando); elEdit.setAttribute('aria-pressed', editando ? 'true' : 'false');
+        elEdit.setAttribute('aria-label', editando ? 'Descartar alterações' : 'Editar consulta');
+        elCreate.textContent = mode === 'edit' ? (editando ? 'Salvar' : 'Prontuário') : 'Criar consulta';
+        if (ro) { hideList(); fechaCal(); }
+        avatar();
+      }
+      elEdit.addEventListener('click', function () {
+        if (mode !== 'edit' || !editEv || elCreate.disabled || salvando) return;
+        if (!editando) { trava(false); elMsg.hidden = true; elTitle.focus(); return; }
+        window.__openEventEdit(0, 0, editEv, true);          // de novo: volta ao que estava salvo, só leitura
+      });
+      // 14/11/2026 (pedido do usuário): o aviso escuro embaixo, o mesmo do prontuário ("Exames salvos no prontuário")
+      function avisoSalvo(t) {
+        document.querySelectorAll('.pr-toast').forEach(function (o) { o.remove(); });   // um aviso por vez
+        var x = document.createElement('div'); x.className = 'pr-toast'; x.setAttribute('role', 'status'); x.textContent = t;
+        document.body.appendChild(x);
+        setTimeout(function () { x.classList.add('out'); setTimeout(function () { x.remove(); }, 300); }, 2600);
+      }
+      function salva() {                                     // "Salvar" da consulta aberta
+        var p = buildPayload();
+        if (p.error) { elMsg.className = 'evpop-msg'; elMsg.textContent = p.error; elMsg.hidden = false; return; }
+        elMsg.hidden = true;
+        var sent = JSON.stringify(p);
+        if (sent === original) { trava(true); return; }    // nada mudou
+        // enquanto grava, os campos ficam travados (o que se digitasse agora não iria junto) e fechar não promete descartar
+        trava(true); salvando = true; elCreate.disabled = true; elCreate.textContent = 'Salvando…';
+        var my = seq, ev = editEv;
+        saveEdit(function (ok) {
+          if (my !== seq) return;                            // de uma abertura anterior: não mexe na gravação desta
+          salvando = false;
+          if (pop.hidden || editEv !== ev) return;
+          elCreate.disabled = false;
+          if (!ok) { trava(false); return; }               // não gravou: volta à edição, com o que estava escrito
+          editEv = Object.assign({}, ev, { title: p.title, start: p.start, end: p.end, description: p.description,
+                                           location: p.location, allDay: p.all_day, patient_id: p.patient_id });
+          original = base = sent; elMsg.hidden = true; trava(true);
+          avisoSalvo('Consulta salva');
+        });
+      }
       // a janela fica no lugar do assistente (como o novo paciente): o assistente em tela cheia sai dela, o recolhido abre
       // e volta a recolher ao fechar; a conversa fica por baixo, fora do Tab e dos atalhos (.right.evento)
       var painel = document.querySelector('.right'), stageEl = document.querySelector('.stage'), recolhidoEv = false,
@@ -3504,6 +3632,7 @@
         if (pop.hidden) return;
         if (window.__fechaNovoPaciente) window.__fechaNovoPaciente();   // o novo paciente aberto por ela fecha junto
         var dentro = pop.contains(document.activeElement);
+        editando = false; avisoFechar = false; fechaCal();
         pop.hidden = true; if (painel) painel.classList.remove('evento');
         if (agBtn) { agBtn.setAttribute('aria-expanded', 'false'); agBtn.classList.remove('on'); }
         var ax = document.getElementById('agExpand');
@@ -3515,7 +3644,14 @@
       // sair de Consultas (Pacientes, o voltar do navegador) ou abrir um prontuário fecha a janela (a edição é salva;
       // se não der para salvar, o segundo fechar descarta, como o Esc duas vezes)
       if (stageEl) new MutationObserver(function () {
-        if (!pop.hidden && (stageEl.classList.contains('pacientes') || stageEl.classList.contains('prontuario'))) { if (!close(true)) close(true); }
+        if (!pop.hidden && (stageEl.classList.contains('pacientes') || stageEl.classList.contains('prontuario'))) {
+          if (mode === 'edit' && editando && !salvando) {      // o lápis ligado: grava a alteração válida (o aviso não teria como ser lido)
+            var pe = buildPayload();
+            if (!pe.error && JSON.stringify(pe) !== original) { saveEdit(); original = JSON.stringify(pe); }
+            editando = false;
+          }
+          if (!close(true)) close(true);
+        }
       }).observe(stageEl, { attributes: true, attributeFilter: ['class'] });
       function ensureOption(sel, v) {                      // horário fora da grade de 15 min
         if (![].some.call(sel.options, function (o) { return o.value === v; })) {
@@ -3567,7 +3703,14 @@
       }
       function close(semFoco) {                              // false = ficou aberta (alteração que não dá para salvar)
         if (pop.hidden) return true;
-        if (mode === 'edit') {                               // salva alterações ao fechar
+        if (mode === 'edit' && salvando) {                   // gravando: o PATCH já foi; fecha sem mandar outro
+        } else if (mode === 'edit' && editando && JSON.stringify(buildPayload()) !== base) {   // lápis ligado e o médico mexeu: avisa uma vez, depois descarta
+          if (!avisoFechar) {
+            avisoFechar = true; elMsg.className = 'evpop-msg';
+            elMsg.textContent = 'Alterações não salvas. Clique em Salvar ou feche de novo para descartar.'; elMsg.hidden = false;
+            return false;
+          }
+        } else if (mode === 'edit') {                        // só leitura: salva o vínculo atualizado do paciente (renomeado, evento antigo)
           var p = buildPayload();
           if (canSave() && p.error && JSON.stringify(p) !== original && elMsg.hidden) {   // avisa em vez de perder; fechar de novo descarta
             elMsg.className = 'evpop-msg'; elMsg.textContent = p.error; elMsg.hidden = false; return false;
@@ -3578,9 +3721,9 @@
         return true;
       }
       // clicar num evento: mesma janela, preenchida (lixeira + "Prontuário")
-      window.__openEventEdit = function (clientX, clientY, ev) {
-        if (!pop.hidden && !close()) return;
-        mode = 'edit'; editEv = ev;
+      window.__openEventEdit = function (clientX, clientY, ev, refazer) {   // refazer: o lápis de novo (descarta o que mudou)
+        if (!refazer && !pop.hidden && !close()) return false;
+        mode = 'edit'; editEv = ev; salvando = false; trava(false);
         var parts = (ev.title || '').split(' — ');
         var title = parts[0] || '', patient = parts.slice(1).join(' — ');
         var desc = ev.description || '';
@@ -3614,14 +3757,18 @@
           var reg = selPatient.id ? patients.filter(function (p) { return p.id === selPatient.id; })[0] : byKey(selPatient.name);
           // achou no cadastro: usa o nome atual. Evento antigo (sem id) ou paciente renomeado → o vínculo e o
           // título do evento são atualizados ao fechar (por isso "original" não é recalculado aqui)
+          var limpo = JSON.stringify(buildPayload()) === base;   // o médico ainda não mexeu em nada
           if (reg) { selPatient = reg; elPatient.value = reg.name; }
+          if (!editando || limpo) base = JSON.stringify(buildPayload());   // o vínculo refeito não é alteração do médico
           avatar();
         });
         delete elDur.dataset.min; remember(); durLabel(); dateLabel(); avatar();
         original = JSON.stringify(buildPayload());
-        elDel.hidden = !(ev.id && window.__calConnected);
-        elCreate.disabled = false; elCreate.textContent = 'Prontuário';
+        elDel.hidden = elEdit.hidden = !(ev.id && window.__calConnected);
+        elCreate.disabled = false; trava(true);
+        base = original;
         mostra();
+        return true;
       };
       // excluir (com confirmação) — some do Google Calendar
       elDel.addEventListener('click', function () {
@@ -3643,15 +3790,22 @@
             }
           }).catch(function () { elMsg.className = 'evpop-msg'; elMsg.textContent = 'Falha de conexão.'; elMsg.hidden = false; });
       });
+      // só leitura e o Prontuário pede o paciente: só o campo Paciente abre (escolher quem é, sem o lápis)
+      function liberaPaciente() {
+        if (!pop.classList.contains('ro')) return;
+        pop.classList.add('pac'); elPatient.readOnly = false; avatar();
+      }
       // "Prontuário": salva alterações e abre a tela do paciente (nome via sessionStorage, nunca na URL)
       function openProntuario() {
         var p = buildPayload();
         if (p.error || !selPatient) {                       // o prontuário é do paciente: precisa estar escolhido
+          liberaPaciente();
           elMsg.className = 'evpop-msg'; elMsg.hidden = false;
           elMsg.textContent = p.error || 'Escolha ou crie o paciente para abrir o prontuário.';
           elPatient.focus(); return;
         }
         if (!selPatient.id && sameName(selPatient.name).length > 1) {   // evento antigo + homônimos: escolher qual
+          liberaPaciente();
           elMsg.className = 'evpop-msg'; elMsg.hidden = false;
           elMsg.textContent = 'Há mais de um paciente com esse nome. Escolha qual na lista do campo Paciente.';
           elPatient.focus(); return;
@@ -3663,7 +3817,17 @@
           mode = 'create'; editEv = null; elCreate.disabled = false; esconde(true);
           if (window.__openProntuario) window.__openProntuario(ctx);
         };
-        if (canSave()) { elCreate.disabled = true; saveEdit(function () { go(); }); }
+        if (canSave()) {
+          var my = seq, ev0 = editEv, sent = JSON.stringify(p);
+          salvando = true; elCreate.disabled = true;
+          saveEdit(function () {
+            if (my !== seq) return;                          // abriu outra enquanto gravava: não mexe na gravação dela
+            salvando = false;
+            if (pop.hidden || editEv !== ev0) return;        // fechou enquanto gravava: não abre o prontuário
+            go();
+          });
+          if (my === seq && !pop.hidden) original = sent;    // o que foi enviado (fechar enquanto grava não reenvia)
+        }
         else go();
       }
       // botão "Criar" do cabeçalho: novo evento na data escolhida, próximo horário cheio/meia hora
@@ -3681,7 +3845,7 @@
       });
       // usado pela visão Semana: abre o popover no dia/horário clicado
       window.__openEventAt = function (x, y, day, h, m) {
-        if (!pop.hidden) { close(); return; }
+        if (!pop.hidden) return close();                     // false = ficou aberta (o aviso)
         if (!window.__calConnected) return;                    // só com calendário conectado
         openAt(x, y, h, m, day);
       };
@@ -3693,9 +3857,9 @@
         if (!evEl && !pop.hidden) { close(); return; }         // aberto → clicar num vazio fecha
         if (evEl) {                                            // seleciona e abre a janela preenchida
           var k = evEl.getAttribute('data-evkey');
-          window.__selEv = null; window.__evSelect(k);
           var data = window.__evData[k];
-          if (data && window.__openEventEdit) window.__openEventEdit(e.clientX, e.clientY, data);
+          if (data && window.__openEventEdit && window.__openEventEdit(e.clientX, e.clientY, data) === false) return;   // ficou na outra
+          window.__selEv = null; window.__evSelect(k);
           return;
         }
         if (window.__selEv) window.__evSelect(null);
@@ -3712,11 +3876,14 @@
       document.getElementById('evClose').addEventListener('click', function () { close(); });
       // Enter num campo de texto cria o evento (não no textarea, nem quando o Enter escolheu um paciente da lista)
       pop.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing || mode !== 'create' || elCreate.disabled) return;
+        if (e.key !== 'Enter' || e.defaultPrevented || e.isComposing || (mode !== 'create' && !editando) || elCreate.disabled) return;
         if (e.target.tagName !== 'INPUT' || e.target.type === 'date') return;
         e.preventDefault(); elCreate.click();
       });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape' || pop.hidden) return;
+        if (close() && window.__selEv) window.__evSelect(null);   // ficou aberta (o aviso): a consulta continua marcada
+      });
       // clique fora fecha, sem recolher de novo o assistente: recolher no mousedown mexe a agenda e o botão clicado (o
       // calendário, a busca, o próprio "Expandir agenda" ou o ⇧⌘A) sai de baixo do mouse antes do clique. O Esc, o × e
       // a troca de tela continuam recolhendo
@@ -3733,7 +3900,7 @@
       }
 
       elCreate.addEventListener('click', function () {
-        if (mode === 'edit') { openProntuario(); return; }
+        if (mode === 'edit') { if (editando) salva(); else openProntuario(); return; }
         var p = buildPayload();
         if (p.error) { elMsg.className = 'evpop-msg'; elMsg.textContent = p.error; elMsg.hidden = false; return; }
         elCreate.disabled = true; elCreate.textContent = 'Criando…'; elMsg.hidden = true;
@@ -4251,8 +4418,14 @@
             if (we && we.classList.contains('draft')) return;  // a prévia da consulta sendo criada
             if (we) {                                          // seleciona e abre a janela preenchida
               var k = we.getAttribute('data-evkey');
+              if (window.__evData[k] && window.__openEventEdit && window.__openEventEdit(e.clientX, e.clientY, window.__evData[k]) === false) return;   // ficou na outra
               window.__selEv = null; window.__evSelect(k);
-              if (window.__evData[k] && window.__openEventEdit) window.__openEventEdit(e.clientX, e.clientY, window.__evData[k]);
+              return;
+            }
+            var ep = document.getElementById('evPop');
+            if (ep && !ep.hidden) {                            // aberta: fecha; só desmarca se fechou
+              if (window.__openEventAt && window.__openEventAt(0, 0, null, 0, 0) === false) return;
+              if (window.__selEv) window.__evSelect(null);
               return;
             }
             if (window.__selEv) window.__evSelect(null);

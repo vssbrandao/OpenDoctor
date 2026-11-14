@@ -154,6 +154,15 @@ async function abreEvento(sel) {
   await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento');
 }
 async function fecha() { await tecla('Escape'); await sleep(300); }
+// consulta aberta: só leitura até o lápis; com ele o "Prontuário" vira "Salvar"
+async function editar() {
+  await ev(`document.getElementById('evEdit').click(); 1`);
+  await ate(`document.getElementById('evCreate').textContent === 'Salvar' && !document.getElementById('evTitle').readOnly`, 2000, 'o lápis libera os campos');
+}
+async function salvar() {
+  await ev(`document.getElementById('evCreate').click(); 1`);
+  await ate(`document.getElementById('evCreate').textContent === 'Prontuário' || !document.getElementById('evMsg').hidden`, 3000, 'salvou: ' + await txt('#evMsg'));
+}
 // "Criar paciente" da consulta: o formulário do novo paciente abre por cima dela com o nome digitado; cria por ele
 async function peloFormulario(nome) {
   await ate(`!document.getElementById('ptNewRow').hidden && document.getElementById('ptNewName').value === ${JSON.stringify(nome)}`, 3000, 'o formulário com ' + nome);
@@ -334,6 +343,7 @@ const cenarios = [
     await ate(`!document.querySelector('.right').classList.contains('collapsed')`, 2000, 'o assistente de volta');
     // consulta aberta com uma alteração que não dá para salvar: o "Expandir agenda" não esconde a coluna com o aviso
     await abreEvento('.ev-real[data-evkey="plantao"]');
+    await editar();
     await ev(`(() => { const p = document.getElementById('evPatient'); p.value = 'Alguém Fora Da Lista'; return 1; })()`);
     await clicaMouse('#agExpand');
     await sleep(300);
@@ -343,8 +353,8 @@ const cenarios = [
     await ate(`document.getElementById('evPop').hidden`, 2000, 'descartou');
     // consulta da agenda: "Consulta", com a lixeira e o Prontuário
     await abreEvento('.ev-real[data-evkey="plantao"]');
-    const e = await ev(`[document.getElementById('evT').textContent, document.getElementById('evDelete').getClientRects().length, document.getElementById('evCreate').textContent].join('|')`);
-    certo(e === 'Consulta|1|Prontuário', 'consulta aberta: ' + e);
+    const e = await ev(`[document.getElementById('evT').textContent, document.getElementById('evDelete').getClientRects().length, document.getElementById('evEdit').getClientRects().length, document.getElementById('evCreate').textContent].join('|')`);
+    certo(e === 'Consulta|1|1|Prontuário', 'consulta aberta: ' + e);
     await foto('consulta-aberta.png');
     // o voltar do navegador para Pacientes fecha (sem mudança, sem PATCH) — como o novo paciente
     const antes = patches('plantao').length;
@@ -353,13 +363,15 @@ const cenarios = [
     certo(patches('plantao').length === antes, 'sem mudança, sem PATCH: ' + (patches('plantao').length - antes));
     await clica('#navConsultas');
     await ate(`!document.querySelector('.stage').classList.contains('pacientes')`, 3000, 'de volta a Consultas');
-    return 'no lugar do assistente, com o visual do novo paciente; Esc, × (recolhe de novo) e Pacientes fecham; aberta: Consulta, lixeira e Prontuário';
+    return 'no lugar do assistente, com o visual do novo paciente; Esc, × (recolhe de novo) e Pacientes fecham; aberta: Consulta, lixeira, lápis e Prontuário';
   }],
   ['plantão 19h–7h: abre, salva com o fim no dia seguinte', async () => {
     await abreEvento('.ev-real[data-evkey="plantao"]');
     certo(await val('#evStart') === '19:00' && await val('#evEnd') === '07:00', 'horários');
     certo(await txt('#evDur') === '12 h', 'duração: ' + await txt('#evDur'));
+    await editar();
     await ev(`document.getElementById('evLocation').value = 'Hospital'`);
+    await salvar();
     await fecha();
     await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     await sleep(300);
@@ -367,6 +379,70 @@ const cenarios = [
     certo(p.length === 1, 'um PATCH: ' + p.length);
     certo(p[0].body.start === utc(dia(0), '19:00') && p[0].body.end === utc(dia(1), '07:00'), 'fim no dia seguinte: ' + JSON.stringify(p[0].body));
     return p[0].body.start + ' → ' + p[0].body.end;
+  }],
+  ['consulta aberta só se lê: o lápis libera os campos, o Prontuário vira Salvar; o lápis de novo descarta', async () => {
+    await abreEvento('.ev-real[data-evkey="manha"]');
+    const ro = () => ev(`['evTitle', 'evPatient', 'evLocation', 'evDesc'].every((i) => document.getElementById(i).readOnly) &&
+      ['evStart', 'evEnd', 'evAllDay', 'evDate'].every((i) => document.getElementById(i).disabled) && document.getElementById('evPop').classList.contains('ro')`);
+    certo(await ro() && await txt('#evCreate') === 'Prontuário', 'só leitura: ' + await txt('#evCreate'));
+    const ordem = await ev(`[...document.querySelectorAll('#evPop .hd-actions .hd-btn')].filter((b) => b.getClientRects().length).map((b) => b.id).join()`);
+    certo(ordem === 'evDelete,evEdit,evClose', 'botões de cima: ' + ordem);
+    await ev(`document.getElementById('evPatient').focus(); 1`); await sleep(300);
+    certo(await ev(`document.getElementById('evPList').hidden`), 'sem o lápis o Paciente não abre a lista');
+    const titulo0 = await val('#evTitle');
+    await editar();
+    certo(await ev(`document.getElementById('evEdit').getAttribute('aria-pressed')`) === 'true', 'lápis ligado');
+    await ev(`document.getElementById('evTitle').value = 'Mudou e desistiu'`);
+    await ev(`document.getElementById('evEdit').click(); 1`);   // o lápis de novo: descarta
+    await ate(`document.getElementById('evCreate').textContent === 'Prontuário'`, 2000, 'voltou a só leitura');
+    certo(await val('#evTitle') === titulo0 && await ro(), 'descartou: ' + await val('#evTitle'));
+    await editar();
+    // Esc com alteração não salva: a janela fica (o aviso) e a consulta continua marcada na agenda
+    await ev(`document.getElementById('evTitle').value = 'Mudou de novo'`);
+    await tecla('Escape'); await sleep(200);
+    const esc = await ev(`[!document.getElementById('evPop').hidden, document.querySelector('.ev-real[data-evkey="manha"]').classList.contains('sel'), document.getElementById('evMsg').textContent].join('|')`);
+    certo(esc === 'true|true|Alterações não salvas. Clique em Salvar ou feche de novo para descartar.', 'Esc com alteração: ' + esc);
+    await ev(`document.getElementById('evEdit').click(); 1`);   // descarta
+    await ate(`document.getElementById('evCreate').textContent === 'Prontuário' && document.getElementById('evMsg').hidden`, 2000, 'descartou');
+    await editar();
+    // com alteração não salva, clicar em outra consulta não troca de janela nem de seleção
+    await ev(`document.getElementById('evTitle').value = 'Outra mudança'`);
+    await ev(`document.querySelector('.ev-real[data-evkey="joana"]').click(); 1`); await sleep(300);
+    const fica = await ev(`[document.getElementById('evTitle').value, document.querySelector('.ev-real[data-evkey="joana"]').classList.contains('sel'), document.getElementById('evMsg').textContent].join('|')`);
+    certo(fica === 'Outra mudança|false|Alterações não salvas. Clique em Salvar ou feche de novo para descartar.', 'ficou na consulta: ' + fica);
+    await ev(`document.getElementById('evEdit').click(); 1`);   // descarta
+    await ate(`document.getElementById('evCreate').textContent === 'Prontuário' && document.getElementById('evMsg').hidden`, 2000, 'descartou de novo');
+    await editar();
+    // a data abre o mesmo mini calendário do botão de cima (não o do sistema): ‹ › trocam o mês, o dia escolhido muda a data
+    // e fecha; o Esc fecha só o calendário
+    await ev(`document.getElementById('evDateLbl').click(); 1`);
+    certo(await ev(`!document.getElementById('evCal').hidden && document.getElementById('evCal').classList.contains('cal-pop') &&
+      document.querySelector('#evCpGrid .cp-day.sel').textContent === String(+document.getElementById('evDate').value.slice(8))`), 'abre no dia da consulta');
+    await tecla('Escape'); await sleep(200);
+    certo(await ev(`document.getElementById('evCal').hidden && !document.getElementById('evPop').hidden`), 'o Esc fecha só o calendário');
+    const data0 = await val('#evDate');
+    await ev(`document.getElementById('evDateLbl').click(); document.getElementById('evCpNext').click();
+      [...document.querySelectorAll('#evCpGrid .cp-day:not(.other)')].find((b) => b.textContent === '10').click(); 1`);
+    const data1 = await val('#evDate');
+    const esperado = (() => { const q = data0.split('-'); const d = new Date(+q[0], +q[1], 10); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-10'; })();
+    certo(data1 === esperado && await ev(`document.getElementById('evCal').hidden`), 'dia 10 do mês seguinte: ' + data1);
+    certo((await txt('#evDateTxt')).indexOf('10 de') > 0, 'o rótulo mudou: ' + await txt('#evDateTxt'));
+    await ev(`document.getElementById('evEdit').click(); 1`);   // descarta a data
+    await ate(`document.getElementById('evDate').value === ${JSON.stringify(data0)}`, 2000, 'data de volta');
+    await ev(`document.getElementById('evDateLbl').click(); 1`);
+    certo(await ev(`document.getElementById('evCal').hidden`), 'só leitura: a data não abre o calendário');
+    await editar();
+    await ev(`document.getElementById('evLocation').value = 'Sala 2'`);
+    const antes = patches('manha').length;
+    await salvar();
+    certo(await txt('#evCreate') === 'Prontuário' && await ro(), 'depois de salvar, só leitura de novo');
+    certo(await ev(`[...document.querySelectorAll('.pr-toast')].map((t) => t.textContent).join()`) === 'Consulta salva', 'o aviso "Consulta salva"');
+    await sleep(300);
+    const p = patches('manha').slice(antes);
+    certo(p.length === 1 && p[0].body.location === 'Sala 2', 'um PATCH com o Local: ' + JSON.stringify(p.map((x) => x.body)));
+    await fecha(); await sleep(300);
+    certo(await ev(`document.getElementById('evPop').hidden`) && patches('manha').length === antes + 1, 'fechar depois de salvar não grava de novo');
+    return 'só leitura; lixeira, lápis e ×; o lápis duas vezes descartou; Salvar gravou um PATCH e voltou ao Prontuário';
   }],
   ['consulta 23h30–0h abre o prontuário (sem "O fim deve ser depois do início.")', async () => {
     await ev(`window.__ctx = null; window.__openProntuario = (c) => { window.__ctx = c; }; 1`);
@@ -406,7 +482,9 @@ const cenarios = [
     await abreEvento('#calAllDay .wk-ev[data-evkey="ferias"]');
     certo(await ev(`document.getElementById('evAllDay').classList.contains('on')`), 'Dia todo ligado');
     certo(await ev(`document.querySelector('#calAllDay .wk-ev[data-evkey="ferias"]').classList.contains('sel')`), 'pílula selecionada');
+    await editar();
     await ev(`document.getElementById('evTitle').value = 'Férias de verão'`);
+    await salvar();
     await fecha();
     await ate(`document.getElementById('evPop').hidden`, 2000, 'fechou');
     await sleep(300);
@@ -416,10 +494,13 @@ const cenarios = [
   }],
   ['alteração que não dá para salvar avisa em vez de sumir', async () => {
     await abreEvento('.ev-real[data-evkey="joana"]');
+    await editar();
     await ev(`(() => { const p = document.getElementById('evPatient'); p.value = 'Zé'; p.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await salvar();
+    certo(await txt('#evMsg') === 'Escolha um paciente da lista ou crie um novo.', 'aviso do Salvar: ' + await txt('#evMsg'));
     await fecha();
     certo(await ev(`!document.getElementById('evPop').hidden`), 'a janela fica aberta');
-    certo(await txt('#evMsg') === 'Escolha um paciente da lista ou crie um novo.', 'aviso: ' + await txt('#evMsg'));
+    certo(await txt('#evMsg') === 'Alterações não salvas. Clique em Salvar ou feche de novo para descartar.', 'aviso: ' + await txt('#evMsg'));
     await fecha();
     certo(await ev(`document.getElementById('evPop').hidden`) && patches('joana').length === 0, 'fechar de novo descarta, sem PATCH');
     return 'avisou; fechar de novo descartou';
@@ -431,13 +512,14 @@ const cenarios = [
     const fim = (hm) => ev(`(() => { const s = document.getElementById('evEnd'); s.value = ${JSON.stringify(hm)}; s.dispatchEvent(new Event('change')); return 1; })()`);
     await abre();
     certo(await txt('#evDur') === '24 h', 'abre com 24 h: ' + await txt('#evDur'));
+    await editar();
     await fim('08:00'); certo(await txt('#evDur') === '25 h', 'estender: ' + await txt('#evDur'));
-    await fecha(); await sleep(300);
+    await salvar(); await fecha(); await sleep(300);
     let p = patches('t24');
     certo(p.length === 1 && p[0].body.end === utc(dia(1), '08:00'), 'gravou 25 h: ' + JSON.stringify(p.map((x) => x.body.end)));
-    await abre();
+    await abre(); await editar();
     await fim('06:00'); certo(await txt('#evDur') === '23 h', 'encurtar: ' + await txt('#evDur'));
-    await fecha(); await sleep(300);
+    await salvar(); await fecha(); await sleep(300);
     p = patches('t24');
     certo(p.length === 2 && p[1].body.end === utc(dia(1), '06:00'), 'gravou 23 h: ' + JSON.stringify(p.map((x) => x.body.end)));
     return '25 h e 23 h, como na tela';
@@ -448,21 +530,24 @@ const cenarios = [
     await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento');
     const fim = (hm) => ev(`(() => { const s = document.getElementById('evEnd'); s.value = ${JSON.stringify(hm)}; s.dispatchEvent(new Event('change')); return 1; })()`);
     certo(await txt('#evDur') === '36 h', 'abre com 36 h: ' + await txt('#evDur'));
+    await editar();
     await fim('19:00'); certo(await txt('#evDur') === '24 h', 'fim 19:00: ' + await txt('#evDur'));
     await fim('07:00'); certo(await txt('#evDur') === '12 h', 'fim 07:00: ' + await txt('#evDur'));
-    await fecha(); await sleep(300);
+    await salvar(); await fecha(); await sleep(300);
     const p = patches('t36');
     certo(p.length === 1 && p[0].body.end === utc(dia(1), '07:00'), 'gravou 12 h: ' + JSON.stringify(p.map((x) => x.body.end)));
     return '36 h → 24 h → 12 h';
   }],
   ['fim igual ao início numa consulta curta avisa e não grava um dia inteiro', async () => {
+    const antes = patches('manha').length;                    // o cenário do lápis já gravou nela
     await abreEvento('.ev-real[data-evkey="manha"]');
+    await editar();
     await ev(`(() => { const s = document.getElementById('evEnd'); s.value = '10:00'; s.dispatchEvent(new Event('change')); return 1; })()`);
-    await fecha();
+    await salvar();
     certo(await ev(`!document.getElementById('evPop').hidden`), 'a janela fica aberta');
     certo(await txt('#evMsg') === 'O fim deve ser depois do início.', 'aviso: ' + await txt('#evMsg'));
-    await fecha();
-    certo(patches('manha').length === 0, 'sem PATCH');
+    await fecha(); await fecha();
+    certo(patches('manha').length === antes, 'sem PATCH');
     return 'avisou e não gravou';
   }],
   ['semana: linha de dia inteiro abaixo dos dias, fixa ao rolar; pede o teto', async () => {
@@ -674,7 +759,7 @@ const cenarios = [
 
     PACS.unshift({ id: 62, name: 'Joana Prado', birth_date: '1990-01-01' });   // homônima mais recente da Joana do evento
     const p0 = patches('joana').length;
-    await abreEvento('.ev-real[data-evkey="joana"]'); await sleep(400);
+    await abreEvento('.ev-real[data-evkey="joana"]'); await sleep(400); await editar();
     await ev(`document.getElementById('evPatient').blur(); document.getElementById('evPatient').focus(); 1`);
     await ate(`!!document.querySelector('#evPList .evpop-po.on')`, 3000, 'lista do evento');
     certo(await destaque() === 'Joana Prado', 'destaque na homônima: ' + await destaque());
@@ -740,7 +825,7 @@ const cenarios = [
     PACS.unshift({ id: 71, name: 'Maria Silva' });
     const mx = { id: 'mx', title: 'Consulta — Maria Silva', patient_id: 7, start: `${dia(0)}T16:00:00-03:00`, end: `${dia(0)}T16:30:00-03:00`, allDay: false };
     await ev(`window.__openEventEdit(400, 300, ${JSON.stringify(mx)}); 1`);
-    await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento'); await sleep(400);
+    await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento'); await sleep(400); await editar();
     await ev(`document.getElementById('evPatient').blur(); document.getElementById('evPatient').focus(); 1`);
     await ate(`!!document.querySelector('#evPList .evpop-po.on')`, 3000, 'lista do evento');
     certo(await destaque() === 'Maria Silva (exemplo)', 'destaque: ' + await destaque());
