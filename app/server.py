@@ -681,19 +681,22 @@ def _ask_stream(query, k, history=None, contexto=None):
         sentence, removed = validate.ground_citations(sentence, text_by_n, own_text)
         if removed:
             st["uncited"] += len(removed)
+        # repetir os dados/remédios do próprio paciente (pergunta, histórico, perfil escolhido) não é "sem fonte";
+        # contado ANTES de enxugar as citações (a linha da tabela que perde o [n] repetido continua com fonte)
+        st["ungrounded"] += validate.ungrounded_lines(sentence, own_text + " " + (contexto or ""))
         sentence, tiradas = validate.thin_citations(sentence)   # sem "[1][2]" em toda célula da tabela
         st["thinned"] = st.get("thinned", 0) + tiradas
         sentence = validate.sem_bastidor(sentence)
-        # repetir os dados/remédios do próprio paciente (pergunta, histórico, perfil escolhido) não é "sem fonte"
-        st["ungrounded"] += validate.ungrounded_lines(sentence, own_text + " " + (contexto or ""))
         cited.update(validate.citations(sentence))
         emitted.append(sentence)
         return _sse("sentence", {"text": sentence}), False
 
+    fim_llm = {}
     try:
         stop = False
         for delta in llm.stream_chat(messages, max_tokens=config.ASK_MAX_TOKENS,
-                                     reasoning=config.ASK_REASONING_EFFORT, verbosity=config.ASK_VERBOSITY):
+                                     reasoning=config.ASK_REASONING_EFFORT, verbosity=config.ASK_VERBOSITY,
+                                     estado=fim_llm):
             for sentence in buf.feed(delta):
                 ev, stop = _handle(sentence)
                 if ev:
@@ -721,7 +724,7 @@ def _ask_stream(query, k, history=None, contexto=None):
         return
     if st["uncited"]:
         _log("citações sem respaldo removidas:", st["uncited"])
-    if getattr(llm.stream_chat, "fim", None) == "length":      # cortada pelo limite: não pode passar em silêncio
+    if fim_llm.get("fim") == "length":      # cortada pelo limite: não pode passar em silêncio
         _log("resposta cortada pelo limite de tokens (ASK_MAX_TOKENS)")
     yield _sse("done", {"insufficient": False, "cited": sorted(cited),
                         "skipped": st["skipped"], "ungrounded": st["ungrounded"],

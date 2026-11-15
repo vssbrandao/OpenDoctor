@@ -96,3 +96,38 @@ def test_frase_solta_nao_perde_citacao():
 def test_sem_bastidor():
     assert validate.sem_bastidor("Pelo cálculo determinístico do sistema, a TFG é 52.") == "Pelo cálculo, a TFG é 52."
     assert validate.sem_bastidor("Cálculo determinístico: 52.") == "Cálculo: 52."
+
+
+# ===== achados da revisão do commit fdeaa43 =====
+def test_mencao_nao_e_uso():
+    for q in ("Posso iniciar varfarina na FA?", "Devo associar gliclazida?",
+              "Paciente com alergia a captopril, qual anti-hipertensivo?", "LDL-c 160 mg/dL, vou iniciar rosuvastatina 10 mg"):
+        assert tools.clinical_facts(q) is None, q
+
+
+def test_ldl_de_antes_do_tratamento_nao_e_estimado():
+    f = tools.clinical_facts("LDL 150 mg/dL antes do tratamento; em uso de sinvastatina 20 mg") or ""
+    assert "antes do tratamento estaria" not in f
+
+
+def test_estimativa_do_ldl_e_condicional():
+    f = tools.clinical_facts("rosuvastatina 10 mg. LDL-c 142 mg/dL")
+    assert "SE o LDL-c 142 foi medido já em uso dela" in f and "nesse caso, provável LDL basal ≥190" in f
+
+
+def test_peso_que_variou_e_reposicao_de_potassio_nao_entram():
+    assert tools.clinical_facts("perda de peso de 8 kg em 3 meses, altura 1,70 m") is None
+    assert tools.clinical_facts("cloreto de potássio 6 mEq 2x/dia") is None
+
+
+def test_linha_da_tabela_que_perde_o_n_repetido_nao_vira_sem_fonte():
+    tab = "| Metformina | 500 mg 2x/dia [1] |\n| Empagliflozina | 10 mg/dia [1] |\n"
+    assert validate.ungrounded_lines(tab) == 0          # contado antes de enxugar (como no /ask)
+
+
+def test_frase_quebrada_em_duas_linhas_e_uma_so():
+    assert validate.ungrounded_lines("A dose é 100 mg\nao dia [1].\n") == 0
+
+
+def test_titulo_em_negrito_nao_continua_a_linha_anterior():
+    assert len(validate._logical_lines("Use 10 mg ao dia\n**Metas:** HbA1c <7% [1]\n")) == 2

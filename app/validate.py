@@ -192,7 +192,7 @@ def _ground_line(line, text_by_n, extra_text):
 
 
 # linha que começa um bloco próprio (item, título, tabela, cerca, citação): nunca é continuação da anterior
-_BLOCK_START = re.compile(r"^(?:\d+[.)]\s|[-*+•]\s|#|\||```|~~~|>)")
+_BLOCK_START = re.compile(r"^(?:\d+[.)]\s|[-*+•]\s|\*\*|#|\||```|~~~|>)")
 
 
 def _continues(prev, nxt):
@@ -248,7 +248,7 @@ def is_ungrounded_claim(sentence, own_text=""):
 
 def ungrounded_lines(text, own_text=""):
     """Quantas linhas do bloco são afirmação clínica sem fonte (tabela/lista contam linha a linha)."""
-    return sum(1 for ln in text.splitlines() if is_ungrounded_claim(ln, own_text))
+    return sum(1 for ln in _logical_lines(text) if is_ungrounded_claim(ln, own_text))
 
 
 # ------- buffer de frases para o streaming -------

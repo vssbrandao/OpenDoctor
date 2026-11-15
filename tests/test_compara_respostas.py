@@ -83,7 +83,8 @@ def test_configuracao_troca_e_devolve(falsos):
         r = cr.coletar(server._ask_stream("pergunta", 6))
     prompt, kw = falsos["modelo"][0]
     assert prompt == _prompt("clinical_answer.v3.md")
-    assert kw == {"max_tokens": 2000, "reasoning": "low", "verbosity": "low"}
+    assert {k: v for k, v in kw.items() if k != "estado"} == {"max_tokens": 2000, "reasoning": "low", "verbosity": "low"}
+    assert kw["estado"] == {}                              # o fim da resposta é por pergunta (não global)
     assert (synthesize.PROMPT_PATH, config.ASK_REASONING_EFFORT, config.ASK_VERBOSITY, config.ASK_MAX_TOKENS) == velho
     assert "Minha recomendação" in r["texto"] and r["fontes"]
 

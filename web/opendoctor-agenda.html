@@ -4339,21 +4339,26 @@
       }
       // o plano por etapas (o "Plano prático" do ChatGPT): ```plano com "## Prazo | Título" e "- itens" em cada etapa →
       // um cartão com a pílula colorida do prazo, o título e a lista, uma linha entre as etapas
+      // devolve null quando o bloco não segue o formato (linha antes da 1ª etapa, texto solto): aí vira markdown comum
       function planoHtml(linhas){
-        var etapas=[], at=null;
+        var etapas=[], at=null, fora=0;
         linhas.forEach(function(l){
-          var t=l.trim(), h=t.match(/^#{1,4}\s+(.*)$/), it=t.match(/^[-*•]\s+(.*)$/);
+          var t=l.trim(), h=t.match(/^#{1,4}\s+(.*)$/), it=t.match(/^(?:[-*•]|\d+[.)])\s+(.*)$/);
+          var sub=l.replace(/\t/g,'    ').match(/^ */)[0].length>=2;
           if(h){ var pr=h[1].split('|'); at={ prazo:pr[0].trim(), titulo:(pr.slice(1).join('|')||'').trim(), itens:[] }; etapas.push(at); }
-          else if(it && at){ at.itens.push(it[1]); }
+          else if(it && at){ if(sub && at.itens.length) at.itens[at.itens.length-1].subs.push(it[1]); else at.itens.push({ t:it[1], subs:[] }); }
           else if(t && at && !at.itens.length && !at.titulo){ at.titulo=t; }
+          else if(t){ fora++; }
         });
-        if(!etapas.length) return '';
+        if(!etapas.length || fora) return null;
+        function li(x){ return '<li>'+inlineMd(x.t)+(x.subs.length?'<ul>'+x.subs.map(function(y){return '<li>'+inlineMd(y)+'</li>';}).join('')+'</ul>':'')+'</li>'; }
         return '<div class="plano">'+etapas.map(function(e,i){
           return (i?'<div class="plano-sep"></div>':'')+'<div class="plano-et"><span class="plano-tag plano-c'+(i%4)+'">'+inlineMd(e.prazo)+'</span>'+
             (e.titulo?'<p class="plano-t">'+inlineMd(e.titulo)+'</p>':'')+
-            (e.itens.length?'<ul>'+e.itens.map(function(x){return '<li>'+inlineMd(x)+'</li>';}).join('')+'</ul>':'')+'</div>';
+            (e.itens.length?'<ul>'+e.itens.map(li).join('')+'</ul>':'')+'</div>';
         }).join('')+'</div>';
       }
+      function unesc(s){return s.replace(/&quot;/g,'"').replace(/&gt;/g,'>').replace(/&lt;/g,'<').replace(/&amp;/g,'&');}
       function mdToHtml(md){
         var lines = esc(md).split(/\r?\n/);
         var out='', para=[], i=0;
@@ -4398,7 +4403,7 @@
             flushP(); closeL();
             var body=code.join('\n');
             if(info==='mermaid'){ out+='<div class="mermaid">'+body+'</div>'; }
-            else if(info==='plano'){ out+=planoHtml(code); }
+            else if(info==='plano'){ var pl=planoHtml(code); out+= pl!==null ? pl : mdToHtml(unesc(body)); }
             else { out+='<pre class="code"><code>'+body+'</code></pre>'; }
             continue;
           }
@@ -4523,7 +4528,7 @@
             note.textContent = 'Parte desta resposta se baseia em conhecimento clínico geral, sem fonte específica citada.';
             wrap.appendChild(note);
           }
-          addActions(wrap, function () { return bodyEl.innerText; });
+          addActions(wrap, function () { return textoDaResposta(bodyEl); });
         });
         msgs.scrollTop = msgs.scrollHeight;
         renderHist();
@@ -4561,20 +4566,33 @@
       function citeMeta(s) { return [s.evidence || '', s.year || ''].filter(Boolean).join(' · '); }
       function citePilula(ss) {
         var dados = ss.map(function (s) { return { t: s.title || 'Documento', u: s.url || '', l: fonteDe(s.url || ''), m: citeMeta(s) }; });
-        return '<a class="cite" href="' + esc(ss[0].url || '') + '" target="_blank" rel="noopener noreferrer" data-cite="' + encodeURIComponent(JSON.stringify(dados)) + '">' +
+        return '<a class="cite" href="' + esc(ss[0].url || '') + '" target="_blank" rel="noopener noreferrer" data-ns="' + esc(ss.map(function (s) { return '[' + s.n + ']'; }).join('')) + '" data-cite="' + encodeURIComponent(JSON.stringify(dados)) + '">' +
           '<span class="cite-ic">' + CITE_IC + '</span><span class="cite-l">' + esc(fonteDe(ss[0].url || '')) + '</span>' +
           (ss.length > 1 ? '<span class="cite-n">+' + (ss.length - 1) + '</span>' : '') + '</a>';
+      }
+      function textoDaResposta(el) {                       // para Copiar e Ouvir: a pílula vira "[n]"
+        var c = el.cloneNode(true);
+        [].forEach.call(c.querySelectorAll('a.cite'), function (a) { a.replaceWith(document.createTextNode(a.getAttribute('data-ns') || '')); });
+        c.style.position = 'fixed'; c.style.left = '-99999px'; document.body.appendChild(c);
+        var t = c.innerText; document.body.removeChild(c); return t;
       }
       function renderAnswer(text, srcByN) {
         var box = document.createElement('div'); box.innerHTML = mdToHtml(text);
         // de dentro para fora; a lista aninhada sai do item enquanto ele é tratado (o [n] dela fica no próprio subitem)
-        [].slice.call(box.querySelectorAll('p, li, td, th, h1, h2, h3, h4')).reverse().forEach(function (b) {
+        [].slice.call(box.querySelectorAll('p, li, td, th, h1, h2, h3, h4, span.plano-tag')).reverse().forEach(function (b) {
           var sub = [].filter.call(b.children, function (c) { return c.tagName === 'UL' || c.tagName === 'OL'; });
           sub.forEach(function (c) { b.removeChild(c); });
-          var ss = [], limpo = b.innerHTML.replace(/[  ]*\[(\d+)\]/g, function (m, n) {
-            var s = srcByN[+n]; if (!s) return m; if (ss.indexOf(s) < 0) ss.push(s); return '';
+          var ss = [], w = document.createTreeWalker(b, NodeFilter.SHOW_TEXT), nos = [];
+          while (w.nextNode()) { if (!w.currentNode.parentNode.closest('code, pre, a')) nos.push(w.currentNode); }
+          nos.forEach(function (tn) {
+            tn.nodeValue = tn.nodeValue.replace(/[  ]*\[(\d+)\]/g, function (m, n) {
+              var s = srcByN[+n]; if (!s) return m; if (ss.indexOf(s) < 0) ss.push(s); return '';
+            });
           });
-          if (ss.length) b.innerHTML = limpo.replace(/\s+$/, '') + ' ' + citePilula(ss);
+          if (ss.length) {
+            var last = b.lastChild; if (last && last.nodeType === 3) last.nodeValue = last.nodeValue.replace(/\s+$/, '');
+            b.insertAdjacentHTML('beforeend', ' ' + citePilula(ss));
+          }
           sub.forEach(function (c) { b.appendChild(c); });
         });
         return box.innerHTML;
@@ -4678,11 +4696,12 @@
       // uma referência como as do ChatGPT: "Diretriz, 2022 — " e o título com o sublinhado pontilhado e o ↗
       var REF_EXT = '<span class="ref-ext" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M5.5 10.5 10.5 5.5M6.5 5.5h4v4" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
       function refLi(s) {
-        var k = fonteDe(s.url || '') + '. ' + [s.evidence || '', s.year || ''].filter(Boolean).join(', '), t = s.title || 'Documento';
+        var meta = [s.evidence || '', s.year || ''].filter(Boolean).join(', '), t = (s.title || 'Documento').replace(/\s+$/, '');
+        var k = fonteDe(s.url || '') + (meta ? '. ' + meta : '');
         return '<li>' + (k ? '<span class="ref-k">' + esc(k) + ' — </span>' : '') +
           // a última palavra e o ↗ juntos (o ↗ nunca fica sozinho na linha de baixo)
           '<a class="ref-a" href="' + esc(s.url || '') + '" target="_blank" rel="noopener noreferrer">' +
-          esc(t).replace(/(\S+)$/, '<span class="ref-fim">$1' + REF_EXT + '</span>') + '</a>.</li>';
+          esc(t).replace(/(\S+)$/, '<span class="ref-fim">$1' + REF_EXT + '</span>') + '</a>' + (/[.!?]$/.test(t) ? '' : '.') + '</li>';
       }
       function evClass(label) {
         var m = { 'Diretriz': 'dir', 'Metanálise': 'meta', 'Revisão sistemática': 'meta',
@@ -4787,7 +4806,7 @@
                   note.textContent = 'Parte desta resposta se baseia em conhecimento clínico geral, sem fonte específica citada.';
                   wrap.appendChild(note);
                 }
-                addActions(wrap, function () { return bodyEl.innerText; });
+                addActions(wrap, function () { return textoDaResposta(bodyEl); });
               }
             } catch (_) {}
           }

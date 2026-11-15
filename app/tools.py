@@ -77,6 +77,34 @@ _ESTATINA_DOSES = {   # (dose mínima de alta, dose mínima de moderada) em mg; 
 }
 
 
+# a menção do remédio não é uso: "posso iniciar varfarina?", "alergia a captopril", "suspendeu a gliclazida"
+_NAO_USO_ANTES = re.compile(r"(inici|introdu|come[çc]|associ|adicion|acrescent|prescrev|posso|devo|deveria|alergi|al[ée]rg|"
+                            r"intoler|suspen|evit|contraindic|n[ãa]o usa|sem uso|parou|trocar? (?:para|por)|"
+                            r"substitu|em vez de|ao inv[ée]s de|ou )[^.;\n]{0,30}$", re.I)
+_NAO_USO_DEPOIS = re.compile(r"^[^.;\n]{0,25}\?")
+_PRE_TRATAMENTO = re.compile(r"antes d[oa] (?:tratamento|estatina|remédio)|pr[ée]-?tratamento|basal|sem (?:tratamento|estatina)",
+                             re.I)
+_PESO_NAO = re.compile(r"(perda|ganho|varia[çc][ãa]o|redu[çc][ãa]o|perdeu|ganhou|aumento|meta) de\s*$", re.I)
+_K_NAO = re.compile(r"(cloreto|citrato|reposi[çc][ãa]o|suplemento|xarope|KCl)[^.;\n]{0,15}$", re.I)
+
+
+def _primeira_em_uso(rx, t):
+    """1ª menção de rx que parece USO (não pergunta sobre iniciar, alergia, suspensão, troca, alternativa)."""
+    for m in rx.finditer(t):
+        antes, depois = t[max(0, m.start() - 45):m.start()], t[m.end():m.end() + 30]
+        if _NAO_USO_ANTES.search(antes) or _NAO_USO_DEPOIS.search(depois):
+            continue
+        return m
+    return None
+
+
+def _primeira_sem(rx, t, nao):
+    for m in rx.finditer(t):
+        if not nao.search(t[max(0, m.start() - 25):m.start()]):
+            return m
+    return None
+
+
 def estatina_intensidade(nome, mg):
     alta, mod = _ESTATINA_DOSES.get(nome.lower(), (None, None))
     if mod is None:
@@ -122,7 +150,7 @@ def clinical_facts(text):
     não houver nada. Só regex: nada sai do servidor."""
     t = text or ""
     lines = []
-    peso, alt = _PESO_RE.search(t), _ALTURA_RE.search(t)
+    peso, alt = _primeira_sem(_PESO_RE, t, _PESO_NAO), _ALTURA_RE.search(t)
     if peso and alt:
         try:
             kg, h = _f(peso.group(1)), _f(alt.group(1))
@@ -157,7 +185,7 @@ def clinical_facts(text):
     elif g in ("G1", "G2") and not a:
         lines.append(f"- {g} sozinho não define doença renal crônica: precisa de marcador de lesão (ex.: albuminúria)")
     # regras que o modelo (raciocínio baixo) às vezes não aplicava sozinho: vão como dado do caso
-    k = _K_RE.search(t)
+    k = _primeira_sem(_K_RE, t, _K_NAO)
     if k:
         try:
             v = _f(k.group(1))
@@ -167,7 +195,7 @@ def clinical_facts(text):
                              "antagonista mineralocorticoide; com K >5,0, não subir esses remédios antes de reduzir o K")
         except ValueError:
             pass
-    est = _ESTATINA_RE.search(t)
+    est = _primeira_em_uso(_ESTATINA_RE, t)
     if est:
         nome, mg = est.group(1).lower(), _f(est.group(2))
         inten = estatina_intensidade(nome, mg)
@@ -175,31 +203,34 @@ def clinical_facts(text):
             faixa = _REDUCAO[inten]
             txt = f"- {nome.capitalize()} {_br(mg, 0)} mg = estatina de intensidade {inten} (redução esperada do LDL {faixa[2]})"
             ldl = _LDL_RE.search(t)
+            if ldl and _PRE_TRATAMENTO.search(t[max(0, ldl.start() - 40):ldl.end() + 40]):
+                ldl = None       # o LDL informado é o de antes do remédio: não há o que estimar
             if ldl:
                 v = _f(ldl.group(1))
                 if 20 <= v <= 600:
                     lo, hi = v / (1 - faixa[0]), v / (1 - faixa[1])
-                    txt += (f"; LDL atual {_br(v, 0)} em uso dela → LDL antes do tratamento estimado em ~{_br(lo, 0)}–"
-                            f"{_br(hi, 0)} mg/dL (se a adesão for boa; peça o valor pré-tratamento)")
+                    txt += (f". SE o LDL-c {_br(v, 0)} foi medido já em uso dela, com boa adesão (confirme as duas coisas e "
+                            f"peça o valor de antes do tratamento), o LDL antes do tratamento estaria em ~{_br(lo, 0)}–"
+                            f"{_br(hi, 0)} mg/dL")
                     if lo >= 190:
-                        txt += " → provável LDL basal ≥190: risco ALTO (meta <70, redução ≥50%) e suspeita de hipercolesterolemia familiar"
+                        txt += " → nesse caso, provável LDL basal ≥190: risco ALTO (meta <70, redução ≥50%) e suspeita de hipercolesterolemia familiar"
                     elif hi >= 190:
-                        txt += " → o LDL basal pode ter sido ≥190 (risco alto e suspeita de hipercolesterolemia familiar): confirme"
+                        txt += " → nesse caso, o LDL basal pode ter sido ≥190 (risco alto e suspeita de hipercolesterolemia familiar)"
             lines.append(txt)
             if inten != "alta":
                 lines.append("- Se o risco for alto, muito alto ou extremo (ou LDL basal ≥190/HF): trocar JÁ por estatina de alta "
                              "intensidade (atorvastatina 40–80 mg ou rosuvastatina 20–40 mg) + ezetimiba 10 mg desde o início — não "
                              "esperar novo LDL nem a falha da estatina isolada (SBC Dislipidemias 2025)")
-    if _IECA_BRA_RE.search(t):
+    if _primeira_em_uso(_IECA_BRA_RE, t):
         lines.append("- Em uso de IECA/BRA/sacubitril-valsartana: se associar espironolactona ou eplerenona, o risco de "
                      "hipercalemia é alto → creatinina e potássio em 1–2 semanas (não 2–4), depois a cada 3–6 meses")
-    if _SULFONIL_RE.search(t):
+    if _primeira_em_uso(_SULFONIL_RE, t):
         lines.append("- Em uso de sulfonilureia: ao iniciar insulina, reduza a dose dela (ex.: à metade) ou suspenda — não espere "
                      "hipoglicemia; ao associar GLP-1 ou iSGLT2 com HbA1c perto da meta, também reduza; oriente hipoglicemia")
-    if _BB_RE.search(t) and _CONGESTAO_RE.search(t):
+    if _primeira_em_uso(_BB_RE, t) and _CONGESTAO_RE.search(t):
         lines.append("- Betabloqueador com congestão (acima do peso seco/edema): não suba a dose do betabloqueador até voltar ao "
                      "peso seco; primeiro ajuste o diurético e reavalie em 1–2 semanas")
-    if _VARFARINA_RE.search(t):
+    if _primeira_em_uso(_VARFARINA_RE, t):
         lines.append("- Em uso de varfarina: na troca por DOAC, suspender a varfarina e iniciar o DOAC só com INR <2,0 "
                      "(apixabana, dabigatrana), ≤2,5 (edoxabana) ou ≤3,0 (rivaroxabana) — diga o número, nunca sobreponha")
     if not lines:
