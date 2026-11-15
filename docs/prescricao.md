@@ -86,34 +86,28 @@ A aba Prescrição do prontuário (seletor de cima) tem três partes (fases 1, 2
 - **Antimicrobiano** (`app/data/antimicrobianos.tsv`, RDC 471/2021): 2 vias, válida por 10 dias.
 
 ### Tela: o componente Receita (`Receita(raiz, op)` em `web/opendoctor-agenda.html`)
-É o centro da aba. Tem poucas funções: busca, posologia, quantidade, avisos, tirar com Desfazer, emitir e imprimir, uso
-contínuo e orientações. O visual segue a referência do usuário (print 2x, medidas pela metade): dois blocos, cada um
-com título 14 Medium, descrição 13 #848486 e um cartão branco (borda #EBEBEB, canto 12).
-- **Bloco 1 · Prescrever:**
-  - a busca sempre aberta: linha cinza #F7F7F7 de 44, canto 12;
-  - uma linha por remédio para renovar: o uso contínuo da última emissão (as receitas emitidas no mesmo dia) que não
-    está nesta receita. Cada uma tem o seu "Renovar", com a posologia da última vez e a quantidade de 30 dias;
-  - até 2 possíveis prescrições da IA, no mesmo desenho, com "Adicionar". A alergia pede um segundo clique. A linha
-    some quando o remédio entra na receita (o cartão antigo de Possíveis prescrições saiu);
-  - as alergias do cadastro, em roxo itálico #A177E0 (como o "Next run on…" da referência).
+É o centro da aba. Tem poucas funções: busca, posologia, quantidade, avisos, tirar com Desfazer, emitir e imprimir e
+uso contínuo. Desde 15/11/2026 o visual segue a pasta da Sana (medida no navegador) e, para a barra de baixo, o Figma
+Concept 1351:13419. Não há mais a folha nem título; de cima para baixo:
+- **Alergias do cadastro**, como os botões da Sana (vermelho com o ícone de aviso quando há).
+- **Receita | Sugestões** (pílulas de 36; a escolhida com fundo 5%), ao lado o estado do rascunho ("rascunho salvo") e,
+  à direita, o **Emitir receita** preto. Embaixo, a linha de 5%.
+- **Receita:** a lista é a receita. Cada remédio é uma linha de 68 (caixa do ícone 48, canto 12): em cima o nome e a
+  dose (14) e a forma e a via (13 a 40%); embaixo "posologia · Quantidade:" editáveis (`contenteditable`) e o × ao
+  passar o mouse. A cor do aviso (alergia, dose, tipo) vai para a caixa do ícone. As frases dos avisos ficam embaixo.
+  O "Sai 1 receita…" e o campo das orientações saíram da tela (pedido do usuário); as orientações já gravadas num
+  rascunho continuam saindo no papel.
+- **Sugestões:** os remédios para Renovar e até 2 possíveis prescrições da IA, no mesmo desenho das linhas da receita,
+  com a pílula "Renovar"/"Adicionar". A alergia pede um segundo clique. Renovar o último ou Adicionar volta à Receita.
+- **A barra de adicionar**, presa no pé da coluna (24 das bordas e de baixo; 64, #F3F3F3, canto 100): o botão #D3E3FD
+  com o + e "Adicionar medicamento". A lista das apresentações abre para cima. Escolher um remédio põe ele na lista.
+- A aba abre sempre na Receita. As receitas anteriores ficam no Resumo › Prescrições.
 - **A busca:**
   - lista direto as apresentações, até 8, a primeira marcada. A marca entra como "Marca (substância)";
   - ordem: o que o paciente já usou ("Já usou"), depois a substância, depois as marcas;
   - alergia em vermelho na linha, e o Enter pede um segundo Enter;
   - "Já na receita": o Enter leva até o item, sem repetir;
   - Enter antes do resultado chegar vale para o primeiro.
-- **Bloco 2 · Receita:** a folha em texto, num painel cinza (13/22), que já nasce grande (340 de altura) com:
-  - o médico (nome; CRM/UF e especialidade, ou "Completar meus dados de médico") e a data por extenso;
-  - o paciente.
-  
-  Cada remédio é um parágrafo numerado que corre como texto, como a lista da referência:
-  - a etiqueta branca inline (nome e dose; borda #E3E3E3, canto 7, 22 de altura, como o "JumpCloud");
-  - a forma e a via, em cinza;
-  - "— posologia" e "Quantidade:", trechos editáveis no meio da frase (`contenteditable="plaintext-only"`);
-  - o × na ponta da linha, ao passar o mouse.
-  
-  No fim da folha vêm as orientações ao paciente: texto livre, salvo com o rascunho (`receitas.orientacoes`, migração
-  0016), que sai impresso abaixo dos remédios e vai em cada receita emitida.
 - **Ao escolher um remédio:** a posologia entra como da última vez ou em modelo da forma, com lacunas "_":
   - comprimido: "Tomar 1 comprimido a cada _ horas, por _ dias.";
   - também há modelo para cápsula, líquido, gotas, tópico, colírio, nasal e inalatório;
@@ -138,18 +132,17 @@ com título 14 Medium, descrição 13 #848486 e um cartão branco (borda #EBEBEB
   - ⌘/Ctrl+Enter emite.
   
   Para o leitor de tela: combobox com `aria-activedescendant` e entrar, sair e a conta anunciados (`aria-live`).
-- **Rodapé:** o que vai sair, ao vivo ("Saem 2 receitas: simples e antimicrobiano (2 vias)"), e Emitir.
-  - Emitir confirma na própria tela: o que sai, os avisos, Voltar e "Emitir e imprimir".
+- **Emitir** (na linha das abas): confirma na própria tela, embaixo da lista: o que sai, os avisos, Voltar e "Emitir e imprimir".
   - Falta posologia ou quantidade: diz o quê e leva o cursor até lá.
 - **Redesenhar:** cada item guarda o seu nó. Salvar ou conferir não recria o campo em que se está escrevendo.
-- **Possíveis prescrições:** o "Adicionar" do bloco de cima leva à posologia do item, para revisar.
-- **Histórico:** o "Usar nesta consulta" põe o item no texto.
+- **Possíveis prescrições:** o "Adicionar" das Sugestões leva à posologia do item na Receita, para revisar.
+- **Histórico:** o "Usar nesta consulta" põe o item na lista da receita.
 - **Depois de emitir:** o cartão "Atualizar as medicações em uso?" mostra a diferença, cada linha com uma caixa:
   - entra o remédio de uso contínuo que não está no cadastro;
   - troca a linha quando a dose mudou (a mesma dose escrita de outro jeito não conta).
 - **Consultas (Resumo):** as emitidas aparecem no card da consulta, na aba Consultas do painel do Resumo, e, com ele, no
   "Exportar PDF". (A aba Histórico do prontuário saiu.)
-- **Receita de hoje:** na aba Prescrição do seletor de cima (Prontuário · Consulta · Prescrição).
+- **Receita de hoje:** na aba Prescrição do seletor de cima (Prontuário · Prescrição).
 - **Histórico de receitas:** fica no Resumo, na aba Prescrições do painel (saiu da aba Prescrição do prontuário),
   embaixo da tabela "Medicamentos em uso" (as do resumo clínico, com a posologia, a quantidade e o "Usar nesta
   consulta" da última receita emitida com o mesmo remédio e dose; sem receita, só o nome).
@@ -196,7 +189,7 @@ linha.
 5. **Guarda em memória** por 24 h, enquanto o perfil não muda.
 
 ### Na tela
-- **Na tela:** as sugestões ficam no bloco "Prescrever" da receita, até 2, no desenho das linhas de Renovar. Cada uma
+- **Na tela:** as sugestões ficam na aba Sugestões da Prescrição, até 2, no desenho das linhas de Renovar. Cada uma
   mostra remédio, dose e posologia, e "Sugestão da IA · motivo" numa linha (inteiro ao passar o mouse). A única ação é
   **Adicionar**, que leva o item à receita, com o cursor na posologia para revisar. A linha some quando o remédio está
   na receita.
