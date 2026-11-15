@@ -57,6 +57,7 @@ def stream_chat(messages, temperature=0.2, max_tokens=2000, model=None, reasonin
     """Gera os deltas de texto (str) conforme chegam do modelo."""
     body = _body(model, messages, temperature, max_tokens, reasoning, stream=True,
                  verbosity=verbosity)
+    stream_chat.fim = None
     with httpx.stream("POST", URL, headers=_headers(), json=body, timeout=180) as r:
         if r.status_code != 200:
             raise RuntimeError(f"OpenAI {r.status_code}: {r.read().decode('utf-8','ignore')[:300]}")
@@ -67,7 +68,10 @@ def stream_chat(messages, temperature=0.2, max_tokens=2000, model=None, reasonin
             if data == "[DONE]":
                 break
             try:
-                delta = json.loads(data)["choices"][0]["delta"].get("content")
+                ch = json.loads(data)["choices"][0]
+                delta = ch["delta"].get("content")
+                if ch.get("finish_reason"):
+                    stream_chat.fim = ch["finish_reason"]   # "length": a resposta foi cortada pelo limite
             except Exception:
                 delta = None
             if delta:

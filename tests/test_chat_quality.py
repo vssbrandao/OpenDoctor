@@ -113,8 +113,9 @@ def test_plan_fallback_assumes_medical(monkeypatch):
         raise RuntimeError("sem rede")
     monkeypatch.setattr(server.llm, "chat", boom)
     p = server._plan("dose de amoxicilina", [])
+    # sem termos em inglês: terms_en vazio (português cru não vai ao PubMed/full-text)
     assert p == {"medical": True, "standalone": "dose de amoxicilina",
-                 "question_en": "dose de amoxicilina", "terms_en": "dose de amoxicilina"}
+                 "question_en": "dose de amoxicilina", "terms_en": ""}
 
 
 def test_plan_out_of_scope_short_circuits(monkeypatch):

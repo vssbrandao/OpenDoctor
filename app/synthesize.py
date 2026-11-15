@@ -11,7 +11,8 @@ import argparse
 
 from . import search, llm, config
 
-PROMPT_PATH = os.path.join(config.ROOT, "prompts", "clinical_answer.v3.md")
+# v4: a estrutura da resposta do ChatGPT; v5: + padrão brasileiro, estratificação, sem repetição (15/11/2026)
+PROMPT_PATH = os.path.join(config.ROOT, "prompts", "clinical_answer.v5.md")
 SENTINEL = "EVIDENCIA_INSUFICIENTE"
 REFUSAL = "Não encontrei evidência científica suficiente nas fontes para uma resposta segura."
 OUT_OF_SCOPE = ("Sou o assistente clínico do OpenDoctor e ajudo profissionais de saúde em "

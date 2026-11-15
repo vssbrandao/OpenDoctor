@@ -19,3 +19,22 @@ Mudanças de método: o eval passou a rodar o mesmo `_ask_stream` do /ask (plane
 Notas das rodadas amplas (44 perguntas, 20 especialidades, gpt-5.5):
 - penúltima linha: juiz via só 1.500 caracteres de cada trecho → fidelidade SUBESTIMADA (reavaliados com texto completo, 4 de 6 casos 'infiéis' eram fiéis).
 - última linha: INVÁLIDA para recusa_indevida — as 7 últimas perguntas falharam por 'no credits remaining' na OpenAI (429), não por recusa do assistente. Demais métricas calculadas sobre as 35 respostas obtidas.
+
+## 15/11/2026 — comparação com o ChatGPT (`scripts/compara_respostas.py`)
+
+10 perguntas de prontuário (dados fictícios, sem nome; a 1ª é a do teste com o ChatGPT), fluxo real do /ask. Notas de 0 a 10
+dadas por revisores clínicos (agentes Claude), com a resposta do ChatGPT como padrão; variam ~0,5 entre rodadas.
+
+| versão | o que mudou | nota | 1ª frase | total |
+|---|---|---|---|---|
+| v3 (antes) | esforço low, verbosidade low, 2000 tokens | 6,1 | ~14 s | ~38 s |
+| v4 | estrutura do ChatGPT; esforço/verbosidade medium, 5000 tokens | 7,2–7,5 | ~73 s | ~122 s |
+| v5 | + diretrizes brasileiras na busca (em português), valores de referência brasileiros conferidos nos PDFs, o que não pode faltar, "DADOS CALCULADOS" (IMC, KDIGO, potássio, INR, estatina/LDL basal, sulfonilureia, betabloqueador), citações enxutas; esforço/verbosidade low, 4500 tokens | 8,0 (GPT 7,9) | ~21 s | ~58 s |
+
+- Esforço medium com o prompt v5 e 3500 tokens: o raciocínio gastou o limite (respostas vazias ou cortadas) e a 1ª frase
+  seguiu em ~85 s — descartado.
+- Diretrizes no corpus (`scripts/ingest_diretrizes.py`): SBC Hipertensão 2025, SBC Dislipidemias 2025, PCDT HAS, DM2 e DRC
+  (903 trechos). Na busca principal (pergunta em inglês) elas quase nunca venciam: entraram em 3 de 10 respostas; com a
+  busca própria em português (`search.br_guidelines`), em 10 de 10.
+- Os valores de referência do prompt (regras 2d–2g) foram conferidos nos PDFs por três revisores; dois "erros" apontados
+  por juízes estavam certos na SBC 2025 (idoso frágil: "até o menor valor tolerado"; ICFEr com HA: meta <130/80).

@@ -240,6 +240,60 @@ def search(query, k=FINAL_TOPK, qvec=None, fts_query=None):
     return {"insufficient": insufficient, "best_sim": best_sim, "hits": candidates[:k], "qvec": qvec}
 
 
+# ===== diretrizes brasileiras (SBC, PCDT): busca própria, EM PORTUGUÊS =====
+# A busca principal usa a pergunta traduzida para o inglês (o corpus do PubMed é inglês) e o full-text 'english';
+# as diretrizes brasileiras são em português e quase nunca venciam ali. Aqui a pergunta em português busca só nelas:
+# medido em 15/11/2026 nas 10 perguntas do compara_respostas, o trecho certo fica entre 0,66 e 0,75 de cosseno; o
+# corte abaixo deixa de fora o que não é do tema.
+BR_SOURCES = ("sbc", "conitec_pcdt")
+BR_FLOOR = 0.62                 # cosseno mínimo do trecho com a pergunta em português
+BR_MARGEM = 0.05                # e no máximo isto abaixo do melhor trecho de diretriz da pergunta
+BR_TOPN = 24
+# seções administrativas dos PCDTs e das diretrizes (gestão, comissões, metodologia, referências): não ajudam a conduta
+_BR_SECAO_FORA = re.compile(
+    r"regula[çc][ãa]o, controle|gestor|subcomiss[ãa]o|avalia[çc][ãa]o da (sub)?comiss|consulta p[úu]blica|"
+    r"metodologia|for[çc]a da recomenda[çc][ãa]o|certeza da evid[êe]ncia|conflito|refer[êe]ncias|anexo|"
+    r"termo de (esclarecimento|responsabilidade)|^title$", re.I)
+
+
+def _br_vector_search(conn, qvec, limit):
+    lit = _vec_literal(qvec)
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            select c.id, c.document_id, c.section_title, c.text,
+                   d.title, d.url, d.source_type, d.publication_date,
+                   1 - (c.embedding <=> %s::vector) as cosine_sim
+            from chunks c join documents d on d.id = c.document_id
+            where c.embedding is not null and d.source = any(%s)
+            order by c.embedding <=> %s::vector
+            limit %s
+            """,
+            (lit, list(BR_SOURCES), lit, limit),
+        )
+        return cur.fetchall()
+
+
+def br_guidelines(query_pt, qvec=None):
+    """Trechos das diretrizes brasileiras para a pergunta EM PORTUGUÊS, já filtrados (corte, margem e seções
+    administrativas fora), do mais parecido para o menos. Cada um com cosine_sim e br=True."""
+    if qvec is None:
+        qvec = embeddings.embed([query_pt])[0]
+    with db.connection() as conn:
+        rows = _br_vector_search(conn, qvec, BR_TOPN)
+    hits = []
+    for r in rows:
+        h = _row_to_hit(r)
+        h["cosine_sim"], h["br"] = h["score"], True
+        if _BR_SECAO_FORA.search(h.get("section_title") or ""):
+            continue
+        hits.append(h)
+    if not hits:
+        return []
+    top = hits[0]["cosine_sim"]
+    return [h for h in hits if h["cosine_sim"] >= max(BR_FLOOR, top - BR_MARGEM)]
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="search")
     p.add_argument("--query", required=True)

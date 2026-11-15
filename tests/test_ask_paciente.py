@@ -42,7 +42,7 @@ def cli(monkeypatch):
     monkeypatch.setattr(server.search, "search", busca)
     monkeypatch.setattr(server.tools, "renal_note", lambda q: None)
 
-    def modelo(msgs):
+    def modelo(msgs, **kw):   # /ask passa o limite, o esforço e a verbosidade
         vistos["modelo"].append(msgs)
         yield "Pode considerar um inibidor de SGLT2 [1]. "
     monkeypatch.setattr(server.llm, "stream_chat", modelo)
@@ -68,7 +68,7 @@ def test_com_paciente_o_modelo_recebe_o_perfil_sem_nome(cli):
 
 
 def test_numero_do_perfil_nao_sustenta_citacao(cli, monkeypatch):
-    def modelo(msgs):
+    def modelo(msgs, **kw):   # /ask passa o limite, o esforço e a verbosidade
         yield "A HbA1c dela é 6,9 % [1]. "
     monkeypatch.setattr(server.llm, "stream_chat", modelo)
     r = cli.post("/ask", json={"query": "Como está o controle?", "patient_id": 7})

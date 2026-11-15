@@ -241,22 +241,32 @@ def _log(*a):
 
 
 # ===== planejamento: 1 chamada barata decide escopo, pergunta autônoma e termos =====
-_PLAN_SYS = (
-    "Você prepara a busca de um assistente clínico para MÉDICOS. Responda APENAS um JSON: "
-    '{"medical": true|false, "standalone": "...", "question_en": "...", "terms_en": "..."}. '
+# JSON mínimo e nesta ordem (o essencial primeiro: se o modelo for cortado, terms_en já veio). Sem histórico a pergunta
+# já é autônoma: o modelo não a repete (uma pergunta de caso clínico de ~1.200 caracteres estourava o limite).
+_PLAN_RULES = (
     "medical: true para QUALQUER tema de saúde, medicina, farmacologia, fisiologia, exames, "
     "condutas, epidemiologia, nutrição clínica ou gestão clínica; false só para temas "
     "claramente alheios (culinária, esporte, política, programação, entretenimento). "
     "Na dúvida, true. "
-    "standalone: a pergunta reescrita em português de forma autônoma, incorporando o "
-    "contexto da conversa SE for um follow-up (ex.: 'e na gestante?' → pergunta completa); "
-    "se a pergunta já for autônoma ou mudar de assunto, repita-a sem misturar o tema anterior. "
-    "question_en: a pergunta 'standalone' traduzida para o INGLÊS (o corpus é em inglês). "
     "terms_en: consulta CURTA em INGLÊS para o PubMed — 2 a 4 termos específicos (a "
     "condição + a intervenção/tema central), sem palavras genéricas como management, "
     "treatment, therapy, clinical, patients; sem vírgulas, operadores ou aspas. "
-    "Ex.: 'Wilson disease chelation zinc', 'cystitis pregnancy antibiotics'."
+    "Ex.: 'Wilson disease chelation zinc', 'cystitis pregnancy antibiotics'. "
+    "question_en: a pergunta em INGLÊS, CURTA (até 300 caracteres), só o essencial clínico (o corpus é em inglês). "
 )
+_PLAN_SYS = (
+    "Você prepara a busca de um assistente clínico para MÉDICOS. Responda APENAS um JSON: "
+    '{"medical": true|false, "terms_en": "...", "question_en": "..."}. ' + _PLAN_RULES
+)
+_PLAN_SYS_HIST = (
+    "Você prepara a busca de um assistente clínico para MÉDICOS. Responda APENAS um JSON: "
+    '{"medical": true|false, "terms_en": "...", "question_en": "...", "standalone": "..."}. ' + _PLAN_RULES +
+    "question_en vem da pergunta 'standalone'. "
+    "standalone: a pergunta reescrita em português de forma autônoma, incorporando o "
+    "contexto da conversa SE for um follow-up (ex.: 'e na gestante?' → pergunta completa); "
+    "se a pergunta já for autônoma ou mudar de assunto, repita-a sem misturar o tema anterior."
+)
+_PLAN_MAX_TOKENS = 700
 
 
 def _short_terms(terms, n):
@@ -266,28 +276,57 @@ def _short_terms(terms, n):
     return " ".join(words[:n])
 
 
+def _plan_fields(out):
+    """JSON do planejamento; se veio cortado, aproveita os campos que chegaram inteiros (sem inventar nada).
+    Devolve (campos, motivo_da_falha ou None)."""
+    try:
+        d = json.loads(out)
+        return (d, None) if isinstance(d, dict) else ({}, "json não é objeto")
+    except ValueError:
+        pass
+    d = {}
+    m = re.search(r'"medical"\s*:\s*(true|false)', out or "")
+    if m:
+        d["medical"] = m.group(1) == "true"
+    for key in ("terms_en", "question_en", "standalone"):
+        m = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"', out or "")
+        if m:
+            try:
+                d[key] = json.loads('"' + m.group(1) + '"')
+            except ValueError:
+                pass
+    return d, f"json cortado (len={len(out or '')}), campos aproveitados={sorted(d)}"
+
+
 def _plan(query, history):
-    """Devolve {medical, standalone, terms_en}. Em falha, assume médico (não bloqueia)."""
+    """Devolve {medical, standalone, question_en, terms_en}. Em falha, assume médico (não bloqueia).
+    Sem termos em inglês confiáveis, terms_en fica VAZIO: o chamador não manda português cru ao PubMed nem ao
+    full-text (que é em inglês); a busca vetorial usa a pergunta (o embedding é multilíngue)."""
     ctx = ""
     if history:
         last = [m for m in history[-4:] if (m.get("content") or "").strip()]
         ctx = "\n".join(f"{m['role']}: {m['content'][:600]}" for m in last)
     user = (f"Conversa anterior:\n{ctx}\n\n" if ctx else "") + f"Pergunta atual: {query}"
     try:
-        out = llm.chat([{"role": "system", "content": _PLAN_SYS},
+        out = llm.chat([{"role": "system", "content": _PLAN_SYS_HIST if ctx else _PLAN_SYS},
                         {"role": "user", "content": user}],
-                       temperature=0, max_tokens=160,
+                       temperature=0, max_tokens=_PLAN_MAX_TOKENS,
                        model=config.OPENAI_FAST_MODEL, json_mode=True)
-        d = json.loads(out)
-        med = d.get("medical")
-        standalone = str(d.get("standalone") or query).strip()[:600] or query
-        terms = _short_terms(str(d.get("terms_en") or ""), 5) or _short_terms(standalone, 5) or standalone
-        q_en = str(d.get("question_en") or "").strip()[:600] or terms
-        return {"medical": True if med is None else bool(med),
-                "standalone": standalone, "question_en": q_en, "terms_en": terms}
     except Exception as e:
-        _log("plan falhou:", str(e)[:150])
-        return {"medical": True, "standalone": query, "question_en": query, "terms_en": query}
+        # só o tipo do erro: a mensagem pode trazer pedaço da pergunta
+        _log("plan falhou:", type(e).__name__)
+        return {"medical": True, "standalone": query, "question_en": query, "terms_en": ""}
+    d, why = _plan_fields(out)
+    if why:
+        _log("plan:", why)        # nunca o texto da pergunta/resposta
+    med = d.get("medical")
+    standalone = (str(d.get("standalone") or "").strip()[:600] if ctx else "") or query
+    q_en = str(d.get("question_en") or "").strip()[:600]
+    terms = _short_terms(str(d.get("terms_en") or ""), 5) or _short_terms(q_en, 5)
+    if not terms:
+        _log("plan: sem termos em inglês; sem PubMed/full-text nesta pergunta")
+    return {"medical": True if med is None else bool(med),
+            "standalone": standalone, "question_en": q_en or terms or standalone, "terms_en": terms}
 
 
 def _rank_fresh(qvec, per, vecs, k):
@@ -332,6 +371,20 @@ def _doc_key(h):
     if len(main.split()) >= 6:
         return main[:90]
     return norm(title)[:90] or (h.get("url") or "")
+
+
+BR_DOCS = 2          # vagas das diretrizes brasileiras entre os k trechos que vão ao modelo
+BR_TIMEOUT = 8       # segundos (a busca principal já levou mais que isso; é só a garantia de não travar)
+_BR_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+
+
+def _com_diretrizes(br, docs, k):
+    """Até BR_DOCS diretrizes brasileiras (já do tema: search.br_guidelines) nas primeiras vagas, e o resto com os
+    documentos da busca principal, sem repetir documento."""
+    br_docs = _merge_by_doc(br, BR_DOCS)
+    chaves = {_doc_key(h) for h in br_docs}
+    resto = [d for d in docs if _doc_key(d) not in chaves]
+    return (br_docs + resto)[:k]
 
 
 def _merge_by_doc(hits, k):
@@ -512,9 +565,14 @@ def _ask_stream(query, k, history=None, contexto=None):
     q_en = plan.get("question_en") or sq   # busca vetorial em INGLÊS (mesmo idioma do corpus)
     pool_k = k * 2   # busca mais trechos; depois agrupa por documento
 
-    # 1) busca local (vetorial com a pergunta em PT, full-text com termos em inglês)
+    # 1a) diretrizes brasileiras, em paralelo: a pergunta EM PORTUGUÊS (já mascarada; nunca o perfil do paciente) busca
+    #     só nelas. Na busca principal, em inglês, elas quase nunca venciam. Falhou? Segue sem elas.
+    fut_br = _BR_POOL.submit(search.br_guidelines, sq)
+
+    # 1) busca local (vetorial com a pergunta, full-text com termos em inglês). Sem termos em inglês (planejamento
+    #    falhou): só a vetorial — " " desliga o full-text em search.search, que senão usaria a pergunta em português.
     try:
-        res = search.search(q_en, k=pool_k, fts_query=terms)
+        res = search.search(q_en, k=pool_k, fts_query=terms or " ")
     except Exception as e:
         _log("search falhou:", str(e)[:200])
         yield _sse("failed", {"message": "Falha ao consultar o servidor. Tente novamente."})
@@ -525,7 +583,9 @@ def _ask_stream(query, k, history=None, contexto=None):
 
     # 2) evidência local fraca → PubMed ao vivo. Só o resultado FILTRADO por
     #    evidência (revisões/diretrizes/metanálises) é gravado no corpus.
-    if res["hits"] and FETCH_BLOCK_SIM <= res["best_sim"] < FETCH_SIM:
+    if not terms:
+        pass   # sem termos em inglês confiáveis: não vai ao PubMed (português cru traz artigo errado e o grava no corpus)
+    elif res["hits"] and FETCH_BLOCK_SIM <= res["best_sim"] < FETCH_SIM:
         _log("evidência local razoável; enriquecendo o corpus em 2º plano")
         threading.Thread(target=_bg_enrich, args=(terms,), daemon=True).start()
     elif res["best_sim"] < FETCH_BLOCK_SIM or not res["hits"]:
@@ -565,8 +625,14 @@ def _ask_stream(query, k, history=None, contexto=None):
     if len(relevant) < len(res.get("hits") or []):
         _log("descartados por relevância:", len(res.get("hits") or []) - len(relevant))
     docs = _merge_by_doc(relevant, 50)      # todos os documentos relevantes
-    hits = docs[:k]                          # os k melhores vão ao modelo
     recommended = _recommend(docs)
+    try:
+        br = fut_br.result(timeout=BR_TIMEOUT)
+    except Exception as e:
+        _log("diretrizes BR falharam:", type(e).__name__)
+        br = []
+    hits = _com_diretrizes(br, docs, k)      # as diretrizes brasileiras do tema primeiro, depois os k melhores
+    _log("diretrizes BR:", sum(1 for h in hits if h.get("br")))
 
     # cálculos determinísticos (ex.: eGFR) — o código calcula, o modelo explica
     try:
@@ -574,6 +640,13 @@ def _ask_stream(query, k, history=None, contexto=None):
     except Exception as e:
         _log("tools falhou:", str(e)[:150])
         extra = None
+    try:
+        # IMC e classe, categoria KDIGO, da pergunta e do perfil escolhido: o código classifica, o modelo usa
+        fatos = tools.clinical_facts(query + "\n" + (contexto or ""))
+    except Exception as e:
+        _log("clinical_facts falhou:", type(e).__name__)
+        fatos = None
+    extra = "\n\n".join(x for x in (fatos, extra) if x) or None
     calculo = extra                                   # só o cálculo do sistema vale como "próprio" nas citações (abaixo)
     if contexto:
         extra = "\n\n".join(x for x in ("Paciente escolhido pelo médico para esta conversa (sem identificação; leve em conta "
@@ -598,25 +671,29 @@ def _ask_stream(query, k, history=None, contexto=None):
         """Valida/ajusta a frase; devolve (evento_sse ou None, parar?)."""
         if not st["first"]:
             st["first"] = True
-            if sentence.upper().startswith(synthesize.SENTINEL):
+            if sentence.lstrip().upper().startswith(synthesize.SENTINEL):
                 st["sentinel"] = True
                 return None, True
-        ok, _reason = validate.validate_sentence(sentence, allowed_ns, text_by_n)
-        if not ok:
-            st["skipped"] += 1
-            return None, False
+        # citação a trecho que não foi enviado: sai só o [n], o texto fica (o pedaço pode ser uma tabela inteira)
+        sentence, bad = validate.strip_invalid(sentence, allowed_ns)
+        if bad:
+            st["skipped"] += len(bad)
         sentence, removed = validate.ground_citations(sentence, text_by_n, own_text)
         if removed:
             st["uncited"] += len(removed)
-        if validate.is_ungrounded_claim(sentence):
-            st["ungrounded"] += 1
+        sentence, tiradas = validate.thin_citations(sentence)   # sem "[1][2]" em toda célula da tabela
+        st["thinned"] = st.get("thinned", 0) + tiradas
+        sentence = validate.sem_bastidor(sentence)
+        # repetir os dados/remédios do próprio paciente (pergunta, histórico, perfil escolhido) não é "sem fonte"
+        st["ungrounded"] += validate.ungrounded_lines(sentence, own_text + " " + (contexto or ""))
         cited.update(validate.citations(sentence))
         emitted.append(sentence)
         return _sse("sentence", {"text": sentence}), False
 
     try:
         stop = False
-        for delta in llm.stream_chat(messages):
+        for delta in llm.stream_chat(messages, max_tokens=config.ASK_MAX_TOKENS,
+                                     reasoning=config.ASK_REASONING_EFFORT, verbosity=config.ASK_VERBOSITY):
             for sentence in buf.feed(delta):
                 ev, stop = _handle(sentence)
                 if ev:
@@ -644,6 +721,8 @@ def _ask_stream(query, k, history=None, contexto=None):
         return
     if st["uncited"]:
         _log("citações sem respaldo removidas:", st["uncited"])
+    if getattr(llm.stream_chat, "fim", None) == "length":      # cortada pelo limite: não pode passar em silêncio
+        _log("resposta cortada pelo limite de tokens (ASK_MAX_TOKENS)")
     yield _sse("done", {"insufficient": False, "cited": sorted(cited),
                         "skipped": st["skipped"], "ungrounded": st["ungrounded"],
                         "citations_removed": st["uncited"],

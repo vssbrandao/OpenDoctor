@@ -9,10 +9,33 @@ sources:
     license: "PMC Open Access subset (verificar por artigo)"
     enabled: true
 
-  - name: conitec_pcdt
-    type: protocol           # PCDTs do Ministério da Saúde / Conitec
-    access: pdf_batch        # PDFs baixados em lote
+  # Diretrizes da Sociedade Brasileira de Cardiologia (Arq Bras Cardiol). Ingestão: scripts/ingest_diretrizes.py
+  - name: sbc
+    type: guideline
+    access: pdf_batch        # PDFs fixos, baixados um a um (sem crawler)
     language: portuguese
-    license: "Domínio público / Gov.br (verificar)"
-    enabled: false           # habilitar na fase F7
-    urls: []                 # preencher com as URLs dos PDFs quando habilitar
+    license: "CC BY 4.0 (Arq Bras Cardiol/SciELO)"
+    enabled: true
+    urls:
+      # SBC/SBH/SBN, Diretriz Brasileira de Hipertensão Arterial – 2025. Arq Bras Cardiol 2025;122(9):e20250624,
+      # DOI 10.36660/abc.20250624
+      - https://abccardiol.org/wp-content/uploads/articles_xml/0066-782X-abc-122-09-e20250624/0066-782X-abc-122-09-e20250624.x69353.pdf
+      # SBC, Diretriz Brasileira de Dislipidemias e Prevenção da Aterosclerose – 2025. Arq Bras Cardiol
+      # 2025;122(9):e20250640, DOI 10.36660/abc.20250640 (o link wp-content/uploads/2025/09/…_Port.x66747.pdf dá 404;
+      # este é o PDF em português da página do DOI)
+      - https://abccardiol.org/wp-content/uploads/articles_xml/0066-782X-abc-122-09-e20250640/0066-782X-abc-122-09-e20250640.x69353.pdf
+
+  # PCDTs do Ministério da Saúde / Conitec. Ingestão: scripts/ingest_diretrizes.py
+  - name: conitec_pcdt
+    type: protocol
+    access: pdf_batch
+    language: portuguese
+    license: "Ato oficial (Lei 9.610/98, art. 8º, IV); gov.br CC BY-ND 3.0"
+    enabled: true
+    urls:
+      # PCDT Hipertensão Arterial Sistêmica — Portaria SECTICS/MS nº 49, de 23/07/2025
+      - https://www.gov.br/conitec/pt-br/midias/protocolos/pcdt-hipertensao-arterial-sistemica.pdf/@@download/file
+      # PCDT Diabete Melito Tipo 2 — Portaria SCTIE/MS nº 13, de 21/02/2026
+      - https://www.gov.br/conitec/pt-br/midias/protocolos/2026/pcdt-diabete-melito-tipo-2/@@download/file
+      # PCDT Estratégias para Atenuar a Progressão da DRC — Portaria Conjunta SAES/SECTICS nº 11, de 16/09/2024
+      - https://www.gov.br/conitec/pt-br/midias/protocolos/pcdt-de-estrategias-para-atenuar-a-progressao-da-doenca-renal-cronica/@@display-file/file

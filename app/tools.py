@@ -48,6 +48,165 @@ def cockcroft_gault(scr_mg_dl, age, sex, weight_kg):
     return round(v, 1)
 
 
+# ===== classificações que o modelo errava (IMC 29 chamado de obesidade, TFG 78 chamada de DRC): o código classifica =====
+_NUM = r"(\d+(?:[.,]\d+)?)"
+_PESO_RE = re.compile(r"\bpeso(?: atual)?\s*(?:de\s*)?[:=]?\s*" + _NUM + r"\s*kg\b", re.I)
+_ALTURA_RE = re.compile(r"\baltura\s*(?:de\s*)?[:=]?\s*" + _NUM + r"\s*(m|cm)\b", re.I)
+_TFG_RE = re.compile(r"\b(?:tfg|e?gfr|taxa de filtra[cç][aã]o glomerular)(?:\s*estimada)?\s*(?:de\s*)?[:=]?\s*" + _NUM
+                     + r"\s*ml", re.I)
+_RAC_RE = re.compile(r"(?:\brac\b|albumina/creatinina|albumin[uú]ria)[^0-9]{0,30}?" + _NUM + r"\s*mg/g", re.I)
+
+
+_K_RE = re.compile(r"\bpot[áa]ssio(?: s[ée]rico)?\s*(?:de\s*)?[:=]?\s*" + _NUM + r"\s*(?:mEq|mmol)", re.I)
+_VARFARINA_RE = re.compile(r"\bvarfarina\b|\bwarfarin", re.I)
+
+
+_ESTATINA_RE = re.compile(r"\b(atorvastatina|rosuvastatina|sinvastatina|pravastatina|lovastatina|fluvastatina|"
+                          r"pitavastatina)\s*(\d+(?:[.,]\d+)?)\s*mg", re.I)
+_LDL_RE = re.compile(r"\bLDL(?:-?c)?\s*(?:de\s*)?[:=]?\s*(\d+(?:[.,]\d+)?)\s*mg", re.I)
+_SULFONIL_RE = re.compile(r"\b(gliclazida|glibenclamida|glimepirida|glipizida)\b", re.I)
+_IECA_BRA_RE = re.compile(r"\b(enalapril|captopril|ramipril|lisinopril|perindopril|losartana|valsartana|candesartana|"
+                          r"irbesartana|olmesartana|telmisartana|sacubitril)\b", re.I)
+_BB_RE = re.compile(r"\b(carvedilol|bisoprolol|metoprolol|nebivolol)\b", re.I)
+_CONGESTAO_RE = re.compile(r"acima do peso seco|congest|edema", re.I)
+# intensidade das estatinas (SBC Dislipidemias 2025 / ACC-AHA): alta ≥50%, moderada 30–49%, baixa <30%
+_REDUCAO = {"alta": (0.50, 0.60, "≥50%"), "moderada": (0.30, 0.49, "30–49%"), "baixa": (0.20, 0.29, "<30%")}
+_ESTATINA_DOSES = {   # (dose mínima de alta, dose mínima de moderada) em mg; abaixo da moderada = baixa
+    "atorvastatina": (40, 10), "rosuvastatina": (20, 5), "sinvastatina": (None, 20), "pravastatina": (None, 40),
+    "lovastatina": (None, 40), "fluvastatina": (None, 80), "pitavastatina": (None, 2),
+}
+
+
+def estatina_intensidade(nome, mg):
+    alta, mod = _ESTATINA_DOSES.get(nome.lower(), (None, None))
+    if mod is None:
+        return None
+    if alta is not None and mg >= alta:
+        return "alta"
+    return "moderada" if mg >= mod else "baixa"
+
+
+def _f(x):
+    return float(x.replace(",", "."))
+
+
+def _br(x, casas=1):
+    return f"{x:.{casas}f}".replace(".", ",")
+
+
+def imc_classe(imc):
+    """Classificação do IMC em adultos (OMS / ABESO)."""
+    if imc < 18.5:
+        return "baixo peso"
+    if imc < 25:
+        return "eutrofia"
+    if imc < 30:
+        return "sobrepeso (pré-obesidade)"
+    if imc < 35:
+        return "obesidade grau I"
+    if imc < 40:
+        return "obesidade grau II"
+    return "obesidade grau III"
+
+
+def albuminuria_stage(rac_mg_g):
+    if rac_mg_g < 30:
+        return "A1"
+    if rac_mg_g <= 300:
+        return "A2"
+    return "A3"
+
+
+def clinical_facts(text):
+    """IMC e classe (se houver peso e altura) e categoria G/A da KDIGO (se houver TFG e/ou RAC) da pergunta; None se
+    não houver nada. Só regex: nada sai do servidor."""
+    t = text or ""
+    lines = []
+    peso, alt = _PESO_RE.search(t), _ALTURA_RE.search(t)
+    if peso and alt:
+        try:
+            kg, h = _f(peso.group(1)), _f(alt.group(1))
+            h = h / 100 if alt.group(2).lower() == "cm" else h
+            if 20 <= kg <= 350 and 1.0 <= h <= 2.3:
+                imc = kg / (h * h)
+                lines.append(f"- IMC = {_br(kg)} kg / ({_br(h, 2)} m)² = {_br(imc)} kg/m² → {imc_classe(imc)}")
+        except ValueError:
+            pass
+    tfg, rac = _TFG_RE.search(t), _RAC_RE.search(t)
+    g = a = None
+    if tfg:
+        try:
+            v = _f(tfg.group(1))
+            if 1 <= v <= 200:
+                g = ckd_stage(v)
+                lines.append(f"- TFG informada {_br(v, 0)} mL/min/1,73 m² → categoria {g} (KDIGO)")
+        except ValueError:
+            pass
+    if rac:
+        try:
+            v = _f(rac.group(1))
+            if 0 <= v <= 20000:
+                a = albuminuria_stage(v)
+                lines.append(f"- Relação albumina/creatinina {_br(v, 0)} mg/g → categoria {a} (KDIGO)")
+        except ValueError:
+            pass
+    if g and a:
+        dr = g in ("G3a", "G3b", "G4", "G5") or a in ("A2", "A3")
+        lines.append(f"- Categoria KDIGO {g}/{a}" + (" → doença renal crônica (se persistir por mais de 3 meses)" if dr
+                                                     else " → sem critério de doença renal crônica por esses dois valores"))
+    elif g in ("G1", "G2") and not a:
+        lines.append(f"- {g} sozinho não define doença renal crônica: precisa de marcador de lesão (ex.: albuminúria)")
+    # regras que o modelo (raciocínio baixo) às vezes não aplicava sozinho: vão como dado do caso
+    k = _K_RE.search(t)
+    if k:
+        try:
+            v = _f(k.group(1))
+            if 1.5 <= v <= 9 and v >= 5.0:
+                lines.append(f"- Potássio {_br(v)} mEq/L (≥5,0) → risco alto de hipercalemia: creatinina e potássio em 1–2 "
+                             "semanas (não 2–4) após qualquer início/ajuste de IECA/BRA, sacubitril/valsartana ou "
+                             "antagonista mineralocorticoide; com K >5,0, não subir esses remédios antes de reduzir o K")
+        except ValueError:
+            pass
+    est = _ESTATINA_RE.search(t)
+    if est:
+        nome, mg = est.group(1).lower(), _f(est.group(2))
+        inten = estatina_intensidade(nome, mg)
+        if inten:
+            faixa = _REDUCAO[inten]
+            txt = f"- {nome.capitalize()} {_br(mg, 0)} mg = estatina de intensidade {inten} (redução esperada do LDL {faixa[2]})"
+            ldl = _LDL_RE.search(t)
+            if ldl:
+                v = _f(ldl.group(1))
+                if 20 <= v <= 600:
+                    lo, hi = v / (1 - faixa[0]), v / (1 - faixa[1])
+                    txt += (f"; LDL atual {_br(v, 0)} em uso dela → LDL antes do tratamento estimado em ~{_br(lo, 0)}–"
+                            f"{_br(hi, 0)} mg/dL (se a adesão for boa; peça o valor pré-tratamento)")
+                    if lo >= 190:
+                        txt += " → provável LDL basal ≥190: risco ALTO (meta <70, redução ≥50%) e suspeita de hipercolesterolemia familiar"
+                    elif hi >= 190:
+                        txt += " → o LDL basal pode ter sido ≥190 (risco alto e suspeita de hipercolesterolemia familiar): confirme"
+            lines.append(txt)
+            if inten != "alta":
+                lines.append("- Se o risco for alto, muito alto ou extremo (ou LDL basal ≥190/HF): trocar JÁ por estatina de alta "
+                             "intensidade (atorvastatina 40–80 mg ou rosuvastatina 20–40 mg) + ezetimiba 10 mg desde o início — não "
+                             "esperar novo LDL nem a falha da estatina isolada (SBC Dislipidemias 2025)")
+    if _IECA_BRA_RE.search(t):
+        lines.append("- Em uso de IECA/BRA/sacubitril-valsartana: se associar espironolactona ou eplerenona, o risco de "
+                     "hipercalemia é alto → creatinina e potássio em 1–2 semanas (não 2–4), depois a cada 3–6 meses")
+    if _SULFONIL_RE.search(t):
+        lines.append("- Em uso de sulfonilureia: ao iniciar insulina, reduza a dose dela (ex.: à metade) ou suspenda — não espere "
+                     "hipoglicemia; ao associar GLP-1 ou iSGLT2 com HbA1c perto da meta, também reduza; oriente hipoglicemia")
+    if _BB_RE.search(t) and _CONGESTAO_RE.search(t):
+        lines.append("- Betabloqueador com congestão (acima do peso seco/edema): não suba a dose do betabloqueador até voltar ao "
+                     "peso seco; primeiro ajuste o diurético e reavalie em 1–2 semanas")
+    if _VARFARINA_RE.search(t):
+        lines.append("- Em uso de varfarina: na troca por DOAC, suspender a varfarina e iniciar o DOAC só com INR <2,0 "
+                     "(apixabana, dabigatrana), ≤2,5 (edoxabana) ou ≤3,0 (rivaroxabana) — diga o número, nunca sobreponha")
+    if not lines:
+        return None
+    return ("DADOS CALCULADOS (use exatamente estas classificações; não as altere):\n" + "\n".join(lines))
+
+
 def _extract_renal_inputs(text):
     """Extrai creatinina/idade/sexo/peso da pergunta (LLM só EXTRAI, não calcula)."""
     try:

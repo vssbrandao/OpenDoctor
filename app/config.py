@@ -51,6 +51,12 @@ SCRIBE_KW_EXAME = os.environ.get("SCRIBE_KW_EXAME", "").strip() == "1"
 REASONING_EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "low").strip()
 REASONING_TOKEN_BUDGET = int(os.environ.get("OPENAI_REASONING_TOKEN_BUDGET", "4000"))
 VERBOSITY = os.environ.get("OPENAI_VERBOSITY", "low").strip()   # low | medium | high
+# a resposta do assistente (/ask): mais raciocínio, mais texto e mais espaço que as chamadas auxiliares (a resposta de
+# caso clínico, como a do ChatGPT, passa de 1.000 palavras com tabelas)
+# (medido em 15/11/2026: com "medium" a 1ª frase levava ~73 s; o padrão vem da medição de compara_respostas)
+ASK_REASONING_EFFORT = os.environ.get("ASK_REASONING_EFFORT", "low").strip()
+ASK_VERBOSITY = os.environ.get("ASK_VERBOSITY", "low").strip()
+ASK_MAX_TOKENS = int(os.environ.get("ASK_MAX_TOKENS", "4500"))
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small").strip()
 EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "1536"))
 
