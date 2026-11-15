@@ -9,7 +9,7 @@
 // acabou leva ao login, que volta ao Perfil; o
 // Sair vai a /auth/logout e cai no login; Excluir conta abre a confirmação, que só acende com o e-mail da conta (sem
 // diferença de maiúsculas e espaços), fecha sem pedir nada (Cancelar, Esc, fora da janela), avisa quando o servidor
-// recusa e, confirmada, manda só o e-mail num POST JSON e sai pelo /auth/logout; o menu lateral de todas as telas tem o Perfil logo depois de Configurações (e
+// recusa e, confirmada, manda só o e-mail num POST JSON e sai pelo /auth/logout; o menu lateral de todas as telas tem o Perfil no menu do Configurações do pé (e
 // leva a ele), aberto e recolhido; o botão do menu mostra a dica "Alternar barra lateral" com o atalho (⇧⌘S) no
 // mouseover, sem sair da tela, e o atalho recolhe e abre o menu (menos com uma janela aberta).
 import { spawn } from 'node:child_process';
@@ -138,12 +138,10 @@ const cenarios = [
     certo(await ev(`document.querySelector('#pfSub a').getAttribute('href')`) === 'opendoctor-configuracoes.html', 'link do subtítulo');
     certo(await ev(`[...document.querySelectorAll('#pfCampos .fl-input')].every((i) => i.readOnly)`), 'dado da conta editável no Perfil');
     certo(await ev(`document.getElementById('pfFoot').hidden`), 'o rodapé do status ficou depois de carregar');
-    // o menu: Perfil marcado, logo depois de Configurações, que leva a Configurações
-    const menu = await ev(`(() => { const p = document.querySelector('.nav .item[data-tip="Perfil"]'), c = p && p.previousElementSibling;
-      return { ativo: p.classList.contains('active'), href: p.getAttribute('data-href'), antes: c && c.getAttribute('data-tip'), cfg: c && c.getAttribute('data-href'),
-               ativos: document.querySelectorAll('.nav .item.active').length }; })()`);
-    certo(menu.ativo && !menu.href && menu.antes === 'Configurações' && menu.cfg === 'opendoctor-configuracoes.html' && menu.ativos === 1,
-      'menu: ' + JSON.stringify(menu));
+    // o menu: o Configurações do pé marcado (o Perfil fica no menu dele, logo depois de Configurações e Integrações)
+    const menu = await ev(`(() => { const c = document.getElementById('navCfg'), ops = [...document.querySelectorAll('#cfgMenu .cfg-menu-op')].map((a) => a.textContent);
+      return { ativo: c.classList.contains('active'), ops: ops.join(','), ativos: document.querySelectorAll('.nav .item.active').length }; })()`);
+    certo(menu.ativo && menu.ops === 'Configurações,Integrações,Perfil,Sair' && menu.ativos === 1, 'menu: ' + JSON.stringify(menu));
     // as medidas de Configurações: coluna de 516, cartões de canto 40, botão de 64
     const col = await caixa('.cfg'), btn = await caixa('#pfLogout');
     certo(col.w === 516 && btn.h === 64, 'medidas: ' + JSON.stringify({ col, btn }));
@@ -320,7 +318,7 @@ const cenarios = [
     certo(saiu.length === 1 && saiu[0].method === 'GET' && saiu[0].tipo === 'Document', 'pedido de sair: ' + JSON.stringify(saiu));
     return 'GET /auth/logout como navegação (o servidor apaga a sessão) → login';
   }],
-  ['o menu de todas as telas tem o Perfil logo depois de Configurações e leva a ele (aberto e recolhido)', async () => {
+  ['o menu de todas as telas tem o Perfil no "Configurações" do pé (como o "Settings" da Sana) e leva a ele (aberto e recolhido)', async () => {
     const vistas = [];
     for (const [pagina, recolhido] of [['opendoctor-agenda.html', false], ['opendoctor-integracao.html', false],
                                        ['opendoctor-configuracoes.html', false], ['opendoctor-configuracoes.html', true],
@@ -328,22 +326,25 @@ const cenarios = [
       zera();
       await ev(`localStorage.setItem('od_nav_collapsed', '${recolhido ? 1 : 0}'); 1`);
       await abre(pagina);
-      const m = await ev(`(() => { const p = document.querySelectorAll('.nav .item[data-tip="Perfil"]'), c = p[0] && p[0].previousElementSibling;
-        const r = p[0] && p[0].getBoundingClientRect(), rc = c && c.getBoundingClientRect(), ic = p[0] && p[0].querySelector('.ico svg').getBoundingClientRect();
-        return { n: p.length, antes: c && c.getAttribute('data-tip'), href: p[0] && p[0].getAttribute('data-href'), ativo: p[0] && p[0].classList.contains('active'),
-                 rotulo: p[0] && getComputedStyle(p[0].lastElementChild).display, h: r && r.height, hc: rc && rc.height, w: r && r.width,
-                 x: r && r.x, xc: rc && rc.x, ico: ic && [ic.width, ic.height], vao: r && rc && r.top - rc.bottom }; })()`);
-      certo(m.n === 1 && m.antes === 'Configurações' && m.href === 'opendoctor-perfil.html' && !m.ativo, `${pagina}: ` + JSON.stringify(m));
-      certo(m.h === m.hc && m.x === m.xc && m.vao === 4 && m.ico[0] === 16 && m.ico[1] === 16, `${pagina}: tamanho no menu ` + JSON.stringify(m));
-      certo(recolhido ? (m.rotulo === 'none' && m.w === 40) : m.rotulo !== 'none', `${pagina} ${recolhido ? 'recolhido' : 'aberto'}: ` + JSON.stringify(m));
-      await clica('.nav .item[data-tip="Perfil"]');
+      const m = await ev(`(() => { const c = document.getElementById('navCfg'), n = document.querySelector('.nav').getBoundingClientRect(), r = c.getBoundingClientRect();
+        return { meio: [...document.querySelectorAll('.nav-main .item')].map((x) => x.dataset.tip), pe: n.bottom - r.bottom, w: r.width,
+                 rotulo: getComputedStyle(c.children[1]).display, ico: getComputedStyle(c.querySelector('.ico')).display }; })()`);
+      certo(!m.meio.includes('Perfil') && !m.meio.includes('Configurações') && !m.meio.includes('Integrações') && m.pe === 16, `${pagina}: ` + JSON.stringify(m));
+      certo(recolhido ? (m.rotulo === 'none' && m.w === 40 && m.ico !== 'none') : (m.rotulo !== 'none' && m.ico === 'none'),
+            `${pagina} ${recolhido ? 'recolhido' : 'aberto'}: ` + JSON.stringify(m));
+      await clica('#navCfg');
+      await ate(`!document.getElementById('cfgMenu').hidden`, 2000, `${pagina}: o menu do Configurações abre`);
+      const ops = await ev(`[...document.querySelectorAll('#cfgMenu .cfg-menu-op')].map((a) => a.textContent + '→' + a.getAttribute('href')).join(' | ')`);
+      certo(ops === 'Configurações→opendoctor-configuracoes.html | Integrações→opendoctor-integracao.html | Perfil→opendoctor-perfil.html | Sair→/auth/logout',
+            `${pagina}: ` + ops);
+      await clica('#cfgMenu .cfg-menu-op[href="opendoctor-perfil.html"]');
       await ate(`location.pathname === '/opendoctor-perfil.html'`, 4000, `${pagina} → Perfil`);
       await ate(carregou, 4000, 'dados do Perfil');
       if (recolhido) certo(await ev(`document.querySelector('.nav').classList.contains('collapsed')`), 'o Perfil abriu o menu recolhido');
       vistas.push(pagina.replace('opendoctor-', '').replace('.html', '') + (recolhido ? ' (recolhido)' : ''));
     }
     await ev(`localStorage.setItem('od_nav_collapsed', '0'); 1`);
-    return vistas.join(', ') + ' → Perfil';
+    return vistas.join(', ') + ' → Configurações → Perfil';
   }],
   ['o botão do menu mostra "Alternar barra lateral" com o atalho no mouseover, e o atalho recolhe e abre o menu', async () => {
     const mac = await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`);
@@ -425,7 +426,7 @@ const cenarios = [
   ['menu retraído: cada ícone mostra a dica escura com o nome, à direita do menu; aberto, nenhuma (o nome já está escrito)', async () => {
     const mouse = (x, y) => send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none' });
     const ligada = `document.querySelector('.nav-tip').classList.contains('on')`;
-    const NOMES = ['Consultas', 'Buscar', 'Pacientes', 'Prescrições', 'Integrações', 'Configurações', 'Perfil'];
+    const NOMES = ['New chat', 'Consultas', 'Buscar', 'Pacientes', 'Prescrições', 'Configurações'];   // Integrações e Perfil: no menu do Configurações (pé)
     const item = (nome) => ev(`(() => { const b = document.querySelector('.nav .item[data-tip=${JSON.stringify(nome)}]'), r = b.getBoundingClientRect(),
         n = document.querySelector('.nav').getBoundingClientRect(), p = document.querySelector('.nav-tip'), t = p.getBoundingClientRect(), cs = getComputedStyle(p);
       return { on: p.classList.contains('on'), texto: p.querySelector('span').textContent, title: b.getAttribute('title'),
@@ -439,7 +440,7 @@ const cenarios = [
       await abre(pagina);
       await mouse(900, 500);
       certo(await ev(`document.querySelector('.nav').classList.contains('collapsed')`), `${pagina}: o menu não abriu retraído`);
-      certo(await ev(`document.querySelectorAll('.nav .item[data-tip]').length === 7 && !document.querySelector('.nav .item[title]')`),
+      certo(await ev(`document.querySelectorAll('.nav .item[data-tip]').length === 6 && !document.querySelector('.nav .item[title]')`),
             `${pagina}: itens do menu sem data-tip ou ainda com title`);
       // o Buscar abre a busca: na agenda, a janela; nas outras telas, leva à agenda com ela aberta (#buscar, sem dado nenhum)
       const busca = await ev(`(() => { const b = document.querySelector('.nav .item[data-tip="Buscar"]'); return b && { id: b.id, href: b.getAttribute('data-href') }; })()`);
@@ -466,14 +467,14 @@ const cenarios = [
       // aberto: o nome está escrito, nenhuma dica
       await ev(`localStorage.setItem('od_nav_collapsed', '0'); 1`);
       await abre(pagina);
-      const d = await item('Perfil');
+      const d = await item('Consultas');
       await mouse(d.bx, d.by);
       await sleep(700);
       certo(!(await ev(ligada)), `${pagina}: dica com o menu aberto`);
       await mouse(900, 500);
       vistas.push(pagina.replace('opendoctor-', '').replace('.html', ''));
     }
-    return vistas.join(', ') + ': 7 ícones com o nome à direita; do vizinho sem espera; aberto, nada';
+    return vistas.join(', ') + ': 6 ícones com o nome à direita; do vizinho sem espera; aberto, nada';
   }],
   ['no Perfil, "Configurações" (no texto e no menu) leva a Configurações', async () => {
     zera();
@@ -482,7 +483,9 @@ const cenarios = [
     await clica('.cfg-sub a.cfg-back');
     await ate(`location.pathname === '/opendoctor-configuracoes.html'`, 4000, 'Configurações pelo texto');
     await abre('opendoctor-perfil.html');
-    await clica('.nav .item[data-tip="Configurações"]');
+    await clica('#navCfg');                                       // o Configurações do pé abre o menu; nele, Configurações
+    await ate(`!document.getElementById('cfgMenu').hidden`, 2000, 'o menu do Configurações');
+    await clica('#cfgMenu .cfg-menu-op[href="opendoctor-configuracoes.html"]');
     await ate(`location.pathname === '/opendoctor-configuracoes.html'`, 4000, 'Configurações pelo menu');
     return 'pelo texto e pelo menu';
   }],

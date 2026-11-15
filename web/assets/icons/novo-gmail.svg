@@ -1,0 +1,14 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="16" height="12" viewBox="0 0 16 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Gmail icon 1" clip-path="url(#clip0_0_150)">
+<path id="Vector" d="M1.09091 12H3.63636V5.81818L0 3.09091V10.9091C0 11.5127 0.489091 12 1.09091 12Z" fill="#4285F4"/>
+<path id="Vector_2" d="M12.3636 12H14.9091C15.5127 12 16 11.5109 16 10.9091V3.09091L12.3636 5.81818" fill="#34A853"/>
+<path id="Vector_3" d="M12.3636 1.09091V5.81818L16 3.09091V1.63636C16 0.287273 14.46 -0.481818 13.3818 0.327273" fill="#FBBC04"/>
+<path id="Vector_4" d="M3.63636 5.81818V1.09091L8 4.36364L12.3636 1.09091V5.81818L8 9.09091" fill="#EA4335"/>
+<path id="Vector_5" d="M0 1.63636V3.09091L3.63636 5.81818V1.09091L2.61818 0.327273C1.53818 -0.481818 0 0.287273 0 1.63636" fill="#C5221F"/>
+</g>
+<defs>
+<clipPath id="clip0_0_150">
+<rect width="16" height="12" fill="white"/>
+</clipPath>
+</defs>
+</svg>

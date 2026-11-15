@@ -56,19 +56,25 @@ let pasta = args[1], tam = CGFloat(Double(args[2])!)
 let ctTam = CTFontCreateWithGraphicsFont(cg, tam, nil, nil)
 for pedido in args.dropFirst(3) {
     let partes = pedido.split(separator: "=").map(String.init)
-    let nome = partes[0], arquivo = partes.count > 1 ? partes[1] : "sf-" + nome.replacingOccurrences(of: ".", with: "-")
-    let cfg = NSImage.SymbolConfiguration(pointSize: 160, weight: .medium)
-    guard let img = NSImage(systemSymbolName: nome, accessibilityDescription: nil)?.withSymbolConfiguration(cfg),
-          let cgimg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else { print("sem símbolo:", nome); continue }
-    let w = cgimg.width, h = cgimg.height
-    let px = mascara({ ctx in ctx.clip(to: CGRect(x: 0, y: 0, width: w, height: h), mask: cgimg); ctx.fill(CGRect(x: 0, y: 0, width: w, height: h)) }, w, h)
-    guard let (alvo, ra) = normaliza(px, w, h) else { print("vazio:", nome); continue }
+    // "nome@10017C": usa esse código direto (quando a comparação escolhe o glifo errado — o "plus" Medium saía uma estrela)
+    let np = partes[0].split(separator: "@").map(String.init)
+    let nome = np[0], arquivo = partes.count > 1 ? partes[1] : "sf-" + nome.replacingOccurrences(of: ".", with: "-")
     var melhor: (UInt32, Float) = (0, .infinity)
-    for (cp, _, v, r) in glifos {
-        var d: Float = 0
-        for k in 0..<(N * N) { let e = v[k] - alvo[k]; d += e * e }
-        d += abs(log(r / ra)) * 200
-        if d < melhor.1 { melhor = (cp, d) }
+    if np.count > 1, let cp = UInt32(np[1], radix: 16) {
+        melhor = (cp, 0)
+    } else {
+        let cfg = NSImage.SymbolConfiguration(pointSize: 160, weight: .medium)
+        guard let img = NSImage(systemSymbolName: nome, accessibilityDescription: nil)?.withSymbolConfiguration(cfg),
+              let cgimg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) else { print("sem símbolo:", nome); continue }
+        let w = cgimg.width, h = cgimg.height
+        let px = mascara({ ctx in ctx.clip(to: CGRect(x: 0, y: 0, width: w, height: h), mask: cgimg); ctx.fill(CGRect(x: 0, y: 0, width: w, height: h)) }, w, h)
+        guard let (alvo, ra) = normaliza(px, w, h) else { print("vazio:", nome); continue }
+        for (cp, _, v, r) in glifos {
+            var d: Float = 0
+            for k in 0..<(N * N) { let e = v[k] - alvo[k]; d += e * e }
+            d += abs(log(r / ra)) * 200
+            if d < melhor.1 { melhor = (cp, d) }
+        }
     }
     // o peso: a fonte reserva só tem o Regular (o ".medium" do nome é a escala Medium); com SF_PESO o glifo vem da
     // SF Pro Display daquele peso (/Library/Fonts/SF-Pro-Display-<Peso>.otf), que traz os símbolos nos mesmos códigos

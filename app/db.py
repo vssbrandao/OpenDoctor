@@ -1,5 +1,6 @@
 """Camada de banco (Supabase/Postgres + pgvector)."""
 import contextlib
+import re
 import time
 
 import psycopg
@@ -736,7 +737,8 @@ def _patient(r):
 def list_patients(user_id, limit=1000, q=None):
     """Pacientes do médico (os usados mais recentemente primeiro), com nascimento/sexo (para
     diferenciar homônimos) e o resumo do prontuário: nº de anotações e data da última.
-    q: só os que têm q no nome (sem acento nem maiúscula, como a busca da tela), procurados entre todos."""
+    q: só os que têm q no nome (sem acento nem maiúscula, como a busca da tela), procurados entre todos.
+    Com a migração 0021, também particular/convênio e o plano (a coluna Convênio da tela Pacientes); sem ela, None."""
     filtro, args = "", ()
     if q is not None:                                 # a de exemplo é achada pelo nome, não pela chave
         k = patient_key(q)
@@ -744,11 +746,12 @@ def list_patients(user_id, limit=1000, q=None):
                          or (p.patient_key = %s and position(%s in lower(p.name)) > 0))"""
         args = (EXAMPLE_KEY, k, EXAMPLE_KEY, k)
     with connection() as conn:
+        conv = ", p.coverage, p.health_plan" if tem_contato(conn) else ", null, null"
         with conn.cursor() as cur:
             cur.execute(
                 f"""select p.id, p.name, p.birth_date, p.sex, p.patient_key = %s,
                           count(n.id) filter (where n.content <> ''),
-                          max(coalesce(n.event_start, n.created_at)) filter (where n.content <> '')
+                          max(coalesce(n.event_start, n.created_at)) filter (where n.content <> ''){conv}
                    from patients p
                    left join clinical_notes n on n.user_id = p.user_id and n.patient_id = p.id
                    where p.user_id = %s {filtro}
@@ -756,7 +759,8 @@ def list_patients(user_id, limit=1000, q=None):
                    order by p.updated_at desc limit %s""",
                 (EXAMPLE_KEY, user_id, *args, limit))
             return [{"id": r[0], "name": r[1], "birth_date": r[2].isoformat() if r[2] else None, "sex": r[3],
-                     "example": r[4], "notes": r[5], "last": r[6].isoformat() if r[6] else None} for r in cur.fetchall()]
+                     "example": r[4], "notes": r[5], "last": r[6].isoformat() if r[6] else None,
+                     "coverage": r[7] or None, "health_plan": r[8] or None} for r in cur.fetchall()]
 
 
 def find_patients(user_id, name):
@@ -1328,28 +1332,46 @@ def _rx_remedio(nome, dose):
     return f"{nome} {dose}" if dose else nome
 
 
+_RX_PRAZO = re.compile(r"(\d{1,3})\s*(dias?|semanas?|m[eê]s(?:es)?)\b", re.I)
+
+
+def _rx_duracao(itens):
+    """Duração do tratamento (tela Prescrições), dos itens (continuo, posologia): quantos são de uso contínuo, quantos
+    não, e o prazo dos que não são, lido da posologia ("por 7 dias", "2 semanas", "1 mês"; o maior, em dias; None sem)."""
+    cont = sum(1 for c, _ in itens if c)
+    dias = []
+    for c, po in itens:
+        for n, u in ([] if c else _RX_PRAZO.findall(str(po or ""))):
+            n, u = int(n), u.lower()
+            dias.append(n * 7 if u.startswith("semana") else n * 30 if u.startswith("m") else n)
+    return {"continuos": cont, "temporarios": len(itens) - cont, "dias": max(dias) if dias else None}
+
+
 def search_receitas(user_id, q, limit):
     """Busca global (aba Receitas): receitas do médico em que q está no nome do paciente ou no nome de um remédio,
     da mais nova para a mais velha. A comparação é aqui, com patient_key (sem acento nem maiúscula; % e _ são letras
     como as outras; a de exemplo é achada pelo nome, nunca pela chave " exemplo"). q vazio: as mais recentes. O rascunho
-    sem remédio não entra; emitidas e canceladas entram. Cada uma: id, paciente, tipo, status, data e os remédios."""
+    sem remédio não entra; emitidas e canceladas entram. Cada uma: id, paciente (e o CPF dele, para a tela Prescrições),
+    tipo, status, data, os remédios e a duração do tratamento (_rx_duracao)."""
     k = patient_key(q)
     with connection() as conn:
         rows = conn.execute("""select x.id, x.patient_id, p.name, x.tipo, x.status, coalesce(x.emitida_em, x.created_at),
-                                      (select jsonb_agg(jsonb_build_array(i.v ->> 'nome', i.v ->> 'dose') order by i.n)
-                                         from jsonb_array_elements(x.itens) with ordinality i(v, n))
+                                      (select jsonb_agg(jsonb_build_array(i.v ->> 'nome', i.v ->> 'dose', i.v -> 'continuo', i.v ->> 'posologia') order by i.n)
+                                         from jsonb_array_elements(x.itens) with ordinality i(v, n)),
+                                      p.cpf
                                from receitas x
                                join patients p on p.id = x.patient_id and p.user_id = x.user_id
                                where x.user_id = %s and (x.status <> 'rascunho' or x.itens <> '[]'::jsonb)
                                order by coalesce(x.emitida_em, x.created_at) desc limit %s""",
                             (user_id, RX_BUSCA_LIDAS if k else limit)).fetchall()
     out = []
-    for rid, pid, nome, tipo, status, quando, itens in rows:
-        itens = [(n, d) for n, d in itens or [] if str(n or "").strip()]
-        if k and k not in patient_key(nome) and not any(k in patient_key(n) for n, _ in itens):
+    for rid, pid, nome, tipo, status, quando, itens, cpf in rows:
+        itens = [(n, d, c is True, po) for n, d, c, po in itens or [] if str(n or "").strip()]
+        if k and k not in patient_key(nome) and not any(k in patient_key(n) for n, *_ in itens):
             continue
-        out.append({"id": str(rid), "patient_id": pid, "patient": nome, "tipo": tipo, "status": status,
-                    "data": quando.isoformat(), "remedios": [_rx_remedio(n, d) for n, d in itens]})
+        out.append({"id": str(rid), "patient_id": pid, "patient": nome, "cpf": cpf or None, "tipo": tipo, "status": status,
+                    "data": quando.isoformat(), "remedios": [_rx_remedio(n, d) for n, d, *_ in itens],
+                    "duracao": _rx_duracao([(c, po) for *_, c, po in itens])})
         if len(out) >= limit:
             break
     return out

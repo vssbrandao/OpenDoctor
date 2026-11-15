@@ -170,9 +170,11 @@ async function peloFormulario(nome) {
 }
 
 // os botões das barras de cima da agenda: o texto da dica (o aria-label) e a letra do atalho (⇧⌘ + letra, Ctrl+Shift fora do Mac)
+// Consultas sem o assistente (pedido do usuário, 14/11): na agenda ficam só os botões dela; os do Assistente (O, H, X) e o
+// Expandir agenda (A) estão escondidos ali, e o atalho deles não faz nada (o assistente fica no New chat e no prontuário)
 const BOTOES = [['agCreate', 'Criar evento', 'E'], ['calBtn', 'Escolher data', 'D'], ['viewSel', 'Mudar para Semana', 'U'],
-                ['agSearch', 'Buscar', 'F'], ['agExpand', 'Expandir agenda', 'A'], ['raNew', 'Nova conversa', 'O'],
-                ['raHist', 'Histórico', 'H'], ['raExpand', 'Expandir', 'X']];
+                ['agSearch', 'Buscar', 'F']];
+const ESCONDIDOS = [['agExpand', 'A'], ['raNew', 'O'], ['raHist', 'H'], ['raExpand', 'X']];
 
 const cenarios = [
   ['dia inteiro aparece no Dia, entre a data e a linha', async () => {
@@ -320,11 +322,10 @@ const cenarios = [
       for (const type of ['mouseMoved', 'mousePressed', 'mouseReleased'])
         await send('Input.dispatchMouseEvent', { type, x: c.x, y: c.y, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: 1 });
     };
-    const recolheEabre = async () => {
-      await ev(`document.getElementById('agExpand').click(); 1`);
-      await ate(`document.querySelector('.right').classList.contains('collapsed')`, 2000, 'recolheu o assistente');
+    const recolheEabre = async () => {                             // Consultas sem o assistente: a coluna só com a janela
+      await ate(`!document.querySelector('.right').getClientRects().length`, 2000, 'a coluna escondida em Consultas');
       await ev(`window.__openEventAt(200, 200, new Date(), 11, 0); 1`);
-      await ate(`!document.getElementById('evPop').hidden && !document.querySelector('.right').classList.contains('collapsed')`, 2000, 'abriu');
+      await ate(`!document.getElementById('evPop').hidden && !!document.querySelector('.right').getClientRects().length`, 2000, 'abriu');
     };
     await recolheEabre();
     await clicaMouse('#calBtn');
@@ -333,20 +334,21 @@ const cenarios = [
     certo(await ev(`document.getElementById('evPop').hidden && !document.querySelector('.right').classList.contains('collapsed')`), 'fechou sem recolher o assistente');
     await fecha();
     await ate(`document.getElementById('calPop').hidden`, 2000, 'fechou o calendário');
+    // Consultas sem o assistente: o ⇧⌘A (Expandir agenda, escondido) não faz nada — a consulta continua aberta
     await recolheEabre();
     const mods = (await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`)) ? 4 + 8 : 2 + 8;
     for (const type of ['rawKeyDown', 'keyUp']) await send('Input.dispatchKeyEvent', { type, modifiers: mods, key: 'A', code: 'KeyA', windowsVirtualKeyCode: 65 });
-    await ate(`document.getElementById('evPop').hidden && document.querySelector('.right').classList.contains('collapsed')`, 2000, 'o ⇧⌘A recolhe: ' +
-      await ev(`JSON.stringify({ pop: document.getElementById('evPop').hidden, rec: document.querySelector('.right').classList.contains('collapsed') })`));
-    certo(await ev(`document.getElementById('agExpand').getAttribute('aria-label')`) === 'Mostrar assistente', 'o ⇧⌘A fez o que o botão dizia');
-    await ev(`document.getElementById('showChat').click(); 1`);
-    await ate(`!document.querySelector('.right').classList.contains('collapsed')`, 2000, 'o assistente de volta');
-    // consulta aberta com uma alteração que não dá para salvar: o "Expandir agenda" não esconde a coluna com o aviso
+    await sleep(300);
+    certo(await ev(`!document.getElementById('evPop').hidden && !!document.querySelector('.right').getClientRects().length`), 'o ⇧⌘A mexeu na consulta aberta');
+    await fecha();
+    await ate(`document.getElementById('evPop').hidden && !document.querySelector('.right').getClientRects().length`, 2000, 'fechou e a coluna sumiu');
+    // consulta aberta com uma alteração que não dá para salvar: clicar fora (no calendário) não esconde a coluna com o aviso
     await abreEvento('.ev-real[data-evkey="plantao"]');
     await editar();
     await ev(`(() => { const p = document.getElementById('evPatient'); p.value = 'Alguém Fora Da Lista'; return 1; })()`);
-    await clicaMouse('#agExpand');
+    await clicaMouse('#viewSel');
     await sleep(300);
+    if (await ev(`document.querySelector('.stage').classList.contains('week')`)) await clica('#viewSel');   // volta ao Dia
     certo(await ev(`!document.getElementById('evPop').hidden && document.getElementById('evPop').getClientRects().length > 0 && document.getElementById('evMsg').getClientRects().length > 0 && !document.querySelector('.right').classList.contains('collapsed')`),
           'o aviso e a consulta continuam à vista: ' + await txt('#evMsg'));
     await fecha(); await fecha();                              // o segundo fechar descarta
@@ -1052,7 +1054,7 @@ const cenarios = [
     for (const [id, texto, letra] of BOTOES) {
       await longe();
       const d = await passa(id, texto, letra);
-      if (id === 'raExpand') await foto('dica-barras.png');
+      if (id === 'agSearch') await foto('dica-barras.png');
       vistos.push(texto + ' ' + d.kbd + (d.dir === 8 ? ' (na beira)' : ''));
     }
     await longe();
@@ -1124,15 +1126,18 @@ const cenarios = [
     await ate(`!document.getElementById('evPop').hidden`, 2000, 'janela do evento pelo atalho');
     await atalho('D');
     await ate(`document.getElementById('evPop').hidden && !document.getElementById('calPop').hidden`, 2000, 'o ⇧⌘D fecha o evento e abre o calendário');
-    // o assistente que volta pelo prontuário ("Perguntar ao assistente" aperta o #showChat): o Expandir agenda volta ao nome dele
+    // em Consultas, os botões do Assistente e o Expandir agenda estão escondidos: o atalho deles não aperta nada
     await nova();
-    await atalho('A');
-    await ate(`document.querySelector('.right').classList.contains('collapsed') && document.getElementById('agExpand').getAttribute('aria-label') === 'Mostrar assistente'`, 2000, 'assistente escondido');
-    await clica('#showChat');
-    await ate(`!document.querySelector('.right').classList.contains('collapsed') && document.getElementById('agExpand').getAttribute('aria-label') === 'Expandir agenda'`, 2000, 'o nome do Expandir agenda depois do assistente voltar');
-    // com o Assistente na tela toda, a barra da agenda some: o atalho dela não aperta o botão escondido
+    for (const [id, letra] of ESCONDIDOS) {
+      certo(!(await ev(`document.getElementById(${JSON.stringify(id)}).getClientRects().length`)), `${id} aparece em Consultas`);
+      await atalho(letra);
+    }
+    await sleep(300);
+    certo(await ev(`window.__cliques.length === 0 && !document.querySelector('.stage').classList.contains('expanded')`),
+          'atalho de botão escondido em Consultas apertou: ' + await ev(`window.__cliques.join()`));
+    // com o Assistente na tela toda (New chat), a barra da agenda some: o atalho dela não aperta o botão escondido
     await nova();
-    await atalho('X');
+    await ev(`document.getElementById('navNovo').click(); 1`);
     await ate(efeito.raExpand + ` && !document.getElementById('agCreate').getClientRects().length`, 2000, 'Assistente na tela toda');
     await ev(`window.__cliques = []; 1`);
     await atalho('E');
@@ -1142,9 +1147,9 @@ const cenarios = [
     const livre = await ev(`(() => { const e = new KeyboardEvent('keydown', { key: 'G', code: 'KeyG', shiftKey: true, metaKey: ${mac},
       ctrlKey: ${!mac}, bubbles: true, cancelable: true }); document.body.dispatchEvent(e); return !e.defaultPrevented; })()`);
     certo(livre, '⇧⌘G foi bloqueado sem ter botão');
-    // digitar no Assistente sem ⌘: as letras vão para o texto, nenhum botão é apertado
+    // digitar no Assistente (New chat) sem ⌘: as letras vão para o texto, nenhum botão é apertado
     await nova();
-    await ev(`document.getElementById('biInput').focus(); 1`);
+    await ev(`document.getElementById('navNovo').click(); window.__cliques = []; document.getElementById('biInput').focus(); 1`);
     await send('Input.insertText', { text: 'edufahox' });
     for (const l of ['E', 'D', 'U']) await atalho(l, 8);         // só Shift: letra maiúscula, sem atalho
     await sleep(200);
@@ -1371,9 +1376,9 @@ const cenarios = [
     const [ex] = (t.maria && t.maria.tags) || [];
     certo(t.maria && t.maria.tags.length === 1 && /^Exemplo\|22\|/.test(ex) && ex.split('|')[3] === '11px' && ex.split('|')[4] === '10px,10px' && ex.split('|')[5] === '12px',
           'a etiqueta da Maria: ' + JSON.stringify(t.maria && t.maria.tags));
-    const pz = t.maria && t.maria.pos;
+    const pz = t.maria && t.maria.pos;   // a linha tem 12 de respiro dos lados (o fundo do mouse passa além do texto): dx e fim contam com eles
     certo(pz && pz.b === 'Última' && /^\d{1,2} (Jan|Fev|Mar|Abr|Mai|Jun|Jul|Ago|Set|Out|Nov|Dez) de \d{4}$/.test(pz.s) && pz.linhas.every((x) => Math.abs(x) <= 1) &&
-          pz.estilo.every(Boolean) && Math.abs(pz.dx - 2 * (parseFloat(t.maria.cols) + 24)) <= 1 && pz.fim === 0, 'a última consulta na 3ª coluna (depois das consultas), nas linhas do nome e da idade; o ⋯ no fim: ' + JSON.stringify(pz));
+          pz.estilo.every(Boolean) && Math.abs(pz.dx - (12 + 2 * (parseFloat(t.maria.cols) + 24))) <= 1 && pz.fim === 12, 'a última consulta na 3ª coluna (depois das consultas), nas linhas do nome e da idade; o ⋯ no fim: ' + JSON.stringify(pz));
     certo(t.maria.num === 'Consultas|11 consultas', 'a coluna do número de consultas: ' + t.maria.num);
     // as colunas começam no mesmo lugar em todas as linhas (também nas sem última consulta), nas linhas do nome e da idade
     const cols = await ev(`(() => { const u = (sel) => [...new Set([...document.querySelectorAll('#ptList .pt-linha')].map((r) => { const x = r.querySelector(sel); return x && x.textContent ? Math.round(x.getBoundingClientRect().left) : null; }).filter((x) => x != null))];
@@ -1387,8 +1392,9 @@ const cenarios = [
     const esq = await ev(`[...new Set([...document.querySelectorAll('#ptList .pt-linha')].map((r) => { const c = r.querySelector('.pt-ultc:not(.pt-numc) b'); return c ? Math.round(c.getBoundingClientRect().left) : null; }).filter((x) => x != null))].join()`);
     const fins = await ev(`[...new Set([...document.querySelectorAll('#ptList .pt-linha .pt-mais')].map((m) => Math.round(m.getBoundingClientRect().right)))].join()`);
     certo(!/,/.test(esq) && !/,/.test(fins), 'a última consulta começa no mesmo lugar em todas as linhas e o ⋯ termina no mesmo: ' + esq + ' / ' + fins);
+    // 4 colunas iguais (nome, consultas, última e convênio ou particular) e o ⋯
     certo(t.maria && !t.maria.ini && !t.maria.barra && t.maria.nome === 'Maria SilvaExemplo' && /^\d+ anos$/.test(t.maria.sub) &&
-          t.maria.dir === 4 && t.maria.alt === 75 && t.alts === '75' && ((v) => v.length === 4 && v[3] === 32 && Math.abs(v[0] - v[1]) < 1 && Math.abs(v[1] - v[2]) < 1)(t.maria.cols.split(' ').map(parseFloat)),
+          t.maria.dir === 5 && t.maria.alt === 75 && t.alts === '75' && ((v) => v.length === 5 && v[4] === 32 && Math.abs(v[0] - v[1]) < 1 && Math.abs(v[1] - v[2]) < 1 && Math.abs(v[2] - v[3]) < 1)(t.maria.cols.split(' ').map(parseFloat)),
           'a linha da Maria (e todas com 75): ' + JSON.stringify(t.maria) + ' ' + t.alts);
     certo(t.ana && t.ana.sub === '' && t.ana.tags === 0 && t.ana.ult === 'ÚltimaNenhuma consulta' && t.ana.num === 'Consultas|Nenhuma consulta',
           'sem consultas (e sem idade): a linha de baixo vazia; a última e o número com "Nenhuma consulta": ' + JSON.stringify(t.ana));
@@ -1403,15 +1409,16 @@ const cenarios = [
     // da lista aos números, 40
     const alinha = async () => ev(`(() => { const tit = document.querySelector('.pt-title'), rg = document.createRange(); rg.selectNodeContents(tit);
       const esq = rg.getBoundingClientRect().left, lupa = document.getElementById('ptBusca').getBoundingClientRect().right - 10.771;
-      const li = document.querySelector('#ptList .pt-linha').getBoundingClientRect(), st = li;
+      // o conteúdo da linha (o fundo do mouse passa 12 além do texto dos dois lados)
+      const r0 = document.querySelector('#ptList .pt-linha').getBoundingClientRect(), li = { left: r0.left + 12, right: r0.right - 12 }, st = li;
       const d = (x) => Math.round(x * 10) / 10;
       return { st: [d(st.left - esq), d(st.right - lupa)], li: [d(li.left - esq), d(li.right - lupa)], 
                lista: 40 }; })()`);   // os números de cima saíram: a lista vem logo depois do título (o vão de 32 está no "alto")
     for (const larga of [false, true]) {
       if (larga) { await ev(`document.querySelector('.right').classList.add('collapsed'); 1`); await sleep(200); }
       const al = await alinha();
-      certo(await ev(`((v) => v.length === 4 && v[3] === 32 && Math.abs(v[0] - v[1]) < 1 && Math.abs(v[1] - v[2]) < 1)(getComputedStyle(document.querySelector('#ptList .pt-linha')).gridTemplateColumns.split(' ').map(parseFloat))`),
-            (larga ? 'sem' : 'com') + ' o assistente, as 3 colunas iguais: ' + await ev(`getComputedStyle(document.querySelector('#ptList .pt-linha')).gridTemplateColumns`));
+      certo(await ev(`((v) => v.length === 5 && v[4] === 32 && Math.abs(v[0] - v[1]) < 1 && Math.abs(v[1] - v[2]) < 1 && Math.abs(v[2] - v[3]) < 1)(getComputedStyle(document.querySelector('#ptList .pt-linha')).gridTemplateColumns.split(' ').map(parseFloat))`),
+            (larga ? 'sem' : 'com') + ' o assistente, as 4 colunas iguais: ' + await ev(`getComputedStyle(document.querySelector('#ptList .pt-linha')).gridTemplateColumns`));
       certo([...al.st, ...al.li].every((x) => Math.abs(x) <= 1) && al.lista === 40,
             (larga ? 'sem o assistente' : 'com o assistente') + ': alinhado com o título e a lupa, e 40 até a lista: ' + JSON.stringify(al));
       if (larga) { await ev(`document.querySelector('.right').classList.remove('collapsed'); 1`); await sleep(200); }
@@ -1495,10 +1502,10 @@ const cenarios = [
     await clica('#ptNewX');
     await ate(`document.getElementById('ptNewRow').hidden && document.activeElement.id === 'ptNew'`, 2000, 'fecha');
     // fechar de novo o formulário já fechado (a resposta atrasada do cadastro) não tira o foco de quem está digitando
-    await ev(`document.getElementById('biInput').focus(); 1`);
+    await ev(`document.getElementById('navToggle').focus(); 1`);
     await clica('#ptNewX');
     await sleep(100);
-    certo(await ev(`document.activeElement.id === 'biInput' && document.getElementById('ptNewRow').hidden`), 'fechar o já fechado puxou o foco: ' + await ev(`document.activeElement.id`));
+    certo(await ev(`document.activeElement.id === 'navToggle' && document.getElementById('ptNewRow').hidden`), 'fechar o já fechado puxou o foco: ' + await ev(`document.activeElement.id`));
     // novo paciente no lugar do assistente: ocupa a coluna dele (a conversa fica por baixo, fora do Tab e dos atalhos), a
     // tela de Pacientes continua viva (sem inert, sem janela por cima); Esc e o × fecham e devolvem o foco ao +
     await ev(`document.getElementById('biInput').value = 'pergunta guardada'; 1`);

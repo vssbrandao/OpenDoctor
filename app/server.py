@@ -494,7 +494,9 @@ def _too_many():
                         status_code=429)
 
 
-def _ask_stream(query, k, history=None):
+def _ask_stream(query, k, history=None, contexto=None):
+    """contexto: o perfil sem nome do paciente escolhido no New chat (vai ao modelo junto dos trechos; nunca à busca nem
+    ao PubMed — o planejamento e os termos saem só da pergunta, já mascarada)."""
     history = history or []
     _log("start len=", len(query), "hist=", len(history))
 
@@ -572,14 +574,19 @@ def _ask_stream(query, k, history=None):
     except Exception as e:
         _log("tools falhou:", str(e)[:150])
         extra = None
+    calculo = extra                                   # só o cálculo do sistema vale como "próprio" nas citações (abaixo)
+    if contexto:
+        extra = "\n\n".join(x for x in ("Paciente escolhido pelo médico para esta conversa (sem identificação; leve em conta "
+                                        "ao responder):\n" + contexto, extra) if x)
 
     messages, sources = synthesize.build(query, hits, history, extra)
     yield _sse("sources", {"sources": sources, "recommended": recommended})
 
     allowed_ns = set(range(1, len(hits) + 1))
     text_by_n = {i + 1: (h.get("text") or "") for i, h in enumerate(hits)}
-    # números que o próprio médico informou / o sistema calculou também valem
-    own_text = " ".join([query, extra or ""] +
+    # números que o próprio médico informou / o sistema calculou também valem; os do perfil do paciente NÃO sustentam a
+    # citação de um artigo (o "6,9 [1]" perde o [1] se o artigo não diz 6,9)
+    own_text = " ".join([query, calculo or ""] +
                         [m["content"] for m in history if m.get("role") == "user"])
 
     # 3) streaming validado por frase
@@ -667,8 +674,39 @@ async def ask_post(request: Request):
     except (TypeError, ValueError):
         k = 6
     history = _clean_history(body.get("history"))
-    return StreamingResponse(_ask_stream(query, k, history),
+    # New chat com um paciente escolhido (o seletor "All"): o modelo recebe o perfil SEM nome (o das Possíveis
+    # prescrições: sexo, idade, problemas, remédios, alergias, últimos sinais e exames, já por scribe.mask), e a pergunta e
+    # o histórico passam por scribe.mask (o médico pode escrever o nome). Só o paciente deste médico e só nas contas
+    # liberadas para dado de paciente na IA (as da gravação, como as Possíveis prescrições — RIPD pendente).
+    contexto = None
+    pid = body.get("patient_id")
+    if pid is not None:
+        if not scribe_on(u):
+            return JSONResponse({"error": "sem acesso"}, status_code=403)
+        p = await run_in_threadpool(db.get_patient, u["id"], int(pid)) if _id_ok(pid) else None
+        if not p:
+            return JSONResponse({"error": "paciente inválido"}, status_code=400)
+        contexto = await run_in_threadpool(_ask_perfil, u, p)
+        nome = p.get("name") or ""
+        query = scribe.mask(query, nome)
+        history = [dict(m, content=scribe.mask(m["content"], nome)) for m in history]
+    return StreamingResponse(_ask_stream(query, k, history, contexto),
                              media_type="text/event-stream")
+
+
+def _id_ok(v):
+    """Id de paciente vindo da página: só dígitos ASCII, até 9 (str.isdigit aceita "²", que o int() recusa → 500)."""
+    return isinstance(v, (int, str)) and not isinstance(v, bool) and bool(re.fullmatch(r"[0-9]{1,9}", str(v)))
+
+
+def _ask_perfil(u, p):
+    """O perfil sem nome do paciente para o assistente (o mesmo das Possíveis prescrições) e o registro do acesso."""
+    notes = db.list_notes(u["id"], p["id"], p.get("key"))
+    rxs = db.list_receitas(u["id"], p["id"])
+    usados = [x.get("nome") or "" for r in rxs if r["status"] == "emitida" for x in r["itens"]]
+    texto, _ = prescricao.perfil(p, notes, usados)
+    db.log_access(u["id"], "ask_paciente", p["id"], dedupe_minutes=10)
+    return texto
 
 
 @app.post("/followups")
@@ -689,6 +727,12 @@ async def followups(request: Request):
     answer = str(body.get("answer") or "").strip()
     if not answer:
         return {"suggestions": []}
+    pid = body.get("patient_id")                       # conversa com paciente escolhido: o nome não vai ao modelo
+    if pid is not None:
+        p = await run_in_threadpool(db.get_patient, u["id"], int(pid)) if _id_ok(pid) else None
+        if not p:
+            return {"suggestions": []}
+        query, answer = scribe.mask(query, p.get("name") or ""), scribe.mask(answer, p.get("name") or "")
     try:
         # a chamada à OpenAI roda fora do laço de eventos: o servidor tem um processo só
         out = (await run_in_threadpool(llm.chat, [

@@ -1730,6 +1730,26 @@
     .stage.pacientes .pt-view{display:flex}
     .stage.prontuario .pt-view{visibility:hidden}   /* o prontuário por cima: os botões de baixo saem do atalho, do Tab e da dica */
     .stage.pacientes .ag-head,.stage.pacientes .cal,.stage.pacientes .wk{display:none}
+    .stage.pacientes .rx-view{display:none}
+    .stage.prescricoes .rx-view{display:flex}
+    .stage.prescricoes .ag-head,.stage.prescricoes .cal,.stage.prescricoes .wk{display:none}
+    .rx-view .pt-linha{grid-template-columns:repeat(5,minmax(0,1fr)) 32px}   /* paciente | quantidade | duração | situação | data e horário | ⋯ */
+    /* mouse na linha: o fundo do item aceso do menu (--active, canto 10); o fundo passa 12 além do texto dos dois lados */
+    .pt-view .pt-linha{position:relative;margin:0 -12px;padding:18px 12px 19px;border-radius:10px;border-bottom:0}   /* 19 embaixo: o 1 da divisória (a altura fica a mesma) */
+    .pt-view .pt-linha::after{content:"";position:absolute;left:12px;right:12px;bottom:0;border-bottom:1px solid var(--sb-border)}   /* a divisória reta, na largura do texto */
+    /* a linha com o mouse (ou com o menu aberto) fica sem as divisórias de cima e de baixo */
+    .pt-view .pt-linha:hover::after,.pt-view .pt-linha:has(.pt-mais[aria-expanded="true"])::after,
+    .pt-view .pt-linha:has(+ .pt-linha:hover)::after,.pt-view .pt-linha:has(+ .pt-linha .pt-mais[aria-expanded="true"])::after{border-bottom-color:transparent}
+    .pt-view .pt-linha:hover,.pt-view .pt-linha:has(.pt-mais[aria-expanded="true"]){background:var(--active)}
+    .pt-view .pt-linha .pt-mais:hover,.pt-view .pt-linha .pt-mais[aria-expanded="true"]{background:#ECEDED}   /* o ⋯ continua visível sobre o fundo */
+    /* Pacientes: nome | consultas | última | convênio | ⋯ */
+    #ptView .pt-linha{grid-template-columns:repeat(4,minmax(0,1fr)) 32px}
+    #ptView .pt-linha .pt-mais{grid-column:5}
+    @container pt (max-width:520px){ #ptView .pt-linha{grid-template-columns:minmax(0,1fr) 32px} #ptView .pt-linha .pt-mais{grid-column:2} }
+    .rx-view .pt-linha .pt-mais{grid-column:6}
+    /* Pacientes e Prescrições: o ⋯ aparece com o mouse na linha (ou o foco, ou o menu aberto) */
+    .pt-view .pt-linha .pt-mais{visibility:hidden}
+    .pt-view .pt-linha:hover .pt-mais,.pt-view .pt-linha:focus-within .pt-mais,.pt-view .pt-mais[aria-expanded="true"]{visibility:visible}
     /* o conteúdo alinhado com a barra de cima: à esquerda com a palavra "Pacientes" (24), à direita com o desenho da lupa
        (8 da barra + 10,8 do desenho dentro do botão de 36 = 19) */
     .pt{flex:1 0 auto;width:100%;padding:0 19px 0 24px;display:flex;flex-direction:column;font-family:var(--disp);color:#0D0D0D}   /* ocupa a altura: o rodapé vai para baixo */
@@ -1946,6 +1966,10 @@
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .er-sub{font-family:var(--disp);font-weight:500;font-size:13px;line-height:18px;color:var(--muted)}
     .er-foot{display:flex;justify-content:flex-end}
+    /* o cartão de 1 hora (97): o título e o horário em cima à esquerda, a pílula à direita no pé */
+    .ev-real.medio{flex-direction:row;align-items:flex-start;justify-content:space-between;gap:16px}
+    .ev-real.medio > div:first-child{flex:1;min-width:0}
+    .ev-real.medio .er-foot{align-self:flex-end}
     /* dia inteiro: pílulas do evento curto da Semana numa faixa — no Dia entre a data e a linha fixa (alinhada aos cards),
        na Semana uma linha abaixo dos dias que fica no topo ao rolar */
     .cal-allday{position:absolute;top:72px;left:110px;right:24px;z-index:4;display:flex;gap:4px}
@@ -2041,12 +2065,19 @@
     .right{flex:1 1 0;min-width:520px;max-width:720px;height:100%;background:#fff;position:relative;box-shadow:inset 1px 0 0 var(--sb-border)}
     .rp-head{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 8px 24px}   /* Figma 1020:13042 */
     .rp-title{font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    /* histórico de conversas no menu (Figma 1014:8439), só na versão expandida com o menu aberto */
+    /* histórico de conversas no menu (Figma Concept 829:8199): em todas as telas, com o menu aberto */
     .nav{display:flex;flex-direction:column}
     .nav-top,.nav-main{flex:none}
-    .nav-hist{display:none;flex:1;min-height:0;overflow-y:auto;margin-top:58px;padding-bottom:16px;
+    .nav-hist{display:none;flex:1;min-height:0;overflow-y:auto;margin-top:90px;padding-bottom:16px;
       flex-direction:column;gap:4px;scrollbar-width:thin}
-    .stage.expanded:not(.hist-off) .nav:not(.collapsed) .nav-hist.has{display:flex}
+    .stage:not(.hist-off) .nav:not(.collapsed) .nav-hist.has{display:flex}
+    /* tela baixa (o painel do app, uma janela pequena): o vão diminui e o menu inteiro rola, com a lista na altura dela
+       (senão ela fica espremida entre Prescrições e Configurações); Configurações fica preso embaixo */
+    @media (max-height:620px){
+      .nav{overflow-y:auto;scrollbar-width:thin}
+      .nav-hist{flex:none;overflow:visible;margin-top:24px}
+      .nav-pe{position:sticky;bottom:0;background:#fff;z-index:1}
+    }
     .hist-group{display:flex;flex-direction:column;gap:8px}
     .hist-list{display:flex;flex-direction:column;gap:4px}
     .hist-head{padding:8px 16px;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#6B7173}
@@ -2054,6 +2085,7 @@
       padding:8px 16px;border-radius:10px;font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;
       color:#071216;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .hist-item:hover,.hist-item.on{background:var(--active)}
+    .stage:not(.expanded) .hist-item.on:not(:hover){background:none}   /* fora do assistente, só a tela de agora fica acesa */
     /* versão expandida (Figma 1012:7220): menu fica, agenda some, conversa e campo numa coluna de 700px
        em x=503 quando a tela tem 1440px (calc(50% - 351px) dentro do painel) */
     .stage.expanded .center{display:none}
@@ -2068,6 +2100,93 @@
     .stage.expanded .msg-user{max-width:min(540px,100%)}               /* assistente na tela quase toda: até 540 (pedido do usuário) */
     .stage.nav-mini.expanded .msg-user{max-width:min(540px,100%);padding:16px 24px}
 
+    /* ===== New chat (Figma Concept 829:8107): o assistente em tela cheia com a conversa vazia — sem o cabeçalho,
+       o campo de uma linha no meio (800, a 298 do topo na tela de 780) e as sugestões 42 abaixo ===== */
+    .nc-sug{display:none}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .rp-head,
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-note{display:none}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .big-input{left:50%;right:auto;top:calc(50% - 92px);bottom:auto;
+      width:min(800px,calc(100% - 48px));transform:translateX(-50%);box-sizing:border-box;
+      flex-direction:row;align-items:center;gap:0;padding:8px;border-radius:99px;background:#F3F3F3}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-top,
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-bottom{display:contents}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-plus{order:0}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-plus svg{width:17.8px;height:17.8px}   /* o "+" com 14 de desenho, como no Figma */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-input{order:1;min-width:0;padding:0 0 0 8px}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-send{order:2;background:#D3E3FD}            /* o do Figma: azul */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-send:hover{background:#c2d8fb}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-send svg path{fill:#0842A0}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-sug{display:flex;flex-direction:column;align-items:stretch;gap:24px;
+      position:absolute;left:50%;top:calc(50% + 14px);width:min(800px,calc(100% - 48px));transform:translateX(-50%)}
+    /* "All ⌄" no alto à esquerda, como o da Sana (medido em sana.ai): pílula de 36 a 20 da borda e 12 do topo, 6 16 de
+       respiro, 6 até a seta (10 x 5,7 numa caixa de 16, a 60%), texto 16/20, fundo branco */
+    .nc-all{display:none}
+    .stage.expanded .nc-all{display:flex;align-items:center;gap:6px;position:absolute;
+      top:8px;left:7px;height:36px;box-sizing:border-box;padding:6px 16px;border:1px solid transparent;border-radius:999px;
+      background:#fff;cursor:pointer;font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
+    /* o texto do "All" como o título "Assistente AI" (.rp-title): 14/20 Bold #071216, a 24 da esquerda e 16 do topo */
+    .nc-all-chev{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;color:rgba(10,18,23,.6)}
+    .nc-all-chev svg{display:block;transform:translate(-.5px,.5px)}   /* na posição da seta da Sana (2x) */
+    /* o "All" fica também na conversa (é o paciente dela): no lugar do título "Assistente AI" */
+    .stage.expanded .rp-title{visibility:hidden}
+    .nc-all > span:first-child{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .nc-all.sem{cursor:default}.nc-all.sem .nc-all-chev{display:none}       /* conta sem paciente na IA: só "All" */
+    /* a lista do "All" (o menu da Sana, medido): 6 abaixo do botão, 268 de largura, 8 de respiro, cantos 24, borda e
+       sombra leves; itens de 40 com cantos 17, 8 8 8 16 de respiro, 14/21; o mouse com rgba(10,18,23,.05) */
+    .nc-menu{position:absolute;left:7px;top:50px;z-index:30;width:268px;box-sizing:border-box;padding:8px;
+      display:flex;flex-direction:column;gap:0;background:#fff;border:1px solid rgba(10,18,23,.08);border-radius:24px;
+      box-shadow:0 7px 16px rgba(0,0,0,.04);max-height:calc(100% - 80px);overflow-y:auto}
+    .nc-menu[hidden]{display:none}
+    .nc-busca{height:40px;box-sizing:border-box;margin:0 0 4px;padding:8px 16px;border:0;outline:0;border-radius:17px;
+      background:#F7F8F8;font-family:var(--disp);font-weight:400;font-size:14px;line-height:21px;color:rgb(10,18,23)}
+    .nc-busca::placeholder{color:#6B7173}
+    .nc-lista{display:flex;flex-direction:column}
+    .nc-op{display:flex;align-items:center;gap:10px;height:40px;box-sizing:border-box;padding:8px 8px 8px 16px;border:0;
+      border-radius:17px;background:none;cursor:pointer;text-align:left;font-family:var(--disp);font-weight:400;
+      font-size:14px;line-height:21px;color:rgb(10,18,23)}
+    .nc-op:hover,.nc-op:focus-visible{background:rgba(10,18,23,.05);outline:0}
+    .nc-op > span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .nc-op .nc-ok{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;color:rgba(10,18,23,.6)}
+    .nc-vazio{padding:8px 16px;font-family:var(--disp);font-size:14px;line-height:21px;color:#6B7173}
+    /* Invite no alto à direita, como o da Sana (medido em sana.ai): pílula de 36, 12 do topo e 16 da direita,
+       6 16 6 12 de respiro, 6 entre o ícone (16, a 40%) e o texto (14/20), fundo rgba(10,18,23,.06) */
+    .nc-convite{display:none}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-convite{display:flex;align-items:center;gap:6px;position:absolute;
+      top:12px;right:16px;height:36px;box-sizing:border-box;padding:6px 16px 6px 12px;border:1px solid transparent;
+      border-radius:999px;background:rgba(10,18,23,.06);cursor:pointer;
+      font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:rgba(10,18,23,.94)}   /* = a Sana Sans Medium em pixels */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-convite{transition:background .2s cubic-bezier(.4,0,.2,1)}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-convite:hover{background:rgba(10,18,23,.1)}   /* o mouse em cima, como na Sana */
+    .nc-convite-ico{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;color:rgba(10,18,23,.38)}
+    .nc-convite-ico svg{display:block;transform:translateY(-.5px)}   /* na altura do da Sana (2x) */
+    .nc-item{display:flex;align-items:center;gap:16px;padding:0 10px 0 24px;border:0;background:none;cursor:pointer;
+      text-align:left;font-family:var(--disp);font-weight:400;font-size:14px;line-height:1.4;color:#1F1F1F}
+    .nc-ico{display:flex;align-items:center;justify-content:center;flex:none;height:20px}
+    .nc-ico img,.nc-ico svg{display:block}
+    .nc-item:last-child .nc-ico svg{position:relative;top:1px}         /* a página com lupa: 1 px abaixo, como no Figma */
+    .nc-linha{display:block;width:100%;height:1px;margin-bottom:-1px}   /* no Figma a linha tem altura 0: 24 de cada lado */
+    /* ===== Transcrição na lateral do prontuário (Figma Concept 1349:13256, teste): a coluna da direita (520) com o título
+       "Transcrição" e o expandir; dentro, tudo da antiga aba Consulta, rolando. O assistente não aparece ali ===== */
+    .rp-tx{display:none}
+    .right.tx > :not(#prTx):not(#evPop):not(#ptNewRow){display:none}
+    .right.tx #prTx{display:flex;flex-direction:column;position:absolute;inset:0;background:#fff;
+      box-shadow:inset 1px 0 0 rgba(0,0,0,.08)}             /* a linha que divide (Figma: borda esquerda de 1 a 8%) */
+    .stage.tx-larga .right.tx #prTx{box-shadow:none}
+    .right.tx.evento #prTx,.right.tx.novo #prTx{visibility:hidden}
+    .rp-tx-corpo{flex:1;min-height:0;overflow-y:auto;padding:0 24px 24px;container-type:inline-size}
+    .rp-tx-corpo > .pr-panel{display:block}
+    /* expandir: a transcrição na largura toda (o prontuário sai), como o assistente em tela cheia */
+    .stage.tx-larga .center{display:none}
+    .stage.tx-larga .right{max-width:none;box-shadow:none}
+    /* "Iniciar consulta" (Figma 1349:13400): pílula laranja #F50 de 64, 24 42 de respiro, microfone e texto 14 Medium preto */
+    .cs-go.cs-iniciar{height:64px;padding:24px 42px;background:#F50;color:#000;gap:8px}
+    .cs-go.cs-iniciar svg{width:11.13px;height:16.06px;color:#000}
+    /* na lateral, branco e liso como o Figma (sem o cartão cinza em volta); o pé com o botão a 24 do fim da tela */
+    .rp-tx-corpo{padding-bottom:0}
+    #prTx #prEvoBox{min-height:calc(100vh - 52px);margin-bottom:0;padding-top:0}
+    #prTx .cs-card{padding:0;margin-bottom:0;border-radius:0;background:none}
+    #prTx .cs-main{border-radius:0}
+    #prTx .cs-go.cs-iniciar{width:235px}
     /* recolher/expandir painéis */
     /* botão do painel (Figma IconButton 36x36 em x 226, y 8; ícone 20x20 no centro) */
     .nav-toggle{position:absolute;top:8px;right:6px;width:36px;height:36px;border:0;padding:0;
@@ -2096,6 +2215,13 @@
     .nav.collapsed .item>span:not(.ico){display:none}
     .nav.collapsed .item{width:40px}
     .right.collapsed{display:none}
+    /* Consultas, Pacientes e o prontuário sem o assistente (pedidos do usuário, 14/11): a coluna da direita só aparece com a
+       janela de Nova consulta ou Novo paciente aberta; o assistente fica só no New chat (tela cheia) — o "Perguntar ao
+       assistente" do prontuário leva a ele, com o paciente escolhido */
+    .stage:not(.expanded) .right:not(.evento):not(.novo):not(.segura):not(.tx){display:none}
+    .stage:not(.expanded) .right.segura:not(.evento):not(.novo) > *{visibility:hidden}   /* o instante do clique: coluna em branco */
+    .stage:not(.expanded) #agExpand,
+    .stage:not(.expanded) #showChat{display:none}
     .float-toggle{position:fixed;top:12px;z-index:45;width:36px;height:36px;border:1px solid var(--sb-border);
       background:#fff;cursor:pointer;border-radius:10px;display:flex;align-items:center;justify-content:center;
       box-shadow:0 2px 10px rgba(0,0,0,.08)}
@@ -2218,6 +2344,7 @@
     .bi-send{width:60px;height:48px;flex:none;border:0;border-radius:999px;background:var(--send-bg);cursor:pointer;
       display:flex;align-items:center;justify-content:center;transition:background .12s ease}
     .bi-send:hover{background:#c2d8fb}
+    .bi-send{background:#FFDDD3}.bi-send:hover{background:#FFCFC1}.bi-send svg path{fill:#FF5500}   /* teste: cores laranja no botão do assistente */
   
     /* ===== cartões do prontuário: fundo #F7F8F8 (o mesmo da navegação) e cantos de 40 px ===== */
     .gc,.gcard,.pr-form,.pr-locked .pr-body,.gr-card,.gfc,.pr-item.hc{background:#F7F8F8;border-radius:40px}
@@ -2245,6 +2372,27 @@
     .gq-bar,.gq-plot,.gq-ranges{background:#F7F8F8}
     .gq-bar{border-radius:24px 24px 4px 4px}   /* cantos de 24 (menos redondo) */
     .gq-ranges{border-radius:4px 4px 24px 24px}
+    /* Configurações no pé da sidebar, como o "Settings" da Sana (medido em sana.ai): o item abre um menu acima dele —
+       268 de largura, 8 de respiro, cantos 24, borda e sombra leves; o e-mail da conta em cinza; itens de 36 (+1) com
+       cantos 18, 8 8 8 16 de respiro, 14/21; separadores de 1 px a 10% com 4 8 de margem */
+    .nav-pe{flex:none;margin-top:auto;padding:10px 6px 16px}
+    .nav-pe .item{position:relative}
+    .nav-pe .item .ico{display:none}                     /* como na Sana: só o texto; recolhido, só o ícone */
+    .nav-pe .nav-mais{margin-left:auto;width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;
+      color:rgba(10,18,23,.6)}
+    .nav.collapsed .nav-pe .item .ico{display:flex}
+    .nav.collapsed .nav-pe .nav-mais{display:none}
+    .cfg-menu{position:fixed;z-index:1000;width:268px;box-sizing:border-box;padding:8px;background:#fff;
+      border:1px solid rgba(10,18,23,.08);border-radius:24px;box-shadow:0 7px 16px rgba(0,0,0,.04);display:flex;flex-direction:column}
+    .cfg-menu[hidden]{display:none}
+    .cfg-menu-conta{padding:8px 16px;font-family:var(--disp);font-weight:400;font-size:14px;line-height:19.6px;
+      color:rgba(10,18,23,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cfg-menu-sep{height:1px;margin:4px 8px;background:rgba(10,18,23,.1);flex:none}
+    .cfg-menu-op{display:flex;align-items:center;height:37px;box-sizing:border-box;margin:0 0 1px;padding:8px 8px 8px 16px;
+      border:0;border-radius:18px;background:none;cursor:pointer;text-align:left;font-family:var(--disp);font-weight:400;
+      font-size:14px;line-height:21px;color:rgb(10,18,23);text-decoration:none}
+    .cfg-menu-op:last-child{margin-bottom:0}
+    .cfg-menu-op:hover,.cfg-menu-op:focus-visible{background:rgba(10,18,23,.05);outline:0}
   </style>
   <style id="rxPapel"></style>   <!-- tamanho da folha da receita (A4/A5), ligado só enquanto a receita imprime -->
 </head>
@@ -2262,19 +2410,28 @@
       </div>
       <div class="nav-main">
         <div class="nav-sec">
+          <div class="item" id="navNovo" data-tip="New chat"><span class="ico"><svg width="12.36" height="12.36" viewBox="0 0 12.36 12.36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.826 7.002L5.349 7.002L5.349 11.524C5.349 11.974 5.725 12.351 6.175 12.351C6.625 12.351 7.002 11.974 7.002 11.524L7.002 7.002L11.524 7.002C11.974 7.002 12.351 6.633 12.351 6.175C12.351 5.725 11.974 5.349 11.524 5.349L7.002 5.349L7.002 0.826C7.002 0.376 6.625 0.000 6.175 0.000C5.725 0.000 5.349 0.376 5.349 0.826L5.349 5.349L0.826 5.349C0.376 5.349 0.000 5.725 0.000 6.175C0.000 6.633 0.376 7.002 0.826 7.002Z" fill="#071216"/></svg></span><span>New chat</span></div>
           <div class="item active" id="navConsultas" data-tip="Consultas"><span class="ico"><svg width="15" height="14" viewBox="0 0 15 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z" fill="#071216"/></svg></span><span>Consultas</span></div>
           <div class="item" id="navBuscar" data-tip="Buscar"><span class="ico"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.00100402 6.12952C0.00100402 2.74849 2.7495 0 6.13052 0C9.51155 0 12.26 2.74849 12.26 6.12952C12.26 7.44729 11.8308 8.66717 11.1155 9.65361L14.5567 13.1024C14.76 13.3133 14.8655 13.5919 14.8655 13.8931C14.8655 14.5181 14.4061 15 13.7661 15C13.4724 15 13.1787 14.9021 12.9679 14.6837L9.50402 11.2199C8.54016 11.875 7.38805 12.259 6.13052 12.259C2.7495 12.259 0.00100402 9.51054 0.00100402 6.12952ZM1.56727 6.12952C1.56727 8.65211 3.60793 10.6928 6.13052 10.6928C8.65311 10.6928 10.6938 8.65211 10.6938 6.12952C10.6938 3.60693 8.65311 1.56627 6.13052 1.56627C3.60793 1.56627 1.56727 3.60693 1.56727 6.12952Z" fill="#071216"/></svg></span><span>Buscar</span></div>
           <div class="item" id="navPacientes" data-tip="Pacientes"><span class="ico"><svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z" fill="#071216"/></svg></span><span>Pacientes</span></div>
-          <div class="item" data-tip="Prescrições"><span class="ico"><svg width="17" height="14" viewBox="0 0 17 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.43415 13.8229C0.8315 13.8229 0.000494646 12.9993 0.000494646 11.4115V2.36688C0.000494646 0.808747 0.816661 0 2.20414 0H4.30392C5.07556 0 5.46139 0.140974 5.98077 0.571316L6.41111 0.912622C6.81919 1.24651 7.13082 1.37264 7.66504 1.37264H14.5654C16.168 1.37264 16.999 2.19623 16.999 3.78404V11.4115C16.999 12.9993 16.1754 13.8229 14.7583 13.8229H2.43415ZM2.52319 12.3686H14.4837C15.1663 12.3686 15.5448 12.0125 15.5448 11.2928V3.91018C15.5448 3.18305 15.1663 2.8269 14.4837 2.8269H7.27921C6.50757 2.8269 6.1069 2.68593 5.59494 2.26301L5.1646 1.91428C4.7491 1.57297 4.44489 1.45426 3.91809 1.45426H2.49351C1.82574 1.45426 1.45475 1.81041 1.45475 2.49302V11.2928C1.45475 12.0125 1.83316 12.3686 2.52319 12.3686ZM2.35996 5.15669V4.62989C2.35996 4.16245 2.59739 3.93986 3.07225 3.93986H13.9273C14.4021 3.93986 14.6321 4.16245 14.6321 4.62989V5.15669H2.35996Z" fill="#071216"/></svg></span><span>Prescrições</span></div>
-        </div>
-        <div class="nav-sec">
-          <div class="item" data-href="opendoctor-integracao.html" data-tip="Integrações"><span class="ico"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.4112 13.722C0.823661 13.722 0.000489983 12.9061 0.000489983 11.3333V2.38867C0.000489983 0.815821 0.823661 0 2.4112 0H12.5244C14.112 0 14.9352 0.815821 14.9352 2.38867V6.51187C14.7 6.47512 14.4574 6.45307 14.2222 6.45307C13.9797 6.45307 13.7372 6.47512 13.4946 6.51187V4.52744C13.4946 3.88066 13.1492 3.56462 12.5318 3.56462H2.38916C1.77913 3.56462 1.44104 3.88066 1.44104 4.52744V11.3186C1.44104 11.958 1.77913 12.2814 2.38916 12.2814H9.52575C9.61395 12.7959 9.80504 13.281 10.0696 13.722H2.4112ZM6.04932 6.11498C5.78473 6.11498 5.69654 6.03414 5.69654 5.76954V5.34326C5.69654 5.07867 5.78473 4.99782 6.04932 4.99782H6.48296C6.7402 4.99782 6.8284 5.07867 6.8284 5.34326V5.76954C6.8284 6.03414 6.7402 6.11498 6.48296 6.11498H6.04932ZM8.45269 6.11498C8.1881 6.11498 8.0999 6.03414 8.0999 5.76954V5.34326C8.0999 5.07867 8.1881 4.99782 8.45269 4.99782H8.88632C9.14356 4.99782 9.23176 5.07867 9.23176 5.34326V5.76954C9.23176 6.03414 9.14356 6.11498 8.88632 6.11498H8.45269ZM10.8561 6.11498C10.5915 6.11498 10.5033 6.03414 10.5033 5.76954V5.34326C10.5033 5.07867 10.5915 4.99782 10.8561 4.99782H11.2897C11.5543 4.99782 11.6425 5.07867 11.6425 5.34326V5.76954C11.6425 6.03414 11.5543 6.11498 11.2897 6.11498H10.8561ZM3.64596 8.4816C3.38137 8.4816 3.29317 8.40075 3.29317 8.13616V7.70988C3.29317 7.44529 3.38137 7.36444 3.64596 7.36444H4.07225C4.33684 7.36444 4.42503 7.44529 4.42503 7.70988V8.13616C4.42503 8.40075 4.33684 8.4816 4.07225 8.4816H3.64596ZM6.04932 8.4816C5.78473 8.4816 5.69654 8.40075 5.69654 8.13616V7.70988C5.69654 7.44529 5.78473 7.36444 6.04932 7.36444H6.48296C6.7402 7.36444 6.8284 7.44529 6.8284 7.70988V8.13616C6.8284 8.40075 6.7402 8.4816 6.48296 8.4816H6.04932ZM8.45269 8.4816C8.1881 8.4816 8.0999 8.40075 8.0999 8.13616V7.70988C8.0999 7.44529 8.1881 7.36444 8.45269 7.36444H8.88632C9.14356 7.36444 9.23176 7.44529 9.23176 7.70988V8.13616C9.23176 8.40075 9.14356 8.4816 8.88632 8.4816H8.45269ZM14.2222 15.0596C12.1496 15.0596 10.4371 13.3545 10.4371 11.2745C10.4371 9.20187 12.1496 7.49673 14.2222 7.49673C16.2949 7.49673 18 9.20187 18 11.2745C18 13.3398 16.2728 15.0596 14.2222 15.0596ZM14.2222 13.6705C14.5236 13.6705 14.722 13.4721 14.722 13.1781V11.7743H16.1111C16.4125 11.7743 16.6109 11.5832 16.6109 11.2745C16.6109 10.9732 16.4125 10.7747 16.1111 10.7747H14.722V9.38562C14.722 9.08428 14.5236 8.88583 14.2222 8.88583C13.9135 8.88583 13.7225 9.09163 13.7225 9.38562V10.7747H12.326C12.0247 10.7747 11.8262 10.9732 11.8262 11.2745C11.8262 11.5832 12.0247 11.7743 12.326 11.7743H13.7225V13.1781C13.7225 13.4721 13.9135 13.6705 14.2222 13.6705ZM3.64596 10.8482C3.38137 10.8482 3.29317 10.7674 3.29317 10.5028V10.0765C3.29317 9.8119 3.38137 9.73105 3.64596 9.73105H4.07225C4.33684 9.73105 4.42503 9.8119 4.42503 10.0765V10.5028C4.42503 10.7674 4.33684 10.8482 4.07225 10.8482H3.64596ZM6.04932 10.8482C5.78473 10.8482 5.69654 10.7674 5.69654 10.5028V10.0765C5.69654 9.8119 5.78473 9.73105 6.04932 9.73105H6.48296C6.7402 9.73105 6.8284 9.8119 6.8284 10.0765V10.5028C6.8284 10.7674 6.7402 10.8482 6.48296 10.8482H6.04932ZM8.45269 10.8482C8.1881 10.8482 8.0999 10.7674 8.0999 10.5028V10.0765C8.0999 9.8119 8.1881 9.73105 8.45269 9.73105H8.88632C9.14356 9.73105 9.23176 9.8119 9.23176 10.0765V10.5028C9.23176 10.7674 9.14356 10.8482 8.88632 10.8482H8.45269Z" fill="#071216"/></svg></span><span>Integrações</span></div>
-          <div class="item" data-href="opendoctor-configuracoes.html" data-tip="Configurações"><span class="ico"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 15.7712C8.32619 15.7712 8.15238 15.7637 7.97857 15.7486L7.5705 16.5194C7.44959 16.731 7.26067 16.8368 7.01885 16.7914C6.79214 16.7461 6.63345 16.5874 6.60322 16.3456L6.48231 15.4916C6.14225 15.3934 5.8173 15.2725 5.50747 15.1289L4.85757 15.7108C4.67621 15.8695 4.45706 15.8997 4.24547 15.7788C4.04143 15.6579 3.9583 15.4539 4.00365 15.2196L4.18501 14.3732C3.90541 14.1692 3.63336 13.95 3.38398 13.7007L2.58295 14.0256C2.35624 14.1163 2.14465 14.0709 1.98595 13.882C1.83482 13.7007 1.8197 13.474 1.94817 13.2699L2.40914 12.5445C2.21266 12.2497 2.03885 11.9475 1.88771 11.6376L1.02623 11.6603C0.776849 11.6679 0.595484 11.5545 0.512358 11.3278C0.436789 11.1011 0.489687 10.8819 0.686166 10.7384L1.36629 10.2094C1.28316 9.86931 1.22271 9.52925 1.18492 9.17408L0.36122 8.90958C0.126956 8.83401 -0.00151138 8.65265 -0.00151138 8.41839C-0.00151138 8.17656 0.126956 7.9952 0.36122 7.92719L1.18492 7.6627C1.22271 7.30752 1.28316 6.96746 1.36629 6.6274L0.686166 6.09842C0.489687 5.94728 0.429232 5.73569 0.512358 5.51654C0.595484 5.28983 0.776849 5.16136 1.02623 5.16892L1.88771 5.2067C2.03885 4.88931 2.21266 4.58704 2.40914 4.29988L1.94817 3.56686C1.8197 3.36282 1.82726 3.13611 1.98595 2.95475C2.14465 2.77338 2.35624 2.71293 2.58295 2.81117L3.38398 3.13611C3.63336 2.89429 3.89785 2.66759 4.18501 2.46355L4.00365 1.61718C3.9583 1.38291 4.03387 1.17132 4.24547 1.05797C4.45706 0.944612 4.68377 0.959726 4.85757 1.12598L5.49235 1.7003C5.8173 1.56428 6.13469 1.44337 6.47475 1.34513L6.60322 0.483642C6.641 0.249378 6.78458 0.0831259 7.0264 0.0453414C7.26067 0.0075569 7.45715 0.105797 7.5705 0.31739L7.97857 1.08819C8.15238 1.07308 8.32619 1.06552 8.5 1.06552C8.67381 1.06552 8.84762 1.07308 9.02143 1.08819L9.4295 0.31739C9.54285 0.105797 9.73933 0 9.9736 0.0453414C10.2079 0.0906828 10.359 0.249378 10.3968 0.491198L10.5101 1.34513C10.8502 1.44337 11.1827 1.55672 11.4925 1.7003L12.1424 1.12598C12.3162 0.967283 12.5429 0.929499 12.7545 1.05797C12.9586 1.17888 13.0417 1.37536 12.9964 1.61718L12.8074 2.45599C13.0946 2.66003 13.3666 2.88674 13.616 3.13611L14.4171 2.81117C14.6362 2.72048 14.8554 2.76583 15.014 2.95475C15.1576 3.13611 15.1803 3.36282 15.0518 3.56686L14.5909 4.29232C14.7798 4.57948 14.9611 4.88176 15.1123 5.19915L15.9738 5.17648C16.2156 5.16892 16.4045 5.27472 16.4876 5.50898C16.5632 5.73569 16.5103 5.95484 16.3138 6.09842L15.6262 6.6274C15.7168 6.9599 15.7773 7.30752 15.8151 7.6627L16.6388 7.92719C16.8655 7.9952 17.0015 8.17656 17.0015 8.41839C17.0015 8.65265 16.8655 8.83401 16.6388 8.90958L15.8151 9.17408C15.7773 9.52925 15.7168 9.86931 15.6262 10.2094L16.3138 10.7384C16.5103 10.8895 16.5708 11.1011 16.4876 11.3202C16.4045 11.5469 16.2156 11.6754 15.9738 11.6679L15.1123 11.6301C14.9611 11.9475 14.7798 12.2497 14.5909 12.5369L15.0518 13.2699C15.1803 13.474 15.1727 13.7007 15.014 13.882C14.8554 14.0634 14.6438 14.1163 14.4095 14.0256L13.616 13.7007C13.3666 13.9425 13.1022 14.1692 12.8074 14.3657L12.9888 15.2196C13.0417 15.4539 12.9586 15.6579 12.747 15.7788C12.5429 15.8922 12.3162 15.877 12.1424 15.7108L11.5001 15.1289C11.1827 15.2725 10.8578 15.3934 10.5177 15.4916L10.3892 16.3456C10.359 16.5874 10.2154 16.7536 9.9736 16.7914C9.73933 16.8217 9.54285 16.731 9.4295 16.5194L9.02143 15.7486C8.84762 15.7637 8.67381 15.7712 8.5 15.7712ZM8.5 6.31001C9.44461 6.31001 10.2456 6.92968 10.5177 7.79116H14.3566C14.0468 4.82886 11.5454 2.524 8.5 2.524C7.63096 2.524 6.80725 2.71293 6.05912 3.05299L7.99369 6.37047C8.15994 6.33268 8.32619 6.31001 8.5 6.31001ZM2.60562 8.41839C2.60562 10.3378 3.52 12.0381 4.9407 13.1188L6.94328 9.83908C6.60322 9.46124 6.39163 8.96248 6.39163 8.41839C6.39163 7.87429 6.60322 7.38309 6.93572 7.00525L4.9936 3.68021C3.54267 4.75329 2.60562 6.47626 2.60562 8.41839ZM8.5 9.27232C8.97608 9.27232 9.35393 8.88691 9.35393 8.41839C9.35393 7.9423 8.97608 7.56446 8.5 7.56446C8.03147 7.56446 7.64607 7.9423 7.64607 8.41839C7.64607 8.88691 8.03147 9.27232 8.5 9.27232ZM8.5 14.3128C11.553 14.3128 14.0543 11.9928 14.3642 9.02294H10.5252C10.2608 9.89198 9.45217 10.5268 8.5 10.5268C8.32619 10.5268 8.15994 10.5041 8.00124 10.4663L5.99867 13.7536C6.76191 14.1087 7.60829 14.3128 8.5 14.3128Z" fill="#071216"/></svg></span><span>Configurações</span></div>
-          <div class="item" data-href="opendoctor-perfil.html" data-tip="Perfil"><span class="ico"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.0001 16C12.4157 16 16 12.4157 16 8.0001C16 3.5843 12.4157 0 8.0001 0C3.5843 0 0 3.5843 0 8.0001C0 12.4157 3.5843 16 8.0001 16ZM8.0001 14.6668C4.3137 14.6668 1.3334 11.6863 1.3334 8.0001C1.3334 4.3137 4.3137 1.3334 8.0001 1.3334C11.6863 1.3334 14.6668 4.3137 14.6668 8.0001C14.6668 11.6863 11.6863 14.6668 8.0001 14.6668ZM13.3647 13.1686L13.3413 13.0824C12.9569 11.9295 10.8862 10.6667 8.0001 10.6667C5.1216 10.6667 3.051 11.9295 2.6589 13.0745L2.6353 13.1686C4.047 14.5648 6.4706 15.3805 8.0001 15.3805C9.5373 15.3805 11.9372 14.5727 13.3647 13.1686ZM8.0001 9.3333C9.5138 9.349 10.6903 8.0627 10.6903 6.3765C10.6903 4.7922 9.506 3.4824 8.0001 3.4824C6.4942 3.4824 5.302 4.7922 5.3099 6.3765C5.3176 8.0627 6.4942 9.3177 8.0001 9.3333Z" fill="#071216"/></svg></span><span>Perfil</span></div>
+          <div class="item" id="navPrescricoes" data-tip="Prescrições"><span class="ico"><svg width="17" height="14" viewBox="0 0 17 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.43415 13.8229C0.8315 13.8229 0.000494646 12.9993 0.000494646 11.4115V2.36688C0.000494646 0.808747 0.816661 0 2.20414 0H4.30392C5.07556 0 5.46139 0.140974 5.98077 0.571316L6.41111 0.912622C6.81919 1.24651 7.13082 1.37264 7.66504 1.37264H14.5654C16.168 1.37264 16.999 2.19623 16.999 3.78404V11.4115C16.999 12.9993 16.1754 13.8229 14.7583 13.8229H2.43415ZM2.52319 12.3686H14.4837C15.1663 12.3686 15.5448 12.0125 15.5448 11.2928V3.91018C15.5448 3.18305 15.1663 2.8269 14.4837 2.8269H7.27921C6.50757 2.8269 6.1069 2.68593 5.59494 2.26301L5.1646 1.91428C4.7491 1.57297 4.44489 1.45426 3.91809 1.45426H2.49351C1.82574 1.45426 1.45475 1.81041 1.45475 2.49302V11.2928C1.45475 12.0125 1.83316 12.3686 2.52319 12.3686ZM2.35996 5.15669V4.62989C2.35996 4.16245 2.59739 3.93986 3.07225 3.93986H13.9273C14.4021 3.93986 14.6321 4.16245 14.6321 4.62989V5.15669H2.35996Z" fill="#071216"/></svg></span><span>Prescrições</span></div>
         </div>
       </div>
       <div class="nav-hist" id="navHist"></div>
+      <div class="nav-pe">
+        <div class="item" id="navCfg" data-tip="Configurações" role="button" tabindex="0" aria-haspopup="menu" aria-expanded="false" aria-controls="cfgMenu"><span class="ico"><svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.5 15.7712C8.32619 15.7712 8.15238 15.7637 7.97857 15.7486L7.5705 16.5194C7.44959 16.731 7.26067 16.8368 7.01885 16.7914C6.79214 16.7461 6.63345 16.5874 6.60322 16.3456L6.48231 15.4916C6.14225 15.3934 5.8173 15.2725 5.50747 15.1289L4.85757 15.7108C4.67621 15.8695 4.45706 15.8997 4.24547 15.7788C4.04143 15.6579 3.9583 15.4539 4.00365 15.2196L4.18501 14.3732C3.90541 14.1692 3.63336 13.95 3.38398 13.7007L2.58295 14.0256C2.35624 14.1163 2.14465 14.0709 1.98595 13.882C1.83482 13.7007 1.8197 13.474 1.94817 13.2699L2.40914 12.5445C2.21266 12.2497 2.03885 11.9475 1.88771 11.6376L1.02623 11.6603C0.776849 11.6679 0.595484 11.5545 0.512358 11.3278C0.436789 11.1011 0.489687 10.8819 0.686166 10.7384L1.36629 10.2094C1.28316 9.86931 1.22271 9.52925 1.18492 9.17408L0.36122 8.90958C0.126956 8.83401 -0.00151138 8.65265 -0.00151138 8.41839C-0.00151138 8.17656 0.126956 7.9952 0.36122 7.92719L1.18492 7.6627C1.22271 7.30752 1.28316 6.96746 1.36629 6.6274L0.686166 6.09842C0.489687 5.94728 0.429232 5.73569 0.512358 5.51654C0.595484 5.28983 0.776849 5.16136 1.02623 5.16892L1.88771 5.2067C2.03885 4.88931 2.21266 4.58704 2.40914 4.29988L1.94817 3.56686C1.8197 3.36282 1.82726 3.13611 1.98595 2.95475C2.14465 2.77338 2.35624 2.71293 2.58295 2.81117L3.38398 3.13611C3.63336 2.89429 3.89785 2.66759 4.18501 2.46355L4.00365 1.61718C3.9583 1.38291 4.03387 1.17132 4.24547 1.05797C4.45706 0.944612 4.68377 0.959726 4.85757 1.12598L5.49235 1.7003C5.8173 1.56428 6.13469 1.44337 6.47475 1.34513L6.60322 0.483642C6.641 0.249378 6.78458 0.0831259 7.0264 0.0453414C7.26067 0.0075569 7.45715 0.105797 7.5705 0.31739L7.97857 1.08819C8.15238 1.07308 8.32619 1.06552 8.5 1.06552C8.67381 1.06552 8.84762 1.07308 9.02143 1.08819L9.4295 0.31739C9.54285 0.105797 9.73933 0 9.9736 0.0453414C10.2079 0.0906828 10.359 0.249378 10.3968 0.491198L10.5101 1.34513C10.8502 1.44337 11.1827 1.55672 11.4925 1.7003L12.1424 1.12598C12.3162 0.967283 12.5429 0.929499 12.7545 1.05797C12.9586 1.17888 13.0417 1.37536 12.9964 1.61718L12.8074 2.45599C13.0946 2.66003 13.3666 2.88674 13.616 3.13611L14.4171 2.81117C14.6362 2.72048 14.8554 2.76583 15.014 2.95475C15.1576 3.13611 15.1803 3.36282 15.0518 3.56686L14.5909 4.29232C14.7798 4.57948 14.9611 4.88176 15.1123 5.19915L15.9738 5.17648C16.2156 5.16892 16.4045 5.27472 16.4876 5.50898C16.5632 5.73569 16.5103 5.95484 16.3138 6.09842L15.6262 6.6274C15.7168 6.9599 15.7773 7.30752 15.8151 7.6627L16.6388 7.92719C16.8655 7.9952 17.0015 8.17656 17.0015 8.41839C17.0015 8.65265 16.8655 8.83401 16.6388 8.90958L15.8151 9.17408C15.7773 9.52925 15.7168 9.86931 15.6262 10.2094L16.3138 10.7384C16.5103 10.8895 16.5708 11.1011 16.4876 11.3202C16.4045 11.5469 16.2156 11.6754 15.9738 11.6679L15.1123 11.6301C14.9611 11.9475 14.7798 12.2497 14.5909 12.5369L15.0518 13.2699C15.1803 13.474 15.1727 13.7007 15.014 13.882C14.8554 14.0634 14.6438 14.1163 14.4095 14.0256L13.616 13.7007C13.3666 13.9425 13.1022 14.1692 12.8074 14.3657L12.9888 15.2196C13.0417 15.4539 12.9586 15.6579 12.747 15.7788C12.5429 15.8922 12.3162 15.877 12.1424 15.7108L11.5001 15.1289C11.1827 15.2725 10.8578 15.3934 10.5177 15.4916L10.3892 16.3456C10.359 16.5874 10.2154 16.7536 9.9736 16.7914C9.73933 16.8217 9.54285 16.731 9.4295 16.5194L9.02143 15.7486C8.84762 15.7637 8.67381 15.7712 8.5 15.7712ZM8.5 6.31001C9.44461 6.31001 10.2456 6.92968 10.5177 7.79116H14.3566C14.0468 4.82886 11.5454 2.524 8.5 2.524C7.63096 2.524 6.80725 2.71293 6.05912 3.05299L7.99369 6.37047C8.15994 6.33268 8.32619 6.31001 8.5 6.31001ZM2.60562 8.41839C2.60562 10.3378 3.52 12.0381 4.9407 13.1188L6.94328 9.83908C6.60322 9.46124 6.39163 8.96248 6.39163 8.41839C6.39163 7.87429 6.60322 7.38309 6.93572 7.00525L4.9936 3.68021C3.54267 4.75329 2.60562 6.47626 2.60562 8.41839ZM8.5 9.27232C8.97608 9.27232 9.35393 8.88691 9.35393 8.41839C9.35393 7.9423 8.97608 7.56446 8.5 7.56446C8.03147 7.56446 7.64607 7.9423 7.64607 8.41839C7.64607 8.88691 8.03147 9.27232 8.5 9.27232ZM8.5 14.3128C11.553 14.3128 14.0543 11.9928 14.3642 9.02294H10.5252C10.2608 9.89198 9.45217 10.5268 8.5 10.5268C8.32619 10.5268 8.15994 10.5041 8.00124 10.4663L5.99867 13.7536C6.76191 14.1087 7.60829 14.3128 8.5 14.3128Z" fill="#071216"/></svg></span><span>Configurações</span><span class="nav-mais"><svg aria-hidden="true" width="10" height="2.13" viewBox="0 0 14.02 2.99" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1.490 2.981C2.317 2.981 2.981 2.317 2.981 1.490C2.981 0.664 2.317 0.000 1.490 0.000C0.664 0.000 0.000 0.664 0.000 1.490C0.000 2.317 0.664 2.981 1.490 2.981ZM7.009 2.981C7.828 2.981 8.499 2.317 8.499 1.490C8.499 0.664 7.828 0.000 7.009 0.000C6.183 0.000 5.519 0.664 5.519 1.490C5.519 2.317 6.183 2.981 7.009 2.981ZM12.520 2.981C13.347 2.981 14.011 2.317 14.011 1.490C14.011 0.664 13.347 0.000 12.520 0.000C11.694 0.000 11.030 0.664 11.030 1.490C11.030 2.317 11.694 2.981 12.520 2.981Z" fill="currentColor"/></svg></span></div>
+      </div>
     </aside>
+    <div class="cfg-menu" id="cfgMenu" role="menu" hidden>
+      <div class="cfg-menu-conta" id="cfgConta"></div>
+      <div class="cfg-menu-sep"></div>
+      <a class="cfg-menu-op" role="menuitem" href="opendoctor-configuracoes.html">Configurações</a>
+      <a class="cfg-menu-op" role="menuitem" href="opendoctor-integracao.html">Integrações</a>
+      <div class="cfg-menu-sep"></div>
+      <a class="cfg-menu-op" role="menuitem" href="opendoctor-perfil.html">Perfil</a>
+      <div class="cfg-menu-sep"></div>
+      <a class="cfg-menu-op" role="menuitem" href="/auth/logout">Sair</a>
+    </div>
 
     <!-- ===== CENTER: DAY AGENDA ===== -->
     <div class="center">
@@ -2304,7 +2461,7 @@
             <div class="pr-nav" id="prTabs" role="tablist" aria-label="Prontuário">
               <span class="pr-nav-pill" aria-hidden="true"></span>
               <button type="button" role="tab" data-tab="geral" class="on"><span>Prontuário</span></button>
-              <button type="button" role="tab" data-tab="atual"><span>Consulta</span></button><button type="button" role="tab" data-tab="prescricoes"><span>Prescrição</span></button>
+              <button type="button" role="tab" data-tab="prescricoes"><span>Prescrição</span></button>
             </div>
           </div>
           <div class="pr-msg" id="prMsg" hidden></div>
@@ -2504,83 +2661,6 @@
 
             <!-- Consulta atual: o cartão do Figma "Consulta" (nó 1089:32631): Transcrição | SOAP, o pé com Iniciar consulta ou a
                  barra gravando e, depois da consulta, o player em cima. O que o design não mostra fica abaixo do cartão -->
-            <section class="pr-panel" data-panel="atual" hidden>
-              <div class="pr-bigcard" id="prEvoBox">
-                <div class="cs-card" id="csCard">
-                  <div class="cs-play" id="csPlay" hidden></div>
-                  <div class="cs-main">
-                    <div class="cs-seg" id="csSeg" role="tablist">
-                      <button type="button" role="tab" data-cs="tx" class="on" aria-selected="true" aria-controls="csTx">Transcrição</button>
-                      <button type="button" role="tab" data-cs="soap" aria-selected="false" aria-controls="csSoap">SOAP</button>
-                    </div>
-                    <div class="cs-pane" id="csTx" role="tabpanel"><div class="rc-tx" id="rcTx"></div><div class="cs-vazio" id="csTxLk">Esta consulta não foi gravada.</div></div>
-                    <div class="cs-pane" id="csSoap" role="tabpanel" hidden>
-                      <div class="pr-locked" id="prLocked" hidden>
-                        <div class="pr-signed" id="prSigned"></div>
-                        <div class="pr-body" id="prLockedBody"></div>
-                        <div id="prLockedAdds"></div>
-                      </div>
-                      <div class="pr-addbox" id="prAddBox" hidden></div>
-                <div class="pr-soap" id="prSoap" hidden>
-                  <label class="pr-soapf"><span>S — Subjetivo</span><textarea data-f="s" placeholder="Queixa, história, sintomas relatados…"></textarea></label>
-                  <div class="pr-soapf"><span>O — Objetivo</span>
-                    <div class="pr-vitals">
-                      <label class="pr-vital"><span>PA (mmHg)</span><span class="pr-pa"><input class="pr-in" data-v="pa_s" inputmode="numeric" placeholder="120" autocomplete="off">/<input class="pr-in" data-v="pa_d" inputmode="numeric" placeholder="80" autocomplete="off"></span></label>
-                      <label class="pr-vital"><span>FC (bpm)</span><input class="pr-in" data-v="fc" inputmode="decimal" placeholder="72" autocomplete="off"></label>
-                      <label class="pr-vital"><span>FR (irpm)</span><input class="pr-in" data-v="fr" inputmode="decimal" placeholder="16" autocomplete="off"></label>
-                      <label class="pr-vital"><span>Temp. (°C)</span><input class="pr-in" data-v="temp" inputmode="decimal" placeholder="36,5" autocomplete="off"></label>
-                      <label class="pr-vital"><span>SpO₂ (%)</span><input class="pr-in" data-v="spo2" inputmode="decimal" placeholder="98" autocomplete="off"></label>
-                      <label class="pr-vital"><span>Peso (kg)</span><input class="pr-in" data-v="peso" inputmode="decimal" placeholder="70" autocomplete="off"></label>
-                      <label class="pr-vital"><span>Altura (cm)</span><input class="pr-in" data-v="altura" inputmode="decimal" placeholder="170" autocomplete="off"></label>
-                      <div class="pr-vital"><span>IMC</span><div class="pr-imc" id="prImc">—</div></div>
-                      <label class="pr-vital"><span>Glicemia (mg/dL)</span><input class="pr-in" data-v="glicemia" inputmode="decimal" placeholder="90" autocomplete="off"></label>
-                    </div>
-                    <textarea data-f="o" placeholder="Exame físico, outros resultados de exames…"></textarea>
-                    <div class="pr-labhint">Laudo do laboratório: <button class="pr-link2" type="button" data-attach>Anexar exame</button> (PDF ou foto) — fica no Prontuário, na aba Análise.</div>
-                  </div>
-                  <div class="pr-soapf"><span>A — Avaliação</span>
-                    <textarea data-f="a" placeholder="Hipóteses diagnósticas, raciocínio clínico…"></textarea>
-                    <div class="pr-cid"><div class="pr-chips" id="prCidChips"></div>
-                      <div class="pr-cidbox">
-                        <input class="pr-in" id="prCidIn" placeholder="CID-10: busque por código ou nome (ex.: I10, asma, DM2)" autocomplete="off"
-                               role="combobox" aria-autocomplete="list" aria-controls="prCidList" aria-expanded="false" spellcheck="false">
-                        <div class="pr-cidlist" id="prCidList" role="listbox" hidden></div>
-                      </div></div>
-                  </div>
-                  <label class="pr-soapf"><span>P — Plano</span><textarea data-f="p" placeholder="Conduta, prescrições, exames solicitados, retorno…"></textarea></label>
-                </div>
-                    </div>
-                    <div class="cs-foot" id="prRec"></div>
-                    <!-- flutua por cima do conteúdo (sem máscara): o aviso de que a IA preencheu a evolução e o Assinar / Adicionar adendo -->
-                    <div class="cs-flut" id="csFlut">
-                      <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button><button class="rc-x" type="button" id="rcNoteX" aria-label="Fechar o aviso" title="Fechar"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
-                      <div class="cs-flut-pe" id="csFlutPe"></div>
-                    </div>
-                  </div>
-                  <!-- o status do salvar automático (Salvando…, Salvo às…, falhas) fica na faixa logo abaixo do cartão, sem mudar a altura dele -->
-                  <div class="pr-foot cs-status" id="prEditFoot">
-                    <span class="pr-status" id="prStatus"></span>
-                    <span class="pr-count" id="prCount" hidden></span>
-                  </div>
-                </div>
-                <div class="rc-alert" id="rcAlert" role="status" aria-live="polite" hidden></div>
-                <div class="rc-steps" id="rcSteps" hidden></div>
-                <div class="rc-review" id="rcReview" hidden></div>
-                <div class="pr-body pr-printcur" id="prPrintCur"></div>
-                <div class="rc-final" id="rcFinal" hidden></div>
-                <!-- o cabeçalho antigo (consulta, relógio "Iniciar consulta", Texto livre | SOAP) fica fora da tela: o código ainda usa estas peças -->
-                <div hidden>
-                  <div id="prEvoLabel"></div><div id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
-                  <div id="prVisitBox"><span id="prTimer" hidden></span><button id="prVisit" type="button">Iniciar consulta</button></div>
-                  <div id="prSeg"><button type="button" data-m="free">Texto livre</button><button type="button" data-m="soap" class="on">SOAP</button></div>
-                  <div id="prFree" hidden><textarea class="pr-note" id="prNote"></textarea></div>
-                  <!-- os botões do pé da evolução saíram da tela a pedido; ficam aqui porque o código ainda os usa -->
-                  <button id="prCopyLast" type="button" hidden>Copiar da última</button><button id="prSave" type="button">Salvar</button>
-                  <button id="prFinalize" type="button">Finalizar evolução</button>
-                  <div id="prLockedFoot" hidden><button id="prAddBtn" type="button">Adicionar adendo</button></div>
-                </div>
-              </div>
-            </section>
 
             <!-- Resumo clínico (vale para todas as consultas) -->
             <!-- Prescrições: receita da consulta (tabela receitas), possíveis prescrições e receitas anteriores (docs/prescricao.md) -->
@@ -2651,6 +2731,20 @@
           <div id="ptList"></div>
         </div>
         <div class="pt-menu" id="ptMenu" role="menu" hidden></div>
+      </div>
+      <!-- Prescrições (menu): as receitas do médico, como a lista de Pacientes; cada uma abre no prontuário do paciente -->
+      <div class="pt-view rx-view" id="rxView">
+        <div class="pt-head">
+          <h1 class="pt-title">Prescrições</h1>
+          <div class="hd-actions">
+            <button class="hd-btn" id="rxNew" type="button" aria-label="Nova prescrição" aria-haspopup="dialog"><img src="assets/icons/agenda-add.svg?v=3" width="36" height="36" alt=""></button>
+            <button class="hd-btn" id="rxBusca" type="button" aria-label="Buscar prescrições" aria-haspopup="dialog"><img src="assets/icons/agenda-search.svg?v=3" width="36" height="36" alt=""></button>
+          </div>
+        </div>
+        <div class="pt">
+          <div id="rxList"></div>
+        </div>
+        <div class="pt-menu" id="rxMenu" role="menu" hidden></div>
       </div>
       <div class="wk" id="wk"><div class="wk-grid" id="wkGrid"></div></div>
       <div class="cal-pop" id="calPop" hidden>
@@ -2727,6 +2821,112 @@
 
       <div class="bi-note">Apoio à decisão — verifique sempre.</div>
 
+      <!-- New chat (Figma Concept 829:8107): com a conversa vazia, o campo no meio e as sugestões embaixo -->
+      <button class="nc-all" id="ncAll" type="button" aria-haspopup="menu" aria-expanded="false"><span id="ncAllTxt">Todos</span><span class="nc-all-chev"><svg aria-hidden="true" width="10" height="5.63" viewBox="0 0 12.73 7.17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.365 7.163C6.548 7.163 6.731 7.090 6.855 6.951L12.524 1.143C12.649 1.018 12.722 0.857 12.722 0.674C12.722 0.293 12.437 0.000 12.056 0.000C11.873 0.000 11.704 0.073 11.580 0.190L6.365 5.522L1.143 0.190C1.025 0.073 0.857 0.000 0.667 0.000C0.286 0.000 0.000 0.293 0.000 0.674C0.000 0.857 0.073 1.018 0.198 1.150L5.867 6.951C6.006 7.090 6.174 7.163 6.365 7.163Z" fill="currentColor"/></svg></span></button>
+      <div class="nc-menu" id="ncMenu" role="menu" hidden>
+        <input class="nc-busca" id="ncBusca" type="text" placeholder="Buscar paciente" autocomplete="off" aria-label="Buscar paciente">
+        <div class="nc-lista" id="ncLista"></div>
+      </div>
+      <button class="nc-convite" id="ncConvite" type="button"><span class="nc-convite-ico"><svg aria-hidden="true" width="15.3" height="13" viewBox="0 0 17.85 15.17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.276 15.132C14.421 15.132 17.842 11.704 17.842 7.566C17.842 3.428 14.407 0.000 10.269 0.000C6.416 0.000 3.201 2.952 2.761 6.694C3.208 6.592 3.809 6.562 4.285 6.636C4.717 3.713 7.214 1.494 10.269 1.494C13.638 1.494 16.348 4.197 16.348 7.566C16.348 9.170 15.740 10.620 14.729 11.704C13.975 10.862 12.363 10.093 10.269 10.093C9.609 10.093 9.001 10.173 8.445 10.305C8.533 10.649 8.577 11.023 8.577 11.396C8.577 12.590 8.123 13.689 7.383 14.539C8.276 14.919 9.258 15.132 10.276 15.132ZM10.269 8.892C11.682 8.899 12.788 7.690 12.788 6.123C12.788 4.644 11.675 3.406 10.269 3.406C8.855 3.406 7.734 4.644 7.749 6.123C7.756 7.683 8.855 8.877 10.269 8.892ZM3.765 15.168C5.815 15.168 7.537 13.455 7.537 11.396C7.537 9.331 5.837 7.632 3.765 7.632C1.699 7.632 0.000 9.331 0.000 11.396C0.000 13.469 1.699 15.168 3.765 15.168ZM3.765 13.792C3.464 13.792 3.267 13.586 3.267 13.293L3.267 11.902L1.882 11.902C1.582 11.902 1.384 11.704 1.384 11.396C1.384 11.096 1.582 10.898 1.882 10.898L3.267 10.898L3.267 9.514C3.267 9.221 3.464 9.016 3.765 9.016C4.072 9.016 4.270 9.214 4.270 9.514L4.270 10.898L5.654 10.898C5.955 10.898 6.152 11.096 6.152 11.396C6.152 11.704 5.955 11.902 5.654 11.902L4.270 11.902L4.270 13.293C4.270 13.586 4.072 13.792 3.765 13.792Z" fill="currentColor"/></svg></span><span>Convidar</span></button>
+      <div class="nc-sug" id="ncSug">
+        <button class="nc-item" type="button" data-nc-href="opendoctor-integracao.html"><span class="nc-ico" style="width:16px"><img src="assets/icons/novo-gmail.svg?v=1" width="16" height="12" alt=""></span><span>Integre minhas consultas do calendário do Gmail</span></button>
+        <img class="nc-linha" src="assets/icons/novo-linha.svg?v=1" width="800" height="1" alt="">
+        <button class="nc-item" type="button" data-nc-href="opendoctor-integracao.html"><span class="nc-ico" style="width:13px"><img src="assets/icons/novo-apple.svg?v=1" width="13" height="16" alt=""></span><span>Integre minhas consultas do calendário Apple</span></button>
+        <img class="nc-linha" src="assets/icons/novo-linha.svg?v=1" width="800" height="1" alt="">
+        <button class="nc-item" type="button" data-nc-pergunta><span class="nc-ico" style="width:15px"><svg aria-hidden="true" width="10.3" height="17.85" viewBox="0 0 10.3 17.85" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.000 15.330C0.000 16.846 0.989 17.842 2.476 17.842L7.815 17.842C9.302 17.842 10.291 16.846 10.291 15.330L10.291 7.068C10.291 5.574 9.331 4.585 7.881 4.556L7.881 3.596C8.577 3.501 8.979 3.003 8.979 2.227L8.979 1.384C8.979 0.520 8.481 0.000 7.632 0.000L2.659 0.000C1.809 0.000 1.304 0.520 1.304 1.384L1.304 2.227C1.304 3.003 1.714 3.501 2.410 3.596L2.410 4.556C0.952 4.585 0.000 5.574 0.000 7.068ZM2.556 2.124L2.556 1.479C2.556 1.318 2.651 1.208 2.827 1.208L7.493 1.208C7.661 1.208 7.764 1.318 7.764 1.479L7.764 2.124C7.764 2.292 7.661 2.395 7.493 2.395L2.827 2.395C2.651 2.395 2.556 2.292 2.556 2.124ZM3.582 4.556L3.582 3.611L6.709 3.611L6.709 4.556ZM1.326 15.315L1.326 7.083C1.326 6.357 1.794 5.889 2.534 5.889L7.749 5.889C8.489 5.889 8.965 6.357 8.965 7.083L8.965 15.315C8.965 16.047 8.489 16.523 7.749 16.523L2.534 16.523C1.794 16.523 1.326 16.047 1.326 15.315ZM2.439 11.675C2.439 12.004 2.659 12.224 2.981 12.224L4.124 12.224L4.124 13.352C4.124 13.682 4.336 13.901 4.666 13.901L5.618 13.901C5.947 13.901 6.167 13.682 6.167 13.352L6.167 12.224L7.302 12.224C7.625 12.224 7.852 12.004 7.852 11.675L7.852 10.723C7.852 10.393 7.625 10.181 7.302 10.181L6.167 10.181L6.167 9.045C6.167 8.716 5.947 8.496 5.618 8.496L4.666 8.496C4.336 8.496 4.124 8.716 4.124 9.045L4.124 10.181L2.981 10.181C2.659 10.181 2.439 10.393 2.439 10.723Z" fill="#1F1F1F"/></svg></span><span>Crie uma prescrição de metotrexato com monitoramento laboratorial</span></button>
+        <img class="nc-linha" src="assets/icons/novo-linha.svg?v=1" width="800" height="1" alt="">
+        <button class="nc-item" type="button" data-nc-pergunta><span class="nc-ico" style="width:17px"><svg aria-hidden="true" width="13.77" height="17.09" viewBox="0 0 13.77 17.09" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.380 15.850L7.002 15.850C6.504 15.476 6.108 14.978 5.859 14.414L2.498 14.414C1.787 14.414 1.436 14.041 1.436 13.367L1.436 2.490C1.436 1.816 1.787 1.436 2.498 1.436L10.056 1.436C10.745 1.436 11.125 1.809 11.125 2.490L11.125 9.126C11.689 9.375 12.180 9.771 12.561 10.261L12.561 2.402C12.561 0.813 11.748 0.000 10.181 0.000L2.380 0.000C0.813 0.000 0.000 0.820 0.000 2.402L0.000 13.447C0.000 15.029 0.813 15.850 2.380 15.850ZM3.604 4.417L8.965 4.417C9.229 4.417 9.434 4.204 9.434 3.940C9.434 3.684 9.229 3.486 8.965 3.486L3.604 3.486C3.333 3.486 3.127 3.684 3.127 3.940C3.127 4.204 3.333 4.417 3.604 4.417ZM3.604 6.914L8.965 6.914C9.229 6.914 9.434 6.709 9.434 6.445C9.434 6.189 9.229 5.991 8.965 5.991L3.604 5.991C3.333 5.991 3.127 6.189 3.127 6.445C3.127 6.709 3.333 6.914 3.604 6.914ZM9.316 15.579C9.873 15.579 10.393 15.425 10.840 15.154L12.546 16.853C12.700 17.007 12.876 17.087 13.096 17.087C13.477 17.087 13.762 16.794 13.762 16.392C13.762 16.216 13.674 16.040 13.542 15.908L11.829 14.187C12.129 13.726 12.297 13.176 12.297 12.590C12.297 10.957 10.950 9.609 9.316 9.609C7.683 9.609 6.335 10.957 6.335 12.590C6.335 14.231 7.683 15.579 9.316 15.579ZM9.324 14.502C8.276 14.502 7.412 13.638 7.412 12.590C7.412 11.550 8.276 10.693 9.324 10.693C10.364 10.693 11.221 11.550 11.221 12.590C11.221 13.638 10.364 14.502 9.324 14.502Z" fill="#1F1F1F"/></svg></span><span>Estratégias emergentes para a triagem de dispneia aguda indiferenciada no serviço de emergência</span></button>
+      </div>
+
+      <!-- Transcrição (Figma Concept 1349:13256, teste): no prontuário, a gravação e tudo da antiga aba Consulta ficam na
+           lateral; o controle do meio fica com Prontuário e Prescrição -->
+      <section class="rp-tx" id="prTx" aria-labelledby="prTxT">
+        <div class="rp-head">
+          <span class="rp-title" id="prTxT">Transcrição</span>
+          <div class="hd-actions">
+            <button class="hd-btn" id="prTxExpand" type="button" aria-label="Expandir"><img src="assets/icons/chat-expand.svg?v=3" width="36" height="36" alt=""></button>
+          </div>
+        </div>
+        <div class="rp-tx-corpo">
+            <section class="pr-panel" data-panel="atual">
+              <div class="pr-bigcard" id="prEvoBox">
+                <div class="cs-card" id="csCard">
+                  <div class="cs-play" id="csPlay" hidden></div>
+                  <div class="cs-main">
+                    <div class="cs-seg" id="csSeg" role="tablist">
+                      <button type="button" role="tab" data-cs="tx" class="on" aria-selected="true" aria-controls="csTx">Transcrição</button>
+                      <button type="button" role="tab" data-cs="soap" aria-selected="false" aria-controls="csSoap">SOAP</button>
+                    </div>
+                    <div class="cs-pane" id="csTx" role="tabpanel"><div class="rc-tx" id="rcTx"></div><div class="cs-vazio" id="csTxLk">Esta consulta não foi gravada.</div></div>
+                    <div class="cs-pane" id="csSoap" role="tabpanel" hidden>
+                      <div class="pr-locked" id="prLocked" hidden>
+                        <div class="pr-signed" id="prSigned"></div>
+                        <div class="pr-body" id="prLockedBody"></div>
+                        <div id="prLockedAdds"></div>
+                      </div>
+                      <div class="pr-addbox" id="prAddBox" hidden></div>
+                <div class="pr-soap" id="prSoap" hidden>
+                  <label class="pr-soapf"><span>S — Subjetivo</span><textarea data-f="s" placeholder="Queixa, história, sintomas relatados…"></textarea></label>
+                  <div class="pr-soapf"><span>O — Objetivo</span>
+                    <div class="pr-vitals">
+                      <label class="pr-vital"><span>PA (mmHg)</span><span class="pr-pa"><input class="pr-in" data-v="pa_s" inputmode="numeric" placeholder="120" autocomplete="off">/<input class="pr-in" data-v="pa_d" inputmode="numeric" placeholder="80" autocomplete="off"></span></label>
+                      <label class="pr-vital"><span>FC (bpm)</span><input class="pr-in" data-v="fc" inputmode="decimal" placeholder="72" autocomplete="off"></label>
+                      <label class="pr-vital"><span>FR (irpm)</span><input class="pr-in" data-v="fr" inputmode="decimal" placeholder="16" autocomplete="off"></label>
+                      <label class="pr-vital"><span>Temp. (°C)</span><input class="pr-in" data-v="temp" inputmode="decimal" placeholder="36,5" autocomplete="off"></label>
+                      <label class="pr-vital"><span>SpO₂ (%)</span><input class="pr-in" data-v="spo2" inputmode="decimal" placeholder="98" autocomplete="off"></label>
+                      <label class="pr-vital"><span>Peso (kg)</span><input class="pr-in" data-v="peso" inputmode="decimal" placeholder="70" autocomplete="off"></label>
+                      <label class="pr-vital"><span>Altura (cm)</span><input class="pr-in" data-v="altura" inputmode="decimal" placeholder="170" autocomplete="off"></label>
+                      <div class="pr-vital"><span>IMC</span><div class="pr-imc" id="prImc">—</div></div>
+                      <label class="pr-vital"><span>Glicemia (mg/dL)</span><input class="pr-in" data-v="glicemia" inputmode="decimal" placeholder="90" autocomplete="off"></label>
+                    </div>
+                    <textarea data-f="o" placeholder="Exame físico, outros resultados de exames…"></textarea>
+                    <div class="pr-labhint">Laudo do laboratório: <button class="pr-link2" type="button" data-attach>Anexar exame</button> (PDF ou foto) — fica no Prontuário, na aba Análise.</div>
+                  </div>
+                  <div class="pr-soapf"><span>A — Avaliação</span>
+                    <textarea data-f="a" placeholder="Hipóteses diagnósticas, raciocínio clínico…"></textarea>
+                    <div class="pr-cid"><div class="pr-chips" id="prCidChips"></div>
+                      <div class="pr-cidbox">
+                        <input class="pr-in" id="prCidIn" placeholder="CID-10: busque por código ou nome (ex.: I10, asma, DM2)" autocomplete="off"
+                               role="combobox" aria-autocomplete="list" aria-controls="prCidList" aria-expanded="false" spellcheck="false">
+                        <div class="pr-cidlist" id="prCidList" role="listbox" hidden></div>
+                      </div></div>
+                  </div>
+                  <label class="pr-soapf"><span>P — Plano</span><textarea data-f="p" placeholder="Conduta, prescrições, exames solicitados, retorno…"></textarea></label>
+                </div>
+                    </div>
+                    <div class="cs-foot" id="prRec"></div>
+                    <!-- flutua por cima do conteúdo (sem máscara): o aviso de que a IA preencheu a evolução e o Assinar / Adicionar adendo -->
+                    <div class="cs-flut" id="csFlut">
+                      <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button><button class="rc-x" type="button" id="rcNoteX" aria-label="Fechar o aviso" title="Fechar"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+                      <div class="cs-flut-pe" id="csFlutPe"></div>
+                    </div>
+                  </div>
+                  <!-- o status do salvar automático (Salvando…, Salvo às…, falhas) fica na faixa logo abaixo do cartão, sem mudar a altura dele -->
+                  <div class="pr-foot cs-status" id="prEditFoot">
+                    <span class="pr-status" id="prStatus"></span>
+                    <span class="pr-count" id="prCount" hidden></span>
+                  </div>
+                </div>
+                <div class="rc-alert" id="rcAlert" role="status" aria-live="polite" hidden></div>
+                <div class="rc-steps" id="rcSteps" hidden></div>
+                <div class="rc-review" id="rcReview" hidden></div>
+                <div class="pr-body pr-printcur" id="prPrintCur"></div>
+                <div class="rc-final" id="rcFinal" hidden></div>
+                <!-- o cabeçalho antigo (consulta, relógio "Iniciar consulta", Texto livre | SOAP) fica fora da tela: o código ainda usa estas peças -->
+                <div hidden>
+                  <div id="prEvoLabel"></div><div id="prConsultaBox"><span id="prEvTitle"></span><span id="prEvWhen"></span><span id="prEvLoc"></span></div>
+                  <div id="prVisitBox"><span id="prTimer" hidden></span><button id="prVisit" type="button">Iniciar consulta</button></div>
+                  <div id="prSeg"><button type="button" data-m="free">Texto livre</button><button type="button" data-m="soap" class="on">SOAP</button></div>
+                  <div id="prFree" hidden><textarea class="pr-note" id="prNote"></textarea></div>
+                  <!-- os botões do pé da evolução saíram da tela a pedido; ficam aqui porque o código ainda os usa -->
+                  <button id="prCopyLast" type="button" hidden>Copiar da última</button><button id="prSave" type="button">Salvar</button>
+                  <button id="prFinalize" type="button">Finalizar evolução</button>
+                  <div id="prLockedFoot" hidden><button id="prAddBtn" type="button">Adicionar adendo</button></div>
+                </div>
+              </div>
+            </section>
+        </div>
+      </section>
       <!-- novo paciente (tela Pacientes → +): no lugar do assistente, que fica por baixo com a conversa guardada -->
       <section class="rp-novo" id="ptNewRow" aria-labelledby="ptNewT" hidden>
         <div class="rp-head">
@@ -3145,10 +3345,14 @@
         });
         ladoALado(itens).forEach(function (it) {
           var ev = it.ev, s = it.s, e = it.e, top = it.a, height = it.b - it.a;
-          var tall = height >= 110;
+          // a pílula com as iniciais do paciente: de 1 hora para cima (com a hora de 158 era a partir de 110; a hora foi
+          // para 113 em 10/11 e o cartão de 1 hora ficou com 97: a pílula sumiu sem ninguém pedir). Até 126 de altura ela
+          // não cabe embaixo do texto: fica à direita, no pé do cartão (.medio)
+          var tall = height >= HOUR_PX - 16;
+          var medio = tall && height < 126;                         // 20 + título e horário (38) + 20 + a pílula (48)
           var short = height < 40 + 38;                             // os 20 de cima e de baixo + título e horário (20 + 18)
           var card = document.createElement('div');
-          card.className = 'ev-real' + (short ? ' short' : '');
+          card.className = 'ev-real' + (short ? ' short' : '') + (medio ? ' medio' : '');
           if (ev._rascunho) card.classList.add('draft');
           else { card.setAttribute('data-evkey', evKey(ev)); window.__evData[evKey(ev)] = ev; }
           if (!ev._rascunho && evKey(ev) === window.__selEv) card.classList.add('sel');
@@ -3890,6 +4094,15 @@
       document.addEventListener('mousedown', function (e) {
         if (!pop.hidden && !pop.contains(e.target) && !e.target.closest('#ptNewRow, .cal-inner, .wk-col, .cal-allday .wk-ev, .wk-ad .wk-ev')) {
           var r0 = recolhidoEv; recolhidoEv = false;
+          // Consultas sem o assistente: a coluna some com a janela — só depois do clique (.segura), senão a agenda alarga
+          // no mousedown e o botão clicado sai de baixo do mouse
+          if (painel) {
+            painel.classList.add('segura');
+            document.addEventListener('mouseup', function solta() {
+              document.removeEventListener('mouseup', solta, true);
+              setTimeout(function () { painel.classList.remove('segura'); }, 0);   // o click vem antes deste timeout
+            }, true);
+          }
           if (!close()) recolhidoEv = r0;                    // ficou aberta (o aviso da alteração): continua valendo
         }
       });
@@ -3942,13 +4155,21 @@
 
       var history = [];   // [{role:'user'|'assistant', content:string}]
       var busy = false;
+      // o paciente da conversa (New chat, o "All"): fica preso a ela — em qualquer tela (inclusive o painel ao lado da
+      // agenda), toda pergunta dela leva o id e o servidor mascara o nome na pergunta e no histórico
+      var chatPid = null;
+      window.__chatPid = function () { return chatPid; };
+      window.__chatTemTurnos = function () { return msgs.classList.contains('on'); };
+      window.__chatOcupado = function () { return busy; };
+      window.__chatPoePid = function (pid) { if (!busy) chatPid = pid || null; };
 
       // lápis do cabeçalho: nova conversa (limpa mensagens e histórico)
       var raNew = document.getElementById('raNew');
       if (raNew) raNew.addEventListener('click', function () {
         if (busy) return;                       // espera a resposta atual terminar
         history = [];
-        conv = null; renderHist();
+        conv = null; chatPid = null; renderHist();
+        if (window.__ncRotulo) window.__ncRotulo(null);   // conversa nova: All
         msgs.innerHTML = '';
         msgs.classList.remove('on');
         input.value = ''; autogrow();
@@ -4047,7 +4268,8 @@
       function loadConvs() { if (!minhaConta()) return []; try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch (_) { return []; } }
       function saveConvs(list) { if (!minhaConta()) return; try { localStorage.setItem(STORE, JSON.stringify(list.slice(0, MAX_CONVS))); } catch (_) {} }
       function saveTurn(turn) {
-        if (!conv) conv = { id: 'c' + Date.now(), title: turn.q.slice(0, 80), turns: [] };
+        if (!conv) conv = { id: 'c' + Date.now(), title: turn.q.slice(0, 80), turns: [],
+                            pid: turn.pid || null };   // só o id do paciente (o nome não fica guardado)
         conv.turns.push(turn);
         conv.hist = history.slice(-12);
         conv.ts = Date.now();
@@ -4075,7 +4297,10 @@
             var b = document.createElement('button'); b.type = 'button'; b.className = 'hist-item';
             if (conv && conv.id === c.id) b.classList.add('on');
             b.textContent = c.title; b.title = c.title;
-            b.addEventListener('click', function () { openConv(c.id); });
+            b.addEventListener('click', function () {
+              if (window.__ncAbreConversa) window.__ncAbreConversa();   // de Consultas, Pacientes, Prescrições ou do prontuário
+              openConv(c.id);
+            });
             ul.appendChild(b);
           });
           grp.appendChild(head); grp.appendChild(ul); box.appendChild(grp);
@@ -4086,6 +4311,8 @@
         var c = loadConvs().filter(function (x) { return x.id === id; })[0];
         if (!c) return;
         conv = c;
+        chatPid = c.pid || null;                            // já, antes de qualquer envio (não espera a lista)
+        if (window.__ncRotulo) window.__ncRotulo(chatPid);  // o nome no "All" chega depois
         history = (c.hist || []).slice();
         msgs.innerHTML = '';
         msgs.classList.add('on');
@@ -4239,10 +4466,10 @@
         }
       }
 
-      function loadFollowups(wrap, q, ans) {
+      function loadFollowups(wrap, q, ans, pid) {
         fetch('/followups', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: q, answer: ans })
+          body: JSON.stringify(Object.assign({ query: q, answer: ans }, pid ? { patient_id: pid } : {}))
         }).then(function (r) { return r.json(); }).then(function (d) {
           var sugg = (d && d.suggestions) || [];
           if (!sugg.length) return;
@@ -4264,7 +4491,7 @@
         msgs.classList.add('on');
         addMsg('msg-user', text);
         input.value = ''; autogrow();
-        var q = text;
+        var q = text, pidQ = chatPid;                     // o paciente desta pergunta
 
         var wrap = document.createElement('div'); wrap.className = 'msg-ai';
         var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
@@ -4320,15 +4547,17 @@
         var sig = null;
 
         function run() {
-          streamAsk({ query: q, k: 8, history: history.slice(-12) }, handle)
+          var pedido = { query: q, k: 8, history: history.slice(-12) };
+          if (pidQ) pedido.patient_id = pidQ;                   // a conversa tem paciente: sempre vai junto
+          streamAsk(pedido, handle)
             .then(function () {
               if (!insufficient && fullText.trim()) {
                 history.push({ role: 'user', content: q });
                 // a assinatura prova ao servidor que este turno veio dele (não forjável)
                 if (sig) history.push({ role: 'assistant', content: fullText, sig: sig });
-                saveTurn({ q: q, a: fullText, ung: ung, recs: recs,
+                saveTurn({ q: q, a: fullText, ung: ung, recs: recs, pid: pidQ,
                            srcs: Object.keys(srcByN).map(function (k) { return srcByN[k]; }) });
-                loadFollowups(wrap, q, fullText);
+                loadFollowups(wrap, q, fullText, pidQ);
               }
               finish();
             })
@@ -5541,12 +5770,14 @@
       function csAbaInicial() { csTab(!locked() && (recDemo() || (RR && RR.on)) ? 'tx' : 'soap'); }
       function mm2(x) { x = Math.max(0, Math.floor(x)); return pad(Math.floor(x / 60)) + ':' + pad(x % 60); }   // 00:06, como no Figma
       // o pé: a pílula preta ("Iniciar consulta", "Tentar de novo"…); o.nota vai acima dela, o.off a desativa
+      var CSI_MIC = '<svg aria-hidden="true" width="11.13" height="16.06" viewBox="0 0 11.13 16.06" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.559 10.393C7.046 10.393 8.130 9.287 8.130 7.661L8.130 2.732C8.130 1.113 7.046 0.000 5.559 0.000C4.072 0.000 2.988 1.113 2.988 2.732L2.988 7.661C2.988 9.287 4.072 10.393 5.559 10.393ZM2.197 16.055L8.921 16.055C9.302 16.055 9.617 15.747 9.617 15.374C9.617 14.993 9.302 14.685 8.921 14.685L6.233 14.685L6.233 13.176C9.133 12.905 11.125 10.833 11.125 7.830L11.125 6.379C11.125 5.999 10.818 5.698 10.437 5.698C10.056 5.698 9.741 5.999 9.741 6.379L9.741 7.778C9.741 10.269 8.057 11.917 5.559 11.917C3.062 11.917 1.377 10.269 1.377 7.778L1.377 6.379C1.377 5.999 1.069 5.698 0.688 5.698C0.308 5.698 0.000 5.999 0.000 6.379L0.000 7.830C0.000 10.833 1.992 12.905 4.893 13.176L4.893 14.685L2.197 14.685C1.824 14.685 1.509 14.993 1.509 15.374C1.509 15.747 1.824 16.055 2.197 16.055Z" fill="currentColor"/></svg>';
       function csGo(label, f, o) {
         o = o || {};
         var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot'; csPe();
         csFimEvo(box);
         if (o.nota) box.appendChild(el('div', 'cs-nota', o.nota));
-        var b = el('button', 'cs-go'); b.type = 'button'; b.innerHTML = CSI.dots; b.appendChild(el('span', null, label));
+        var ini = label === 'Iniciar consulta';             // na lateral Transcrição: a pílula laranja com o microfone (Figma)
+        var b = el('button', 'cs-go' + (ini ? ' cs-iniciar' : '')); b.type = 'button'; b.innerHTML = ini ? CSI_MIC : CSI.dots; b.appendChild(el('span', null, label));
         b.disabled = !!o.off; b.addEventListener('click', function () { f(b); }); box.appendChild(b);
         return b;
       }
@@ -7547,7 +7778,11 @@
       // pergunta pronta no assistente (à direita); quem envia é o médico
       function askAssistant(q) {
         var inp = $('biInput'); if (!inp) return;
-        var r = document.querySelector('.right'); if (r && r.classList.contains('collapsed') && $('showChat')) $('showChat').click();
+        // o prontuário não tem mais o assistente ao lado: abre o New chat (conversa nova) com este paciente no "Todos" e a
+        // pergunta escrita (quem envia é o médico); o voltar do navegador traz o prontuário de volta
+        var p = patient, nv = $('navNovo');
+        if (nv) nv.click();
+        if (p && p.id && window.__ncEscolhe) window.__ncEscolhe(p.id, p.name);
         inp.value = q; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus();
         try { inp.setSelectionRange(q.length, q.length); } catch (_) {}
       }
@@ -8010,9 +8245,11 @@
       }
       function setTab(t) {
         if (t === 'consultas') { t = 'geral'; ovcSet('cs'); }   // a aba Histórico saiu: as consultas ficam no painel do Resumo
+        // a Consulta saiu do controle (está sempre na lateral Transcrição): quem pedia a aba fica na de agora
+        if (t === 'atual') t = (tabs.filter(function (b) { return b.classList.contains('on'); })[0] || { getAttribute: function () { return 'geral'; } }).getAttribute('data-tab');
         tabs.forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
         $('prMain').setAttribute('data-tab', t); navPill();
-        [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { p.hidden = p.getAttribute('data-panel') !== t; });
+        [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { if (p.getAttribute('data-panel') !== 'atual') p.hidden = p.getAttribute('data-panel') !== t; });
         if (t === 'geral' && ov.dirty) renderOverview();
         if (t === 'geral') renderCs();                    // sinais e exames por consulta (aba Evoluções do painel; o gráfico precisa da largura visível)
         if (t === 'prescricoes') renderRn();
@@ -9650,7 +9887,7 @@
         }
         main.hidden = false; msg.hidden = true;
         $('prBack').innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8H3.5M7.5 3.5L3 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        $('prBack').appendChild(document.createTextNode(ctx.from === 'pacientes' ? 'Pacientes' : 'Agenda'));
+        $('prBack').appendChild(document.createTextNode(ctx.from === 'pacientes' ? 'Pacientes' : ctx.from === 'prescricoes' ? 'Prescrições' : 'Agenda'));
         fillEditor(null); cur = null; csAbaInicial(); renderHeader(); renderConsulta(); renderEvo(); renderVisit(); renderKpis(); updCount(0);
         $('prVisits').innerHTML = '';
         cols.forEach(function (col) { col.querySelector('.pr-chips').innerHTML = ''; });
@@ -9671,7 +9908,7 @@
         if (fromPop || location.hash !== '#prontuario') return;
         if (!direct) { history.back(); return; }
         direct = false;                                    // "voltar" sem sair do app: troca o endereço e avisa as telas
-        history.replaceState(null, '', ctx && ctx.from === 'pacientes' ? '#pacientes' : location.pathname + location.search);
+        history.replaceState(null, '', ctx && ctx.from === 'pacientes' ? '#pacientes' : ctx && ctx.from === 'prescricoes' ? '#prescricoes' : location.pathname + location.search);
         window.dispatchEvent(new PopStateEvent('popstate'));
       }
       $('prBack').addEventListener('click', function () { closePr(false); });
@@ -9783,6 +10020,10 @@
         var u = dataCurta(p.last), uc = el('span', 'pt-ultc');            // sem consulta: "Nenhuma consulta"
         uc.appendChild(el('b', null, 'Última')); uc.appendChild(el('small', null, u || 'Nenhuma consulta'));
         r.appendChild(uc);
+        var cv = el('span', 'pt-ultc');                                   // do cadastro: Particular, o plano do convênio ou nada
+        cv.appendChild(el('b', null, 'Atendimento'));
+        cv.appendChild(el('small', null, p.coverage === 'particular' ? 'Particular' : p.coverage === 'convenio' ? 'Convênio' : 'Não informado'));   // só o tipo (o plano fica no cadastro)
+        r.appendChild(cv);
         var mb = el('button', 'pt-mais'); mb.type = 'button';
         mb.setAttribute('aria-label', 'Ações de ' + p.name); mb.setAttribute('aria-haspopup', 'menu'); mb.setAttribute('aria-expanded', 'false');
         mb.innerHTML = MAIS;
@@ -9993,6 +10234,312 @@
         else if (location.hash !== '#prontuario') hide();
       });
       if (location.hash === '#pacientes') show();
+    })();
+    // ===== Prescrições (menu): as receitas do médico (as mais recentes, sem rascunho vazio), como a lista de Pacientes:
+    // os remédios e o paciente | a situação e o tipo | a data; cada uma abre no prontuário (como na busca) =====
+    (function () {
+      var stage = document.querySelector('.stage');
+      var $ = function (id) { return document.getElementById(id); };
+      var view = $('rxView'), list = $('rxList'), item = $('navPrescricoes');
+      var navC = $('navConsultas'), navP = $('navPacientes'), navN = $('navNovo');
+      if (!stage || !view || !list || !item) return;
+      var SIT = { rascunho: 'Rascunho', emitida: 'Emitida', cancelada: 'Cancelada' };
+      var TIPO = { simples: 'Receita simples', especial: 'Controle especial', antimicrobiano: 'Antimicrobiano' };
+      var MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+      function dataCurta(v) {
+        var d = v ? new Date(v) : null;
+        return d && !isNaN(d.getTime()) ? d.getDate() + ' ' + MESES[d.getMonth()] + ' de ' + d.getFullYear() : '';
+      }
+      function coluna(cls, b, sm) { var c = el('span', cls); c.appendChild(el('b', null, b)); c.appendChild(el('small', null, sm)); return c; }
+      function row(r) {
+        var l = el('div', 'pt-linha'); l.tabIndex = 0;
+        var ds = el('span', 'pt-desc'), box = el('span', 'pt-nm');
+        box.appendChild(el('span', 'pt-name', r.patient || ''));                 // o paciente em cima, o CPF dele embaixo
+        var cpf = String(r.cpf || '').replace(/\D/g, '');
+        ds.appendChild(box); ds.appendChild(el('small', null, cpf.length === 11 ? 'CPF ' + cpf.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : 'Sem CPF'));
+        l.appendChild(ds);
+        var q = (r.remedios || []).length;
+        // a quantidade em cima; embaixo só o primeiro remédio (e "…" quando há mais)
+        l.appendChild(coluna('pt-ultc', q ? q + (q === 1 ? ' medicamento' : ' medicamentos') : 'Nenhum medicamento', q ? r.remedios[0] + (q > 1 ? '…' : '') : ''));
+        // duração do tratamento: todos de uso contínuo; nenhum (com o prazo da posologia, quando há); ou os dois
+        var du = r.duracao || {}, dc = du.continuos || 0, dt = du.temporarios || 0;
+        var prazo = du.dias ? du.dias + (du.dias === 1 ? ' dia' : ' dias') : '';
+        l.appendChild(coluna('pt-ultc', dc ? 'Uso contínuo' : dt ? 'Temporário' : 'Sem remédios',
+                             dc && dt ? 'e ' + dt + (dt === 1 ? ' temporário' : ' temporários') + (prazo ? ' · ' + prazo : '') : prazo || 'Sem prazo'));   // duas linhas, como as outras colunas
+        l.appendChild(coluna('pt-ultc', SIT[r.status] || 'Receita', r.status !== 'rascunho' ? TIPO[r.tipo] || '' : 'Não emitida'));
+        var dh = r.data ? new Date(r.data) : null;                        // o dia e a hora da emissão (o rascunho: da criação)
+        var hora = dh && !isNaN(dh.getTime()) ? String(dh.getHours()).padStart(2, '0') + ':' + String(dh.getMinutes()).padStart(2, '0') : '';
+        l.appendChild(coluna('pt-ultc', dataCurta(r.data), hora));           // o dia em cima, a hora embaixo (sem o rótulo "Data")
+        function abre() { if (window.__abreReceita) window.__abreReceita(r); }
+        var mb = el('button', 'pt-mais'); mb.type = 'button';
+        mb.setAttribute('aria-label', 'Ações da receita de ' + (r.patient || 'paciente')); mb.setAttribute('aria-haspopup', 'menu'); mb.setAttribute('aria-expanded', 'false');
+        mb.innerHTML = MAIS;
+        mb.addEventListener('click', function (e) { e.stopPropagation(); abreMenu(mb, r); });
+        l.appendChild(mb);
+        l.addEventListener('click', function (e) { if (!e.target.closest('.pt-mais')) abre(); });
+        l.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target === l) abre(); });
+        return l;
+      }
+      // o ⋯ da linha: abrir a receita, o prontuário, uma receita nova para o paciente e (só o rascunho) excluir
+      var MAIS = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="3.5" cy="8" r="1.25" fill="currentColor"/><circle cx="8" cy="8" r="1.25" fill="currentColor"/><circle cx="12.5" cy="8" r="1.25" fill="currentColor"/></svg>';
+      var menu = $('rxMenu'), menuDe = null;
+      function fechaMenu() { if (!menu || menu.hidden) return; menu.hidden = true; if (menuDe) menuDe.setAttribute('aria-expanded', 'false'); menuDe = null; }
+      function prontuario(r, tab) {
+        if (window.__openProntuario) window.__openProntuario(Object.assign({ patient_id: r.patient_id, patient: r.patient, from: 'prescricoes' }, tab ? { tab: tab } : {}));
+      }
+      function exclui(r) {
+        if (!confirm('Excluir o rascunho da receita de ' + (r.patient || 'paciente') + '?')) return;
+        fetch('/prontuario/receitas/' + encodeURIComponent(r.id), { method: 'DELETE' })
+          .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { return { ok: res.ok, j: j }; }); })
+          .then(function (res) { if (res.ok && res.j.ok) load(); else alert('Não foi possível excluir o rascunho.'); },
+                function () { alert('Não foi possível excluir o rascunho.'); });
+      }
+      function abreMenu(btn, r) {
+        if (menuDe === btn) { fechaMenu(); return; }
+        fechaMenu(); menu.innerHTML = '';
+        var itens = [['Abrir receita', function () { if (window.__abreReceita) window.__abreReceita(r); }],
+                     ['Abrir prontuário', function () { prontuario(r); }],
+                     ['Nova receita para o paciente', function () { prontuario(r, 'prescricoes'); }]];
+        if (r.status === 'rascunho') itens.push(['Excluir rascunho', function () { exclui(r); }, 'perigo']);   // emitida não sai: se cancela no prontuário
+        itens.forEach(function (it) {
+          var b = el('button', it[2] || null, it[0]); b.type = 'button'; b.setAttribute('role', 'menuitem');
+          b.addEventListener('click', function (e) { e.stopPropagation(); fechaMenu(); it[1](); });
+          menu.appendChild(b);
+        });
+        menu.hidden = false; menuDe = btn; btn.setAttribute('aria-expanded', 'true');
+        var q = btn.getBoundingClientRect(), h = menu.offsetHeight, w = menu.offsetWidth;
+        menu.style.left = Math.max(8, Math.min(innerWidth - w - 8, q.right - w)) + 'px';
+        menu.style.top = (q.bottom + 4 + h > innerHeight - 8 ? q.top - 4 - h : q.bottom + 4) + 'px';
+        menu.firstChild.focus();
+      }
+      document.addEventListener('click', function (e) { if (menu && !menu.hidden && !menu.contains(e.target)) fechaMenu(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && menu && !menu.hidden) { var b = menuDe; fechaMenu(); if (b) b.focus(); } });
+      view.addEventListener('scroll', fechaMenu);
+      var loaded = false;
+      function load() {
+        if (!loaded) list.innerHTML = '<div class="pt-empty">Carregando…</div>';
+        fetch('/prontuario/receitas/busca', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: '' }) })
+          .then(function (res) { return res.json().catch(function () { return {}; }).then(function (j) { return { status: res.status, j: j }; }); })
+          .then(function (res) {
+            loaded = true; list.innerHTML = ''; fechaMenu();
+            if (res.status === 401) { list.innerHTML = '<div class="pt-empty"><a href="/opendoctor-login.html">Entre na sua conta</a> para ver suas prescrições.</div>'; return; }
+            var rs = (res.j && res.j.receitas) || [];
+            if (!rs.length) { list.appendChild(el('div', 'pt-empty', 'Nenhuma prescrição ainda. Crie uma no +, escolhendo o paciente.')); return; }
+            var lista = el('div', 'pt-lista');
+            rs.forEach(function (r) { lista.appendChild(row(r)); });
+            list.appendChild(lista);
+            if (rs.length >= 20) list.appendChild(el('div', 'pt-empty', 'Aqui estão as prescrições mais recentes. Busque pelo paciente ou remédio (na lupa) para achar as outras.'));
+          })
+          .catch(function () { loaded = true; list.innerHTML = '<div class="pt-empty">Não foi possível carregar as prescrições.</div>'; });
+      }
+      function show() {
+        if (stage.classList.contains('expanded') && $('raExpand')) $('raExpand').click();
+        stage.classList.remove('pacientes'); stage.classList.add('prescricoes');
+        [navC, navP, navN].forEach(function (n) { if (n) n.classList.remove('active'); });
+        item.classList.add('active'); load(); view.scrollTop = 0;
+      }
+      function hide() { fechaMenu(); if (!stage.classList.contains('prescricoes')) return; stage.classList.remove('prescricoes'); item.classList.remove('active'); }
+      item.addEventListener('click', function () {
+        if (window.__closeProntuario) window.__closeProntuario();
+        if (location.hash !== '#prescricoes') history.pushState({ rx: 1 }, '', '#prescricoes');
+        show();
+      });
+      [navC, navP, navN].forEach(function (n) { if (n) n.addEventListener('click', hide, true); });   // antes da tela de lá abrir
+      // saiu de Prescrições por outro caminho (uma conversa do histórico, a busca): o item apaga
+      new MutationObserver(function () { if (!stage.classList.contains('prescricoes')) item.classList.remove('active'); })
+        .observe(stage, { attributes: true, attributeFilter: ['class'] });
+      window.addEventListener('popstate', function () {
+        if (location.hash === '#prescricoes') show();
+        else if (location.hash !== '#prontuario') hide();
+      });
+      if (location.hash === '#prescricoes') show();
+    })();
+    // ===== "All" do New chat: o paciente da conversa (todos ou um). Só o id vai ao servidor (o nome fica na tela); vale
+    // só no assistente em tela cheia (fora dela volta a All, para o painel ao lado da agenda nunca mandar paciente sem querer)
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var stage = document.querySelector('.stage'), btn = $('ncAll'), txt = $('ncAllTxt'), menu = $('ncMenu'),
+          busca = $('ncBusca'), lista = $('ncLista');
+      if (!stage || !btn || !menu) return;
+      var CHECK = '<svg aria-hidden="true" width="12.62" height="12.52" viewBox="0 0 12.62 12.52" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.775 12.517C5.090 12.517 5.339 12.378 5.515 12.107L12.437 1.208C12.568 0.996 12.620 0.835 12.620 0.667C12.620 0.264 12.356 0.000 11.953 0.000C11.660 0.000 11.499 0.095 11.323 0.374L4.746 10.854L1.333 6.387C1.150 6.130 0.967 6.028 0.703 6.028C0.286 6.028 0.000 6.313 0.000 6.716C0.000 6.885 0.073 7.075 0.212 7.251L4.014 12.092C4.233 12.378 4.460 12.517 4.775 12.517Z" fill="currentColor"/></svg>';
+      var pac = null, pacientes = null, mais = false, liberado = false, carregando = null;
+      fetch('/me').then(function (r) { return r.json(); }).then(function (j) {
+        liberado = !!(j && j.scribe);
+        btn.classList.toggle('sem', !liberado);
+      }).catch(function () { btn.classList.add('sem'); });
+      function norm(v) { return (v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+      function carrega() {
+        if (pacientes) return Promise.resolve(pacientes);
+        if (!carregando) carregando = fetch('/patients').then(function (r) { return r.ok ? r.json() : { patients: [] }; })
+          .then(function (j) { pacientes = (j && j.patients) || []; mais = !!(j && j.more); return pacientes; })
+          .catch(function () { carregando = null; return []; });
+        return carregando;
+      }
+      function poe(p) {
+        pac = p ? { id: p.id, name: p.name } : null;
+        txt.textContent = pac ? pac.name : 'Todos';
+        btn.title = pac ? pac.name : '';
+      }
+      function op(rotulo, p) {
+        var b = document.createElement('button'); b.type = 'button'; b.className = 'nc-op'; b.setAttribute('role', 'menuitem');
+        var t = document.createElement('span'); t.textContent = rotulo; b.appendChild(t);
+        var ok = document.createElement('span'); ok.className = 'nc-ok';
+        if ((p && pac && p.id === pac.id) || (!p && !pac)) ok.innerHTML = CHECK;
+        b.appendChild(ok);
+        b.addEventListener('click', function () {
+          ++vezRot;
+          var novo = p ? p.id : null;
+          if (window.__chatOcupado && window.__chatOcupado()) { fecha(); return; }   // com uma resposta a caminho, fica
+          if (novo !== (window.__chatPid ? window.__chatPid() : null)) {
+            // outro paciente (ou All) no meio de uma conversa: começa outra, para não misturar os dois
+            if (window.__chatTemTurnos && window.__chatTemTurnos()) { var rn = $('raNew'); if (rn) rn.click(); }
+            if (window.__chatPoePid) window.__chatPoePid(novo);
+          }
+          poe(p); fecha(); var i = $('biInput'); if (i) i.focus();
+        });
+        return b;
+      }
+      var vez = 0;
+      function desenha() {
+        var q = norm(busca.value.trim()), minha = ++vez;
+        var achados = q ? (pacientes || []).filter(function (p) { return norm(p.name).indexOf(q) >= 0; }).slice(0, 8)
+                        : (pacientes || []).slice(0, 6);      // sem busca: os usados por último
+        function mostra(lst) {
+          if (minha !== vez) return;
+          lista.innerHTML = '';
+          if (!q) lista.appendChild(op('Todos', null));
+          lst.forEach(function (p) { lista.appendChild(op(p.name, p)); });
+          if (q && !lst.length) { var v = document.createElement('div'); v.className = 'nc-vazio'; v.textContent = 'Nenhum paciente encontrado.'; lista.appendChild(v); }
+        }
+        mostra(achados);
+        if (q && mais && achados.length < 8) {                 // a lista veio cortada: pergunta ao servidor (nome no corpo)
+          fetch('/patients/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ q: busca.value.trim() }) })
+            .then(function (r) { return r.json(); }).then(function (j) { mostra(((j && j.patients) || []).slice(0, 8)); }).catch(function () {});
+        }
+      }
+      function abre() {
+        menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+        busca.value = ''; desenha();
+        carrega().then(function () { if (!menu.hidden) desenha(); });
+        busca.focus();
+      }
+      function fecha() { if (menu.hidden) return; menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!liberado) return;
+        if (menu.hidden) abre(); else fecha();
+      });
+      busca.addEventListener('input', desenha);
+      busca.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { var f = lista.querySelector('.nc-op'); if (f) f.click(); e.preventDefault(); }
+      });
+      document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target) && e.target !== btn) fecha(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { fecha(); btn.focus(); } });
+      new MutationObserver(function () {
+        if (!stage.classList.contains('expanded')) fecha();
+      }).observe(stage, { attributes: true, attributeFilter: ['class'] });
+      // o rótulo acompanha o paciente da conversa (aberta do histórico ou nova); uma resposta antiga da lista não passa por
+      // cima de uma escolha mais nova
+      var vezRot = 0;
+      // o prontuário escolhe o paciente (o "Perguntar ao assistente"): só nas contas liberadas, numa conversa nova
+      window.__ncEscolhe = function (pid, nome) {
+        if (!liberado || (window.__chatTemTurnos && window.__chatTemTurnos())) return;
+        ++vezRot;
+        if (window.__chatPoePid) window.__chatPoePid(pid);
+        poe({ id: pid, name: nome });
+      };
+      window.__ncRotulo = function (pid) {
+        var minha = ++vezRot;
+        if (!pid) { poe(null); return; }
+        if (pac && pac.id === pid) return;
+        pac = { id: pid, name: 'Paciente' }; txt.textContent = 'Paciente';
+        carrega().then(function (lst) {
+          if (minha !== vezRot) return;
+          var a = lst.filter(function (p) { return p.id === pid; })[0];
+          if (a) poe(a);
+        });
+      };
+    })();
+    // ===== Transcrição na lateral do prontuário (teste): a coluna da direita mostra a gravação (antiga aba Consulta) enquanto
+    // o prontuário está aberto; o expandir põe a transcrição na largura toda =====
+    (function () {
+      var stage = document.querySelector('.stage'), right = document.querySelector('.right'), btn = document.getElementById('prTxExpand');
+      if (!stage || !right) return;
+      function sync() {
+        var on = stage.classList.contains('prontuario') && !stage.classList.contains('expanded');
+        if (right.classList.contains('tx') !== on) right.classList.toggle('tx', on);
+        if (!on && stage.classList.contains('tx-larga')) stage.classList.remove('tx-larga');
+      }
+      new MutationObserver(sync).observe(stage, { attributes: true, attributeFilter: ['class'] });
+      sync();
+      if (btn) btn.addEventListener('click', function () {
+        var larga = !stage.classList.contains('tx-larga');
+        stage.classList.toggle('tx-larga', larga);
+        btn.setAttribute('aria-label', larga ? 'Recolher' : 'Expandir');
+      });
+    })();
+    // ===== New chat (Figma Concept 829:8107): o item do menu abre o assistente em tela cheia com uma conversa nova
+    // (vazia: o campo no meio e as sugestões); o item fica aceso enquanto o assistente está em tela cheia
+    (function () {
+      var $ = function (id) { return document.getElementById(id); };
+      var stage = document.querySelector('.stage'), item = $('navNovo');
+      var navC = $('navConsultas'), navP = $('navPacientes'), navB = $('navBuscar');
+      var raNew = $('raNew'), raExpand = $('raExpand'), input = $('biInput'), send = $('biSend'), nav = document.querySelector('.nav');
+      if (!stage || !item || !raExpand) return;
+      function expandido() { return stage.classList.contains('expanded'); }
+      function emChat() { return expandido() && !stage.classList.contains('pacientes') && !stage.classList.contains('prescricoes') && !stage.classList.contains('prontuario'); }
+      var antes = false;
+      function acende() {                                  // o New chat aceso no chat; ao sair, Consultas volta (se não for Pacientes)
+        var agora = emChat();
+        item.classList.toggle('active', agora && !document.querySelector('#navHist .hist-item.on'));   // conversa do histórico aberta: ela fica acesa, não o New chat
+        if (agora) { if (navC) navC.classList.remove('active'); if (navP) navP.classList.remove('active'); }
+        else if (antes && !stage.classList.contains('pacientes') && !stage.classList.contains('prescricoes') && navC) navC.classList.add('active');
+        if (!expandido() && location.hash === '#chat') history.replaceState(null, '', location.pathname + location.search);
+        antes = agora;
+      }
+      new MutationObserver(acende).observe(stage, { attributes: true, attributeFilter: ['class'] });
+      if ($('navHist')) new MutationObserver(acende).observe($('navHist'), { childList: true, subtree: true });   // a lista redesenhada (abriu ou saiu de uma conversa)
+      function abre(nova) {
+        if (window.__closeProntuario) window.__closeProntuario();
+        if (stage.classList.contains('pacientes')) stage.classList.remove('pacientes');
+        if (stage.classList.contains('prescricoes')) stage.classList.remove('prescricoes');
+        stage.classList.remove('hist-off');                // o histórico no menu, como no Figma
+        if (!expandido()) raExpand.click();
+        if (nova && raNew) raNew.click();                  // conversa nova (com uma resposta a caminho, fica a atual)
+        acende();
+        if (input) input.focus();
+      }
+      window.__ncAbreConversa = function () {             // o histórico do menu: o assistente em tela cheia, sem conversa nova
+        if (emChat()) return;
+        if (location.hash !== '#chat') history.pushState({ chat: 1 }, '', '#chat');
+        abre(false);
+      };
+      item.addEventListener('click', function () {
+        if (location.hash !== '#chat') history.pushState({ chat: 1 }, '', '#chat');
+        abre(true);
+      });
+      // as outras telas do menu saem da tela cheia (a agenda e Pacientes ficam no meio, que ela esconde)
+      [navC, navP, navB].forEach(function (b) {
+        if (b) b.addEventListener('click', function () { if (expandido()) raExpand.click(); }, true);
+      });
+      window.addEventListener('popstate', function () {
+        if (location.hash === '#chat') abre(false);
+        else if (expandido()) raExpand.click();            // voltou para outra tela (o prontuário, Pacientes, a agenda): sai da tela cheia
+      });
+      if (location.hash === '#chat') abre(false);
+      // as sugestões: as de calendário vão para Integrações; as perguntas vão direto para o assistente
+      document.querySelectorAll('#ncSug .nc-item').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var href = b.getAttribute('data-nc-href');
+          if (href) { location.href = href; return; }
+          if (!input || !send) return;
+          input.value = b.lastElementChild.textContent;
+          input.dispatchEvent(new Event('input'));
+          send.click();
+        });
+      });
+      acende();
     })();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11.17.2/dist/mermaid.min.js" integrity="sha384-EOXBFmc3gx5mb+vn0vPvvGqACToJD24hhacX5Yx+8NUUQrHIle/Qi5Bg9o3zKwW2" crossorigin="anonymous"></script>
@@ -10400,7 +10947,8 @@
       function agendaAVista() {
         if (stage.classList.contains('expanded')) { var e = $('raExpand'); if (e) e.click(); }
       }
-      function de() { return stage.classList.contains('pacientes') ? 'pacientes' : undefined; }   // para onde o Voltar leva
+      function de() { return stage.classList.contains('pacientes') ? 'pacientes' : stage.classList.contains('prescricoes') ? 'prescricoes' : undefined; }   // para onde o Voltar leva
+      var abaPr = null;                                      // o + de Prescrições: o paciente escolhido abre na aba Prescrições
       function abreConsulta(x) {                             // vai para o dia da consulta e deixa ela selecionada
         agendaAVista();
         var c = $('navConsultas'); if (c) c.click();         // sai do prontuário e de Pacientes, como o menu
@@ -10411,8 +10959,9 @@
       }
       function abrePaciente(p) {
         agendaAVista();
-        if (window.__prMesmoPaciente && window.__prMesmoPaciente({ patient_id: p.id })) return;
-        if (window.__openProntuario) window.__openProntuario({ patient_id: p.id, patient: p.name, from: de() });
+        var t = abaPr ? { tab: abaPr } : {};
+        if (window.__prMesmoPaciente && window.__prMesmoPaciente(Object.assign({ patient_id: p.id }, t))) return;
+        if (window.__openProntuario) window.__openProntuario(Object.assign({ patient_id: p.id, patient: p.name, from: de() }, t));
       }
       function abreReceita(r) {                              // o prontuário do paciente, na aba Prescrições, com a receita à vista
         agendaAVista();
@@ -10436,11 +10985,12 @@
         pacsAt = 0;                                          // os pacientes são lidos de novo a cada abertura
         ov.hidden = false; stage.inert = true;
         aceso = botao || null; if (aceso) aceso.classList.add('on');
-        input.value = ''; poeAba(inicial || 'tudo'); items = []; active = -1;
+        input.value = ''; poeAba(inicial || 'tudo'); items = []; active = -1; abaPr = null;
         input.focus(); mostra();
       }
       function fecha(escolheu) {
         if (ov.hidden) return;
+        if (!escolheu) abaPr = null;
         clearTimeout(espera);
         ov.hidden = true; stage.inert = false;
         if (aceso) aceso.classList.remove('on'); aceso = null;
@@ -10476,6 +11026,10 @@
       if (btn) btn.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) abre('consultas', btn); else fecha(); });
       var ptB = $('ptBusca');                                // a lupa de Pacientes: já no filtro de pacientes
       if (ptB) ptB.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) abre('pacientes', ptB); else fecha(); });
+      var rxB = $('rxBusca'), rxN = $('rxNew');             // Prescrições: a lupa nas receitas; o + escolhe o paciente
+      if (rxB) rxB.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) abre('receitas', rxB); else fecha(); });
+      if (rxN) rxN.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) { abre('pacientes', rxN); abaPr = 'prescricoes'; } else fecha(); });
+      window.__abreReceita = abreReceita;
       if (navB) navB.addEventListener('click', function () { abre('tudo'); });
       // as outras telas levam a agenda#buscar: abre a busca e o endereço volta ao normal (recarregar não reabre)
       if (location.hash === '#buscar') { history.replaceState(history.state, '', location.pathname + location.search); abre('tudo'); }
@@ -10569,6 +11123,32 @@
         if (window.__calUltima) mostra(window.__calUltima);   // a agenda já respondeu
         document.getElementById('odWelcomeX').addEventListener('click', function () { t.hidden = true; });
       }
+    })();
+  </script>
+  <script>
+    // ===== Configurações no pé da sidebar (como o "Settings" da Sana): abre o menu com a conta, Configurações,
+    // Integrações, Perfil e Sair =====
+    (function () {
+      var item = document.getElementById('navCfg'), menu = document.getElementById('cfgMenu'), conta = document.getElementById('cfgConta');
+      if (!item || !menu) return;
+      fetch('/me').then(function (r) { return r.json(); }).then(function (j) {
+        var e = j && j.user && j.user.email;
+        if (e && conta) conta.textContent = e; else if (conta) { conta.hidden = true; conta.nextElementSibling.hidden = true; }
+      }).catch(function () {});
+      function abre() {
+        var r = item.getBoundingClientRect();
+        menu.hidden = false;
+        menu.style.left = Math.max(8, r.left) + 'px';
+        menu.style.bottom = (innerHeight - r.top + 1) + 'px';   // 1 px acima do item, como na Sana
+        item.setAttribute('aria-expanded', 'true');
+        var p = menu.querySelector('.cfg-menu-op'); if (p) p.focus();
+      }
+      function fecha() { if (menu.hidden) return; menu.hidden = true; item.setAttribute('aria-expanded', 'false'); }
+      item.addEventListener('click', function (e) { e.stopPropagation(); if (menu.hidden) abre(); else fecha(); });
+      item.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); item.click(); } });
+      document.addEventListener('click', function (e) { if (!menu.hidden && !menu.contains(e.target)) fecha(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { fecha(); item.focus(); } });
+      addEventListener('resize', fecha);
     })();
   </script>
 </body>

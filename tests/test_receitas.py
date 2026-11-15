@@ -227,14 +227,27 @@ def test_busca_sem_termo_traz_as_recentes(cli):
     assert ids(cli, "") == ids(cli, "   ") == ids(cli) and len(busca(cli, "losartana")) == 30
 
 
+def test_duracao_do_tratamento():
+    # tela Prescrições: uso contínuo pela marca do item; o prazo dos outros, lido da posologia (o maior, em dias)
+    d = db._rx_duracao
+    assert d([]) == {"continuos": 0, "temporarios": 0, "dias": None}
+    assert d([(True, "1 cp por dia"), (True, None)]) == {"continuos": 2, "temporarios": 0, "dias": None}
+    assert d([(False, "1 cp de 8/8 h por 7 dias")]) == {"continuos": 0, "temporarios": 1, "dias": 7}
+    assert d([(False, "por 2 semanas"), (False, "1 mês"), (False, "3 MESES")]) == {"continuos": 0, "temporarios": 3, "dias": 90}
+    assert d([(True, "por 30 dias"), (False, "se dor")]) == {"continuos": 1, "temporarios": 1, "dias": None}   # o contínuo não conta prazo
+    assert d([(False, "10 mg 2x ao dia")]) == {"continuos": 0, "temporarios": 1, "dias": None}                  # "mg" não é prazo
+
+
 def test_busca_formato_do_resultado(cli):
     rx = nova(cli, itens=[LOS, {"nome": "Dipirona", "dose": "  "}])
-    assert busca(cli, "dipirona") == [{"id": rx["id"], "patient_id": 7, "patient": "Maria Silva", "tipo": "simples",
-                                       "status": "rascunho", "data": rx["created_at"], "remedios": ["Losartana 50 mg", "Dipirona"]}]
+    assert busca(cli, "dipirona") == [{"id": rx["id"], "patient_id": 7, "patient": "Maria Silva", "cpf": None, "tipo": "simples",
+                                       "status": "rascunho", "data": rx["created_at"], "remedios": ["Losartana 50 mg", "Dipirona"],
+                                       "duracao": {"continuos": 0, "temporarios": 2, "dias": None}}]
     out = cli.post(f"/prontuario/receitas/{rx['id']}/emitir",
                    json={"patient_id": 7, "itens": [LOS, {"nome": "Sertralina", "dose": "50 mg"}]}).json()["receitas"]
-    assert busca(cli, "sertralina") == [{"id": out[1]["id"], "patient_id": 7, "patient": "Maria Silva", "tipo": "especial",
-                                         "status": "emitida", "data": out[1]["emitida_em"], "remedios": ["Sertralina 50 mg"]}]
+    assert busca(cli, "sertralina") == [{"id": out[1]["id"], "patient_id": 7, "patient": "Maria Silva", "cpf": None, "tipo": "especial",
+                                         "status": "emitida", "data": out[1]["emitida_em"], "remedios": ["Sertralina 50 mg"],
+                                         "duracao": {"continuos": 0, "temporarios": 1, "dias": None}}]
 
 
 def test_busca_sem_curinga(cli):

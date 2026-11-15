@@ -221,16 +221,20 @@ const cenarios = [
     if (!g.length || !g[0].trechos.length) throw new Error('o trecho até a saída não foi guardado');
     return `pausou; ${g[0].trechos[0].dur.toFixed(1)} s guardados`;
   }],
-  ['nas outras abas aparece o aviso "Gravando", que leva de volta', async () => {
+  ['a gravação fica à vista na lateral Transcrição em qualquer aba do prontuário (sem o aviso "Gravando")', async () => {
+    // teste do Figma Concept 1349:13256: a antiga aba Consulta está sempre na lateral; o controle tem Prontuário e Prescrição
     await grava('/_preview/pr?pid=9003&ev=evA', 3);
-    await ev(`document.querySelector('#prTabs [data-tab=geral]').click()`); await sleep(600);
-    const fora = await ev(UI);
-    if (!/Gravando/.test(fora.pill)) throw new Error('sem aviso fora da aba Consulta');
+    for (const aba of ['geral', 'prescricoes']) {
+      await ev(`document.querySelector('#prTabs [data-tab=${aba}]').click()`); await sleep(600);
+      const r = await ev(`(() => ({ pill: (document.getElementById('rcPill') && !document.getElementById('rcPill').hidden) ? 'aviso' : '',
+        lateral: !!document.getElementById('prTx').getClientRects().length && document.getElementById('prTx').contains(document.getElementById('prRec')),
+        barra: !!document.querySelector('#prRec button[aria-label^="Pausar"]') && !!document.querySelector('#prRec button[aria-label^="Pausar"]').getClientRects().length,
+        abas: [...document.querySelectorAll('#prTabs [data-tab]')].map((b) => b.dataset.tab).join() }))()`);
+      if (r.pill || !r.lateral || !r.barra || r.abas !== 'geral,prescricoes') throw new Error(`aba ${aba}: ` + JSON.stringify(r));
+    }
     if (process.env.FOTO) { const f = await send('Page.captureScreenshot', { format: 'png' }); (await import('node:fs')).writeFileSync(process.env.FOTO, Buffer.from(f.data, 'base64')); }
-    await ev(`document.getElementById('rcPill').click()`); await sleep(600);
-    if ((await ev(UI)).pill) throw new Error('o aviso continuou na aba Consulta');
     await clica('#prRec button[aria-label^="Pausar"]');
-    return fora.pill;
+    return 'Prontuário e Prescrição com a gravação na lateral, sem o aviso';
   }],
   ['consulta avulsa (sem agenda): a gravação volta ao reabrir', async () => {
     await grava('/_preview/pr?pid=9003', 20);
@@ -504,7 +508,7 @@ const cenarios = [
                titulo: !!document.querySelector('#ovcP-ana #ovAnaSec #ovTop') && !document.querySelector('#ovAnaSec > .ov-h') ? 'Análise' : 'fora da aba',
                // saíram do Resumo os cards de sinais vitais e de exames (as Evoluções recentes e os laudos voltam como abas do painel)
                sairam: ['ovTilesWrap', 'ovLabWrap', 'ovLabTiles', 'ovFeedSec', 'ovPanSec', 'ovDxSec'].filter((i) => document.getElementById(i)).join() }; })()`);
-    if (r.abas !== 'geral,atual,prescricoes' || r.painelAnalise || !r.dentro || r.vazioRepetido || r.titulo !== 'Análise' || r.sairam) throw new Error('o Resumo junto: ' + JSON.stringify(r));
+    if (r.abas !== 'geral,prescricoes' || r.painelAnalise || !r.dentro || r.vazioRepetido || r.titulo !== 'Análise' || r.sairam) throw new Error('o Resumo junto: ' + JSON.stringify(r));
     // saíram os cartões de cima: "Faixa no período" e "Sinais e exames na referência" (a rosca e o Perguntar ao assistente)
     if (await ev(`['gaCards', 'gaDonut', 'gaAsk', 'gaBars', 'gaSee'].some((i) => document.getElementById(i))`)) throw new Error('os cartões de cima ainda estão na página');
     return 'a Análise (gráfico e tabela) na aba Análise do painel, sem os cartões de cima';

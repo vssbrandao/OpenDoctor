@@ -60,9 +60,13 @@ As tabelas de `app/data/` ficam fora do código para o médico revisor conferir 
 
 ## A tela
 
-A aba Consulta do prontuário é um cartão (`#csCard`, Figma "Consulta", nó 1089:32631) com as abas **Transcrição** e
-**SOAP** e um pé (`#prRec`). O que o design não mostra fica abaixo do cartão: avisos, etapas, pontos para conferir e a
-confirmação ao finalizar.
+A gravação fica na **lateral "Transcrição"** do prontuário (`#prTx`, teste de 14/11/2026, Figma Concept 1349:13256): a
+coluna da direita, de 520, com o título e o expandir (que põe a transcrição na largura toda). O controle do meio ficou
+só com Prontuário e Prescrição; tudo da antiga aba Consulta foi para a lateral, que está sempre à vista com o prontuário
+aberto. O assistente não aparece no prontuário (ficou no New chat). Ali, a antiga aba Consulta é um cartão (`#csCard`,
+Figma "Consulta", nó 1089:32631) com as abas **Transcrição** e **SOAP** e um pé (`#prRec`), sem o fundo cinza; o
+"Iniciar consulta" é a pílula laranja do Figma (#F50, 235 × 64, microfone). O que o design não mostra fica abaixo do
+cartão: avisos, etapas, pontos para conferir e a confirmação ao finalizar.
 
 - **Abas.** A consulta abre em Transcrição quando dá para gravar (paciente de exemplo ou conta liberada). Nas contas
   sem a gravação, ou com a evolução finalizada, abre em SOAP. Quando a evolução gerada fica pronta, a aba SOAP ganha
@@ -82,7 +86,8 @@ confirmação ao finalizar.
     as etapas aparecem abaixo do cartão e, se a geração falhar, o pé mostra "Gerar de novo". Se nenhum trecho teve voz
     (microfone mudo ou errado), nada sobe para transcrever e o servidor responde "nada transcrito": o aviso diz "Não
     ouvimos nenhuma fala nesta gravação" e o pé mostra "Gravar de novo", que continua a mesma gravação;
-  - na gravação real, fora da aba Consulta, um aviso fixo ("Gravando", "Voltar à consulta") leva de volta a ela.
+  - com a lateral Transcrição sempre à vista no prontuário, o aviso fixo ("Gravando", "Voltar à consulta") não aparece
+    mais ali (o código continua, para quando a gravação não estiver à vista).
 - **Depois da consulta:**
   - o player aparece em cima do cartão: a trilha, o tempo e o botão que percorre a transcrição. O cursor anda e a fala
     do momento fica em destaque. Tocar numa fala ou na trilha leva o player até ali;

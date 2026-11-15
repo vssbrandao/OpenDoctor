@@ -278,8 +278,9 @@ def test_busca_de_receitas(novo_usuario):
     assert [x["id"] for x in todas][0] == ureia["id"] and {x["id"] for x in todas} == {ureia["id"], emit[0]["id"], canc["id"]}
     assert vazio["id"] not in ids(ana, "outra")
     (s,) = [x for x in todas if x["id"] == emit[0]["id"]]
-    assert s == {"id": emit[0]["id"], "patient_id": joao["id"], "patient": "João Conceição", "tipo": "simples",
-                 "status": "emitida", "data": emit[0]["emitida_em"], "remedios": ["Losartana 50 mg", "Ácido fólico"]}
+    assert s == {"id": emit[0]["id"], "patient_id": joao["id"], "patient": "João Conceição", "cpf": joao.get("cpf") or None, "tipo": "simples",
+                 "status": "emitida", "data": emit[0]["emitida_em"], "remedios": ["Losartana 50 mg", "Ácido fólico"],
+                 "duracao": db._rx_duracao([(i.get("continuo") is True, i.get("posologia")) for i in emit[0]["itens"]])}
     (c,) = [x for x in todas if x["id"] == canc["id"]]
     assert (c["tipo"], c["status"], c["remedios"]) == ("especial", "cancelada", ["Sertralina 50 mg"])
     assert busca(beto, "") == [] and busca(beto, "conceicao") == [] and busca(beto, "losartana") == []   # de outro médico
@@ -979,6 +980,10 @@ def test_paciente_com_email_convenio_e_plano(novo_usuario):
     assert (u["coverage"], u["health_plan"], u["email"]) == ("particular", None, "joana@exemplo.invalid")
     s = db.create_patient(uid, "Só Nome Teste")
     assert (s["email"], s["coverage"], s["health_plan"]) == (None, None, None)
+    lista = {x["id"]: (x["coverage"], x["health_plan"]) for x in db.list_patients(uid)}   # a coluna Convênio de Pacientes
+    assert lista[p["id"]] == ("particular", None) and lista[s["id"]] == (None, None)
+    c = db.create_patient(uid, "Plano Lista Teste", coverage="convenio", health_plan="Plano Teste")
+    assert {x["id"]: x["health_plan"] for x in db.list_patients(uid)}[c["id"]] == "Plano Teste"
     with pytest.raises(Exception):                     # o banco também só aceita particular ou convênio
         db.create_patient(uid, "Outro Teste", coverage="sus")
 
@@ -1014,6 +1019,7 @@ def test_sem_a_migracao_0021_o_cadastro_segue(novo_usuario, monkeypatch):
         db.update_patient(uid, p["id"], {"email": "a@exemplo.invalid"})
     assert db.update_patient(uid, p["id"], {"name": "Outro Nome Teste", "email": None})["name"] == "Outro Nome Teste"
     assert db.find_patients(uid, "Outro Nome Teste") and vistos
+    assert [(x["coverage"], x["health_plan"]) for x in db.list_patients(uid)] == [(None, None)]   # a lista segue, sem o convênio
     citam = [q for q in vistos if re.search(r"\b(email|coverage|health_plan)\b", q)]
     assert not citam, citam
 

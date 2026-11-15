@@ -1,4 +1,4 @@
-"""Perfil (web/opendoctor-perfil.html): só com login, no menu lateral de todas as telas (logo depois de Configurações),
+"""Perfil (web/opendoctor-perfil.html): só com login, no menu do "Configurações" do pé da sidebar de todas as telas,
 só para ver (os dados vêm de /me e /me/medico) e com o Sair (/auth/logout). O que a página faz no navegador:
 tests/e2e/perfil.mjs."""
 import os
@@ -17,13 +17,6 @@ def _html(nome):
     return open(os.path.join(WEB, nome), encoding="utf-8").read()
 
 
-def _itens_do_menu(html):
-    """Os itens do menu lateral, na ordem: (nome — o data-tip, a dica do menu retraído —, data-href, ativo)."""
-    nav = re.search(r'<aside class="nav">(.*?)</aside>', html, re.S).group(1)
-    return [(t, h, "active" in c) for c, h, t in
-            re.findall(r'<div class="(item[^"]*)"(?: data-href="([^"]*)")? data-tip="([^"]*)"', nav)]
-
-
 def test_perfil_so_com_login():
     c = TestClient(server.app)
     r = c.get("/" + PAGINA, follow_redirects=False)
@@ -37,21 +30,23 @@ def test_perfil_abre_logado(monkeypatch):
 
 
 def test_perfil_no_menu_de_todas_as_telas():
-    """Toda tela com o menu lateral tem o Perfil uma vez, logo depois de Configurações; no Perfil ele é o marcado."""
+    """Toda tela com o menu lateral tem o Perfil uma vez, no menu do "Configurações" do pé (como o "Settings" da Sana,
+    pedido do usuário em 14/11): Configurações, Integrações, Perfil e Sair. O meio do menu não tem mais esses itens; nas
+    três telas deles, o "Configurações" do pé é o marcado."""
     com_menu = sorted(f for f in os.listdir(WEB) if f.endswith(".html") and '<aside class="nav">' in _html(f))
     assert {"opendoctor-agenda.html", "opendoctor-integracao.html", "opendoctor-configuracoes.html", PAGINA} <= set(com_menu)
     for f in com_menu:
-        itens = _itens_do_menu(_html(f))
-        nomes = [t for t, _, _ in itens]
-        assert nomes.count("Perfil") == 1, (f, nomes)
-        i = nomes.index("Perfil")
-        assert nomes[i - 1] == "Configurações", (f, nomes)
-        _, href, ativo = itens[i]
-        if f == PAGINA:
-            assert ativo and not href, (f, itens[i])
-            assert [t for t, _, a in itens if a] == ["Perfil"], f
-        else:
-            assert href == PAGINA and not ativo, (f, itens[i])
+        html = _html(f)
+        nav = re.search(r'<aside class="nav">(.*?)</aside>', html, re.S).group(1)
+        nomes = re.findall(r'<div class="item[^"]*"[^>]*\bdata-tip="([^"]*)"', nav)
+        assert nomes.count("Configurações") == 1 and nomes[-1] == "Configurações", (f, nomes)   # só o do pé
+        assert "Perfil" not in nomes and "Integrações" not in nomes, (f, nomes)
+        menu = re.search(r'<div class="cfg-menu" id="cfgMenu" role="menu" hidden>(.*?)\n    </div>', html, re.S).group(1)
+        ops = re.findall(r'<a class="cfg-menu-op" role="menuitem" href="([^"]*)">([^<]*)</a>', menu)
+        assert ops == [("opendoctor-configuracoes.html", "Configurações"), ("opendoctor-integracao.html", "Integrações"),
+                       (PAGINA, "Perfil"), ("/auth/logout", "Sair")], (f, ops)
+        ativo = re.search(r'<div class="(item[^"]*)" id="navCfg"', html).group(1)
+        assert ("active" in ativo) == (f in ("opendoctor-configuracoes.html", "opendoctor-integracao.html", PAGINA)), f
 
 
 def test_perfil_tem_o_sair_e_so_grava_a_exclusao():
@@ -61,8 +56,9 @@ def test_perfil_tem_o_sair_e_so_grava_a_exclusao():
     assert re.search(r'<button class="cfg-btn" type="button" id="pfLogout" data-href="/auth/logout">Sair</button>', html)
     scripts = "\n".join(re.findall(r"<script>(.*?)</script>", html, re.S))
     assert set(re.findall(r"pede\('([^']+)'\)", scripts)) == {"/me", "/me/medico"}
-    # um fetch para ler (pede) e outro, o único com método, para excluir — qualquer outra escrita aparece aqui
-    assert scripts.count("fetch(") == 2 and re.findall(r"fetch\('([^']+)'", scripts) == ["/me/excluir"]
+    # um fetch para ler (pede), outro, o único com método, para excluir, e o GET /me do menu do pé (o e-mail da conta) —
+    # qualquer outra escrita aparece aqui
+    assert scripts.count("fetch(") == 3 and re.findall(r"fetch\('([^']+)'", scripts) == ["/me/excluir", "/me"]
     assert scripts.count("method") == 1 and "method: 'POST'" in scripts
     assert not re.search(r"XMLHttpRequest|sendBeacon|\.submit\(|formaction|action=", scripts + html)
     assert re.findall(r"<form\b[^>]*\bid=\"(\w+)\"", html) == ["pfExForm"] and html.count("<form") == 1

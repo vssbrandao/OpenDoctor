@@ -55,13 +55,15 @@ class FakeReceitas:
             p = db.get_patient(user_id, r["patient_id"])
             if not p:                                    # (no banco, o join com os pacientes do médico)
                 continue
-            itens = [(str(i.get("nome") or "").strip(), str(i.get("dose") or "").strip()) for i in r["itens"]]
-            itens = [(n, d) for n, d in itens if n]
-            if k and k not in db.patient_key(p["name"]) and not any(k in db.patient_key(n) for n, _ in itens):
+            itens = [(str(i.get("nome") or "").strip(), str(i.get("dose") or "").strip(), i.get("continuo") is True, i.get("posologia"))
+                     for i in r["itens"]]
+            itens = [x for x in itens if x[0]]
+            if k and k not in db.patient_key(p["name"]) and not any(k in db.patient_key(n) for n, *_ in itens):
                 continue
-            out.append({"id": r["id"], "patient_id": r["patient_id"], "patient": p["name"], "tipo": r["tipo"],
+            out.append({"id": r["id"], "patient_id": r["patient_id"], "patient": p["name"], "cpf": p.get("cpf") or None, "tipo": r["tipo"],
                         "status": r["status"], "data": r["emitida_em"] or r["created_at"],
-                        "remedios": [f"{n} {d}" if d else n for n, d in itens]})
+                        "remedios": [f"{n} {d}" if d else n for n, d, *_ in itens],
+                        "duracao": db._rx_duracao([(c, po) for *_, c, po in itens])})
             if len(out) >= limit:
                 break
         return out
