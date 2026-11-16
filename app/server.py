@@ -33,7 +33,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
 from . import search, synthesize, llm, validate, db, config, ingest, integrations, auth, tools, cid10, mailer, exemplo
-from . import medicamentos, prescricao, scribe, stt, cfm, falante
+from . import medicamentos, prescricao, scribe, stt, cfm, falante, anexos
 
 mimetypes.add_type("text/javascript", ".mjs")   # pdf.js (web/vendor) é módulo: o navegador exige esse tipo
 
@@ -480,6 +480,11 @@ RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em
                # o aparelho conhecido na nova senha, fora dos tetos do e-mail, tem os seus (por conta + aparelho)
                "reset_dev": (25, 3600), "reset_dev_dia": (50, 86400), "codigo_dev": (10, 3600)}   # códigos (nova senha e cadastro) para um e-mail, por IP; o teto do e-mail é db
 MAX_QUERY_CHARS = 2000
+MAX_ASK_BODY = 21 * 1024 * 1024   # /ask: 15 MB de anexos viram ~20 MB em base64, mais a pergunta e o histórico
+# anexos: no máximo 2 pedidos sendo preparados ao mesmo tempo (cada um segura até ~70 MB entre corpo, bytes e a
+# leitura do PDF); o 3º espera até ANEXO_ESPERA segundos e, sem vaga, recebe 429 {"error": "ocupado"}
+_ANEXO_VAGAS = threading.BoundedSemaphore(2)
+ANEXO_ESPERA = 10
 _RL = {}
 _RL_LOCK = threading.Lock()
 
@@ -547,21 +552,34 @@ def _too_many():
                         status_code=429)
 
 
-def _ask_stream(query, k, history=None, contexto=None):
+def _ask_stream(query, k, history=None, contexto=None, anexos=None, so_anexo=False):
     """contexto: o perfil sem nome do paciente escolhido no New chat (vai ao modelo junto dos trechos; nunca à busca nem
-    ao PubMed — o planejamento e os termos saem só da pergunta, já mascarada)."""
+    ao PubMed — o planejamento e os termos saem só da pergunta, já mascarada).
+    anexos: o que app/anexos.prepara devolveu (imagens inteiras + texto mascarado dos PDFs). Vão SÓ ao modelo: nunca à
+    busca, ao PubMed nem ao planejamento; o log leva só contagens e tamanhos.
+    so_anexo: o médico não escreveu pergunta ("Analise o anexo."): sem planejamento, busca local, PubMed nem corpus — a
+    frase-padrão traria artigo aleatório; o modelo responde só com o anexo e o conhecimento dele."""
     history = history or []
+    anexos = anexos or {}
+    imagens, pdfs = anexos.get("imagens") or [], anexos.get("pdfs") or []
     _log("start len=", len(query), "hist=", len(history))
+    if imagens or pdfs:
+        _log("anexos img=", len(imagens), "pdf=", len(pdfs), "kb_img=", anexos.get("kb_img", 0),
+             "kb_pdf=", anexos.get("kb_pdf", 0))
+
+    if so_anexo:
+        yield from _ask_resposta(query, k, history, contexto, imagens, pdfs, [], [], query)
+        return
 
     # 0) planejamento: escopo + pergunta autônoma + termos em inglês
     plan = _plan(query, history)
     _log("plan medical=", plan["medical"], "terms=", plan["terms_en"][:100])
-    if not plan["medical"]:
+    if not plan["medical"] and not (imagens or pdfs):   # com anexo segue como pergunta médica
         # fora de escopo: não busca, não grava no corpus e não chama o modelo grande
         yield _sse("insufficient", {"text": synthesize.OUT_OF_SCOPE})
         yield _sse("done", {"insufficient": True, "out_of_scope": True})
         return
-    sq, terms = plan["standalone"], plan["terms_en"]
+    sq, terms = plan.get("standalone") or query, plan.get("terms_en") or ""
     q_en = plan.get("question_en") or sq   # busca vetorial em INGLÊS (mesmo idioma do corpus)
     pool_k = k * 2   # busca mais trechos; depois agrupa por documento
 
@@ -633,6 +651,11 @@ def _ask_stream(query, k, history=None, contexto=None):
         br = []
     hits = _com_diretrizes(br, docs, k)      # as diretrizes brasileiras do tema primeiro, depois os k melhores
     _log("diretrizes BR:", sum(1 for h in hits if h.get("br")))
+    yield from _ask_resposta(query, k, history, contexto, imagens, pdfs, hits, recommended, sq)
+
+
+def _ask_resposta(query, k, history, contexto, imagens, pdfs, hits, recommended, sq):
+    """Cálculos, montagem da mensagem e streaming validado (com ou sem trechos da busca)."""
 
     # cálculos determinísticos (ex.: eGFR) — o código calcula, o modelo explica
     try:
@@ -651,15 +674,22 @@ def _ask_stream(query, k, history=None, contexto=None):
     if contexto:
         extra = "\n\n".join(x for x in ("Paciente escolhido pelo médico para esta conversa (sem identificação; leve em conta "
                                         "ao responder):\n" + contexto, extra) if x)
+    texto_pdfs = "\n\n".join(pdfs)
+    if imagens or pdfs:
+        partes = ["Anexos do médico nesta pergunta (o texto dos PDFs foi extraído e está sem identificação):"]
+        partes += [f"PDF {i}:\n{t}" for i, t in enumerate(pdfs, 1)]
+        if imagens:
+            partes.append(f"{len(imagens)} imagem(ns) anexada(s) pelo médico (abaixo)")
+        extra = "\n\n".join(x for x in (extra, "\n".join(partes)) if x)
 
-    messages, sources = synthesize.build(query, hits, history, extra)
+    messages, sources = synthesize.build(query, hits, history, extra, imagens=imagens)
     yield _sse("sources", {"sources": sources, "recommended": recommended})
 
     allowed_ns = set(range(1, len(hits) + 1))
     text_by_n = {i + 1: (h.get("text") or "") for i, h in enumerate(hits)}
     # números que o próprio médico informou / o sistema calculou também valem; os do perfil do paciente NÃO sustentam a
     # citação de um artigo (o "6,9 [1]" perde o [1] se o artigo não diz 6,9)
-    own_text = " ".join([query, calculo or ""] +
+    own_text = " ".join([query, calculo or "", texto_pdfs] +   # o texto dos PDFs: dados do próprio médico
                         [m["content"] for m in history if m.get("role") == "user"])
 
     # 3) streaming validado por frase
@@ -734,20 +764,31 @@ def _ask_stream(query, k, history=None, contexto=None):
 
 @app.post("/ask")
 async def ask_post(request: Request):
-    """Body: {query, k?, history?[{role,content,sig?}]} → SSE. Só com login."""
+    """Body: {query, k?, history?[{role,content,sig?}], patient_id?, anexos?[{tipo, dados(base64)}]} → SSE. Só com login."""
     u, err = _auth_or_401(request)
     if err:
         return err
     if _rate_limited(request, "ask"):
         return _too_many()
+    # anexos (até 15 MB, em base64): o corpo é lido com teto, para não segurar na memória um envio sem fim
+    cl = request.headers.get("content-length") or ""
+    if cl.isdigit() and int(cl) > MAX_ASK_BODY:
+        return JSONResponse({"error": "anexo_grande"}, status_code=400)
+    raw = bytearray()
+    async for chunk in request.stream():
+        raw.extend(chunk)
+        if len(raw) > MAX_ASK_BODY:
+            return JSONResponse({"error": "anexo_grande"}, status_code=400)
     try:
-        body = await request.json()
+        body = json.loads(bytes(raw))
     except Exception:
         body = {}
+    del raw
     if not isinstance(body, dict):
         body = {}
     query = str(body.get("query") or "").strip()
-    if not query:
+    lista = body.pop("anexos", None) or []    # o base64 só fica nesta lista (anexos.prepara o solta ao decodificar)
+    if not query and not lista:
         return JSONResponse({"error": "query vazia"}, status_code=400)
     if len(query) > MAX_QUERY_CHARS:
         return JSONResponse({"error": "pergunta muito longa"}, status_code=400)
@@ -760,7 +801,7 @@ async def ask_post(request: Request):
     # prescrições: sexo, idade, problemas, remédios, alergias, últimos sinais e exames, já por scribe.mask), e a pergunta e
     # o histórico passam por scribe.mask (o médico pode escrever o nome). Só o paciente deste médico e só nas contas
     # liberadas para dado de paciente na IA (as da gravação, como as Possíveis prescrições — RIPD pendente).
-    contexto = None
+    contexto, nome = None, ""
     pid = body.get("patient_id")
     if pid is not None:
         if not scribe_on(u):
@@ -772,7 +813,51 @@ async def ask_post(request: Request):
         nome = p.get("name") or ""
         query = scribe.mask(query, nome)
         history = [dict(m, content=scribe.mask(m["content"], nome)) for m in history]
-    return StreamingResponse(_ask_stream(query, k, history, contexto),
+    # anexos do "+" (decisão do usuário 16/11/2026): imagem inteira ao modelo; PDF só como texto mascarado (o nome do
+    # paciente escolhido + campos "Nome/Paciente"). Nada é guardado nem vai ao log.
+    prep, so_anexo = None, False
+    if lista:
+        n_anexos = len(lista) if isinstance(lista, list) else 0
+        vagas = _ANEXO_VAGAS
+        # espera a vaga sem prender uma thread: se o médico desistir no meio, nenhuma vaga fica presa
+        limite = time.monotonic() + ANEXO_ESPERA
+        while not vagas.acquire(blocking=False):
+            if time.monotonic() >= limite:
+                return JSONResponse({"error": "ocupado"}, status_code=429)
+            await asyncio.sleep(0.05)
+
+        estado, trava = {"comecou": False, "solta": False}, threading.Lock()
+
+        def _solta():                                        # a vaga volta uma vez só
+            with trava:
+                if not estado["solta"]:
+                    estado["solta"] = True
+                    vagas.release()
+
+        def _prepara(lst):
+            with trava:
+                if estado["solta"]:                          # o pedido já foi cancelado: não lê sem vaga
+                    return None
+                estado["comecou"] = True
+            try:
+                return anexos.prepara(lst, nome)
+            finally:
+                _solta()                                     # sempre, com erro ou não, quando a leitura acaba de fato
+        try:
+            prep = await run_in_threadpool(_prepara, lista)
+        except anexos.ErroAnexo as e:
+            return JSONResponse({"error": e.codigo}, status_code=400)
+        finally:
+            with trava:
+                nao_comecou = not estado["comecou"]
+            if nao_comecou:                                  # cancelado antes de a thread começar
+                _solta()
+            lista = body = None
+        if not query:
+            # só o anexo: a frase-padrão vai ao modelo, mas não à busca, ao PubMed nem ao corpus (veja _ask_stream)
+            query = "Analise o anexo." if n_anexos == 1 else "Analise os anexos."
+            so_anexo = True
+    return StreamingResponse(_ask_stream(query, k, history, contexto, anexos=prep, so_anexo=so_anexo),
                              media_type="text/event-stream")
 
 

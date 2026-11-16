@@ -330,7 +330,8 @@ const cenarios = [
         return { meio: [...document.querySelectorAll('.nav-main .item')].map((x) => x.dataset.tip), pe: n.bottom - r.bottom, w: r.width,
                  rotulo: getComputedStyle(c.children[1]).display, ico: getComputedStyle(c.querySelector('.ico')).display }; })()`);
       certo(!m.meio.includes('Perfil') && !m.meio.includes('Configurações') && !m.meio.includes('Integrações') && m.pe === 16, `${pagina}: ` + JSON.stringify(m));
-      certo(recolhido ? (m.rotulo === 'none' && m.w === 40 && m.ico !== 'none') : (m.rotulo !== 'none' && m.ico === 'none'),
+      // a engrenagem aparece sempre (pedido do usuário, 16/11): aberto, com o texto ao lado; recolhido, sozinha
+      certo(recolhido ? (m.rotulo === 'none' && m.w === 40 && m.ico !== 'none') : (m.rotulo !== 'none' && m.ico !== 'none'),
             `${pagina} ${recolhido ? 'recolhido' : 'aberto'}: ` + JSON.stringify(m));
       await clica('#navCfg');
       await ate(`!document.getElementById('cfgMenu').hidden`, 2000, `${pagina}: o menu do Configurações abre`);

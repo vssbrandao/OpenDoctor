@@ -36,6 +36,10 @@ dado sensível): na dúvida, fechado. FastAPI (`app/server.py`), Supabase Postgr
    - New chat com um paciente escolhido (o seletor "All", mesmas contas): `/ask` recebe só o `patient_id` (do médico);
      vai ao modelo o mesmo perfil sem nome das Possíveis prescrições, e a pergunta, o histórico e o `/followups` passam por
      `scribe.mask`. O perfil nunca vai à busca nem ao PubMed (os termos saem só da pergunta). RIPD pendente, como acima.
+   - Anexos do assistente (o "+" do campo; decisão do usuário 16/11/2026): a imagem (PNG, JPEG, WebP) vai inteira ao
+     modelo (pode ter o nome); o PDF vai só como texto extraído e mascarado (`scribe.mask` + campos rotulados
+     "Nome/Paciente", `app/anexos.py`), nunca à busca, ao PubMed nem ao planejamento; o nome do arquivo não sai da tela.
+     Nada é guardado (banco, disco, log: só contagens). RIPD e Política de Privacidade pendentes antes de publicar.
 4. **Segredos** só em variável de ambiente (Render / `.env`, que não é commitado). Nunca em código,
    comando, log ou mensagem. O usuário cola os segredos; não imprimir chaves.
 5. **Front-end:** a CSP só roda os `<script>` escritos nas páginas (hash calculado ao subir o servidor)

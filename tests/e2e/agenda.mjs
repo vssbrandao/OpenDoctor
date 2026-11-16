@@ -16,7 +16,9 @@
 // o Expandir agenda volta ao nome certo quando o assistente reaparece pelo prontuário; a busca (lupa, ⇧⌘F, Buscar do
 // menu e agenda#buscar) abre no meio da tela com Tudo · Consultas · Pacientes · Receitas, o trecho em negrito, e o
 // termo nunca vai na URL (as receitas: no corpo do POST); escolher abre a consulta, o paciente ou a receita; a lupa
-// (e o ⇧⌘F) abre já em Consultas, o Buscar do menu em Tudo; sem agenda conectada, nada de pedir para conectar.
+// (e o ⇧⌘F) abre já em Consultas, o Buscar do menu em Tudo; sem agenda conectada, nada de pedir para conectar;
+// o + do campo do assistente anexa imagem e PDF (cartões acima do texto, o x tira, limites na tela), o /ask leva só
+// {tipo, dados} — nunca o nome do arquivo —, a bolha mostra o cartão e o 400 do anexo devolve o arquivo ao campo.
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -79,6 +81,9 @@ let MAIS = false;                                          // a lista veio corta
 let LENTA = 0;                                             // ms de espera da busca no servidor
 let LENTA_RX = 0;                                          // ms de espera da busca de receitas
 let LENTO_PAC = 0;                                         // ms de espera do cadastro de paciente (POST /patients)
+let ASK_ERRO = null;                                       // o /ask recusa: 'código' (400) ou [status, código ou null]
+let ASK_REDE = false;                                      // o /ask falha na rede (o fetch nem chega ao servidor)
+let ASK_LENTO = 0;                                         // ms de espera do /ask (uma resposta a caminho)
 let FALTA_0021 = false;                                    // produção sem a migração 0021: e-mail/atendimento dão 503
 const ANTIGOS = [{ id: 900, name: 'Otávio Antigo', notes: 3, last: '2025-01-10T12:00:00+00:00' }];
 const sem = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -125,6 +130,16 @@ async function responde(p) {
     if (LENTA_AGENDA && u.pathname === '/calendar/events' && method === 'GET') await sleep(LENTA_AGENDA);
     if (LENTO_PAC && u.pathname === '/patients' && method === 'POST') await sleep(LENTO_PAC);
     if (LENTA_RX && u.pathname === '/prontuario/receitas/busca') await sleep(LENTA_RX);
+    if (u.pathname === '/ask' && method === 'POST') {         // o assistente: uma resposta curta em SSE (ou o 400 de anexo)
+      pedidos.push({ method, path: '/ask', q: {}, body, cru: p.request.postData || '' });
+      const sse = 'event: sentence\ndata: {"text":"Resposta de teste."}\n\nevent: done\ndata: {"insufficient":false,"ungrounded":0}\n\n';
+      if (ASK_LENTO) await sleep(ASK_LENTO);
+      if (ASK_REDE) return send('Fetch.failRequest', { requestId: p.requestId, errorReason: 'ConnectionFailed' });
+      const [stE, codE] = Array.isArray(ASK_ERRO) ? ASK_ERRO : [400, ASK_ERRO];
+      const [cod, tp, corpo] = ASK_ERRO ? [stE, 'application/json', codE ? JSON.stringify({ error: codE }) : '{}'] : [200, 'text/event-stream', sse];
+      return send('Fetch.fulfillRequest', { requestId: p.requestId, responseCode: cod,
+        responseHeaders: [{ name: 'Content-Type', value: tp }], body: Buffer.from(corpo).toString('base64') });
+    }
     const j = rota(method, u.pathname, u.searchParams, body);
     pedidos.push({ method, path: u.pathname, q: Object.fromEntries(u.searchParams), body });
     if (j === null) status = 404;
@@ -1713,6 +1728,158 @@ const cenarios = [
           post.body.coverage === 'convenio' && post.body.health_plan === 'Plano Teste' && post.body.birth_date === '1980-03-15' && post.body.cpf === '52998224725' && !/Beatriz|beatriz|91234/.test(post.path),
           'o POST do novo paciente (os dados só no corpo): ' + JSON.stringify(post && post.body));
     return `39 pacientes de uma vez, sem os números e sem o rodapé; no tamanho dos Diagnósticos (3 colunas iguais: nome e idade, "Consultas" e o total, "Última" e a data ou "Nenhuma consulta"; o ⋯ no fim), alinhado com o título e a lupa, lista 32 abaixo do título; o prontuário por cima, o aviso de sessão e a janela já fechada; ⋯ com o Excluir só para quem pode; linha abre o prontuário; novo paciente pelo + no alto (ao lado da lupa, dica e ⇧⌘E) no lugar do assistente, com e-mail, telefone e particular/convênio com o plano`;
+  }],
+  ['o + do campo anexa PDF e imagem: os cartões da Sana acima do texto, o x tira, o /ask leva só {tipo, dados} (nunca o nome) e a bolha mostra o cartão', async () => {
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?anexo=1' });
+    await ate(`location.search === '?anexo=1' && document.readyState === 'complete'`, 8000, 'agenda');
+    await ev(`document.getElementById('navNovo').click(); 1`);
+    await ate(`document.querySelector('.stage').classList.contains('expanded')`, 3000, 'New chat');
+    certo(await ev(`(() => { const i = document.getElementById('biArquivo'); return !!document.getElementById('biPlus') && i.hidden && i.multiple &&
+      i.accept === 'image/png,image/jpeg,image/webp,application/pdf' && i.closest('.big-input') === document.getElementById('biInput').closest('.big-input'); })()`),
+      'o + e o input de arquivo no campo');
+    const PDF = [0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a], PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    const anexa = (lista) => ev(`(() => { const dt = new DataTransfer();
+      for (const [b, n, t] of ${JSON.stringify(lista)}) dt.items.add(new File([new Uint8Array(b)], n, { type: t }));
+      const i = document.getElementById('biArquivo'); i.files = dt.files; i.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+    await anexa([[PDF, 'Exame Joana Prado.pdf', 'application/pdf'], [PNG, 'foto-lesao.png', 'image/png'], [[120], 'nota.txt', 'text/plain']]);
+    const c = await ev(`(() => { const bx = document.getElementById('biInput').closest('.big-input'), cs = [...document.querySelectorAll('#biAnexos .bi-anexo')];
+      const i = document.getElementById('biInput').getBoundingClientRect();
+      return { tem: bx.classList.contains('tem-anexo'), raio: getComputedStyle(bx).borderTopLeftRadius,
+        aviso: [...document.querySelectorAll('.pr-toast')].map((t) => t.textContent).join('|'),
+        cs: cs.map((e) => { const r = e.getBoundingClientRect(), x = e.querySelector('.bi-anexo-x'), xr = x && x.getBoundingClientRect(), s = getComputedStyle(e);
+          return { n: e.querySelector('.bi-anexo-n').textContent, t: e.querySelector('.bi-anexo-t').textContent, x: x && x.getAttribute('aria-label'),
+            h: r.height, fundo: s.backgroundColor, canto: s.borderTopLeftRadius, acima: r.bottom <= i.top, img: !!e.querySelector('.bi-anexo-q img'),
+            selo: !!e.querySelector('.bi-anexo-q svg rect[fill="#D9483B"]'),
+            xc: xr ? [Math.round(xr.left + xr.width / 2 - r.right), Math.round(xr.top + xr.height / 2 - r.top), xr.width] : null }; }) }; })()`);
+    const [pdf, png] = c.cs;
+    certo(c.tem && c.raio === '40px' && c.cs.length === 2, 'pílula com anexo: ' + JSON.stringify(c));
+    certo(c.aviso === 'Só imagem (PNG, JPG, WebP) ou PDF.', 'o .txt recusado na tela: ' + c.aviso);
+    certo(pdf.n === 'Exame Joana Prado.pdf' && pdf.t === 'PDF' && pdf.selo && !pdf.img && png.n === 'foto-lesao.png' && png.t === 'Imagem' && png.img,
+          'nome, tipo, selo e miniatura: ' + JSON.stringify(c.cs));
+    certo(c.cs.every((k) => k.x === 'Remover anexo' && k.h === 64 && k.fundo === 'rgb(255, 255, 255)' && k.canto === '16px' && k.acima &&
+          Math.abs(k.xc[0]) <= 4 && Math.abs(k.xc[1]) <= 4 && k.xc[2] === 18), 'o cartão (64, branco, canto 12, acima do texto, x de 18 no canto): ' + JSON.stringify(c.cs));
+    await foto('agenda-anexos.png');
+    await ev(`document.querySelector('#biAnexos .bi-anexo .bi-anexo-x').click(); 1`);     // tira o PDF
+    certo(await ev(`[...document.querySelectorAll('#biAnexos .bi-anexo-n')].map((e) => e.textContent).join()`) === 'foto-lesao.png', 'o x tirou o PDF');
+    // com anexo, a seta envia mesmo sem texto
+    const antes = pedidos.filter((x) => x.path === '/ask').length;
+    await ev(`document.getElementById('biInput').value = ''; document.getElementById('biSend').click(); 1`);
+    await ate(`[...document.querySelectorAll('#rpMsgs .msg-ai')].some((e) => e.textContent.includes('Resposta de teste.'))`, 5000, 'a resposta');
+    const ask = pedidos.filter((x) => x.path === '/ask')[antes];
+    certo(ask && Array.isArray(ask.body.anexos) && ask.body.anexos.length === 1 && ask.body.anexos[0].tipo === 'image/png' &&
+          ask.body.anexos[0].dados === Buffer.from(PNG).toString('base64') && Object.keys(ask.body.anexos[0]).join() === 'tipo,dados',
+          'o /ask com {tipo, dados}: ' + JSON.stringify(ask && ask.body.anexos));
+    certo(!/foto-lesao|Exame|Joana|\.png|\.pdf|data:/.test(ask.cru), 'nome do arquivo (ou data:) no corpo do /ask: ' + ask.cru.slice(0, 200));
+    const b = await ev(`(() => { const u = [...document.querySelectorAll('#rpMsgs .msg-user')].pop();
+      return { n: [...u.querySelectorAll('.bi-anexo-n')].map((e) => e.textContent).join(), x: u.querySelectorAll('.bi-anexo-x').length,
+               img: !!u.querySelector('.bi-anexo-q img'), so: u.classList.contains('so-anexo'),
+               campo: document.querySelectorAll('#biAnexos .bi-anexo').length, tem: document.getElementById('biInput').closest('.big-input').classList.contains('tem-anexo') }; })()`);
+    certo(b.n === 'foto-lesao.png' && !b.x && b.img && b.so && !b.campo && !b.tem, 'a bolha com o cartão (sem o x) e o campo limpo: ' + JSON.stringify(b));
+    await foto('agenda-anexos-bolha.png');
+    // o servidor recusa (PDF escaneado): a mensagem do código no lugar da resposta, e o anexo e o texto voltam ao campo
+    ASK_ERRO = 'pdf_sem_texto';
+    await anexa([[PDF, 'escaneado.pdf', 'application/pdf']]);
+    await ev(`document.getElementById('biInput').value = 'e este?'; document.getElementById('biSend').click(); 1`);
+    await ate(`[...document.querySelectorAll('#rpMsgs .ai-body.err')].some((e) => e.textContent === '⚠ Este PDF não tem texto (parece escaneado): mande como imagem.')`, 5000, 'a mensagem do 400');
+    certo(await ev(`[...document.querySelectorAll('#biAnexos .bi-anexo-n')].map((e) => e.textContent).join() === 'escaneado.pdf' && document.getElementById('biInput').value === 'e este?' && !document.getElementById('biSend').disabled`),
+          'o anexo voltou ao campo depois do 400');
+    ASK_ERRO = null;
+    // limite na tela: 5 arquivos → fica com 4 e avisa
+    await anexa([[PNG, 'a.png', 'image/png'], [PNG, 'b.png', 'image/png'], [PNG, 'c.png', 'image/png'], [PNG, 'd.png', 'image/png']]);
+    certo(await ev(`document.querySelectorAll('#biAnexos .bi-anexo').length === 4 && [...document.querySelectorAll('.pr-toast')].some((t) => t.textContent === 'Até 4 arquivos por pergunta.')`), 'até 4 arquivos');
+    // nova conversa: os anexos do campo saem
+    await ev(`document.getElementById('raNew').click(); 1`);
+    certo(await ev(`document.querySelectorAll('#biAnexos .bi-anexo').length === 0 && !document.getElementById('biInput').closest('.big-input').classList.contains('tem-anexo')`), 'a nova conversa limpou os anexos');
+    return '+ abre o arquivo; PDF (selo) e PNG (miniatura) nos cartões de 64 acima do texto, .txt recusado; o x tira; sem texto envia; /ask só {tipo, dados}, sem nome; a bolha com o cartão; 400 mostra a mensagem e devolve o anexo; até 4; nova conversa limpa';
+  }],
+  ['anexos: o nome do arquivo não fica no navegador (só o tipo; título "Anexo (PDF)"); 429 "ocupado", outro 429, outro 400 e a falha de rede devolvem anexos e texto; trocar de paciente na lateral tira os anexos', async () => {
+    const PDF = [0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a], PNG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    const anexa = (lista) => ev(`(() => { const dt = new DataTransfer();
+      for (const [b, n, t] of ${JSON.stringify(lista)}) dt.items.add(new File([new Uint8Array(b)], n, { type: t }));
+      const i = document.getElementById('biArquivo'); i.files = dt.files; i.dispatchEvent(new Event('change', { bubbles: true })); return 1; })()`);
+    const campo = () => ev(`({ n: [...document.querySelectorAll('#biAnexos .bi-anexo-n')].map((e) => e.textContent).join(), q: document.getElementById('biInput').value,
+      livre: !document.getElementById('biSend').disabled })`);
+    const envia = (t) => ev(`document.getElementById('biInput').value = ${JSON.stringify(t)}; document.getElementById('biSend').click(); 1`);
+    const asks = () => pedidos.filter((x) => x.path === '/ask');
+    await ev(`document.getElementById('raNew').click(); 1`);
+    // ----- k: uma conversa guardada pela versão anterior (com o nome) e uma nova só com PDF -----
+    await ev(`localStorage.setItem('od_conversas_v1', JSON.stringify([{ id: 'cvelha', title: 'Exame Joana Prado.pdf', ts: Date.now(), pid: null, hist: [],
+      turns: [{ q: '', a: 'ok', anexos: [{ nome: 'Exame Joana Prado.pdf', tipo: 'application/pdf' }] }] }])); 1`);
+    await anexa([[PDF, 'Laudo Pedro Lima.pdf', 'application/pdf']]);
+    await envia('');
+    await ate(`[...document.querySelectorAll('#rpMsgs .msg-ai')].some((e) => e.textContent.includes('Resposta de teste.')) && !document.getElementById('biSend').disabled`, 5000, 'a resposta do PDF');
+    const guardado = await ev(`localStorage.getItem('od_conversas_v1') || ''`);
+    certo(!/Laudo|Pedro|Joana|Exame|\.pdf|"nome"/.test(guardado), 'o nome do arquivo no localStorage: ' + guardado.slice(0, 300));
+    const convs = JSON.parse(guardado);
+    certo(convs[0].title === 'Anexo (PDF)' && JSON.stringify(convs[0].turns[0].anexos) === '[{"tipo":"application/pdf"}]',
+          'a conversa nova só com o tipo e o título "Anexo (PDF)": ' + JSON.stringify(convs[0]));
+    certo(convs.some((c) => c.id === 'cvelha' && c.title === 'Anexo (PDF)'), 'a conversa da versão anterior consertada: ' + guardado.slice(0, 300));
+    const hist = await ev(`[...document.querySelectorAll('#navHist .hist-item')].map((b) => b.textContent + '|' + b.title)`);
+    certo(hist.filter((h) => h === 'Anexo (PDF)|Anexo (PDF)').length === 2 && !hist.some((h) => /Laudo|Joana|\.pdf/.test(h)), 'os títulos no histórico: ' + JSON.stringify(hist));
+    // reabrir: o cartão diz "Documento PDF" no lugar do nome
+    await ev(`document.getElementById('raNew').click(); [...document.querySelectorAll('#navHist .hist-item')][0].click(); 1`);
+    await ate(`document.querySelectorAll('#rpMsgs .msg-user .bi-anexo').length === 1`, 3000, 'a conversa reaberta');
+    const re = await ev(`(() => { const c = document.querySelector('#rpMsgs .msg-user .bi-anexo'); return [c.querySelector('.bi-anexo-n').textContent, c.querySelector('.bi-anexo-n').title, c.querySelector('.bi-anexo-t').textContent, document.getElementById('rpMsgs').textContent]; })()`);
+    certo(re[0] === 'Documento PDF' && re[1] === 'Documento PDF' && re[2] === 'PDF' && !/Laudo/.test(re[3]), 'o cartão da conversa reaberta: ' + JSON.stringify(re.slice(0, 3)));
+    await ev(`document.getElementById('raNew').click(); 1`);
+    // ----- m: todo erro antes da resposta devolve os anexos e o texto -----
+    const erroDevolve = async (oque, msg, esperaMs) => {
+      const nErr = await ev(`document.querySelectorAll('#rpMsgs .ai-body.err').length`);
+      await envia('veja isto');
+      await ate(`document.querySelectorAll('#rpMsgs .ai-body.err').length > ${nErr} && !document.getElementById('biSend').disabled`, esperaMs, oque);
+      const m = await ev(`[...document.querySelectorAll('#rpMsgs .ai-body.err')].pop().textContent`);
+      certo(m === '⚠ ' + msg, oque + ': a mensagem ' + m);
+      const c = await campo();
+      certo(c.n === 'raio-x.png' && c.q === 'veja isto' && c.livre, oque + ': o anexo e o texto voltaram ao campo? ' + JSON.stringify(c));
+    };
+    await anexa([[PNG, 'raio-x.png', 'image/png']]);
+    try {
+      ASK_ERRO = [429, 'ocupado'];
+      await erroDevolve('429 ocupado', 'Muitos arquivos sendo lidos agora. Tente de novo em instantes.', 5000);
+      ASK_ERRO = [429, null];
+      await erroDevolve('429 do limite', 'Muitas perguntas em pouco tempo. Aguarde alguns minutos e tente de novo.', 5000);
+      ASK_ERRO = [400, 'outra_coisa'];
+      const n400 = asks().length;
+      await erroDevolve('400 sem código conhecido', 'Não foi possível ler o arquivo.', 5000);
+      certo(asks().length === n400 + 1, 'o 400 foi repetido: ' + (asks().length - n400) + ' pedidos');
+      ASK_ERRO = null; ASK_REDE = true;
+      await erroDevolve('falha de rede', 'O servidor não respondeu a esta consulta. Tente de novo em instantes, ou reformule de forma mais curta.', 20000);
+    } finally { ASK_ERRO = null; ASK_REDE = false; }
+    // ----- l: a lateral do prontuário (o paciente aberto vem de __prPacienteId) -----
+    await ev(`document.getElementById('raNew').click(); 1`);
+    const st0 = await ev(`document.querySelector('.stage').className`);
+    try {
+      await ev(`window.__tPac = 7; window.__prOrig = window.__prPacienteId; window.__prPacienteId = () => window.__tPac;
+        const s = document.querySelector('.stage'); s.classList.remove('expanded'); s.classList.add('prontuario'); window.__ncDoProntuario(7, 'Maria Silva'); 1`);
+      await sleep(200);
+      // anexado com a Maria (7), enviado com a Joana (5) aberta: o anexo sai, com o aviso, e a pergunta vai sem ele
+      await anexa([[PNG, 'de-maria.png', 'image/png']]);
+      await ev(`window.__tPac = 5; 1`);
+      const n0 = asks().length;
+      await envia('e a Joana?');
+      await ate(`[...document.querySelectorAll('.pr-toast')].some((t) => t.textContent === 'Os anexos eram de outro paciente e foram retirados.')`, 3000, 'o aviso de outro paciente');
+      await ate(`!document.getElementById('biSend').disabled`, 5000, 'a resposta da Joana');
+      const a1 = asks()[n0];
+      certo(a1 && !a1.body.anexos && !/de-maria|"anexos"/.test(a1.cru), 'o anexo da Maria foi na pergunta da Joana: ' + (a1 && a1.cru.slice(0, 200)));
+      certo(await ev(`!document.querySelector('#rpMsgs .msg-user:last-of-type .bi-anexo') && document.querySelectorAll('#biAnexos .bi-anexo').length === 0`), 'o cartão da Maria na bolha ou no campo');
+      // com uma resposta a caminho: o anexo no campo (da Joana) sai quando a lateral troca para a Maria
+      await ev(`window.__ncDoProntuario(5, 'Joana Prado'); 1`); await sleep(100);
+      ASK_LENTO = 1500;
+      await envia('pergunta lenta');
+      await ate(`document.getElementById('biSend').disabled`, 2000, 'a resposta a caminho');
+      await anexa([[PNG, 'de-joana.png', 'image/png']]);
+      certo((await campo()).n === 'de-joana.png', 'o anexo da Joana no campo');
+      await ev(`window.__tPac = 7; window.__ncDoProntuario(7, 'Maria Silva'); 1`); await sleep(150);
+      certo(await ev(`document.getElementById('biSend').disabled`), 'a resposta já tinha chegado (o teste não cobriu o busy)');
+      certo((await campo()).n === '', 'o anexo da Joana ficou no campo com a Maria aberta (busy): ' + (await campo()).n);
+      await ate(`!document.getElementById('biSend').disabled`, 5000, 'a resposta lenta');
+    } finally {
+      ASK_LENTO = 0;
+      await ev(`document.querySelector('.stage').className = ${JSON.stringify(st0)}; window.__prPacienteId = window.__prOrig; delete window.__tPac; 1`);
+      await ev(`document.getElementById('raNew').click(); 1`);
+    }
+    return 'o histórico guarda só o tipo (o da versão anterior consertado), título "Anexo (PDF)", reaberto mostra "Documento PDF"; 429 ocupado, 429, 400 (sem repetir) e falha de rede devolvem anexo e texto; na lateral, o anexo de outro paciente sai no envio (com aviso) e na troca com resposta a caminho';
   }],
 ];
 

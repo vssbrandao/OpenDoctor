@@ -37,10 +37,12 @@ def _source_label(hit):
     return f"{kind}, {yr}{doi}"
 
 
-def build(query, hits, history=None, extra=None):
+def build(query, hits, history=None, extra=None, imagens=None):
     """Devolve (messages, sources) — sources[i] corresponde a [i+1].
     history: turnos anteriores [{role:'user'|'assistant', content}] p/ follow-ups.
-    extra: bloco determinístico (ex.: cálculo de eGFR) a ser usado pelo modelo."""
+    extra: bloco determinístico (ex.: cálculo de eGFR) a ser usado pelo modelo.
+    imagens: data URLs anexadas pelo médico (app/anexos.py) — vão como image_url na ÚLTIMA mensagem; sem elas o
+    content continua uma string."""
     blocks = []
     sources = []
     for i, h in enumerate(hits, start=1):
@@ -65,7 +67,11 @@ def build(query, hits, history=None, extra=None):
         content = (m.get("content") or "").strip()
         if role in ("user", "assistant") and content:
             messages.append({"role": role, "content": content[:HISTORY_CHARS]})
-    messages.append({"role": "user", "content": user})
+    if imagens:
+        messages.append({"role": "user", "content": [{"type": "text", "text": user}] +
+                         [{"type": "image_url", "image_url": {"url": u}} for u in imagens]})
+    else:
+        messages.append({"role": "user", "content": user})
     return messages, sources
 
 

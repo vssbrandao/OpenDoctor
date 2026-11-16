@@ -60,6 +60,12 @@ As tabelas de `app/data/` ficam fora do código para o médico revisor conferir 
 
 ## A tela
 
+**Desde 16/11/2026 (pedido do usuário):** a lateral do prontuário voltou a ser o **assistente** (que conversa sobre o
+paciente aberto) e a Transcrição saiu dela — o usuário vai pôr a gravação em outro lugar. A seção `#prTx` (com o cartão
+abaixo) continua na página, escondida: **a gravação fica sem lugar na tela até lá**, e o E2E `tests/e2e/gravacao.mjs`
+falha por isso (procura o gravador). No centro do prontuário há um botão flutuante "Iniciar consulta" (`#prIniciar`, a 24
+da base, só na aba Prontuário) que ainda não faz nada. O texto abaixo descreve a lateral Transcrição de 14/11.
+
 A gravação fica na **lateral "Transcrição"** do prontuário (`#prTx`, teste de 14/11/2026, Figma Concept 1349:13256): a
 coluna da direita, de 520, com o título e o expandir (que põe a transcrição na largura toda). O controle do meio ficou
 só com Prontuário e Prescrição; tudo da antiga aba Consulta foi para a lateral, que está sempre à vista com o prontuário

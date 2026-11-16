@@ -76,6 +76,14 @@
       background:#fff;z-index:5;scrollbar-width:thin;container-type:inline-size;container-name:pr;
       font-family:var(--disp);color:#1F1F1F}
     .stage.prontuario .pr-view{display:flex}
+    /* "Iniciar consulta" flutuando no centro do prontuário, a 24 da base: a pílula da lateral Transcrição (Figma 1349:13400:
+       64 de altura, 24 42 de respiro, o microfone e o texto 14 Medium), preta com o texto branco e o microfone laranja (16/11) */
+    .pr-iniciar{display:none}
+    .stage.prontuario .pr-iniciar{display:flex;align-items:center;justify-content:center;gap:8px;position:absolute;left:50%;bottom:24px;z-index:6;
+      transform:translateX(-50%);height:64px;padding:24px 42px;white-space:nowrap;border:0;border-radius:999px;background:#000;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
+    .pr-iniciar svg{flex:none;width:11.13px;height:16.06px;color:#F50}
+    .center:has(#prMain[data-tab=prescricoes]) .pr-iniciar{display:none}   /* na Prescrição fica a barra de adicionar do pé */
     .stage.prontuario .ag-head,.stage.prontuario .cal,.stage.prontuario .wk{display:none}
     /* coluna do prontuário = coluna do Google Finance (748px); trilha → nome a 8px */
     .pr{width:100%;max-width:748px;height:max-content;display:flex;flex-direction:column;gap:8px}
@@ -344,6 +352,7 @@
     .rxp-v > .rxc-ori:focus{border-color:rgba(10,18,23,.35)}
     .rxp-v > .rxc-ori::placeholder{color:rgba(10,18,23,.6)}
     .rxp-v > .rxc-avisos{margin-top:12px}
+    .rxp-abas .rxc-st[hidden]{display:none}
     .rxp-abas .rxc-st{margin-left:4px;font-size:13px;line-height:20px;color:rgba(10,18,23,.4);white-space:nowrap}
     .rxp-abas .rxc-pe{margin-left:auto;flex-wrap:nowrap;gap:12px}
     .rxp-v > .rxc-resumo,.rxp-v > .rxc-ori{display:none}   /* fora da tela (pedido do usuário): o "Sai 1 receita…" e o campo das orientações */
@@ -1782,7 +1791,7 @@
       .rx-print.a5 .rx-id{margin-top:20px;gap:10px;font-size:10px;line-height:15px}
       @page{margin:16mm}
       body{background:#fff}
-      .nav,.right,.float-toggle,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.rc-tx,.rc-note,.pr-foot,.pr-chipin,.pr-tabs,
+      .nav,.right,.float-toggle,.pr-iniciar,.ag-head,.cal,.wk,.pt-view,.evpop,.pr-top,.pr-visit,.pr-seg,.pr-rec,.rc-tx,.rc-note,.pr-foot,.pr-chipin,.pr-tabs,
       .pr-chip button,.ovc-x,.ovc-tabw,.ovc-chev,.ovc-add,.ovc-more,.pr-item-acts,.pr-histq,.pr-addbox,#prEvoBox:not(.has-text),.pr-panel[data-panel=prescricoes],.pr-link,#prForm,
       .pr-more,.ov-ranges,.ov-tip,.ov-link,.ov-empty .ov-pill,.ov-tiles,.ov-persp,.ov .pr-chipin,.gb,.gfc .gq-dd,.hc-pw,.hc-dd,.hc-tr,.hc-more,.hc-txb{display:none!important}
       .hc-body{display:flex!important}
@@ -2199,59 +2208,105 @@
     .stage.expanded .right:has(> #rpMsgs:not(.on)) .rp-head,
     .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-note{display:none}
     .stage.expanded .right:has(> #rpMsgs:not(.on)) .big-input{left:50%;right:auto;top:calc(50% - 92px);bottom:auto;
-      width:min(800px,calc(100% - 48px));transform:translateX(-50%);box-sizing:border-box;
-      flex-direction:row;align-items:center;gap:0;padding:8px;border-radius:99px;background:#F3F3F3}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-top,
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-bottom{display:contents}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-plus{order:0}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-plus svg{width:17.8px;height:17.8px}   /* o "+" com 14 de desenho, como no Figma */
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-input{order:1;min-width:0;padding:0 0 0 8px}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-send{order:2;background:#D3E3FD}            /* o do Figma: azul */
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-send:hover{background:#c2d8fb}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-send svg path{fill:#0842A0}
+      width:min(800px,calc(100% - 48px));transform:translateX(-50%);z-index:2}   /* a lista do Paciente fica por cima das sugestões */
+    /* o campo do New chat (a pílula: o +, o texto e a seta azul) vale também embaixo, com a conversa (pedido do usuário,
+       16/11): ali fica na coluna da conversa, a 24 da base, e cresce para cima; e no assistente ao lado do prontuário (.pr) */
+    :is(.stage.expanded, .right.pr) .big-input{box-sizing:border-box;flex-direction:row;align-items:center;gap:0;padding:8px;border-radius:99px;background:#F3F3F3}
+    :is(.stage.expanded, .right.pr) .bi-top,
+    :is(.stage.expanded, .right.pr) .bi-bottom{display:contents}
+    :is(.stage.expanded, .right.pr) .bi-plus{order:0}
+    :is(.stage.expanded, .right.pr) .bi-plus svg{width:17.8px;height:17.8px}   /* o "+" com 14 de desenho, como no Figma */
+    :is(.stage.expanded, .right.pr) .bi-input{order:1;min-width:0;padding:0 0 0 8px}
+    :is(.stage.expanded, .right.pr) .bi-send{order:2;background:#D3E3FD}            /* o do Figma: azul */
+    :is(.stage.expanded, .right.pr) .bi-send:hover{background:#c2d8fb}
+    :is(.stage.expanded, .right.pr) .bi-send svg path{fill:#0842A0}
+    :is(.stage.expanded, .right.pr) .rp-msgs{bottom:calc(var(--bi-h, 64px) + 40px)}   /* a conversa termina acima do campo (que cresce) */
     .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-sug{display:flex;flex-direction:column;align-items:stretch;gap:24px;
       position:absolute;left:50%;top:calc(50% + 14px);width:min(800px,calc(100% - 48px));transform:translateX(-50%)}
-    /* "All ⌄" no alto à esquerda, como o da Sana (medido em sana.ai): pílula de 36 a 20 da borda e 12 do topo, 6 16 de
-       respiro, 6 até a seta (10 x 5,7 numa caixa de 16, a 60%), texto 16/20, fundo branco */
+    /* como no ChatGPT (pedido do usuário, 16/11): com o campo em foco ou com texto, as sugestões somem; passou de uma linha,
+       o texto fica em cima na largura toda, o + e a seta descem para a linha de baixo, e o campo cresce até 240 (depois rola) */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)):has(> .big-input.foco) .nc-sug,
+    .stage.expanded .right:has(> #rpMsgs:not(.on)):has(#biInput:not(:placeholder-shown)) .nc-sug{display:none}
+    :is(.stage.expanded, .right.pr) .bi-input{max-height:240px}
+    :is(.stage.expanded, .right.pr) .big-input.multi{flex-wrap:wrap;align-items:flex-end;border-radius:40px}   /* 40 (pedido do usuário, 16/11) */
+    :is(.stage.expanded, .right.pr) .big-input.multi .bi-input{order:0;flex:1 0 100%;padding:8px 16px 4px}
+    :is(.stage.expanded, .right.pr) .big-input.multi .bi-send{margin-left:auto}
+    /* anexos do "+" (imagem e PDF, pedido do usuário 16/11): os cartões como os da Sana (medidos no Safari), em uma fila
+       acima da linha do texto; a pílula com anexo quebra em linhas, canto 28, e a linha do +, campo e seta fica como hoje */
+    .bi-anexos{display:none}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)):has(> .big-input.tem-anexo) .nc-sug{display:none}   /* com anexo, como com texto */
+    .big-input.tem-anexo .bi-anexos{display:flex;flex-wrap:wrap;gap:8px;order:-1;padding:16px 16px 0}
+    :is(.stage.expanded, .right.pr) .big-input.tem-anexo{flex-wrap:wrap;border-radius:40px;padding:16px 8px 8px 8px}
+    :is(.stage.expanded, .right.pr) .big-input.tem-anexo .bi-anexos{flex:0 0 100%;padding:0 0 0 8px;margin-bottom:8px;box-sizing:border-box}
+    .bi-anexo{position:relative;box-sizing:border-box;display:flex;align-items:center;gap:13px;height:64px;max-width:300px;min-width:0;
+      padding:8px 16px 8px 8px;background:#fff;border-radius:16px;   /* 16 (pedido do usuário, 16/11; a Sana tem 12) */
+      font-family:ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;text-align:left}
+    .bi-anexo-q{width:48px;height:48px;flex:none;border-radius:10px;background:#F7F7F9;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .bi-anexo-q img{width:100%;height:100%;object-fit:cover;border-radius:10px;display:block}
+    .bi-anexo-q svg{display:block}
+    .bi-anexo-tx{min-width:0;display:flex;flex-direction:column}
+    .bi-anexo-n{font-size:14px;line-height:20px;font-weight:600;color:#0A0A0A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .bi-anexo-t{font-size:13px;line-height:18px;font-weight:400;color:#9B9B9B}
+    .bi-anexo-x{position:absolute;top:-6px;right:-6px;width:18px;height:18px;padding:0;border:0;border-radius:50%;background:#0A0A0A;
+      display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .bi-anexo-x svg{display:block}
+    /* na bolha da pergunta: os mesmos cartões, sem o x; sem texto, só os cartões (sem o fundo da bolha) */
+    .msg-anexos{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+    .msg-user .msg-anexos + .msg-txt{margin-top:12px}
+    .msg-user.so-anexo{background:none!important;padding:0!important}   /* vence o padding das bolhas do New chat */
+    /* o paciente da conversa embaixo do campo do New chat, como o "Create" da Sana (pedido do usuário, 16/11; o "Todos" do
+       alto e o "Convidar" saíram): sem fundo, o ícone cinza e o texto 14, a 8 do campo e alinhado ao + (acompanha o campo
+       quando ele cresce). Escolhido, mostra o nome do paciente. Contas sem paciente na IA não o veem */
     .nc-all{display:none}
-    .stage.expanded .nc-all{display:flex;align-items:center;gap:6px;position:absolute;
-      top:8px;left:7px;height:36px;box-sizing:border-box;padding:6px 16px;border:1px solid transparent;border-radius:999px;
-      background:#fff;cursor:pointer;font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:#071216}
-    /* o texto do "All" como o título "Assistente AI" (.rp-title): 14/20 Bold #071216, a 24 da esquerda e 16 do topo */
-    .nc-all-chev{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;color:rgba(10,18,23,.6)}
-    .nc-all-chev svg{display:block;transform:translate(-.5px,.5px)}   /* na posição da seta da Sana (2x) */
-    /* o "All" fica também na conversa (é o paciente dela): no lugar do título "Assistente AI" */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all{display:flex;align-items:center;gap:8px;position:static;order:2;margin-right:8px;
+      flex:none;align-self:center;height:48px;box-sizing:border-box;padding:0 20px 0 18px;border:0;border-radius:999px;
+      background:none;cursor:pointer;font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#868686}   /* 16 como o "Ask medical questions"; parado, no cinza do ícone */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all:hover{background:rgba(10,18,23,.06)}
+    /* com um paciente escolhido: o nome e o ícone na cor do "Ask medical questions" (--ink2) */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all.tem,.nc-all.tem .nc-all-ico{color:var(--ink2)}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all.tem{background:rgba(10,18,23,.06)}   /* escolhido: o fundo do mouse em cima fica */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-input{order:1}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-send{order:3}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .big-input.multi .bi-input{order:0}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .big-input.multi .nc-all{margin-left:auto}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .big-input.multi .bi-send{margin-left:0}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all.sem{display:none}
+    .nc-all-ico{width:15px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--ink2)}   /* a cor do ícone escolhido também parado (pedido do usuário, 16/11) */
+    .nc-all-ico svg{width:15px;height:16px}
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all:not(.tem){width:60px;padding:0;justify-content:center;background:rgba(10,18,23,.06)}   /* só o ícone: do tamanho da seta (60 x 48), com o fundo do mouse em cima sempre */   /* a altura da seta azul (48) e o ícone na proporção do texto de 16 */
+    .nc-all-ico svg path{fill:currentColor}   /* o ícone de Pacientes do menu, no tamanho e no cinza do Create da Sana (medidos) */
+    .nc-all-ico svg{display:block}
+    .nc-all-chev{display:none}
     .stage.expanded .rp-title{visibility:hidden}
-    .nc-all > span:first-child{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .nc-all.sem{cursor:default}.nc-all.sem .nc-all-chev{display:none}       /* conta sem paciente na IA: só "All" */
-    /* a lista do "All" (o menu da Sana, medido): 6 abaixo do botão, 268 de largura, 8 de respiro, cantos 24, borda e
+    .nc-all > span#ncAllTxt{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    /* a lista de pacientes (o menu da Sana, medido): 6 abaixo do botão, 268 de largura, 8 de respiro, cantos 24, borda e
        sombra leves; itens de 40 com cantos 17, 8 8 8 16 de respiro, 14/21; o mouse com rgba(10,18,23,.05) */
-    .nc-menu{position:absolute;left:7px;top:50px;z-index:30;width:268px;box-sizing:border-box;padding:8px;
-      display:flex;flex-direction:column;gap:0;background:#fff;border:1px solid rgba(10,18,23,.08);border-radius:24px;
-      box-shadow:0 7px 16px rgba(0,0,0,.04);max-height:calc(100% - 80px);overflow-y:auto}
+    /* a lista como a de "Sources" da Sana (medida no Safari): 4 abaixo do botão e alinhada a ele, 298 de largura, 7 de
+       respiro, cantos 22, borda e sombra leves; a busca em linha com a lupa, a linha, o título "Pacientes" e os nomes com o
+       ícone de Pacientes do menu; o "Todos" no pé, depois de outra linha. Itens de 38, ícone a 15 e texto a 43, 15 px */
+    .nc-menu{position:absolute;right:76px;max-height:360px;top:calc(100% + 6px);z-index:30;width:300px;box-sizing:border-box;padding:7px;
+      display:flex;flex-direction:column;gap:0;background:#fff;border:1px solid rgba(10,18,23,.08);border-radius:22px;
+      box-shadow:0 6px 20px rgba(0,0,0,.06);overflow-y:auto}
+    .nc-busca-l{display:flex;align-items:center;gap:13px;height:40px;flex:none;padding:0 14px 0 15px;border-radius:12px;cursor:text}
+    .nc-sep{height:1px;flex:none;margin:7px 4px;background:rgba(10,18,23,.08)}
+    .nc-op-ico{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;color:#323335}
+    .nc-op-ico svg{display:block}
+    .nc-op-ico svg[viewBox="0 0 13 14"]{width:13px;height:14px}   /* o de Pacientes do menu, no tamanho dele */
+
     .nc-menu[hidden]{display:none}
-    .nc-busca{height:40px;box-sizing:border-box;margin:0 0 4px;padding:8px 16px;border:0;outline:0;border-radius:17px;
-      background:#F7F8F8;font-family:var(--disp);font-weight:400;font-size:14px;line-height:21px;color:rgb(10,18,23)}
-    .nc-busca::placeholder{color:#6B7173}
+    .nc-busca{flex:1;min-width:0;height:40px;box-sizing:border-box;margin:0;padding:0;border:0;outline:0;background:none;
+      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#1F2023}
+    .nc-busca::placeholder{color:#1F2023}
     .nc-lista{display:flex;flex-direction:column}
-    .nc-op{display:flex;align-items:center;gap:10px;height:40px;box-sizing:border-box;padding:8px 8px 8px 16px;border:0;
-      border-radius:17px;background:none;cursor:pointer;text-align:left;font-family:var(--disp);font-weight:400;
-      font-size:14px;line-height:21px;color:rgb(10,18,23)}
+    .nc-op{display:flex;align-items:center;gap:13px;height:40px;flex:none;box-sizing:border-box;padding:0 10px 0 15px;border:0;
+      border-radius:12px;background:none;cursor:pointer;text-align:left;font-family:var(--disp);font-weight:400;
+      font-size:14px;line-height:20px;color:#1F2023}
     .nc-op:hover,.nc-op:focus-visible{background:rgba(10,18,23,.05);outline:0}
-    .nc-op > span:first-child{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .nc-op .nc-ok{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;color:rgba(10,18,23,.6)}
-    .nc-vazio{padding:8px 16px;font-family:var(--disp);font-size:14px;line-height:21px;color:#6B7173}
-    /* Invite no alto à direita, como o da Sana (medido em sana.ai): pílula de 36, 12 do topo e 16 da direita,
-       6 16 6 12 de respiro, 6 entre o ícone (16, a 40%) e o texto (14/20), fundo rgba(10,18,23,.06) */
-    .nc-convite{display:none}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-convite{display:flex;align-items:center;gap:6px;position:absolute;
-      top:12px;right:16px;height:36px;box-sizing:border-box;padding:6px 16px 6px 12px;border:1px solid transparent;
-      border-radius:999px;background:rgba(10,18,23,.06);cursor:pointer;
-      font-family:var(--disp);font-weight:700;font-size:14px;line-height:20px;color:rgba(10,18,23,.94)}   /* = a Sana Sans Medium em pixels */
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-convite{transition:background .2s cubic-bezier(.4,0,.2,1)}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-convite:hover{background:rgba(10,18,23,.1)}   /* o mouse em cima, como na Sana */
-    .nc-convite-ico{width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;color:rgba(10,18,23,.38)}
-    .nc-convite-ico svg{display:block;transform:translateY(-.5px)}   /* na altura do da Sana (2x) */
+    .nc-op > .nc-op-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .nc-op .nc-ok{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;color:#717173}
+    .nc-vazio{padding:9px 15px;font-family:var(--disp);font-size:15px;line-height:20px;color:#6B7173}
+    /* o botão aberto, como o Sources da Sana aberto: o fundo cinza */
+    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all[aria-expanded=true]{background:rgba(10,18,23,.06)}
     .nc-item{display:flex;align-items:center;gap:16px;padding:0 10px 0 24px;border:0;background:none;cursor:pointer;
       text-align:left;font-family:var(--disp);font-weight:400;font-size:14px;line-height:1.4;color:#1F1F1F}
     .nc-ico{display:flex;align-items:center;justify-content:center;flex:none;height:20px}
@@ -2308,11 +2363,11 @@
     .nav.collapsed .item>span:not(.ico){display:none}
     .nav.collapsed .item{width:40px}
     .right.collapsed{display:none}
-    /* Consultas, Pacientes e o prontuário sem o assistente (pedidos do usuário, 14/11): a coluna da direita só aparece com a
-       janela de Nova consulta ou Novo paciente aberta; o assistente fica só no New chat (tela cheia) — o "Perguntar ao
-       assistente" do prontuário leva a ele, com o paciente escolhido */
-    .stage:not(.expanded) .right:not(.evento):not(.novo):not(.segura):not(.tx){display:none}
-    .stage:not(.expanded) .right.segura:not(.evento):not(.novo) > *{visibility:hidden}   /* o instante do clique: coluna em branco */
+    /* Consultas e Pacientes sem o assistente (pedidos do usuário, 14/11): a coluna da direita só aparece com a janela de
+       Nova consulta ou Novo paciente aberta; no prontuário (.pr) o assistente volta (16/11) */
+    .stage:not(.expanded) .right:not(.evento):not(.novo):not(.segura):not(.tx):not(.pr){display:none}
+    .stage:not(.expanded) .right.segura:not(.evento):not(.novo) > *{visibility:hidden}
+    .right.pr #raHist{display:none}                     /* no assistente do prontuário, sem o histórico (pedido do usuário, 16/11) */   /* o instante do clique: coluna em branco */
     .stage:not(.expanded) #agExpand,
     .stage:not(.expanded) #showChat{display:none}
     .float-toggle{position:fixed;top:12px;z-index:45;width:36px;height:36px;border:1px solid var(--sb-border);
@@ -2473,7 +2528,6 @@
     .bi-send{width:60px;height:48px;flex:none;border:0;border-radius:999px;background:var(--send-bg);cursor:pointer;
       display:flex;align-items:center;justify-content:center;transition:background .12s ease}
     .bi-send:hover{background:#c2d8fb}
-    .bi-send{background:#FFDDD3}.bi-send:hover{background:#FFCFC1}.bi-send svg path{fill:#FF5500}   /* teste: cores laranja no botão do assistente */
   
     /* ===== cartões do prontuário: fundo #F7F8F8 (o mesmo da navegação) e cantos de 40 px ===== */
     .gc,.gcard,.pr-form,.pr-locked .pr-body,.gr-card,.gfc,.pr-item.hc{background:#F7F8F8;border-radius:40px}
@@ -2506,7 +2560,6 @@
        cantos 18, 8 8 8 16 de respiro, 14/21; separadores de 1 px a 10% com 4 8 de margem */
     .nav-pe{flex:none;margin-top:auto;padding:10px 6px 16px}
     .nav-pe .item{position:relative}
-    .nav-pe .item .ico{display:none}                     /* como na Sana: só o texto; recolhido, só o ícone */
     .nav-pe .nav-mais{margin-left:auto;width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;
       color:rgba(10,18,23,.6)}
     .nav.collapsed .nav-pe .item .ico{display:flex}
@@ -2582,6 +2635,9 @@
         <span class="t"><b>A conexão com o Google Agenda expirou.</b> As consultas não aparecem até você reconectar.</span>
         <span class="a"><a class="pr-ghost" href="/integrations/google/connect">Reconectar</a></span>
       </div>
+      <!-- "Iniciar consulta" flutuando no prontuário, a 24 da base (pedido do usuário, 16/11): por enquanto só o botão; a
+           gravação é ligada quando a Transcrição ganhar o lugar novo -->
+      <button class="pr-iniciar" id="prIniciar" type="button"><svg aria-hidden="true" width="11.13" height="16.06" viewBox="0 0 11.13 16.06" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.559 10.393C7.046 10.393 8.130 9.287 8.130 7.661L8.130 2.732C8.130 1.113 7.046 0.000 5.559 0.000C4.072 0.000 2.988 1.113 2.988 2.732L2.988 7.661C2.988 9.287 4.072 10.393 5.559 10.393ZM2.197 16.055L8.921 16.055C9.302 16.055 9.617 15.747 9.617 15.374C9.617 14.993 9.302 14.685 8.921 14.685L6.233 14.685L6.233 13.176C9.133 12.905 11.125 10.833 11.125 7.830L11.125 6.379C11.125 5.999 10.818 5.698 10.437 5.698C10.056 5.698 9.741 5.999 9.741 6.379L9.741 7.778C9.741 10.269 8.057 11.917 5.559 11.917C3.062 11.917 1.377 10.269 1.377 7.778L1.377 6.379C1.377 5.999 1.069 5.698 0.688 5.698C0.308 5.698 0.000 5.999 0.000 6.379L0.000 7.830C0.000 10.833 1.992 12.905 4.893 13.176L4.893 14.685L2.197 14.685C1.824 14.685 1.509 14.993 1.509 15.374C1.509 15.747 1.824 16.055 2.197 16.055Z" fill="currentColor"/></svg><span>Iniciar consulta</span></button>
       <div class="pr-view" id="prView">
         <div class="pr">
           <!-- navegação do prontuário (Figma Concept 1067:45507): fica no topo ao rolar; volta à agenda pelo menu lateral -->
@@ -2933,11 +2989,13 @@
       <div class="rp-msgs" id="rpMsgs"></div>
 
       <div class="big-input">
+        <div class="bi-anexos" id="biAnexos"></div>
+        <input type="file" id="biArquivo" hidden accept="image/png,image/jpeg,image/webp,application/pdf" multiple>
         <div class="bi-top">
           <textarea class="bi-input" id="biInput" rows="1" placeholder="Ask medical questions"></textarea>
         </div>
         <div class="bi-bottom">
-          <button class="bi-plus" aria-label="Adicionar">
+          <button class="bi-plus" id="biPlus" type="button" aria-label="Adicionar">
             <span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 21V13H3V11H11V3H13V11H21V13H13V21H11Z" fill="#444746"/></svg></span>
           </button>
           <button class="bi-send" id="biSend" aria-label="Enviar">
@@ -2946,17 +3004,18 @@
             </svg>
           </button>
         </div>
+        <!-- New chat: o paciente da conversa, embaixo do campo (como o "Create" da Sana) -->
+        <button class="nc-all" id="ncAll" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Paciente"><span class="nc-all-ico"><svg aria-hidden="true" width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z" fill="#071216"/></svg></span><span id="ncAllTxt" hidden></span><span class="nc-all-chev"><svg aria-hidden="true" width="10" height="5.63" viewBox="0 0 12.73 7.17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.365 7.163C6.548 7.163 6.731 7.090 6.855 6.951L12.524 1.143C12.649 1.018 12.722 0.857 12.722 0.674C12.722 0.293 12.437 0.000 12.056 0.000C11.873 0.000 11.704 0.073 11.580 0.190L6.365 5.522L1.143 0.190C1.025 0.073 0.857 0.000 0.667 0.000C0.286 0.000 0.000 0.293 0.000 0.674C0.000 0.857 0.073 1.018 0.198 1.150L5.867 6.951C6.006 7.090 6.174 7.163 6.365 7.163Z" fill="currentColor"/></svg></span></button>
+        <div class="nc-menu" id="ncMenu" role="menu" hidden>
+          <label class="nc-busca-l"><span class="nc-op-ico"><svg aria-hidden="true" width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="6.4" cy="6.4" r="4.9" stroke="currentColor" stroke-width="1.3"/><path d="M10.1 10.1 13.6 13.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span><input class="nc-busca" id="ncBusca" type="text" placeholder="Buscar paciente" autocomplete="off" aria-label="Buscar paciente"></label>
+          <div class="nc-sep"></div>
+          <div class="nc-lista" id="ncLista"></div>
+        </div>
       </div>
 
       <div class="bi-note">Apoio à decisão — verifique sempre.</div>
 
       <!-- New chat (Figma Concept 829:8107): com a conversa vazia, o campo no meio e as sugestões embaixo -->
-      <button class="nc-all" id="ncAll" type="button" aria-haspopup="menu" aria-expanded="false"><span id="ncAllTxt">Todos</span><span class="nc-all-chev"><svg aria-hidden="true" width="10" height="5.63" viewBox="0 0 12.73 7.17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.365 7.163C6.548 7.163 6.731 7.090 6.855 6.951L12.524 1.143C12.649 1.018 12.722 0.857 12.722 0.674C12.722 0.293 12.437 0.000 12.056 0.000C11.873 0.000 11.704 0.073 11.580 0.190L6.365 5.522L1.143 0.190C1.025 0.073 0.857 0.000 0.667 0.000C0.286 0.000 0.000 0.293 0.000 0.674C0.000 0.857 0.073 1.018 0.198 1.150L5.867 6.951C6.006 7.090 6.174 7.163 6.365 7.163Z" fill="currentColor"/></svg></span></button>
-      <div class="nc-menu" id="ncMenu" role="menu" hidden>
-        <input class="nc-busca" id="ncBusca" type="text" placeholder="Buscar paciente" autocomplete="off" aria-label="Buscar paciente">
-        <div class="nc-lista" id="ncLista"></div>
-      </div>
-      <button class="nc-convite" id="ncConvite" type="button"><span class="nc-convite-ico"><svg aria-hidden="true" width="15.3" height="13" viewBox="0 0 17.85 15.17" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10.276 15.132C14.421 15.132 17.842 11.704 17.842 7.566C17.842 3.428 14.407 0.000 10.269 0.000C6.416 0.000 3.201 2.952 2.761 6.694C3.208 6.592 3.809 6.562 4.285 6.636C4.717 3.713 7.214 1.494 10.269 1.494C13.638 1.494 16.348 4.197 16.348 7.566C16.348 9.170 15.740 10.620 14.729 11.704C13.975 10.862 12.363 10.093 10.269 10.093C9.609 10.093 9.001 10.173 8.445 10.305C8.533 10.649 8.577 11.023 8.577 11.396C8.577 12.590 8.123 13.689 7.383 14.539C8.276 14.919 9.258 15.132 10.276 15.132ZM10.269 8.892C11.682 8.899 12.788 7.690 12.788 6.123C12.788 4.644 11.675 3.406 10.269 3.406C8.855 3.406 7.734 4.644 7.749 6.123C7.756 7.683 8.855 8.877 10.269 8.892ZM3.765 15.168C5.815 15.168 7.537 13.455 7.537 11.396C7.537 9.331 5.837 7.632 3.765 7.632C1.699 7.632 0.000 9.331 0.000 11.396C0.000 13.469 1.699 15.168 3.765 15.168ZM3.765 13.792C3.464 13.792 3.267 13.586 3.267 13.293L3.267 11.902L1.882 11.902C1.582 11.902 1.384 11.704 1.384 11.396C1.384 11.096 1.582 10.898 1.882 10.898L3.267 10.898L3.267 9.514C3.267 9.221 3.464 9.016 3.765 9.016C4.072 9.016 4.270 9.214 4.270 9.514L4.270 10.898L5.654 10.898C5.955 10.898 6.152 11.096 6.152 11.396C6.152 11.704 5.955 11.902 5.654 11.902L4.270 11.902L4.270 13.293C4.270 13.586 4.072 13.792 3.765 13.792Z" fill="currentColor"/></svg></span><span>Convidar</span></button>
       <div class="nc-sug" id="ncSug">
         <button class="nc-item" type="button" data-nc-href="opendoctor-integracao.html"><span class="nc-ico" style="width:16px"><img src="assets/icons/novo-gmail.svg?v=1" width="16" height="12" alt=""></span><span>Integre minhas consultas do calendário do Gmail</span></button>
         <img class="nc-linha" src="assets/icons/novo-linha.svg?v=1" width="800" height="1" alt="">
@@ -4290,16 +4349,38 @@
       window.__chatPid = function () { return chatPid; };
       window.__chatTemTurnos = function () { return msgs.classList.contains('on'); };
       window.__chatOcupado = function () { return busy; };
-      window.__chatPoePid = function (pid) { if (!busy) chatPid = pid || null; };
+      window.__chatPoePid = function (pid) {
+        if (busy) return;
+        if ((pid || null) !== chatPid) limpaAnexos();     // outro paciente: os anexos do campo saem
+        chatPid = pid || null;
+      };
+      // a lateral do prontuário: a conversa é do paciente aberto. ladoDe: o paciente a que ela pertence (undefined: não é
+      // da lateral; vale o chatPid). Outro paciente (ou nenhum, enquanto carrega ou se o prontuário não abriu) com a conversa
+      // em andamento: começa outra (a anterior fica no histórico). Só as contas liberadas mandam o id ao servidor
+      var ladoDe;
+      window.__chatDoPaciente = function (alvo, liberado) {
+        alvo = alvo || null;
+        var dono = ladoDe !== undefined ? ladoDe : chatPid;
+        // outro paciente: os anexos do campo saem — sempre, mesmo com uma resposta a caminho (senão iriam na pergunta do
+        // novo); e os anexados com outro paciente na tela também
+        if (dono !== alvo) limpaAnexos(); else tiraAnexosDeOutro(alvo);
+        if (busy) return false;                             // com uma resposta a caminho, o próximo envio acerta
+        if (msgs.classList.contains('on') && dono !== alvo) {
+          history = []; conv = null; renderHist();
+          msgs.innerHTML = ''; soltaBolhas(); msgs.classList.remove('on');
+        }
+        ladoDe = alvo; chatPid = liberado && alvo ? alvo : null;
+        return true;
+      };
 
       // lápis do cabeçalho: nova conversa (limpa mensagens e histórico)
       var raNew = document.getElementById('raNew');
       if (raNew) raNew.addEventListener('click', function () {
         if (busy) return;                       // espera a resposta atual terminar
         history = [];
-        conv = null; chatPid = null; renderHist();
+        conv = null; chatPid = null; ladoDe = undefined; renderHist();
         if (window.__ncRotulo) window.__ncRotulo(null);   // conversa nova: All
-        msgs.innerHTML = '';
+        msgs.innerHTML = ''; limpaAnexos(); soltaBolhas();
         msgs.classList.remove('on');
         input.value = ''; autogrow();
         input.focus();
@@ -4448,11 +4529,30 @@
         return out;
       }
 
+      // o campo acompanha o texto (como no ChatGPT): no New chat (vazio ou com a conversa), passou de uma linha (medida no formato de uma
+      // linha, para não ir e voltar), vira .multi — o texto em cima, o + e a seta embaixo
+      var box = input.closest('.big-input');
       function autogrow() {
+        if (box) box.classList.remove('multi');
         input.style.height = 'auto';
-        input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-        input.style.overflowY = input.scrollHeight > 120 ? 'auto' : 'hidden';   // passou de 120: rola por dentro
+        var lh = parseFloat(getComputedStyle(input).lineHeight) || 24;
+        var multi = !!input.value && (input.value.indexOf('\n') >= 0 || input.scrollHeight > lh * 1.5);
+        if (box && multi) { box.classList.add('multi'); input.style.height = 'auto'; }
+        var max = parseFloat(getComputedStyle(input).maxHeight) || 120;
+        input.style.height = Math.min(input.scrollHeight, max) + 'px';
+        input.style.overflowY = input.scrollHeight > max ? 'auto' : 'hidden';   // passou do máximo: rola por dentro
       }
+      new MutationObserver(autogrow).observe(msgs, { attributes: true, attributeFilter: ['class'] });   // vazio ↔ conversa
+      // a altura do campo vai para a conversa (--bi-h): ela termina acima dele, que cresce para cima
+      if (box && window.ResizeObserver) new ResizeObserver(function () {
+        var fim = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 8;
+        box.parentElement.style.setProperty('--bi-h', box.offsetHeight + 'px');
+        if (fim) msgs.scrollTop = msgs.scrollHeight;       // estava no fim: continua no fim
+      }).observe(box);
+      // clicou no campo: as sugestões do New chat somem (o New chat já abre com o cursor no campo e as sugestões à vista;
+      // escrevendo, elas somem pelo texto) e voltam quando o campo perde o foco vazio
+      input.addEventListener('pointerdown', function () { if (box) box.classList.add('foco'); });
+      input.addEventListener('blur', function () { if (box) box.classList.remove('foco'); });
       input.addEventListener('input', function () {
         autogrow();
       });
@@ -4462,10 +4562,23 @@
       // as conversas guardadas são da conta deste navegador (window.__odConta): sem saber de quem é a sessão (o /me
       // falhou), nem aparecem; e a aba de uma conta que outra substituiu neste navegador não grava por cima dela
       function minhaConta() { try { return !!window.__odUid && localStorage.getItem('od_uid') === window.__odUid; } catch (_) { return false; } }
-      function loadConvs() { if (!minhaConta()) return []; try { return JSON.parse(localStorage.getItem(STORE)) || []; } catch (_) { return []; } }
-      function saveConvs(list) { if (!minhaConta()) return; try { localStorage.setItem(STORE, JSON.stringify(list.slice(0, MAX_CONVS))); } catch (_) {} }
+      // o nome do arquivo nunca fica guardado: dos anexos só o tipo, e o título de uma conversa só com anexo é
+      // "Anexo (PDF)" / "Anexo (imagem)". limpaConv também conserta o que a versão anterior guardou (com o nome)
+      function tituloAnexo(anexos) { return 'Anexo (' + (anexos && anexos[0] && ehPdf(anexos[0].tipo) ? 'PDF' : 'imagem') + ')'; }
+      function limpaConv(c) {
+        if (!c || !Array.isArray(c.turns)) return c;
+        c.turns.forEach(function (t) {
+          if (t && Array.isArray(t.anexos)) t.anexos = t.anexos.map(function (a) { return { tipo: a && a.tipo }; });
+        });
+        var t0 = c.turns[0];
+        if (t0 && !t0.q && t0.anexos && t0.anexos.length) c.title = tituloAnexo(t0.anexos);
+        return c;
+      }
+      function loadConvs() { if (!minhaConta()) return []; try { return (JSON.parse(localStorage.getItem(STORE)) || []).map(limpaConv); } catch (_) { return []; } }
+      function saveConvs(list) { if (!minhaConta()) return; try { localStorage.setItem(STORE, JSON.stringify(list.slice(0, MAX_CONVS).map(limpaConv))); } catch (_) {} }
       function saveTurn(turn) {
-        if (!conv) conv = { id: 'c' + Date.now(), title: turn.q.slice(0, 80), turns: [],
+        if (!conv) conv = { id: 'c' + Date.now(), turns: [],
+                            title: (turn.q || (turn.anexos && turn.anexos.length ? tituloAnexo(turn.anexos) : 'Anexo')).slice(0, 80),
                             pid: turn.pid || null };   // só o id do paciente (o nome não fica guardado)
         conv.turns.push(turn);
         conv.hist = history.slice(-12);
@@ -4507,14 +4620,15 @@
         if (busy) return;
         var c = loadConvs().filter(function (x) { return x.id === id; })[0];
         if (!c) return;
-        conv = c;
+        if ((c.pid || null) !== pacDoCampo()) limpaAnexos();   // a conversa é de outro paciente: os anexos do campo saem
+        conv = c; ladoDe = undefined;
         chatPid = c.pid || null;                            // já, antes de qualquer envio (não espera a lista)
         if (window.__ncRotulo) window.__ncRotulo(chatPid);  // o nome no "All" chega depois
         history = (c.hist || []).slice();
-        msgs.innerHTML = '';
+        msgs.innerHTML = ''; soltaBolhas();
         msgs.classList.add('on');
         (c.turns || []).forEach(function (t) {
-          addMsg('msg-user', t.q);
+          bolhaUser(t.q, t.anexos);                         // os anexos só com o tipo ("Documento PDF" / "Imagem", sem miniatura)
           var wrap = document.createElement('div'); wrap.className = 'msg-ai';
           var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
           var srcByN = {}; (t.srcs || []).forEach(function (s) { srcByN[s.n] = s; });
@@ -4715,7 +4829,13 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (!resp.ok || !resp.body) throw new Error('http ' + resp.status);
+        if (!resp.ok || !resp.body) {
+          var erro = new Error('http ' + resp.status);
+          erro.status = resp.status;
+          // anexo recusado (400) ou servidor ocupado lendo arquivos (429 "ocupado"): o código diz a mensagem
+          if (resp.status === 400 || resp.status === 429) { try { var ej = await resp.json(); erro.codigo = ej && ej.error; } catch (_) {} }
+          throw erro;
+        }
         var reader = resp.body.getReader(), dec = new TextDecoder(), buf = '';
         while (true) {
           var r = await reader.read();
@@ -4750,15 +4870,165 @@
         }).catch(function () {});
       }
 
-      // RAG backend: POST /ask (SSE sobre fetch) — com histórico de conversa
-      function ask(text) {
+      // ===== anexos do "+" (imagem e PDF): o arquivo vai inteiro no corpo do /ask (base64) e nunca é guardado; o nome do
+      // arquivo fica só na tela e no histórico deste navegador (nunca vai ao servidor) =====
+      var MB = 1048576;
+      var ANEXO_MSG = {
+        anexos_demais: 'Até 4 arquivos por pergunta.',
+        anexo_tipo: 'Só imagem (PNG, JPG, WebP) ou PDF.',
+        anexo_grande: 'Arquivo grande demais (imagem até 5 MB, PDF até 10 MB).',
+        anexo_invalido: 'Não foi possível ler o arquivo.',
+        pdf_sem_texto: 'Este PDF não tem texto (parece escaneado): mande como imagem.',
+        ocupado: 'Muitos arquivos sendo lidos agora. Tente de novo em instantes.'
+      };
+      var OUTRO_PAC = 'Os anexos eram de outro paciente e foram retirados.';
+      var ANEXO_TIPOS = { 'image/png': 1, 'image/jpeg': 1, 'image/webp': 1, 'application/pdf': 1 };
+      var SELO_PDF = '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><rect width="16" height="16" rx="3" fill="#D9483B"/>' +
+        '<text x="8" y="10.3" text-anchor="middle" fill="#fff" font-size="6.5" font-weight="700" font-family="-apple-system,system-ui,Helvetica,Arial,sans-serif">PDF</text></svg>';
+      var ICO_IMG = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2.5" y="3.5" width="15" height="13" rx="2" stroke="#9B9B9B" stroke-width="1.4"/>' +
+        '<circle cx="7" cy="8" r="1.5" fill="#9B9B9B"/><path d="M3 15l4.5-4.5 3 3 2.5-2.5 4.5 4.5" stroke="#9B9B9B" stroke-width="1.4" stroke-linejoin="round"/></svg>';
+      var X_ANEXO = '<svg aria-hidden="true" width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6M7 1L1 7" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>';
+      var anexosBox = document.getElementById('biAnexos'), arqIn = document.getElementById('biArquivo');
+      var plusBtn = document.getElementById('biPlus');
+      var pend = [];                                      // os anexos no campo: {file, nome, tipo, url, pac}
+      // o paciente do campo agora: na lateral do prontuário, o aberto (null enquanto carrega); fora dela, o dono da conversa
+      // (o da lateral, se ela veio de lá; senão o do "All"). Cada anexo guarda o de quando foi anexado (pac): se mudou,
+      // ele não vai na pergunta
+      function pacDoCampo() {
+        var la = window.__ladoAlvo ? window.__ladoAlvo() : null;
+        if (la) return la.id || null;
+        return ladoDe !== undefined ? ladoDe : chatPid;
+      }
+      function tiraAnexosDeOutro(pac) {
+        var fora = pend.filter(function (a) { return a.pac !== pac; });
+        if (!fora.length) return 0;
+        fora.forEach(function (a) { if (a.url) URL.revokeObjectURL(a.url); });
+        pend = pend.filter(function (a) { return a.pac === pac; }); desenhaAnexos();
+        return fora.length;
+      }
+      var urlsBolha = [];                                 // miniaturas nas bolhas da conversa na tela
+      function ehPdf(tipo) { return tipo === 'application/pdf'; }
+      function avisoAnexo(t) {                            // o aviso escuro da página (o mesmo do prontuário)
+        document.querySelectorAll('.pr-toast').forEach(function (o) { o.remove(); });
+        var x = document.createElement('div'); x.className = 'pr-toast'; x.textContent = t; document.body.appendChild(x);
+        setTimeout(function () { x.classList.add('out'); setTimeout(function () { x.remove(); }, 300); }, 2600);
+      }
+      // o cartão (como o da Sana): o quadrado com a miniatura ou o selo, o nome e o tipo; com tirar(), o x no canto
+      function cartaoAnexo(a, tirar) {
+        var c = document.createElement('div'); c.className = 'bi-anexo';
+        var qd = document.createElement('div'); qd.className = 'bi-anexo-q';
+        if (ehPdf(a.tipo)) qd.innerHTML = SELO_PDF;
+        else if (a.url) { var im = document.createElement('img'); im.src = a.url; im.alt = ''; qd.appendChild(im); }
+        else qd.innerHTML = ICO_IMG;
+        var tx = document.createElement('div'); tx.className = 'bi-anexo-tx';
+        var nome = a.nome || (ehPdf(a.tipo) ? 'Documento PDF' : 'Imagem');   // da conversa guardada: sem o nome do arquivo
+        var n = document.createElement('div'); n.className = 'bi-anexo-n'; n.textContent = nome; n.title = nome;
+        var t = document.createElement('div'); t.className = 'bi-anexo-t'; t.textContent = ehPdf(a.tipo) ? 'PDF' : 'Imagem';
+        tx.appendChild(n); tx.appendChild(t); c.appendChild(qd); c.appendChild(tx);
+        if (tirar) {
+          var x = document.createElement('button'); x.type = 'button'; x.className = 'bi-anexo-x';
+          x.setAttribute('aria-label', 'Remover anexo'); x.innerHTML = X_ANEXO;
+          x.addEventListener('click', function () { tirar(); input.focus(); });
+          c.appendChild(x);
+        }
+        return c;
+      }
+      function desenhaAnexos() {
+        if (!anexosBox) return;
+        anexosBox.innerHTML = '';
+        pend.forEach(function (a) {
+          anexosBox.appendChild(cartaoAnexo(a, function () {
+            if (busy) return;
+            pend = pend.filter(function (b) { return b !== a; });
+            if (a.url) URL.revokeObjectURL(a.url);
+            desenhaAnexos();
+          }));
+        });
+        var bx = input.closest('.big-input'); if (bx) bx.classList.toggle('tem-anexo', pend.length > 0);
+      }
+      function limpaAnexos() {                            // nova conversa, outro paciente: os do campo saem
+        pend.forEach(function (a) { if (a.url) URL.revokeObjectURL(a.url); });
+        pend = []; desenhaAnexos();
+      }
+      function soltaBolhas() {                            // a conversa saiu da tela: as miniaturas dela também
+        var vivas = pend.map(function (a) { return a.url; });
+        urlsBolha.forEach(function (u) { if (vivas.indexOf(u) < 0) URL.revokeObjectURL(u); });
+        urlsBolha = [];
+      }
+      function poeArquivos(files) {
+        var pac = pacDoCampo();
+        tiraAnexosDeOutro(pac);                           // não mistura anexos de dois pacientes no campo
+        var tot = pend.reduce(function (s, a) { return s + a.file.size; }, 0);
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          if (pend.length >= 4) { avisoAnexo(ANEXO_MSG.anexos_demais); break; }
+          if (!ANEXO_TIPOS[f.type]) { avisoAnexo(ANEXO_MSG.anexo_tipo); continue; }
+          if (f.size > (ehPdf(f.type) ? 10 : 5) * MB || tot + f.size > 15 * MB) { avisoAnexo(ANEXO_MSG.anexo_grande); continue; }
+          tot += f.size;
+          pend.push({ file: f, nome: f.name || (ehPdf(f.type) ? 'documento.pdf' : 'imagem'), tipo: f.type,
+                      url: ehPdf(f.type) ? null : URL.createObjectURL(f), pac: pac });
+        }
+        desenhaAnexos();
+      }
+      if (plusBtn && arqIn) {
+        plusBtn.addEventListener('click', function () { if (busy) return; arqIn.value = ''; arqIn.click(); });
+        arqIn.addEventListener('change', function () {
+          var fs = Array.prototype.slice.call(arqIn.files || []);
+          arqIn.value = '';
+          if (fs.length) poeArquivos(fs);
+          input.focus();
+        });
+      }
+      // lê os arquivos como base64 puro (sem o "data:...,"): [{tipo, dados}] — o nome não vai
+      function leAnexos(lista) {
+        return Promise.all(lista.map(function (a) {
+          return new Promise(function (ok, falha) {
+            var r = new FileReader();
+            r.onload = function () { var s = String(r.result || ''); ok({ tipo: a.tipo, dados: s.slice(s.indexOf(',') + 1) }); };
+            r.onerror = function () { falha(new Error('leitura')); };
+            r.readAsDataURL(a.file);
+          });
+        }));
+      }
+      // a bolha da pergunta: os cartões (sem o x) em cima e o texto embaixo; sem texto, só os cartões
+      function bolhaUser(text, anexos) {
+        var el = addMsg('msg-user', '');
+        if (anexos && anexos.length) {
+          var fila = document.createElement('div'); fila.className = 'msg-anexos';
+          anexos.forEach(function (a) { fila.appendChild(cartaoAnexo(a, null)); if (a.url) urlsBolha.push(a.url); });
+          el.appendChild(fila);
+        }
+        if (text) { var tx = document.createElement('div'); tx.className = 'msg-txt'; tx.textContent = text; el.appendChild(tx); }
+        else if (anexos && anexos.length) el.classList.add('so-anexo');
+        msgs.scrollTop = msgs.scrollHeight;
+        return el;
+      }
+
+      // RAG backend: POST /ask (SSE sobre fetch) — com histórico de conversa. comAnexos: veio do campo (leva os anexos dele)
+      function ask(text, comAnexos) {
         text = (text || '').trim();
-        if (!text || busy) return;
+        if (busy) return;
+        // os anexos vão só se são do paciente desta pergunta (o de agora); os de outro saem do campo, com o aviso
+        if (comAnexos && tiraAnexosDeOutro(pacDoCampo())) avisoAnexo(OUTRO_PAC);
+        var anx = comAnexos ? pend.slice() : [];
+        if (!text && !anx.length) return;
+        if (anx.length) { pend = []; desenhaAnexos(); }   // saem do campo (sem revogar: vão para a bolha)
+        // na lateral do prontuário, a pergunta vai com o paciente aberto agora (nunca com o de antes)
+        var la = window.__ladoAlvo ? window.__ladoAlvo() : null;
+        if (la) {
+          var pidAntes = chatPid;
+          window.__chatDoPaciente(la.id, la.lib);
+          if (chatPid !== pidAntes && window.__ncRotulo) window.__ncRotulo(chatPid);
+        }
         busy = true; sendBtn.disabled = true;
         msgs.classList.add('on');
-        addMsg('msg-user', text);
+        bolhaUser(text, anx);
         input.value = ''; autogrow();
         var q = text, pidQ = chatPid;                     // o paciente desta pergunta
+        // sem texto, o servidor pergunta "Analise o anexo." — o mesmo vai para o histórico e as sugestões
+        var qTxt = q || (anx.length ? (anx.length > 1 ? 'Analise os anexos.' : 'Analise o anexo.') : '');
+        var anexosTurno = anx.map(function (a) { return { tipo: a.tipo }; });   // para o histórico: só o tipo, nunca o nome
+        var anexosDados = null;
 
         var wrap = document.createElement('div'); wrap.className = 'msg-ai';
         var bodyEl = document.createElement('div'); bodyEl.className = 'ai-body';
@@ -4790,6 +5060,7 @@
             started = true; insufficient = true;
             bodyEl.className = 'ai-body'; bodyEl.textContent = JSON.parse(data).text;
           } else if (ev === 'failed') {
+            if (!fullText) devolveAnexos();                  // falhou antes de a resposta começar: os anexos voltam
             started = true;
             bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + (JSON.parse(data).message || 'erro');
           } else if (ev === 'done') {
@@ -4816,24 +5087,38 @@
         function run() {
           var pedido = { query: q, k: 8, history: history.slice(-12) };
           if (pidQ) pedido.patient_id = pidQ;                   // a conversa tem paciente: sempre vai junto
+          if (anexosDados) pedido.anexos = anexosDados;         // só {tipo, dados}: nunca o nome do arquivo
           streamAsk(pedido, handle)
             .then(function () {
               if (!insufficient && fullText.trim()) {
-                history.push({ role: 'user', content: q });
+                history.push({ role: 'user', content: qTxt });
                 // a assinatura prova ao servidor que este turno veio dele (não forjável)
                 if (sig) history.push({ role: 'assistant', content: fullText, sig: sig });
-                saveTurn({ q: q, a: fullText, ung: ung, recs: recs, pid: pidQ,
-                           srcs: Object.keys(srcByN).map(function (k) { return srcByN[k]; }) });
-                loadFollowups(wrap, q, fullText, pidQ);
+                var turno = { q: q, a: fullText, ung: ung, recs: recs, pid: pidQ,
+                              srcs: Object.keys(srcByN).map(function (k) { return srcByN[k]; }) };
+                if (anexosTurno.length) turno.anexos = anexosTurno;   // no histórico deste navegador: só o tipo
+                saveTurn(turno);
+                loadFollowups(wrap, qTxt, fullText, pidQ);
               }
               finish();
             })
             .catch(function (err) {
               if (closed) return;
-              if (err && /http 429/.test(err.message)) {   // limite de uso: não insistir
+              // todo erro antes de a resposta começar devolve os anexos e o texto ao campo (para tentar de novo)
+              if (err && err.codigo && ANEXO_MSG[err.codigo]) {   // o servidor recusou um anexo ou está ocupado lendo arquivos
+                bodyEl.className = 'ai-body err';
+                bodyEl.textContent = '⚠ ' + ANEXO_MSG[err.codigo];
+                devolveAnexos(); finish(); return;
+              }
+              if (err && err.status === 429) {   // limite de uso: não insistir
                 bodyEl.className = 'ai-body err';
                 bodyEl.textContent = '⚠ Muitas perguntas em pouco tempo. Aguarde alguns minutos e tente de novo.';
-                finish(); return;
+                devolveAnexos(); finish(); return;
+              }
+              if (err && err.status === 400) {   // pedido recusado (outro motivo): não adianta repetir
+                bodyEl.className = 'ai-body err';
+                bodyEl.textContent = '⚠ ' + (anx.length ? ANEXO_MSG.anexo_invalido : 'Não foi possível enviar esta pergunta.');
+                devolveAnexos(); finish(); return;
               }
               if (started) { finish(); return; }   // já começou → não duplica
               if (attempt < MAX_RETRY) {
@@ -4844,17 +5129,34 @@
               } else {
                 bodyEl.className = 'ai-body err';
                 bodyEl.textContent = '⚠ O servidor não respondeu a esta consulta. Tente de novo em instantes, ou reformule de forma mais curta.';
-                finish();
+                devolveAnexos(); finish();
               }
             });
         }
-        run();
+        // os anexos voltam ao campo (para tentar de novo), com o texto se o campo está vazio
+        // (uma vez só; os de outro paciente, se ele mudou enquanto isso, não voltam)
+        var devolvidos = false;
+        function devolveAnexos() {
+          if (!anx.length || devolvidos) return;
+          devolvidos = true;
+          var pac = pacDoCampo(), volta = anx.filter(function (a) { return a.pac === pac; });
+          if (volta.length < anx.length) avisoAnexo(OUTRO_PAC);
+          if (!volta.length) return;
+          tiraAnexosDeOutro(pac);
+          pend = volta.concat(pend).slice(0, 4); desenhaAnexos();
+          if (!input.value && q) { input.value = q; autogrow(); }
+        }
+        if (!anx.length) { run(); return; }
+        leAnexos(anx).then(function (d) { anexosDados = d; run(); }, function () {
+          bodyEl.className = 'ai-body err'; bodyEl.textContent = '⚠ ' + ANEXO_MSG.anexo_invalido;
+          devolveAnexos(); finish();
+        });
       }
 
       window.__odConta.then(function () { renderHist(); });   // depois de conferir de quem são as conversas guardadas
-      sendBtn.addEventListener('click', function () { ask(input.value); });
+      sendBtn.addEventListener('click', function () { ask(input.value, true); });
       input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value); }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(input.value, true); }
       });
     })();
   </script>
@@ -8045,11 +8347,7 @@
       // pergunta pronta no assistente (à direita); quem envia é o médico
       function askAssistant(q) {
         var inp = $('biInput'); if (!inp) return;
-        // o prontuário não tem mais o assistente ao lado: abre o New chat (conversa nova) com este paciente no "Todos" e a
-        // pergunta escrita (quem envia é o médico); o voltar do navegador traz o prontuário de volta
-        var p = patient, nv = $('navNovo');
-        if (nv) nv.click();
-        if (p && p.id && window.__ncEscolhe) window.__ncEscolhe(p.id, p.name);
+        // o assistente ao lado do prontuário (já com este paciente): a pergunta escrita, quem envia é o médico
         inp.value = q; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus();
         try { inp.setSelectionRange(q.length, q.length); } catch (_) {}
       }
@@ -9317,15 +9615,16 @@
         var chips = el('div', 'rxp-chips'), abas = el('div', 'rxp-abas'), sep = el('div', 'rxp-sep');
         var aR = el('button', 'rxp-aba on', 'Receita'), aS = el('button', 'rxp-aba', 'Sugestões');
         aR.type = aS.type = 'button'; aR.setAttribute('aria-pressed', 'true'); aS.setAttribute('aria-pressed', 'false');
-        [aR, aS, st, pe].forEach(function (b) { abas.appendChild(b); });   // st: rascunho / rascunho salvo / não salvou (ao lado das abas)
-        chips.appendChild(alerg);
+        // saíram da tela (pedido do usuário, 16/11): as abas Receita | Sugestões, o "rascunho" ao lado delas, a linha das
+        // alergias e o texto de ajuda da lista vazia. O st continua na página, escondido (o salvamento escreve nele)
+        st.hidden = true;
+        [st, pe].forEach(function (b) { abas.appendChild(b); });
         var vLista = el('div', 'rxp-v'), vSug = el('div', 'rxp-v'), lst = el('div', 'rxp-lista');
         vLista.id = 'rxVLista'; vSug.id = 'rxVSug'; lst.appendChild(L);
-        vazio.textContent = 'Adicione um medicamento na barra de baixo: ele entra aqui, com a posologia para completar.';
-        [lst, vazio, ori, avl, resumo, msg, conf].forEach(function (n) { vLista.appendChild(n); });
+        [lst, ori, avl, resumo, msg, conf].forEach(function (n) { vLista.appendChild(n); });
         var sugVazio = el('div', 'rxp-vazio', 'Nenhuma sugestão agora: os remédios de uso contínuo e as sugestões da IA aparecem aqui.');
         vSug.appendChild(linhas1); vSug.appendChild(sugVazio);
-        [chips, abas, sep, sync, vLista, vSug, nova, sr].forEach(function (n) { raiz.appendChild(n); });   // a barra de adicionar no pé (Figma 1351:13419)
+        [abas, sync, vLista, vSug, nova, sr].forEach(function (n) { raiz.appendChild(n); });   // a barra de adicionar no pé (Figma 1351:13419); sem a linha rxp-sep (16/11)
         var vista = 'lista';
         function mostra(v) {                                // embaixo da linha: a receita (a lista) ou as sugestões
           vista = v = v === 'sug' ? 'sug' : 'lista';
@@ -10167,6 +10466,8 @@
               if (d.s !== saved) setStatus('Havia texto não salvo neste navegador, mas a evolução foi alterada em outro lugar: mantida a versão salva.', true);
             }
             loadVisits(my); loadFiles(my);
+            // a lateral: o assistente passa a conversar sobre este paciente (só o id vai ao servidor)
+            document.dispatchEvent(new CustomEvent('od:pr-paciente', { detail: { id: patient.id, name: patient.name } }));
             // veio de uma consulta da agenda: o gráfico fica acima das abas (como no Finance) — rola até as abas
             // para a evolução já aparecer
             if (ctx.event_id && !document.querySelector('.pr-panel[data-panel=atual]').hidden) {
@@ -10226,6 +10527,7 @@
         else closePr(true);
       });
       window.__openProntuario = open;
+      window.__prPacienteId = function () { return isOpen() && patient ? patient.id : null; };   // o paciente na tela (null enquanto carrega: o open zera)
       // a busca escolheu o paciente que já está aberto (ou uma receita dele): fica nesta consulta/evolução e só muda a
       // aba. O open() trocaria a consulta por uma evolução avulsa e pausaria a gravação
       window.__prMesmoPaciente = function (c) {
@@ -10670,7 +10972,8 @@
       if (!stage || !btn || !menu) return;
       var CHECK = '<svg aria-hidden="true" width="12.62" height="12.52" viewBox="0 0 12.62 12.52" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.775 12.517C5.090 12.517 5.339 12.378 5.515 12.107L12.437 1.208C12.568 0.996 12.620 0.835 12.620 0.667C12.620 0.264 12.356 0.000 11.953 0.000C11.660 0.000 11.499 0.095 11.323 0.374L4.746 10.854L1.333 6.387C1.150 6.130 0.967 6.028 0.703 6.028C0.286 6.028 0.000 6.313 0.000 6.716C0.000 6.885 0.073 7.075 0.212 7.251L4.014 12.092C4.233 12.378 4.460 12.517 4.775 12.517Z" fill="currentColor"/></svg>';
       var pac = null, pacientes = null, mais = false, liberado = false, carregando = null;
-      fetch('/me').then(function (r) { return r.json(); }).then(function (j) {
+      var ICO_PAC = document.querySelector('#navPacientes .ico').innerHTML;   // o ícone de Pacientes do menu, igual
+      var meP = fetch('/me').then(function (r) { return r.json(); }).then(function (j) {
         liberado = !!(j && j.scribe);
         btn.classList.toggle('sem', !liberado);
       }).catch(function () { btn.classList.add('sem'); });
@@ -10684,12 +10987,14 @@
       }
       function poe(p) {
         pac = p ? { id: p.id, name: p.name } : null;
-        txt.textContent = pac ? pac.name : 'Todos';
+        txt.textContent = pac ? pac.name : ''; txt.hidden = !pac;   // sem paciente: só o ícone (o aria-label diz "Paciente")
+        btn.setAttribute('aria-label', pac ? 'Paciente: ' + pac.name : 'Paciente'); btn.classList.toggle('tem', !!pac);   // escolhido: nome e ícone na cor do "Ask"
         btn.title = pac ? pac.name : '';
       }
       function op(rotulo, p) {
         var b = document.createElement('button'); b.type = 'button'; b.className = 'nc-op'; b.setAttribute('role', 'menuitem');
-        var t = document.createElement('span'); t.textContent = rotulo; b.appendChild(t);
+        var ic = document.createElement('span'); ic.className = 'nc-op-ico'; ic.innerHTML = ICO_PAC; b.appendChild(ic);   // o ícone de Pacientes do menu (também no "Todos")
+        var t = document.createElement('span'); t.className = 'nc-op-tx'; t.textContent = rotulo; b.appendChild(t);
         var ok = document.createElement('span'); ok.className = 'nc-ok';
         if ((p && pac && p.id === pac.id) || (!p && !pac)) ok.innerHTML = CHECK;
         b.appendChild(ok);
@@ -10714,8 +11019,8 @@
         function mostra(lst) {
           if (minha !== vez) return;
           lista.innerHTML = '';
-          if (!q) lista.appendChild(op('Todos', null));
           lst.forEach(function (p) { lista.appendChild(op(p.name, p)); });
+          if (!q) { var sp = document.createElement('div'); sp.className = 'nc-sep'; lista.appendChild(sp); lista.appendChild(op('Todos', null)); }
           if (q && !lst.length) { var v = document.createElement('div'); v.className = 'nc-vazio'; v.textContent = 'Nenhum paciente encontrado.'; lista.appendChild(v); }
         }
         mostra(achados);
@@ -10755,11 +11060,26 @@
         if (window.__chatPoePid) window.__chatPoePid(pid);
         poe({ id: pid, name: nome });
       };
+      // o assistente ao lado do prontuário conversa sobre o paciente aberto (só nas contas liberadas, como o "All"): outro
+      // paciente com a conversa em andamento começa outra (a anterior fica no histórico), para não misturar os dois
+      function naLateral() { return stage.classList.contains('prontuario') && !stage.classList.contains('expanded'); }
+      window.__ncDoProntuario = function (pid, nome) {
+        meP.then(function () {
+          if (!naLateral() || !window.__chatDoPaciente) return;
+          if (!window.__chatDoPaciente(pid, liberado)) return;  // com uma resposta a caminho: o próximo envio acerta
+          ++vezRot; poe(liberado && pid ? { id: pid, name: nome } : null);
+        });
+      };
+      // o envio pergunta: está na lateral do prontuário? Com o paciente carregado (id) ou ainda não (null)
+      window.__ladoAlvo = function () {
+        if (!naLateral()) return null;
+        return { id: window.__prPacienteId ? window.__prPacienteId() : null, lib: liberado };
+      };
       window.__ncRotulo = function (pid) {
         var minha = ++vezRot;
         if (!pid) { poe(null); return; }
         if (pac && pac.id === pid) return;
-        pac = { id: pid, name: 'Paciente' }; txt.textContent = 'Paciente';
+        pac = { id: pid, name: 'Paciente' }; txt.textContent = 'Paciente'; txt.hidden = false; btn.classList.add('tem');   // o nome chega depois
         carrega().then(function (lst) {
           if (minha !== vezRot) return;
           var a = lst.filter(function (p) { return p.id === pid; })[0];
@@ -10767,23 +11087,20 @@
         });
       };
     })();
-    // ===== Transcrição na lateral do prontuário (teste): a coluna da direita mostra a gravação (antiga aba Consulta) enquanto
-    // o prontuário está aberto; o expandir põe a transcrição na largura toda =====
+    // ===== Lateral do prontuário: o assistente (pedido do usuário, 16/11), que conversa sobre o paciente aberto. A
+    // Transcrição saiu da lateral (o usuário vai pôr em outro lugar): a seção #prTx fica na página, sem aparecer =====
     (function () {
-      var stage = document.querySelector('.stage'), right = document.querySelector('.right'), btn = document.getElementById('prTxExpand');
+      var stage = document.querySelector('.stage'), right = document.querySelector('.right');
       if (!stage || !right) return;
-      function sync() {
+      function desenha() {
         var on = stage.classList.contains('prontuario') && !stage.classList.contains('expanded');
-        if (right.classList.contains('tx') !== on) right.classList.toggle('tx', on);
-        if (!on && stage.classList.contains('tx-larga')) stage.classList.remove('tx-larga');
+        if (right.classList.contains('pr') !== on) right.classList.toggle('pr', on);
       }
-      new MutationObserver(sync).observe(stage, { attributes: true, attributeFilter: ['class'] });
-      sync();
-      if (btn) btn.addEventListener('click', function () {
-        var larga = !stage.classList.contains('tx-larga');
-        stage.classList.toggle('tx-larga', larga);
-        btn.setAttribute('aria-label', larga ? 'Recolher' : 'Expandir');
+      document.addEventListener('od:pr-paciente', function (e) {
+        if (e.detail && window.__ncDoProntuario) window.__ncDoProntuario(e.detail.id, e.detail.name);
       });
+      new MutationObserver(desenha).observe(stage, { attributes: true, attributeFilter: ['class'] });
+      desenha();
     })();
     // ===== New chat (Figma Concept 829:8107): o item do menu abre o assistente em tela cheia com uma conversa nova
     // (vazia: o campo no meio e as sugestões); o item fica aceso enquanto o assistente está em tela cheia
