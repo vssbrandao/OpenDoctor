@@ -164,6 +164,8 @@ async function foto(nome) {
   const r = await send('Page.captureScreenshot', { format: 'png' });
   writeFileSync(join(process.env.SHOT, nome), Buffer.from(r.data, 'base64'));
 }
+// a tela abre no Novo chat sem endereço (16/11): para a agenda, o teste pede #consultas (se não pediu outra tela)
+const comConsultas = (q = '') => (String(q).includes('#') ? q : q + '#consultas');
 async function abreEvento(sel) {
   await ev(`(() => { const e = document.querySelector(${JSON.stringify(sel)}); e.click(); return 1; })()`);
   await ate(`!document.getElementById('evPop').hidden`, 3000, 'janela do evento');
@@ -869,7 +871,9 @@ const cenarios = [
     };
     const linhaSo = (r) => r.every((x) => x.linhas === 1 && x.dentro && x.alto <= 64 && (x.w < 1366 || !x.cortada));
     const abre = async (q = '') => {
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      // página em branco antes: o mesmo endereço com #consultas (o teste anterior pode ter parado nele) não recarregaria
+      await send('Page.navigate', { url: 'about:blank' }); await sleep(100);
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + comConsultas(q) });
       await ate(`document.readyState === 'complete' && !!window.__calUltima`, 8000, 'a 1ª resposta da agenda');
       await sleep(400);
       return ev(`({ v: !document.getElementById('odWelcome').hidden, t: document.querySelector('#odWelcome span').textContent,
@@ -882,7 +886,7 @@ const cenarios = [
     // a agenda conectada que demora a responder (o Google pode levar segundos): nenhum convite enquanto espera
     BOAS_VINDAS = true; LENTA_AGENDA = 4000;
     try {
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?lenta=1' });
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?lenta=1#consultas' });
       await ate(`location.search === '?lenta=1' && document.readyState === 'complete'`, 8000, 'a agenda lenta');
       await sleep(3600);
       certo(await ev(`document.getElementById('odWelcome').hidden`), 'o convite apareceu com a agenda conectada ainda carregando');
@@ -910,7 +914,7 @@ const cenarios = [
   }],
   ['outra conta no mesmo navegador: o prontuário aberto e as conversas da anterior não aparecem', async () => {
     UID = 'u-teste';
-    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html#consultas' });
     await ate(`document.readyState === 'complete' && !!window.__odUid`, 8000, 'agenda da conta 1');
     await ev(`sessionStorage.setItem('od_prontuario_ctx', JSON.stringify({ patient_id: 7, patient: 'Maria Silva', uid: 'u-teste' }));
               localStorage.setItem('od_conversas_v1', JSON.stringify([{ id: 'c1', title: 'Pergunta da conta 1', turns: [] }]));
@@ -925,12 +929,12 @@ const cenarios = [
         h: location.hash, ctx: sessionStorage.getItem('od_prontuario_ctx'), conv: localStorage.getItem('od_conversas_v1'),
         dr: localStorage.getItem('od_draft_7_new'), hist: document.body.innerText.indexOf('Pergunta da conta 1') >= 0,
         uid: localStorage.getItem('od_uid') })`);
-      certo(!r.pr && r.h === '' && !r.ctx && !r.conv && !r.dr && !r.hist && r.uid === 'u-outra', 'a conta 2 viu a 1: ' + JSON.stringify(r));
+      certo(!r.pr && r.h === '#consultas' && !r.ctx && !r.conv && !r.dr && !r.hist && r.uid === 'u-outra', 'a conta 2 viu a 1: ' + JSON.stringify(r));
       certo(!pedidos.slice(antes).some((x) => x.path === '/prontuario/list'), 'pediu o prontuário da conta 1');
       // a mesma conta que volta encontra o que é dela
       await ev(`sessionStorage.setItem('od_prontuario_ctx', JSON.stringify({ patient_id: 7, patient: 'Maria Silva', uid: 'u-outra' }));
                 localStorage.setItem('od_draft_7_new', JSON.stringify({ s: 'rascunho da conta 2', base: '', at: Date.now() })); 1`);
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' });
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html#consultas' });
       await ate(`document.readyState === 'complete' && window.__odUid === 'u-outra'`, 8000, 'de volta à conta 2');
       await sleep(400);
       certo(await ev(`(JSON.parse(localStorage.getItem('od_draft_7_new') || '{}')).s`) === 'rascunho da conta 2', 'apagou o rascunho da própria conta');
@@ -942,7 +946,7 @@ const cenarios = [
     await ev(`localStorage.removeItem('od_uid');
               localStorage.setItem('od_conversas_v1', JSON.stringify([{ id: 'c9', title: 'Pergunta de antes', turns: [] }]));
               localStorage.setItem('od_draft_7_new', JSON.stringify({ s: 'rascunho de antes', base: '', at: Date.now() })); 1`);
-    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?antes=1' });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?antes=1#consultas' });
     await ate(`document.readyState === 'complete' && localStorage.getItem('od_uid') === 'u-teste'`, 8000, 'agenda depois da versão');
     await sleep(400);
     const v = await ev(`({ conv: localStorage.getItem('od_conversas_v1'), dr: (JSON.parse(localStorage.getItem('od_draft_7_new') || '{}')).s,
@@ -953,7 +957,7 @@ const cenarios = [
     await ev(`localStorage.setItem('od_uid', 'u-outra');
               localStorage.setItem('od_draft_7_e1', JSON.stringify({ s: 'da outra', base: '', at: Date.now(), u: 'u-outra' }));
               localStorage.setItem('od_draft_7_e2', JSON.stringify({ s: 'sem dono', base: '', at: Date.now(), u: '' })); 1`);
-    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?dono=1' });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?dono=1#consultas' });
     await ate(`document.readyState === 'complete' && localStorage.getItem('od_uid') === 'u-teste'`, 8000, 'agenda da conta 1 de novo');
     await sleep(300);
     const dr = await ev(`[localStorage.getItem('od_draft_7_e1'), (JSON.parse(localStorage.getItem('od_draft_7_e2') || '{}')).s]`);
@@ -961,7 +965,7 @@ const cenarios = [
     // o prontuário aberto de outra conta sai, mesmo se outra aba já deixou esta conta como dona do navegador
     await ev(`localStorage.removeItem('od_draft_7_e2');
               sessionStorage.setItem('od_prontuario_ctx', JSON.stringify({ patient_id: 7, patient: 'Maria Silva', uid: 'u-outra' })); 1`);
-    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?alheio=1' });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?alheio=1#consultas' });
     await ate(`document.readyState === 'complete' && window.__odUid === 'u-teste'`, 8000, 'agenda com o prontuário alheio');
     await sleep(300);
     certo(await ev(`sessionStorage.getItem('od_prontuario_ctx')`) === null, 'o prontuário da outra conta ficou na aba');
@@ -969,7 +973,7 @@ const cenarios = [
     await ev(`localStorage.setItem('od_conversas_v1', JSON.stringify([{ id: 'c8', title: 'Pergunta guardada', turns: [] }])); 1`);
     ME_FORA = true;
     try {
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?mefora=1' });
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?mefora=1#consultas' });
       await ate(`document.readyState === 'complete' && window.__odUid === ''`, 8000, 'agenda sem o /me');
       await sleep(400);
       certo(!(await ev(`document.body.innerText.indexOf('Pergunta guardada') >= 0`)), 'sem o /me, mostrou as conversas guardadas');
@@ -981,7 +985,7 @@ const cenarios = [
       return !c.querySelector('.ev-real') && [...c.querySelectorAll('.hr-row')].every((r) => r.children.length === 1)
         && !/[A-Za-zÀ-ú]{3}/.test(c.innerText); })()`;                       // só as horas (0h…23h) e o traço de agora
     const abre = async (q) => {
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + comConsultas(q) });
       await ate(`location.search === ${JSON.stringify(q)} && document.readyState === 'complete'`, 8000, 'agenda ' + q);
       certo(!(await ev(`document.querySelector('.stage').classList.contains('week')`)), 'abriu na Semana');
     };
@@ -1017,7 +1021,7 @@ const cenarios = [
     const dia = `(() => { const st = document.querySelector('.stage'), b = document.getElementById('viewSel');
       return !st.classList.contains('week') && b.getAttribute('aria-label') === 'Mudar para Semana' && /agenda-day\.svg/.test(document.getElementById('viewIcon').src); })()`;
     const abre = async (q) => {
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + comConsultas(q) });
       await ate(`location.search === ${JSON.stringify(q)} && document.readyState === 'complete'`, 8000, 'agenda ' + q);
     };
     await ev(`localStorage.setItem('od_agenda_view', 'semana'); 1`);         // o que a versão anterior guardava
@@ -1033,7 +1037,7 @@ const cenarios = [
   }],
   ['os botões de cima (Agenda e Assistente) mostram a dica escura com o que fazem e o atalho no mouseover, sem a do navegador', async () => {
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
-    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?dica=1' });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?dica=1#consultas' });
     await ate(`location.search === '?dica=1' && document.readyState === 'complete'`, 8000, 'agenda');
     const mouse = (x, y, type = 'mouseMoved') => send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', clickCount: 1 });
     const tecla = async (key, code, vk) => {
@@ -1108,7 +1112,7 @@ const cenarios = [
     let n = 0;
     const nova = async () => {                                   // agenda do zero, contando os cliques nos botões
       const q = '?atalho=' + (++n);
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + comConsultas(q) });
       await ate(`location.search === ${JSON.stringify(q)} && document.readyState === 'complete'`, 8000, 'agenda ' + q);
       await ate(`!!window.__calConnected`, 8000, 'agenda conectada');
       await ev(`window.__cliques = []; document.addEventListener('click', (e) => {
@@ -1174,7 +1178,7 @@ const cenarios = [
   ['a busca abre no meio da tela: Tudo · Consultas · Pacientes · Receitas, o trecho em negrito, o termo nunca na URL', async () => {
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
     const abre = async (q) => {
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + q });
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' + comConsultas(q) });
       await ate(`location.pathname === '/opendoctor-agenda.html' && document.readyState === 'complete' && !!window.__calConnected`, 8000, 'agenda ' + q);
       // o prontuário não abre de verdade aqui (as rotas dele não existem neste teste): guarda o que a busca pediu
       await ev(`window.__abriu = []; window.__openProntuario = (c) => { window.__abriu.push(c); }; 1`);
@@ -1328,7 +1332,7 @@ const cenarios = [
     // sem agenda conectada: não pede para conectar — Consultas só diz que não há, Tudo mostra o resto
     SEM_AGENDA = true;
     try {
-      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?semagenda=1' });
+      await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?semagenda=1#consultas' });
       await ate(`location.search === '?semagenda=1' && document.readyState === 'complete' && window.__calConnected === false`, 8000, 'agenda sem calendário');
       await clica('#agSearch');
       await ate(`${aberta} && document.querySelector('#bsAbas .on').dataset.aba === 'consultas' && /Nenhuma consulta/.test(document.getElementById('bsList').textContent)`, 3000, 'Consultas sem agenda');
@@ -1338,9 +1342,9 @@ const cenarios = [
       certo(!/Conecte|Integrações/.test(await ev(`document.getElementById('bsCard').textContent`)), 'pediu para conectar a agenda no Tudo');
       await key('Escape', 'Escape', 27);
     } finally { SEM_AGENDA = false; }
-    // de outra tela: agenda#buscar abre a busca (em Tudo) e o endereço volta ao normal
+    // de outra tela: agenda#buscar abre a busca (em Tudo) e o endereço volta à agenda (#consultas)
     await abre('?outra=1#buscar');
-    await ate(`${aberta} && location.hash === '' && document.querySelector('#bsAbas .on').dataset.aba === 'tudo'`, 3000, 'o #buscar abre a busca em Tudo');
+    await ate(`${aberta} && location.hash === '#consultas' && document.querySelector('#bsAbas .on').dataset.aba === 'tudo'`, 3000, 'o #buscar abre a busca em Tudo');
     await key('Escape', 'Escape', 27);
     await ate(`!(${aberta})`, 2000, 'o Esc fecha');
     return 'menu, lupa, ⇧⌘F e #buscar; 780×572 no meio; Tudo/Consultas/Pacientes/Receitas; negrito; nome só no corpo; Enter, setas, Tab, ×, fora, Esc';
@@ -1355,7 +1359,7 @@ const cenarios = [
       { id: 12, name: 'Ana Clara Ribeiro', notes: 0 });
     for (let i = 1; i <= 35; i++) PACS.push({ id: 100 + i, name: 'Paciente ' + String(i).padStart(2, '0'), notes: i % 3, last: i % 3 ? dias(i * 9) : null });
     MAIS = false;
-    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?pacientes=1' });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?pacientes=1#consultas' });
     await ate(`location.search === '?pacientes=1' && document.readyState === 'complete'`, 8000, 'agenda');
     await ev(`window.__abriu = []; window.__openProntuario = (c) => { window.__abriu.push(c); }; 1`);
     await clica('#navPacientes');
@@ -1729,9 +1733,24 @@ const cenarios = [
           'o POST do novo paciente (os dados só no corpo): ' + JSON.stringify(post && post.body));
     return `39 pacientes de uma vez, sem os números e sem o rodapé; no tamanho dos Diagnósticos (3 colunas iguais: nome e idade, "Consultas" e o total, "Última" e a data ou "Nenhuma consulta"; o ⋯ no fim), alinhado com o título e a lupa, lista 32 abaixo do título; o prontuário por cima, o aviso de sessão e a janela já fechada; ⋯ com o Excluir só para quem pode; linha abre o prontuário; novo paciente pelo + no alto (ao lado da lupa, dica e ⇧⌘E) no lugar do assistente, com e-mail, telefone e particular/convênio com o plano`;
   }],
+  ['a tela abre no Novo chat (sem endereço); Consultas leva à agenda (#consultas) e recarregar fica nela; o menu diz "Novo chat"', async () => {
+    await send('Page.navigate', { url: 'about:blank' }); await sleep(100);
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' });
+    await ate(`document.readyState === 'complete' && document.querySelector('.stage').classList.contains('expanded')`, 8000, 'abrir no Novo chat');
+    const r = await ev(`({ h: location.hash, ativo: document.getElementById('navNovo').classList.contains('active'),
+      nome: document.querySelector('#navNovo span:last-child').textContent, dica: document.getElementById('navNovo').dataset.tip })`);
+    certo(r.h === '#chat' && r.ativo && r.nome === 'Novo chat' && r.dica === 'Novo chat', 'sem endereço: ' + JSON.stringify(r));
+    await clica('#navConsultas');
+    await ate(`!document.querySelector('.stage').classList.contains('expanded') && location.hash === '#consultas'`, 4000, 'Consultas → a agenda (#consultas)');
+    await send('Page.reload', {});
+    await ate(`document.readyState === 'complete' && !!window.__calUltima`, 8000, 'recarregar');
+    await sleep(300);
+    certo(await ev(`!document.querySelector('.stage').classList.contains('expanded') && location.hash === '#consultas'`), 'recarregar na agenda foi para o chat');
+    return 'Novo chat ao abrir; Consultas e o recarregar ficam na agenda';
+  }],
   ['o + do campo anexa PDF e imagem: os cartões da Sana acima do texto, o x tira, o /ask leva só {tipo, dados} (nunca o nome) e a bolha mostra o cartão', async () => {
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
-    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?anexo=1' });
+    await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html?anexo=1#consultas' });
     await ate(`location.search === '?anexo=1' && document.readyState === 'complete'`, 8000, 'agenda');
     await ev(`document.getElementById('navNovo').click(); 1`);
     await ate(`document.querySelector('.stage').classList.contains('expanded')`, 3000, 'New chat');
@@ -1898,7 +1917,7 @@ async function main() {
   await send('Page.enable'); await send('Runtime.enable');
   await send('Emulation.setTimezoneOverride', { timezoneId: 'America/Sao_Paulo' });
   await send('Emulation.setFocusEmulationEnabled', { enabled: true });
-  await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html' });
+  await send('Page.navigate', { url: ORIG + '/opendoctor-agenda.html#consultas' });
   let falhas = 0;
   for (const [nome, fn] of cenarios) {
     const t0 = Date.now();
