@@ -426,7 +426,7 @@ const cenarios = [
   ['menu retraído: cada ícone mostra a dica escura com o nome, à direita do menu; aberto, nenhuma (o nome já está escrito)', async () => {
     const mouse = (x, y) => send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none' });
     const ligada = `document.querySelector('.nav-tip').classList.contains('on')`;
-    const NOMES = ['New chat', 'Consultas', 'Buscar', 'Pacientes', 'Prescrições', 'Configurações'];   // Integrações e Perfil: no menu do Configurações (pé)
+    const NOMES = ['New chat', 'Buscar', 'Consultas', 'Prescrições', 'Pacientes', 'Configurações'];   // Integrações e Perfil: no menu do Configurações (pé)
     const item = (nome) => ev(`(() => { const b = document.querySelector('.nav .item[data-tip=${JSON.stringify(nome)}]'), r = b.getBoundingClientRect(),
         n = document.querySelector('.nav').getBoundingClientRect(), p = document.querySelector('.nav-tip'), t = p.getBoundingClientRect(), cs = getComputedStyle(p);
       return { on: p.classList.contains('on'), texto: p.querySelector('span').textContent, title: b.getAttribute('title'),
