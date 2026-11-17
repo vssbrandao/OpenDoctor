@@ -6,7 +6,7 @@
   <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg?v=4">
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/brand/favicon-32.png?v=4">
   <link rel="apple-touch-icon" href="/assets/brand/apple-touch-icon.png?v=4">
-  <title>OpenDoctor | Agenda (Figma 946-31168)</title>
+  <title>OpenDoctor | AI Clinical Operating System</title>
   <style>
     /* Figma frame "Analysis" (node 946:31168) — home day-agenda view. */
     @font-face{font-family:"Helvetica Now Display";font-weight:400;font-style:normal;font-display:swap;
@@ -82,7 +82,7 @@
     .stage.prontuario .pr-iniciar{display:flex;align-items:center;justify-content:center;gap:8px;position:absolute;left:50%;bottom:24px;z-index:6;
       transform:translateX(-50%);height:64px;padding:24px 42px;white-space:nowrap;border:0;border-radius:999px;background:#000;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
-    .pr-iniciar svg{flex:none;width:11.13px;height:16.06px;color:#F50}
+    .pr-iniciar svg{flex:none;width:20px;height:20px;color:#fff}   /* SF record.circle (Medium) em 20 px, branco (17/11; era o microfone laranja) */
     .center:has(#prMain[data-tab=prescricoes]) .pr-iniciar{display:none}   /* na Prescrição fica a barra de adicionar do pé */
     .stage.prontuario .ag-head,.stage.prontuario .cal,.stage.prontuario .wk{display:none}
     /* coluna do prontuário = coluna do Google Finance (748px); trilha → nome a 8px */
@@ -107,6 +107,27 @@
     .pr-nav button:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px}
     .pr-nav-pill{position:absolute;top:0;left:0;height:36px;box-sizing:border-box;border:1px solid rgba(0,0,0,.08);border-radius:24px;background:#fff}
     .pr-nav-pill[hidden]{display:none}
+    .pr-nav button[hidden]{display:none}
+    /* evolução pronta e ainda não vista: o ponto laranja logo depois de "SOAP" (o ::before/::after do botão são o respiro) */
+    .pr-nav button.dot > span{padding-right:10px;background:radial-gradient(circle,#FF5500 2.6px,transparent 3px) right top 3px/6px 6px no-repeat}
+    /* consulta iniciada (17/11): no meio fica o cartão da gravação (Transcrição ou SOAP, pelo controle de cima) com a barra
+       e o Finalizar no pé; o Resumo e a Prescrição saem até a consulta acabar */
+    #prMain:not(.consulta) > .pr-panel[data-panel=atual]{display:none}
+    #prMain.consulta > .pr-panel:not([data-panel=atual]){display:none}
+    #prMain > .pr-panel[data-panel=atual] .cs-seg{display:none}
+    /* sem a moldura cinza (17/11): a transcrição e o SOAP direto no branco, alinhados com a coluna do prontuário */
+    #prMain .cs-card{padding:0;border-radius:0;background:none}
+    #prMain .cs-main{border-radius:0}
+    #prMain .cs-pane{padding-left:0;padding-right:0}
+    #prMain .cs-flut{left:0;right:0;bottom:0}                /* o Assinar a 24 do pé da tela (o cartão já termina a 24), 17/11 */
+    #prMain .cs-status .pr-status:not(.err){display:none}   /* sem o "Salvo às…" embaixo (17/11); as falhas de salvar continuam */
+    #prMain .cs-play{padding:0 24px;border:4px solid #F7F8F8;border-radius:32px}   /* a borda cinza do player da lista Consultas; canto 32 (17/11) */
+    /* Assinar como o Iniciar consulta (pílula preta de 64, 0 42, texto 14 Medium branco), sem ícone (17/11) */
+    #prMain #csFimEvo{height:64px;padding:0 42px;background:#000;color:#fff}
+    #prMain .cs-foot{padding:16px 0 0}                       /* a barra preta a 24 do pé da tela (o cartão já termina a 24) */
+    #prMain .cs-bar{width:100%;height:64px}
+    #prMain .cs-tm{font-size:14px;min-width:38px}             /* o tempo um pouco maior (17/11; era 12) */                              /* a barra de gravar na largura do controle de cima (17/11) */
+    .center:has(#prMain.consulta) .pr-iniciar,.center:has(#prMain.assinada) .pr-iniciar{display:none}   /* assinada: não há o que gravar */
     .pr-view [id]{scroll-margin-top:64px}              /* "ir até" para logo abaixo da barra de abas (fixa no topo) */
     .pr-top .pr-back{display:none}                     /* volta à agenda pelo menu lateral (Consultas, Pacientes) */
     /* cabeçalho da paciente só no Resumo (o gráfico fica na Análise) */
@@ -1260,9 +1281,18 @@
     .cs-msg{flex:1;min-width:0;font-weight:500;font-size:12px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .cs-tm{flex:none;min-width:33px;font-weight:400;font-size:12px;line-height:20px}
     .cs-bar > :last-child.cs-tm{margin-right:24px}
-    .cs-stop{flex:none;display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;
+    .cs-stop,.cs-x{flex:none;display:flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:0;border-radius:50%;
       background:#F3F3F3;cursor:pointer;color:#000}
-    .cs-stop svg{display:block}
+    .cs-stop svg,.cs-x svg{display:block}
+    /* igual ao enviar do assistente (teste 17/11): pílula azul de 60 × 48, seta de 16 #0842A0 */
+    .cs-bar .cs-env{width:60px;height:48px;margin-left:-8px;border-radius:999px;background:#D3E3FD;color:#0842A0}   /* 8 do pausar (o vão da barra é 16) */
+    .cs-bar .cs-env:hover{background:#c2d8fb}
+    .cs-bar .cs-stop:not(.cs-env){width:48px;height:48px}          /* o pausar na altura do enviar, redondo (17/11) */
+    .cs-bar .cs-x{width:48px;height:48px;background:#fff;color:#000}   /* o cancelar: branco com o X preto, redondo de 48 */
+    .cs-bar .cs-x:hover{background:#F3F3F3}
+    .cs-bar.com-x{padding-left:8px}
+    .cs-gorow{display:flex;align-items:center;gap:8px}
+    .cs-gorow .cs-x{width:48px;height:48px;background:#fff;color:#000;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}   /* no branco, com a borda */                                /* o X a 8 da borda, como os botões da direita */
     /* o player: trilha de 416 (#F7F8F8) com o progresso preto e a bolinha de 10; marcadores laranja de 36 (O, A e P); os
        botões redondos de 48 (#F7F8F8) com o som e o play/pausa */
     .cs-play{flex:none;display:flex;align-items:center;gap:24px;height:96px;padding:0 24px;border-radius:35px;background:#fff}
@@ -1624,7 +1654,7 @@
     .pr-item.hc.in-cs{margin:0 0 40px;padding:24px 0 8px;border-radius:0;background:none}   /* aberto na lista: cantos retos, colado na linha de cima */
     .pr-item.hc.in-cs .hc-hd{justify-content:flex-end;margin-bottom:8px}          /* data e título já estão na linha de cima */
     .pr-item.hc.in-cs .hc-hd:has(.hc-t .pr-badge){justify-content:space-between}
-    .pr-item.hc.in-cs .hc-player{border:4px solid #F7F8F8}                         /* o player com a borda cinza do cartão da Consulta (4 px #F7F8F8) */
+    .pr-item.hc.in-cs .hc-player{border:4px solid #F7F8F8;border-radius:32px}   /* canto 32, igual ao player da consulta (17/11) */                         /* o player com a borda cinza do cartão da Consulta (4 px #F7F8F8) */
     .pr-item.hc.in-cs .hc-tr{min-height:56px;padding:0}
     .pr-item.hc.in-cs .hc-pw + .hc-tr{margin-top:8px}
     .pr-item.hc.in-cs .hc-tr + .hc-body + .hc-tr{border-top:1px solid var(--sb-border)}   /* a linha entre Evolução e Transcrição */
@@ -2639,7 +2669,7 @@
       </div>
       <!-- "Iniciar consulta" flutuando no prontuário, a 24 da base (pedido do usuário, 16/11): por enquanto só o botão; a
            gravação é ligada quando a Transcrição ganhar o lugar novo -->
-      <button class="pr-iniciar" id="prIniciar" type="button"><svg aria-hidden="true" width="11.13" height="16.06" viewBox="0 0 11.13 16.06" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.559 10.393C7.046 10.393 8.130 9.287 8.130 7.661L8.130 2.732C8.130 1.113 7.046 0.000 5.559 0.000C4.072 0.000 2.988 1.113 2.988 2.732L2.988 7.661C2.988 9.287 4.072 10.393 5.559 10.393ZM2.197 16.055L8.921 16.055C9.302 16.055 9.617 15.747 9.617 15.374C9.617 14.993 9.302 14.685 8.921 14.685L6.233 14.685L6.233 13.176C9.133 12.905 11.125 10.833 11.125 7.830L11.125 6.379C11.125 5.999 10.818 5.698 10.437 5.698C10.056 5.698 9.741 5.999 9.741 6.379L9.741 7.778C9.741 10.269 8.057 11.917 5.559 11.917C3.062 11.917 1.377 10.269 1.377 7.778L1.377 6.379C1.377 5.999 1.069 5.698 0.688 5.698C0.308 5.698 0.000 5.999 0.000 6.379L0.000 7.830C0.000 10.833 1.992 12.905 4.893 13.176L4.893 14.685L2.197 14.685C1.824 14.685 1.509 14.993 1.509 15.374C1.509 15.747 1.824 16.055 2.197 16.055Z" fill="currentColor"/></svg><span>Iniciar consulta</span></button>
+      <button class="pr-iniciar" id="prIniciar" type="button"><svg aria-hidden="true" width="15.14" height="15.14" viewBox="0 0 15.14 15.14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.566 15.132C11.741 15.132 15.132 11.741 15.132 7.566C15.132 3.391 11.741 0.000 7.566 0.000C3.391 0.000 0.000 3.391 0.000 7.566C0.000 11.741 3.391 15.132 7.566 15.132ZM7.566 13.638C4.204 13.638 1.487 10.928 1.487 7.566C1.487 4.204 4.204 1.487 7.566 1.487C10.928 1.487 13.645 4.204 13.645 7.566C13.645 10.928 10.928 13.638 7.566 13.638ZM7.559 10.430C9.148 10.430 10.437 9.141 10.437 7.551C10.437 5.969 9.148 4.680 7.559 4.680C5.977 4.680 4.688 5.969 4.688 7.551C4.688 9.141 5.977 10.430 7.559 10.430Z" fill="currentColor"/></svg><span>Iniciar consulta</span></button>
       <div class="pr-view" id="prView">
         <div class="pr">
           <!-- navegação do prontuário (Figma Concept 1067:45507): fica no topo ao rolar; volta à agenda pelo menu lateral -->
@@ -2649,6 +2679,9 @@
               <span class="pr-nav-pill" aria-hidden="true"></span>
               <button type="button" role="tab" data-tab="geral" class="on"><span>Prontuário</span></button>
               <button type="button" role="tab" data-tab="prescricoes"><span>Prescrição</span></button>
+              <!-- com a consulta iniciada, o controle vira Transcrição | SOAP (pedido do usuário, 17/11) -->
+              <button type="button" role="tab" data-tab="tx" hidden><span>Transcrição</span></button>
+              <button type="button" role="tab" data-tab="soap" hidden><span>SOAP</span></button>
             </div>
           </div>
           <div class="pr-msg" id="prMsg" hidden></div>
@@ -3270,11 +3303,12 @@
         if (item && !(nav && nav.classList.contains('collapsed'))) return;   // menu aberto: o nome já está escrito
         txt.textContent = b.id === 'navToggle' ? 'Alternar barra lateral' : (b.getAttribute('data-tip') || b.getAttribute('aria-label') || '');
         if (!txt.textContent || !r.width) return;     // sem texto ou botão escondido
-        kbd.textContent = k ? (mac ? '\u21e7\u2318' + k : 'Ctrl+Shift+' + k) : '';
-        tip.classList.toggle('sem-atalho', !k);
+        var dk = b.getAttribute('data-kbd');              // atalho que não é letra (o pausar da gravação: Espaço)
+        kbd.textContent = dk ? (mac ? '\u21e7\u2318' + dk : 'Ctrl+Shift+' + dk) : k ? (mac ? '\u21e7\u2318' + k : 'Ctrl+Shift+' + k) : '';
+        tip.classList.toggle('sem-atalho', !kbd.textContent);
         var w = tip.offsetWidth, h = tip.offsetHeight, x, y;
         if (item) { x = Math.max(r.right, nav.getBoundingClientRect().right) + 6; y = r.top + r.height / 2 - h / 2; }
-        else { x = r.left + r.width / 2 - w / 2; y = r.bottom + 6; }
+        else { x = r.left + r.width / 2 - w / 2; y = b.closest('.cs-bar') ? r.top - h - 6 : r.bottom + 6; }   // a barra de gravar fica no pé: a dica vai acima
         tip.style.left = Math.round(Math.max(8, Math.min(innerWidth - w - 8, x))) + 'px';
         tip.style.top = Math.round(Math.max(8, Math.min(innerHeight - h - 8, y))) + 'px';
         tip.classList.add('on');
@@ -3293,6 +3327,7 @@
         b.addEventListener('click', esconde);   // abre um painel ou o botão muda de lugar
       }
       [].forEach.call(document.querySelectorAll('#navToggle, .hd-btn, .nav .item[data-tip]'), liga);
+      window.__navTip = liga;                            // botões criados depois (a barra de gravar)
       document.addEventListener('pointerdown', function () { peloTab = false; }, true);
       window.addEventListener('resize', esconde);
       window.addEventListener('blur', esconde);
@@ -6067,7 +6102,10 @@
             if (!(res.ok && res.j.ok)) { setStatus('Não foi possível assinar.', true); return; }
             cur.signed_at = res.j.signed_at; cur.addenda = cur.addenda || [];
             try { localStorage.removeItem(dkey()); if (ctx._tk) sessionStorage.removeItem('od_tm_' + ctx._tk); } catch (_) {}
+            var eraConsulta = $('prMain').classList.contains('consulta');
             renderEvo(); renderHist(); renderKpis(); loadVisits(my); csTab('soap');   // a assinada aparece na aba SOAP
+            // assinou a consulta iniciada pelo botão de baixo: volta ao Prontuário, na aba Consultas, com ela aberta (17/11)
+            if (eraConsulta) { abreAssinada = Date.now(); setTab('geral'); ovcSet('cs'); renderCons(); }
             setStatus('');
           }).catch(function () { btn.disabled = false; setStatus('Falha de conexão ao assinar.', true); });
         });
@@ -6299,6 +6337,8 @@
       // O que o design não mostra (microfone, autorização, avisos, etapas, revisão) fica abaixo do cartão.
       var CSI = {                                          // ícones do Figma (SF Symbols exportados), na cor do texto
         dots: '<svg width="17" height="17" viewBox="0 0 17 17" aria-hidden="true"><path d="M3.70443 1.22878C3.36082 1.22878 3.08954 0.957506 3.08954 0.613889C3.08954 0.279314 3.36082 -0.00100473 3.70443 -0.00100473C4.04805 -0.00100473 4.31933 0.279314 4.31933 0.613889C4.31933 0.957506 4.04805 1.22878 3.70443 1.22878ZM6.79699 1.22878C6.46241 1.22878 6.18209 0.957506 6.18209 0.613889C6.18209 0.279314 6.46241 -0.00100473 6.79699 -0.00100473C7.1406 -0.00100473 7.41188 0.279314 7.41188 0.613889C7.41188 0.957506 7.1406 1.22878 6.79699 1.22878ZM9.88954 1.22878C9.54592 1.22878 9.27465 0.957506 9.27465 0.613889C9.27465 0.279314 9.54592 -0.00100473 9.88954 -0.00100473C10.2332 -0.00100473 10.5044 0.279314 10.5044 0.613889C10.5044 0.957506 10.2332 1.22878 9.88954 1.22878ZM12.9821 1.22878C12.6475 1.22878 12.3672 0.957506 12.3672 0.613889C12.3672 0.279314 12.6475 -0.00100473 12.9821 -0.00100473C13.3257 -0.00100473 13.606 0.279314 13.606 0.613889C13.606 0.957506 13.3257 1.22878 12.9821 1.22878ZM6.79699 4.75538C6.25443 4.75538 5.81135 4.30325 5.81135 3.76974C5.81135 3.22719 6.25443 2.7841 6.79699 2.7841C7.33954 2.7841 7.78262 3.22719 7.78262 3.76974C7.78262 4.30325 7.33954 4.75538 6.79699 4.75538ZM9.88954 4.75538C9.35603 4.75538 8.9039 4.30325 8.9039 3.76974C8.9039 3.22719 9.35603 2.7841 9.88954 2.7841C10.4321 2.7841 10.8752 3.22719 10.8752 3.76974C10.8752 4.30325 10.4321 4.75538 9.88954 4.75538ZM3.70443 4.53836C3.27039 4.53836 2.92677 4.20378 2.92677 3.76974C2.92677 3.3357 3.27039 2.99208 3.70443 2.99208C4.13848 2.99208 4.48209 3.3357 4.48209 3.76974C4.48209 4.20378 4.13848 4.53836 3.70443 4.53836ZM12.9821 4.53836C12.5571 4.53836 12.2135 4.20378 12.2135 3.76974C12.2135 3.3357 12.5571 2.99208 12.9821 2.99208C13.4161 2.99208 13.7598 3.3357 13.7598 3.76974C13.7598 4.20378 13.4161 4.53836 12.9821 4.53836ZM0.611879 4.38463C0.268262 4.38463 -0.00301418 4.11336 -0.00301418 3.76974C-0.00301418 3.42612 0.268262 3.15485 0.611879 3.15485C0.955496 3.15485 1.22677 3.42612 1.22677 3.76974C1.22677 4.11336 0.955496 4.38463 0.611879 4.38463ZM16.0746 4.38463C15.7401 4.38463 15.4598 4.11336 15.4598 3.76974C15.4598 3.42612 15.7401 3.15485 16.0746 3.15485C16.4183 3.15485 16.6895 3.42612 16.6895 3.76974C16.6895 4.11336 16.4183 4.38463 16.0746 4.38463ZM9.88954 7.90219C9.35603 7.90219 8.9039 7.45006 8.9039 6.91655C8.9039 6.374 9.35603 5.93091 9.88954 5.93091C10.4321 5.93091 10.8752 6.374 10.8752 6.91655C10.8752 7.45006 10.4321 7.90219 9.88954 7.90219ZM6.79699 7.90219C6.26348 7.90219 5.81135 7.45006 5.81135 6.91655C5.81135 6.374 6.26348 5.93091 6.79699 5.93091C7.33954 5.93091 7.78262 6.374 7.78262 6.91655C7.78262 7.45006 7.33954 7.90219 6.79699 7.90219ZM3.70443 7.90219C3.16188 7.90219 2.71879 7.4591 2.71879 6.91655C2.71879 6.374 3.16188 5.93091 3.70443 5.93091C4.24699 5.93091 4.69007 6.374 4.69007 6.91655C4.69007 7.4591 4.24699 7.90219 3.70443 7.90219ZM12.9821 7.90219C12.4486 7.90219 11.9965 7.4591 11.9965 6.91655C11.9965 6.374 12.4486 5.93091 12.9821 5.93091C13.5246 5.93091 13.9768 6.374 13.9768 6.91655C13.9768 7.4591 13.5246 7.90219 12.9821 7.90219ZM0.611879 7.54048C0.268262 7.54048 -0.00301418 7.26921 -0.00301418 6.92559C-0.00301418 6.58197 0.268262 6.30165 0.611879 6.30165C0.955496 6.30165 1.22677 6.58197 1.22677 6.92559C1.22677 7.26921 0.955496 7.54048 0.611879 7.54048ZM16.0746 7.54048C15.7401 7.54048 15.4598 7.26921 15.4598 6.92559C15.4598 6.58197 15.7401 6.30165 16.0746 6.30165C16.4183 6.30165 16.6895 6.58197 16.6895 6.92559C16.6895 7.26921 16.4183 7.54048 16.0746 7.54048ZM9.88954 11.058C9.35603 11.058 8.9039 10.615 8.9039 10.0724C8.9039 9.52985 9.35603 9.08676 9.88954 9.08676C10.4321 9.08676 10.8752 9.52985 10.8752 10.0724C10.8752 10.615 10.4321 11.058 9.88954 11.058ZM6.79699 11.058C6.26348 11.058 5.81135 10.615 5.81135 10.0724C5.81135 9.52985 6.26348 9.08676 6.79699 9.08676C7.33954 9.08676 7.78262 9.52985 7.78262 10.0724C7.78262 10.615 7.33954 11.058 6.79699 11.058ZM3.70443 11.058C3.16188 11.058 2.71879 10.615 2.71879 10.0724C2.71879 9.53889 3.16188 9.08676 3.70443 9.08676C4.24699 9.08676 4.69007 9.53889 4.69007 10.0724C4.69007 10.615 4.24699 11.058 3.70443 11.058ZM12.9821 11.058C12.4486 11.058 11.9965 10.615 11.9965 10.0724C11.9965 9.53889 12.4486 9.08676 12.9821 9.08676C13.5246 9.08676 13.9768 9.53889 13.9768 10.0724C13.9768 10.615 13.5246 11.058 12.9821 11.058ZM16.0746 10.6873C15.7401 10.6873 15.4598 10.407 15.4598 10.0724C15.4598 9.72878 15.7401 9.44846 16.0746 9.44846C16.4183 9.44846 16.6895 9.72878 16.6895 10.0724C16.6895 10.407 16.4183 10.6873 16.0746 10.6873ZM0.611879 10.6873C0.268262 10.6873 -0.00301418 10.407 -0.00301418 10.0724C-0.00301418 9.72878 0.268262 9.44846 0.611879 9.44846C0.955496 9.44846 1.22677 9.72878 1.22677 10.0724C1.22677 10.407 0.955496 10.6873 0.611879 10.6873ZM6.79699 14.2139C6.25443 14.2139 5.81135 13.7618 5.81135 13.2283C5.81135 12.6857 6.25443 12.2426 6.79699 12.2426C7.33954 12.2426 7.78262 12.6857 7.78262 13.2283C7.78262 13.7618 7.33954 14.2139 6.79699 14.2139ZM9.88954 14.2139C9.35603 14.2139 8.9039 13.7618 8.9039 13.2283C8.9039 12.6857 9.35603 12.2426 9.88954 12.2426C10.4321 12.2426 10.8752 12.6857 10.8752 13.2283C10.8752 13.7618 10.4321 14.2139 9.88954 14.2139ZM3.70443 14.0059C3.27039 14.0059 2.92677 13.6623 2.92677 13.2283C2.92677 12.7942 3.27039 12.4506 3.70443 12.4506C4.13848 12.4506 4.48209 12.7942 4.48209 13.2283C4.48209 13.6623 4.13848 14.0059 3.70443 14.0059ZM12.9821 14.0059C12.5571 14.0059 12.2135 13.6623 12.2135 13.2283C12.2135 12.7942 12.5571 12.4506 12.9821 12.4506C13.4161 12.4506 13.7598 12.7942 13.7598 13.2283C13.7598 13.6623 13.4161 14.0059 12.9821 14.0059ZM0.611879 13.8431C0.268262 13.8431 -0.00301418 13.5719 -0.00301418 13.2283C-0.00301418 12.8846 0.268262 12.6134 0.611879 12.6134C0.955496 12.6134 1.22677 12.8846 1.22677 13.2283C1.22677 13.5719 0.955496 13.8431 0.611879 13.8431ZM16.0746 13.8431C15.7401 13.8431 15.4598 13.5719 15.4598 13.2283C15.4598 12.8846 15.7401 12.6134 16.0746 12.6134C16.4183 12.6134 16.6895 12.8846 16.6895 13.2283C16.6895 13.5719 16.4183 13.8431 16.0746 13.8431ZM3.70443 16.999C3.36082 16.999 3.08954 16.7187 3.08954 16.3841C3.08954 16.0405 3.36082 15.7602 3.70443 15.7602C4.04805 15.7602 4.31933 16.0405 4.31933 16.3841C4.31933 16.7187 4.04805 16.999 3.70443 16.999ZM6.79699 16.999C6.46241 16.999 6.18209 16.7187 6.18209 16.3841C6.18209 16.0405 6.46241 15.7602 6.79699 15.7602C7.1406 15.7602 7.41188 16.0405 7.41188 16.3841C7.41188 16.7187 7.1406 16.999 6.79699 16.999ZM9.88954 16.999C9.54592 16.999 9.27465 16.7187 9.27465 16.3841C9.27465 16.0405 9.54592 15.7602 9.88954 15.7602C10.2332 15.7602 10.5044 16.0405 10.5044 16.3841C10.5044 16.7187 10.2332 16.999 9.88954 16.999ZM12.9821 16.999C12.6475 16.999 12.3672 16.7187 12.3672 16.3841C12.3672 16.0405 12.6475 15.7602 12.9821 15.7602C13.3257 15.7602 13.606 16.0405 13.606 16.3841C13.606 16.7187 13.3257 16.999 12.9821 16.999Z" fill="currentColor"/></svg>',
+        x: '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M1.4 12L0 10.6L4.6 6L0 1.4L1.4 0L6 4.6L10.6 0L12 1.4L7.4 6L12 10.6L10.6 12L6 7.4Z" fill="currentColor"/></svg>',
+        env: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M7 16V3.825L1.4 9.425L0 8L8 0L16 8L14.6 9.425L9 3.825V16H7Z" fill="currentColor"/></svg>',
         stop: '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8C6 6.89543 6.89543 6 8 6H16C17.1046 6 18 6.89543 18 8V16C18 17.1046 17.1046 18 16 18H8C6.89543 18 6 17.1046 6 16V8Z" fill="currentColor"/></svg>',
         play: '<svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M0 12.3295V1.17348C0 0.377763 0.458138 0 1.00469 0C1.24581 0 1.49498 0.0723376 1.74414 0.208975L11.1078 5.68252C11.7749 6.06832 12 6.32552 12 6.75151C12 7.16946 11.7749 7.4347 11.1078 7.8205L1.74414 13.294C1.49498 13.4226 1.24581 13.503 1.00469 13.503C0.458138 13.503 0 13.1253 0 12.3295Z" fill="currentColor"/></svg>',
         pause: '<svg width="10" height="13" viewBox="0 0 10 13" aria-hidden="true"><path d="M1.04534 13C0.361548 13 0 12.6385 0 11.9468V1.04534C0 0.353688 0.361548 0 1.04534 0H2.83736C3.52116 0 3.88271 0.322249 3.88271 1.04534V11.9468C3.88271 12.6385 3.52116 13 2.83736 13H1.04534ZM6.75937 13C6.06771 13 5.70617 12.6385 5.70617 11.9468V1.04534C5.70617 0.353688 6.06771 0 6.75937 0H8.54353C9.23519 0 9.58888 0.322249 9.58888 1.04534V11.9468C9.58888 12.6385 9.23519 13 8.54353 13H6.75937Z" fill="currentColor"/></svg>',
@@ -6326,7 +6366,57 @@
         return r.segs ? r.segs.filter(function (s) { return s.st !== 'silent'; }).map(function (s) { return s.at; }) : r.u.map(function (u) { return u.at; });
       }
       // a aba SOAP ganha um ponto quando a evolução gerada pela gravação fica pronta, até ser aberta
-      function csDot(r) { $('csSeg').children[1].classList.toggle('dot', !!r && !!r.gerou && !r.soapVisto && csAba !== 'soap'); }
+      function csDot(r) { $('csSeg').children[1].classList.toggle('dot', !!r && !!r.gerou && !r.soapVisto && csAba !== 'soap'); csModo(); }
+      // a consulta iniciada (o botão de baixo, ou a gravação já começada): o controle de cima vira Transcrição | SOAP
+      function csModo() {
+        var r = ctx && ready ? csRec() : null, on = !!r && !locked() && (r.cs || r.st !== 'idle'), main = $('prMain');   // assinada: volta ao prontuário
+        main.classList.toggle('consulta', on); main.classList.toggle('assinada', !!ctx && ready && locked());
+        [].forEach.call($('prTabs').querySelectorAll('button[data-tab]'), function (b) {
+          var t = b.getAttribute('data-tab'), cs = t === 'tx' || t === 'soap';
+          b.hidden = cs !== on;
+          if (on && cs) { var sel = t === csAba; b.classList.toggle('on', sel); b.setAttribute('aria-selected', sel ? 'true' : 'false'); }
+        });
+        $('prTabs').querySelector('[data-tab=soap]').classList.toggle('dot', $('csSeg').children[1].classList.contains('dot'));
+        if (on) main.setAttribute('data-tab', 'atual');
+        else if (main.getAttribute('data-tab') === 'atual') main.setAttribute('data-tab', 'geral');
+        navPill();
+      }
+      // cancelar a transcrição (17/11): para a gravação, apaga o que foi gravado e transcrito (no aparelho e no servidor) e
+      // volta ao prontuário com a consulta como estava antes de iniciar. O que o médico escreveu na evolução fica.
+      function csCancela(r) {
+        var gravou = r.segs ? !!r.recId : r.st !== 'idle';  // nada gravado (o microfone não abriu): volta sem perguntar
+        if (gravou && !confirm('Cancelar a transcrição?\n\nA gravação e a transcrição desta consulta são apagadas e não voltam. O que você escreveu na evolução continua.')) return;
+        if (r.segs) {                                      // gravação real
+          rrPause(r);
+          var id = r.recId;
+          delete RR.by[r.k];
+          if (id) {
+            audForget([id]);                               // o som que ainda não subiu sai do aparelho
+            qRows().then(function (rows) { rows.forEach(function (x) { if (x.recId === id) qDrop(x); }); });   // e os trechos da fila
+            // apaga no servidor depois que a fila parar (um trecho a caminho criaria a gravação de novo); 404: nada tinha subido
+            var tentativas = 0;
+            (function apaga() {
+              if (Q.busy && tentativas++ < 60) { setTimeout(apaga, 500); return; }
+              api('DELETE', '/prontuario/recordings/' + encodeURIComponent(id)).then(function (res) {
+                if (!(res.ok || res.status === 404)) toast('Não foi possível apagar a gravação no servidor. Tente de novo pela consulta.');
+              }).catch(function () { toast('Sem conexão: a gravação não foi apagada no servidor.'); });
+            })();
+          }
+        } else {                                           // demonstração
+          recPause(r); if (recLive === r) recLive = null;
+          if (recPb && recPb.r === r) recStopPb();
+          recs.forEach(function (v, k) { if (v === r) recs.delete(k); });
+        }
+        setTab('geral'); recRender(); csModo();
+      }
+      // o cartão da consulta fica no meio do prontuário (a lateral Transcrição saiu)
+      $('prMain').appendChild(document.querySelector('.pr-panel[data-panel=atual]'));
+      $('prIniciar').addEventListener('click', function () {
+        var r = ready ? csRec() : null; if (!r) return;
+        r.cs = true; csTab('tx');
+        var b = $('prRec').querySelector('.cs-go.cs-iniciar');
+        if (b && !b.disabled) b.click(); else csModo();
+      });
       // o cartão aparece sempre na consulta aberta. Com a evolução finalizada, a aba SOAP mostra a assinada e o pé some;
       // devolve se ainda há gravação a desenhar (aberta, ou finalizada depois de gravada)
       function csShow(gravada) {
@@ -6349,7 +6439,13 @@
         if (o.nota) box.appendChild(el('div', 'cs-nota', o.nota));
         var ini = label === 'Iniciar consulta';             // na lateral Transcrição: a pílula laranja com o microfone (Figma)
         var b = el('button', 'cs-go' + (ini ? ' cs-iniciar' : '')); b.type = 'button'; b.innerHTML = ini ? CSI_MIC : CSI.dots; b.appendChild(el('span', null, label));
-        b.disabled = !!o.off; b.addEventListener('click', function () { f(b); }); box.appendChild(b);
+        b.disabled = !!o.off; b.addEventListener('click', function () { f(b); });
+        if (o.cancel) {                                    // sem microfone na consulta iniciada: o X volta ao prontuário
+          var row = el('div', 'cs-gorow'), cx = el('button', 'cs-x'); cx.type = 'button'; cx.innerHTML = CSI.x;
+          cx.setAttribute('aria-label', 'Cancelar a transcrição'); cx.setAttribute('data-tip', 'Cancelar a transcrição');
+          cx.addEventListener('click', o.cancel); row.appendChild(cx); row.appendChild(b); box.appendChild(row);
+          if (window.__navTip) window.__navTip(cx);
+        } else box.appendChild(b);
         return b;
       }
       // "Assinar": assina (finaliza) a evolução, com a confirmação e os pontos para conferir de sempre. O "Finalizar" é só o da
@@ -6388,16 +6484,28 @@
       // o.msg troca as ondas por um texto (enviando, gerando) e some com o botão
       function csBar(o) {
         var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot bar'; csPe();
-        if (o.fim) { var f = el('button', 'cs-fim', 'Finalizar'); f.type = 'button'; f.title = 'Encerrar a gravação e gerar a evolução';
-          f.addEventListener('click', o.fim); box.appendChild(f); }
         var bar = el('div', 'cs-bar'); box.appendChild(bar);
+        // cancelar (17/11): o botão redondo branco com o X, à esquerda; apaga a gravação e a transcrição e volta ao prontuário
+        if (o.cancel) {
+          var cx = el('button', 'cs-x'); cx.type = 'button'; cx.innerHTML = CSI.x;
+          cx.setAttribute('aria-label', 'Cancelar a transcrição'); cx.setAttribute('data-tip', 'Cancelar a transcrição');
+          cx.addEventListener('click', o.cancel); bar.appendChild(cx); if (window.__navTip) window.__navTip(cx);
+          bar.classList.add('com-x');
+        }
         if (o.msg != null) { var m = el('span', 'cs-msg', o.msg); m.id = 'rcStep'; bar.appendChild(m); }
         else bar.appendChild(el('canvas', 'cs-cv'));
         var t = el('span', 'cs-tm', o.t || ''); t.id = 'rcTime'; bar.appendChild(t);
         if (o.btn) {
           var lab = o.live ? 'Pausar a gravação' : 'Continuar gravando', b = el('button', 'cs-stop'); b.type = 'button';
-          b.innerHTML = o.live ? CSI.stop : CSI.play; b.title = lab + ' (⌘/Ctrl + Shift + Espaço)'; b.setAttribute('aria-label', lab);
-          b.addEventListener('click', o.btn); bar.appendChild(b);
+          b.innerHTML = o.live ? CSI.stop : CSI.play; b.setAttribute('aria-label', lab);
+          b.setAttribute('data-tip', lab); if (rrActive()) b.setAttribute('data-kbd', 'Espaço');   // a dica escura dos outros ícones (17/11); o atalho só vale na gravação real
+          b.addEventListener('click', o.btn); bar.appendChild(b); if (window.__navTip) window.__navTip(b);
+        }
+        // finalizar (17/11): o botão redondo branco com a seta de enviar, ao lado do pausar (saiu a pílula "Finalizar")
+        if (o.fim) {
+          var f = el('button', 'cs-stop cs-env'); f.type = 'button';
+          f.setAttribute('aria-label', 'Finalizar e gerar a evolução'); f.setAttribute('data-tip', 'Finalizar e gerar a evolução'); f.innerHTML = CSI.env;
+          f.addEventListener('click', o.fim); bar.appendChild(f); if (window.__navTip) window.__navTip(f);
         }
         if (o.msg == null) recDraw({ amps: o.amps || [], st: o.live ? 'live' : 'paused' });
       }
@@ -6596,7 +6704,7 @@
         if (!csShow(r.st === 'done')) { $('rcNote').hidden = true; recTxAll(r); return; }
         if (r.pending && !lk && ready) { r.pending = false; recApply(r); }
         if (r.st === 'live' || r.st === 'paused') {
-          csBar({ live: r.st === 'live', t: mm2(recSecs(r)), amps: r.amps, fim: function () { recEnd(r); },
+          csBar({ live: r.st === 'live', t: mm2(recSecs(r)), amps: r.amps, fim: function () { recEnd(r); }, cancel: function () { csCancela(r); },
                   btn: function () { if (r.st === 'live') recPause(r); else recResume(r); recRender(); } });
         } else if (r.st === 'idle') {
           if (!lk) csGo('Iniciar consulta', recStart, recDemo() ? null :
@@ -6678,7 +6786,8 @@
         fillEditor(r.undo); r.applied = false; changed(); recNote(r);
       }
       function recNote(r) {
-        var n = $('rcNote'); n.hidden = !(r && r.st === 'done' && !locked() && ready && !r.notaFechada);
+        // preenchida: sem o aviso (17/11; o ponto laranja no SOAP já avisa); fica só o "não está no texto", com o Preencher
+        var n = $('rcNote'); n.hidden = !(r && r.st === 'done' && !locked() && ready && !r.notaFechada && !r.applied);
         if (n.hidden) return;
         $('rcNoteT').textContent = r.applied ? 'Evolução preenchida pela gravação: revise na aba SOAP.'
                                              : 'A evolução gerada pela gravação não está no texto abaixo.';
@@ -7213,6 +7322,8 @@
         clearTimeout(Q.timer); Q.busy = true;
         qRows().then(function (rows) {
           // o paciente vai na hora do envio: o do trecho ou o da gravação dele; trecho ainda sem paciente espera (não vira 400)
+          rows.forEach(function (x) { if (RR.agone[x.recId]) qDrop(x); });   // gravação cancelada ou apagada: o trecho não sobe
+          rows = rows.filter(function (x) { return !RR.agone[x.recId]; });
           var now = Date.now(), live = rows.filter(function (x) { return !x.dead && !x.part && (x.pid || (rrDe(x) || {}).pid); });
           Q.erro = live.filter(function (x) { return x.falhas; }).length;      // trechos que o servidor já recusou com erro
           var next = live.filter(function (x) { return !x.depois || x.depois <= now; }).sort(function (a, b) { return a.created - b.created; })[0];
@@ -7523,6 +7634,7 @@
         // trecho guardado antes de a chave levar o paciente ('e' + consulta): só se for deste paciente
         var antiga = function (x) { return !!cx.event_id && x.rk === 'e' + cx.event_id && !!x.pid && String(x.pid) === String(my.pid); };
         idbAll().catch(function () { return []; }).then(function (rows) {
+          rows = rows.filter(function (x) { return !RR.agone[x.recId]; });   // cancelada ou apagada nesta aba: não volta
           var ids = rows.filter(function (x) { return x.rk === my.k || orfa(x) || antiga(x); }).map(function (x) { return x.recId; })
                         .filter(function (x, i, a) { return a.indexOf(x) === i; });
           return api('POST', '/prontuario/recordings/state', { patient_id: my.pid, event_id: cx.event_id || null,
@@ -7530,7 +7642,7 @@
                                                                  !cx.note_id }).then(function (res) {
             if (!(res.ok && res.j)) throw new Error('estado ' + res.status);      // sem internet: tenta de novo na próxima vez
             my.loaded = true;
-            var recs = res.j.recordings || [], last = recs[recs.length - 1];
+            var recs = (res.j.recordings || []).filter(function (x) { return !RR.agone[x.rec_id]; }), last = recs[recs.length - 1];
             {
               var mine = rows.filter(function (x) { return x.rk === my.k || orfa(x) || antiga(x) || (last && x.recId === last.rec_id); });
               if (!last && !mine.length) return;
@@ -7679,16 +7791,16 @@
         var sendTxt = pend ? pend + (pend === 1 ? ' trecho esperando envio' : ' trechos esperando envio') : 'tudo enviado';
         if (r.st === 'idle' || r.st === 'nomic') {
           if (r.st === 'nomic') {
-            csGo('Tentar de novo', function () { r.st = 'idle'; rrTest(r); });
+            csGo('Tentar de novo', function () { r.st = 'idle'; rrTest(r); }, r.cs ? { cancel: function () { csCancela(r); } } : null);
             rcAlert('warn', 'micoff', r.err === 'NotFoundError' ? '<b>Nenhum microfone encontrado.</b> Conecte um microfone e toque em Tentar de novo.'
               : '<b>O navegador não deixou usar o microfone.</b> Clique no cadeado ao lado do endereço do site, escolha <b>Permitir</b> em Microfone e toque em Tentar de novo.');
           } else if (!lk) {
             csGo('Iniciar consulta', function () { rrIniciar(r); });
           }
         } else if (r.st === 'live') {
-          csBar({ live: true, t: t, amps: r.amps, fim: fim, btn: function () { rrPause(r); } });
+          csBar({ live: true, t: t, amps: r.amps, fim: fim, cancel: function () { csCancela(r); }, btn: function () { rrPause(r); } });
         } else if (r.st === 'paused' || r.st === 'interrupted') {
-          csBar({ t: t, amps: r.amps, fim: fim, btn: function () { r.warn = ''; if (r.st === 'interrupted') r.consent = true; rrStart(r); } });
+          csBar({ t: t, amps: r.amps, fim: fim, cancel: function () { csCancela(r); }, btn: function () { r.warn = ''; if (r.st === 'interrupted') r.consent = true; rrStart(r); } });
           if (r.st === 'interrupted') {
             var when = r.stoppedAt ? hm(new Date(r.stoppedAt)) : '';
             rcAlert('info', 'info', '<b>A gravação foi interrompida' + (when ? ' às ' + when : '') + '.</b> ' + mmss(r.samples / SR16) + ' já gravados' +
@@ -7722,7 +7834,7 @@
               (r.kept ? ' O que você tinha editado ficou como estava: confira se falta algo da gravação nova.' : '') :
                 'A evolução gerada pela gravação não está no texto.';
             $('rcNoteBtn').textContent = 'Preencher a evolução'; $('rcNoteBtn').hidden = !!r.applied;   // preenchida: só o X para fechar
-            $('rcNote').hidden = !!r.notaFechada;
+            $('rcNote').hidden = !!r.notaFechada || (!!r.applied && !r.kept);   // preenchida sem conflito: sem o aviso (17/11)
           }
         }
         csDot(r);
@@ -8811,9 +8923,10 @@
         }
       }
       function setTab(t) {
+        if (t === 'tx' || t === 'soap') { var r0 = csRec(); if (t === 'soap' && r0) r0.soapVisto = true; csTab(t); return; }
         if (t === 'consultas') { t = 'geral'; ovcSet('cs'); }   // a aba Histórico saiu: as consultas ficam no painel do Resumo
         // a Consulta saiu do controle (está sempre na lateral Transcrição): quem pedia a aba fica na de agora
-        if (t === 'atual') t = (tabs.filter(function (b) { return b.classList.contains('on'); })[0] || { getAttribute: function () { return 'geral'; } }).getAttribute('data-tab');
+        if (t === 'atual') t = (tabs.filter(function (b) { return b.classList.contains('on') && !b.hidden; })[0] || { getAttribute: function () { return 'geral'; } }).getAttribute('data-tab');
         tabs.forEach(function (b) { var on = b.getAttribute('data-tab') === t; b.classList.toggle('on', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
         $('prMain').setAttribute('data-tab', t); navPill();
         [].forEach.call(document.querySelectorAll('.pr-panel'), function (p) { if (p.getAttribute('data-panel') !== 'atual') p.hidden = p.getAttribute('data-panel') !== t; });
@@ -8824,7 +8937,7 @@
       tabs.forEach(function (b) { b.addEventListener('click', function () { setTab(b.getAttribute('data-tab')); }); });
       // a aba escolhida ganha a pílula branca, do tamanho da aba
       function navPill() {
-        var nav = $('prTabs'), b = nav.querySelector('button.on'), pill = nav.querySelector('.pr-nav-pill');
+        var nav = $('prTabs'), b = nav.querySelector('button.on:not([hidden])'), pill = nav.querySelector('.pr-nav-pill');
         if (!b || !nav.clientWidth) { pill.hidden = !b; return; }
         pill.hidden = false; pill.style.left = b.offsetLeft + 'px'; pill.style.width = b.offsetWidth + 'px';
       }
@@ -8884,7 +8997,7 @@
           else if (hasText(n)) badge = el('span', 'pr-badge draft', 'Rascunho');
           else badge = el('span', 'pr-badge', future ? 'Agendada' : 'Sem evolução');
           st.appendChild(badge);
-          var expand = !isCur && hasText(n);
+          var expand = (!isCur || !!(n && n.signed_at)) && hasText(n);   // a aberta, depois de assinada, abre o cartão como as outras
           if (expand) { var cv = el('span', 'pr-tchev'); cv.innerHTML = HI.down; st.appendChild(cv); b.setAttribute('aria-expanded', 'false'); b.title = 'Ver a evolução'; }
           b.appendChild(st);
           b._q = norm([n ? n.content : '', (v && v.title) || '', n ? n.event_title : '', lab ? 'resultado de exames' : ''].concat(n ? (n.addenda || []).map(function (a) { return a.content; }) : []).join(' '));
@@ -8898,6 +9011,7 @@
           return b;
         }
         if (next.length) { box.appendChild(el('div', 'pr-tgroup', 'Próximas')); next.forEach(function (x) { box.appendChild(row(x, true)); }); }
+        setTimeout(abreCur, 0);
         if (past.length) {
           if (next.length) box.appendChild(el('div', 'pr-tgroup', 'Anteriores'));   // o título só separa das Próximas
           past.forEach(function (x, i) { var r = row(x, false); if (i >= 10) { r.hidden = true; r.classList.add('more'); } box.appendChild(r); });
@@ -8906,6 +9020,16 @@
             m.addEventListener('click', function () { showAllCons(); }); box.appendChild(m);
           }
         }
+      }
+      // logo depois de assinar, a consulta assinada fica aberta na lista (que se redesenha quando a agenda responde)
+      var abreAssinada = 0;
+      function abreCur() {
+        if (!abreAssinada || Date.now() - abreAssinada > 8000 || !cur) return;
+        var b = [].filter.call($('prVisits').querySelectorAll('.pr-trow'), function (x) { return x._note === cur; })[0];
+        if (!b) return;
+        if (b.hidden) showAllCons();
+        if (!b.classList.contains('open')) toggleCard(b, true);
+        b.scrollIntoView({ block: 'nearest' });
       }
       function showAllCons() {
         [].forEach.call($('prVisits').querySelectorAll('.pr-trow.more'), function (r) { r.hidden = false; r.classList.remove('more'); });

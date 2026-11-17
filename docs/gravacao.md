@@ -60,11 +60,18 @@ As tabelas de `app/data/` ficam fora do código para o médico revisor conferir 
 
 ## A tela
 
-**Desde 16/11/2026 (pedido do usuário):** a lateral do prontuário voltou a ser o **assistente** (que conversa sobre o
-paciente aberto) e a Transcrição saiu dela — o usuário vai pôr a gravação em outro lugar. A seção `#prTx` (com o cartão
-abaixo) continua na página, escondida: **a gravação fica sem lugar na tela até lá**, e o E2E `tests/e2e/gravacao.mjs`
-falha por isso (procura o gravador). No centro do prontuário há um botão flutuante "Iniciar consulta" (`#prIniciar`, a 24
-da base, só na aba Prontuário) que ainda não faz nada. O texto abaixo descreve a lateral Transcrição de 14/11.
+**Desde 17/11/2026 (pedido do usuário):** a gravação voltou ao **centro do prontuário**. O botão flutuante "Iniciar
+consulta" (`#prIniciar`, ícone SF record.circle, a 24 da base, só na aba Prontuário) começa a gravar e troca o controle de
+cima ("Prontuário | Prescrição") por **"Transcrição | SOAP"** (`#prTabs` [data-tab=tx|soap]; `csModo()` liga a classe
+`#prMain.consulta`). O cartão da antiga aba Consulta (`.pr-panel[data-panel=atual]`) é movido para dentro do `#prMain`, sem a
+moldura cinza e sem o seletor interno. No pé, a barra preta (64 de altura, a 24 do pé, largura do controle de cima) com:
+o **X** branco à esquerda (`.cs-x`, "Cancelar a transcrição": confirma, apaga a gravação no aparelho e no servidor —
+`DELETE /prontuario/recordings/{id}` depois que a fila de envio parar; os trechos da fila e a recuperação ignoram
+`RR.agone` — e volta ao Prontuário), as ondas, o tempo, o pausar redondo de 48 e a seta azul de 60 × 48 (`.cs-env`) que
+finaliza e gera a evolução (saiu a pílula "Finalizar"). Os três têm a dica escura (`.nav-tip`). Pronta, o "Assinar" é a
+pílula preta de 64 a 24 do pé; assinar volta ao Prontuário, na aba Consultas, com a consulta aberta. O aviso "Evolução
+preenchida…" e o "Salvo às…" saíram (as falhas continuam). O E2E `tests/e2e/gravacao.mjs` só tem o cenário novo do X
+(`SO=27`) no desenho de agora; os outros ainda procuram o gravador antigo e precisam ser atualizados.
 
 A gravação fica na **lateral "Transcrição"** do prontuário (`#prTx`, teste de 14/11/2026, Figma Concept 1349:13256): a
 coluna da direita, de 520, com o título e o expandir (que põe a transcrição na largura toda). O controle do meio ficou

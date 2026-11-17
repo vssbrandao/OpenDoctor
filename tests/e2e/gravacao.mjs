@@ -653,6 +653,32 @@ const cenarios = [
     await clica('#prRec .cs-stop[aria-label="Pausar a gravação"]');
     return 'demonstração (roteiro fictício, sem microfone)';
   }],
+  // o "Iniciar consulta" flutuante (17/11): troca o controle por Transcrição | SOAP e grava; o X da barra cancela, apaga a gravação
+  // no servidor e no navegador e volta ao Prontuário; nenhum trecho sobe depois
+  ['o X da barra cancela a transcrição: apaga no servidor e no navegador e volta ao prontuário', async () => {
+    await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9003&ev=evA' });
+    await ate(`(() => { const b = document.getElementById('prIniciar'); return b && b.offsetParent !== null; })()`, 20000, 'o Iniciar consulta flutuante');
+    await ev(`document.getElementById('prIniciar').click()`);
+    await ate(est('gravando'), 10000, 'começar a gravar');
+    const abas = await ev(`[...document.querySelectorAll('#prTabs button')].filter((b) => !b.hidden).map((b) => b.textContent.trim()).join('|')`);
+    if (abas !== 'Transcrição|SOAP') throw new Error('o controle não virou Transcrição | SOAP: ' + abas);
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes).some((g) => g.trechos.length > 0))`, 30000, 'um trecho subir');
+    await sleep(3000);                                            // um trecho a caminho na hora do X
+    const dlg = dialogos;
+    await clica('#prRec .cs-x');
+    if (dialogos !== dlg + 1) throw new Error('o X não pediu confirmação');
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.keys(e.gravacoes).length === 0)`, 40000, 'a gravação sumir do servidor');
+    await ate(`${IDB}.then((l) => l.length === 0)`, 10000, 'os trechos saírem do navegador');
+    await sleep(8000);                                            // nada volta a subir
+    const g = Object.keys((await estado()).gravacoes);
+    if (g.length) throw new Error('a gravação voltou ao servidor depois do X');
+    const tela = await ev(`({ c: document.getElementById('prMain').classList.contains('consulta'),
+      abas: [...document.querySelectorAll('#prTabs button')].filter((b) => !b.hidden).map((b) => b.textContent.trim()).join('|'),
+      ini: getComputedStyle(document.getElementById('prIniciar')).display, mic: window.__mic.tracks.filter((t) => t.readyState === 'live').length })`);
+    if (tela.c || tela.abas !== 'Prontuário|Prescrição' || tela.ini === 'none') throw new Error('não voltou ao prontuário: ' + JSON.stringify(tela));
+    if (tela.mic) throw new Error('o microfone ficou ligado depois do X');
+    return 'apagada no servidor e no navegador; Prontuário | Prescrição e o Iniciar consulta de volta; microfone desligado';
+  }],
 ];
 
 async function main() {
