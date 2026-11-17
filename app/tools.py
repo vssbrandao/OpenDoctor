@@ -214,7 +214,9 @@ def _avisos_dose(t, tfg, k):
                        "160/110 é o limite do grave, NUNCA a meta")
         if _VACINA_TEMA.search(tema):
             out.append("- Vacinas na gestação (PNI/MS, Febrasgo): dTpa a partir de 20 semanas em toda gestação (pode já fazer "
-                       "nesse marco); influenza em qualquer fase; covid-19; hepatite B se não vacinada; vacinas de vírus vivo "
+                       "nesse marco); VSR (vírus sincicial respiratório, protege o bebê contra bronquiolite): dose única a partir de 28 "
+                       "semanas, no SUS desde dez/2025 (PNI/MS; Abrysvo) — não é só no particular nem só de 32 a 36 semanas; "
+                       "influenza em qualquer fase; covid-19; hepatite B se não vacinada; vacinas de vírus vivo "
                        "(tríplice viral, varicela; febre amarela salvo risco alto) contraindicadas")
         if _LIPIDIO_TEMA.search(tema):
             out.append("- Lipídios na gestação: o LDL sobe 25–50% no 2º–3º trimestres (fisiológico) → não interpretar nem tratar "

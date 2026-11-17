@@ -202,6 +202,7 @@ def test_gestacao_alerta_e_dados_pelo_assunto_da_pergunta():
     assert "Alergia registrada: dipirona" in f
     v = tools.clinical_facts("Quais vacinas devo indicar?" + perfil)
     assert "dTpa a partir de 20 semanas" in v and "PA na gestação" not in v
+    assert "VSR" in v and "a partir de 28" in v and "SUS" in v
     assert "Lipídios na gestação" in tools.clinical_facts("Qual estatina?" + perfil)
     assert "Gestante" not in (tools.clinical_facts("mulher, 40 anos, gestação prévia em 2015; PA 150/95") or "")
 
