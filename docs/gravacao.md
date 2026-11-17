@@ -61,7 +61,7 @@ As tabelas de `app/data/` ficam fora do código para o médico revisor conferir 
 ## A tela
 
 **Desde 17/11/2026 (pedido do usuário):** a gravação voltou ao **centro do prontuário**. O botão flutuante "Iniciar
-consulta" (`#prIniciar`, ícone SF record.circle, a 24 da base, só na aba Prontuário) começa a gravar e troca o controle de
+consulta" (`#prIniciar`, o microfone branco, a 24 da base, só na aba Prontuário) começa a gravar e troca o controle de
 cima ("Prontuário | Prescrição") por **"Transcrição | SOAP"** (`#prTabs` [data-tab=tx|soap]; `csModo()` liga a classe
 `#prMain.consulta`). O cartão da antiga aba Consulta (`.pr-panel[data-panel=atual]`) é movido para dentro do `#prMain`, sem a
 moldura cinza e sem o seletor interno. No pé, a barra preta (64 de altura, a 24 do pé, largura do controle de cima) com:

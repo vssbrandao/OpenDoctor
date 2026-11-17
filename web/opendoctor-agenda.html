@@ -82,7 +82,7 @@
     .stage.prontuario .pr-iniciar{display:flex;align-items:center;justify-content:center;gap:8px;position:absolute;left:50%;bottom:24px;z-index:6;
       transform:translateX(-50%);height:64px;padding:24px 42px;white-space:nowrap;border:0;border-radius:999px;background:#000;cursor:pointer;
       font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#fff}
-    .pr-iniciar svg{flex:none;width:20px;height:20px;color:#fff}   /* SF record.circle (Medium) em 20 px, branco (17/11; era o microfone laranja) */
+    .pr-iniciar svg{flex:none;width:11.13px;height:16.06px;color:#fff}   /* o microfone, branco (17/11; era laranja) */
     .center:has(#prMain[data-tab=prescricoes]) .pr-iniciar{display:none}   /* na Prescrição fica a barra de adicionar do pé */
     .stage.prontuario .ag-head,.stage.prontuario .cal,.stage.prontuario .wk{display:none}
     /* coluna do prontuário = coluna do Google Finance (748px); trilha → nome a 8px */
@@ -2669,7 +2669,7 @@
       </div>
       <!-- "Iniciar consulta" flutuando no prontuário, a 24 da base (pedido do usuário, 16/11): por enquanto só o botão; a
            gravação é ligada quando a Transcrição ganhar o lugar novo -->
-      <button class="pr-iniciar" id="prIniciar" type="button"><svg aria-hidden="true" width="15.14" height="15.14" viewBox="0 0 15.14 15.14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.566 15.132C11.741 15.132 15.132 11.741 15.132 7.566C15.132 3.391 11.741 0.000 7.566 0.000C3.391 0.000 0.000 3.391 0.000 7.566C0.000 11.741 3.391 15.132 7.566 15.132ZM7.566 13.638C4.204 13.638 1.487 10.928 1.487 7.566C1.487 4.204 4.204 1.487 7.566 1.487C10.928 1.487 13.645 4.204 13.645 7.566C13.645 10.928 10.928 13.638 7.566 13.638ZM7.559 10.430C9.148 10.430 10.437 9.141 10.437 7.551C10.437 5.969 9.148 4.680 7.559 4.680C5.977 4.680 4.688 5.969 4.688 7.551C4.688 9.141 5.977 10.430 7.559 10.430Z" fill="currentColor"/></svg><span>Iniciar consulta</span></button>
+      <button class="pr-iniciar" id="prIniciar" type="button"><svg aria-hidden="true" width="11.13" height="16.06" viewBox="0 0 11.13 16.06" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.559 10.393C7.046 10.393 8.130 9.287 8.130 7.661L8.130 2.732C8.130 1.113 7.046 0.000 5.559 0.000C4.072 0.000 2.988 1.113 2.988 2.732L2.988 7.661C2.988 9.287 4.072 10.393 5.559 10.393ZM2.197 16.055L8.921 16.055C9.302 16.055 9.617 15.747 9.617 15.374C9.617 14.993 9.302 14.685 8.921 14.685L6.233 14.685L6.233 13.176C9.133 12.905 11.125 10.833 11.125 7.830L11.125 6.379C11.125 5.999 10.818 5.698 10.437 5.698C10.056 5.698 9.741 5.999 9.741 6.379L9.741 7.778C9.741 10.269 8.057 11.917 5.559 11.917C3.062 11.917 1.377 10.269 1.377 7.778L1.377 6.379C1.377 5.999 1.069 5.698 0.688 5.698C0.308 5.698 0.000 5.999 0.000 6.379L0.000 7.830C0.000 10.833 1.992 12.905 4.893 13.176L4.893 14.685L2.197 14.685C1.824 14.685 1.509 14.993 1.509 15.374C1.509 15.747 1.824 16.055 2.197 16.055Z" fill="currentColor"/></svg><span>Iniciar consulta</span></button>
       <div class="pr-view" id="prView">
         <div class="pr">
           <!-- navegação do prontuário (Figma Concept 1067:45507): fica no topo ao rolar; volta à agenda pelo menu lateral -->
