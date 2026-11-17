@@ -198,6 +198,7 @@ def test_gestacao_alerta_e_dados_pelo_assunto_da_pergunta():
               "Últimos sinais: PA 128/82 mmHg.\nÚltimos exames: LDL-c 160 mg/dL; urocultura com E. coli.")
     f = tools.clinical_facts("Qual a meta de pressão arterial?" + perfil)
     assert "ALERTA: Gestante de 20 semanas" in f and "160/110 é o limite do grave, NUNCA a meta" in f
+    assert "SEM hipertensão não há meta de tratamento" in f and "PAD em torno de 85" in f and "NÃO é meta" in f
     assert "Vacinas na gestação" not in f and "Lipídios na gestação" not in f      # o assunto é o da pergunta, não o do perfil
     assert "Alergia registrada: dipirona" in f
     v = tools.clinical_facts("Quais vacinas devo indicar?" + perfil)

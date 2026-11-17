@@ -207,11 +207,14 @@ def _avisos_dose(t, tfg, k):
                        "antibiograma (fosfomicina 3 g dose única, cefalexina ou nitrofurantoína 5–7 dias), e urocultura de "
                        "controle 1–2 semanas depois e periódica até o parto")
         if _PA_TEMA.search(tema):
-            out.append("- PA na gestação: ≥140/90 = hipertensão (nova, a partir de 20 semanas: investigar pré-eclâmpsia — "
-                       "proteinúria/relação proteína-creatinina, plaquetas, creatinina, TGO/TGP e sintomas); ≥160/110 = GRAVE → "
-                       "tratar em até 30–60 min (nifedipino, hidralazina ou labetalol) e avaliar internação. Tratar a partir de "
-                       "140/90 com alvo <140/90 e PAD em torno de 85 (CHAP, CHIPS); remédios: metildopa, nifedipino, labetalol. "
-                       "160/110 é o limite do grave, NUNCA a meta")
+            out.append("- PA na gestação: SEM hipertensão não há meta de tratamento: PA <140/90 é só o normal (não tratar; "
+                       "não falar em 'evitar <120/80', isso vale só para quem usa anti-hipertensivo). ≥140/90 = hipertensão "
+                       "(nova, a partir de 20 semanas: investigar pré-eclâmpsia — proteinúria/relação proteína-creatinina, "
+                       "plaquetas, creatinina, TGO/TGP e sintomas); ≥160/110 = GRAVE → tratar em até 30–60 min (nifedipino, "
+                       "hidralazina ou labetalol) e avaliar internação. COM hipertensão: tratar a partir de 140/90; alvo PAS "
+                       "110–140 e PAD em torno de 85 (CHIPS, CHAP; ISSHP 2021), reduzir a dose se PAD <80; remédios: metildopa, "
+                       "nifedipino, labetalol. A faixa 'PAS 120–160 e PAD 80–110' de textos antigos NÃO é meta (160/110 é o "
+                       "limite do grave, NUNCA a meta): não citar como meta")
         if _VACINA_TEMA.search(tema):
             out.append("- Vacinas na gestação (PNI/MS, Febrasgo): dTpa a partir de 20 semanas em toda gestação (pode já fazer "
                        "nesse marco); VSR (vírus sincicial respiratório, protege o bebê contra bronquiolite): dose única a partir de 28 "
