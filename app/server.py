@@ -552,6 +552,12 @@ def _too_many():
                         status_code=429)
 
 
+# o paciente escolhido no Novo chat (o perfil sem nome): toda resposta da conversa é dirigida a ele (pedido do usuário,
+# 16/11) — a regra 2h do prompt diz como; o bloco abre com o mesmo título que ela cita
+PACIENTE_DA_CONVERSA = ("PACIENTE DESTA CONVERSA (escolhido pelo médico; sem identificação). Toda a resposta é para este "
+                        "paciente (regra 2h):\n")
+
+
 def _ask_stream(query, k, history=None, contexto=None, anexos=None, so_anexo=False):
     """contexto: o perfil sem nome do paciente escolhido no New chat (vai ao modelo junto dos trechos; nunca à busca nem
     ao PubMed — o planejamento e os termos saem só da pergunta, já mascarada).
@@ -672,8 +678,7 @@ def _ask_resposta(query, k, history, contexto, imagens, pdfs, hits, recommended,
     extra = "\n\n".join(x for x in (fatos, extra) if x) or None
     calculo = extra                                   # só o cálculo do sistema vale como "próprio" nas citações (abaixo)
     if contexto:
-        extra = "\n\n".join(x for x in ("Paciente escolhido pelo médico para esta conversa (sem identificação; leve em conta "
-                                        "ao responder):\n" + contexto, extra) if x)
+        extra = "\n\n".join(x for x in (PACIENTE_DA_CONVERSA + contexto, extra) if x)
     texto_pdfs = "\n\n".join(pdfs)
     if imagens or pdfs:
         partes = ["Anexos do médico nesta pergunta (o texto dos PDFs foi extraído e está sem identificação):"]

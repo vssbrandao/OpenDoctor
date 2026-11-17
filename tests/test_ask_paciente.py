@@ -58,7 +58,10 @@ def test_com_paciente_o_modelo_recebe_o_perfil_sem_nome(cli):
     assert r.status_code == 200 and "Maria" not in r.text
     msgs = json.dumps(cli.vistos["modelo"][0], ensure_ascii=False)
     assert "Maria" not in msgs and "Silva" not in msgs                       # nem na pergunta nem no histórico
-    assert "Paciente escolhido pelo médico" in msgs and "mulher" in msgs and "Metformina 850 mg 2x/dia" in msgs
+    assert "PACIENTE DESTA CONVERSA" in msgs and "mulher" in msgs and "Metformina 850 mg 2x/dia" in msgs
+    # a resposta é dirigida ao paciente: a regra 2h do prompt (system) e o bloco com o título que ela cita (user)
+    sistema, usuario = cli.vistos["modelo"][0][0]["content"], cli.vistos["modelo"][0][-1]["content"]
+    assert "2h. PACIENTE DESTA CONVERSA" in sistema and usuario.count("PACIENTE DESTA CONVERSA") == 1
     assert "HbA1c 6,9 %" in msgs and "Já usou (receitas anteriores): Empagliflozina." in msgs
     # a busca e o planejamento (que gera os termos do PubMed) só veem a pergunta mascarada, sem o perfil
     q, h = cli.vistos["plan"][0]

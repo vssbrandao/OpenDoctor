@@ -2258,22 +2258,22 @@
        alto e o "Convidar" saíram): sem fundo, o ícone cinza e o texto 14, a 8 do campo e alinhado ao + (acompanha o campo
        quando ele cresce). Escolhido, mostra o nome do paciente. Contas sem paciente na IA não o veem */
     .nc-all{display:none}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all{display:flex;align-items:center;gap:8px;position:static;order:2;margin-right:8px;
+    .stage.expanded .right .nc-all{display:flex;align-items:center;gap:8px;position:static;order:2;margin-right:4px;
       flex:none;align-self:center;height:48px;box-sizing:border-box;padding:0 20px 0 18px;border:0;border-radius:999px;
       background:none;cursor:pointer;font-family:var(--disp);font-weight:400;font-size:16px;line-height:24px;color:#868686}   /* 16 como o "Ask medical questions"; parado, no cinza do ícone */
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all:hover{background:rgba(10,18,23,.06)}
+    .stage.expanded .right .nc-all:hover{background:var(--active)}   /* o mouse em cima: a cor do selecionado do menu (#F7F8F8) */
     /* com um paciente escolhido: o nome e o ícone na cor do "Ask medical questions" (--ink2) */
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all.tem,.nc-all.tem .nc-all-ico{color:var(--ink2)}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all.tem{background:rgba(10,18,23,.06)}   /* escolhido: o fundo do mouse em cima fica */
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-input{order:1}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .bi-send{order:3}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .big-input.multi .bi-input{order:0}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .big-input.multi .nc-all{margin-left:auto}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .big-input.multi .bi-send{margin-left:0}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all.sem{display:none}
+    .stage.expanded .right .nc-all.tem,.nc-all.tem .nc-all-ico{color:var(--ink2)}
+    .stage.expanded .right .nc-all.tem{background:#FBFBFB}   /* escolhido: o fundo do mouse em cima fica */
+    .stage.expanded .right .bi-input{order:1}
+    .stage.expanded .right .bi-send{order:3}
+    .stage.expanded .right .big-input.multi .bi-input{order:0}
+    .stage.expanded .right .big-input.multi .nc-all{margin-left:auto}
+    .stage.expanded .right .big-input.multi .bi-send{margin-left:0}
+    .stage.expanded .right .nc-all.sem{display:none}
     .nc-all-ico{width:15px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--ink2)}   /* a cor do ícone escolhido também parado (pedido do usuário, 16/11) */
     .nc-all-ico svg{width:15px;height:16px}
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all:not(.tem){width:60px;padding:0;justify-content:center;background:rgba(10,18,23,.06)}   /* só o ícone: do tamanho da seta (60 x 48), com o fundo do mouse em cima sempre */   /* a altura da seta azul (48) e o ícone na proporção do texto de 16 */
+    .stage.expanded .right .nc-all:not(.tem){width:60px;padding:0;justify-content:center}   /* só o ícone: do tamanho da seta (60 x 48); sem paciente, o fundo só com o mouse em cima */   /* só o ícone: do tamanho da seta (60 x 48), com o fundo do mouse em cima sempre */   /* a altura da seta azul (48) e o ícone na proporção do texto de 16 */
     .nc-all-ico svg path{fill:currentColor}   /* o ícone de Pacientes do menu, no tamanho e no cinza do Create da Sana (medidos) */
     .nc-all-ico svg{display:block}
     .nc-all-chev{display:none}
@@ -2284,7 +2284,7 @@
     /* a lista como a de "Sources" da Sana (medida no Safari): 4 abaixo do botão e alinhada a ele, 298 de largura, 7 de
        respiro, cantos 22, borda e sombra leves; a busca em linha com a lupa, a linha, o título "Pacientes" e os nomes com o
        ícone de Pacientes do menu; o "Todos" no pé, depois de outra linha. Itens de 38, ícone a 15 e texto a 43, 15 px */
-    .nc-menu{position:absolute;right:76px;max-height:360px;top:calc(100% + 6px);z-index:30;width:300px;box-sizing:border-box;padding:7px;
+    .nc-menu{position:absolute;right:72px;max-height:360px;top:calc(100% + 6px);z-index:30;width:300px;box-sizing:border-box;padding:7px;
       display:flex;flex-direction:column;gap:0;background:#fff;border:1px solid rgba(10,18,23,.08);border-radius:22px;
       box-shadow:0 6px 20px rgba(0,0,0,.06);overflow-y:auto}
     .nc-busca-l{display:flex;align-items:center;gap:13px;height:40px;flex:none;padding:0 14px 0 15px;border-radius:12px;cursor:text}
@@ -2294,6 +2294,8 @@
     .nc-op-ico svg[viewBox="0 0 13 14"]{width:13px;height:14px}   /* o de Pacientes do menu, no tamanho dele */
 
     .nc-menu[hidden]{display:none}
+    /* com a conversa o campo fica embaixo: a lista abre para cima */
+    .stage.expanded .right:has(> #rpMsgs.on) .nc-menu{top:auto;bottom:calc(100% + 6px)}
     .nc-busca{flex:1;min-width:0;height:40px;box-sizing:border-box;margin:0;padding:0;border:0;outline:0;background:none;
       font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#1F2023}
     .nc-busca::placeholder{color:#1F2023}
@@ -2306,7 +2308,7 @@
     .nc-op .nc-ok{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;color:#717173}
     .nc-vazio{padding:9px 15px;font-family:var(--disp);font-size:15px;line-height:20px;color:#6B7173}
     /* o botão aberto, como o Sources da Sana aberto: o fundo cinza */
-    .stage.expanded .right:has(> #rpMsgs:not(.on)) .nc-all[aria-expanded=true]{background:rgba(10,18,23,.06)}
+    .stage.expanded .right .nc-all[aria-expanded=true]{background:#FBFBFB}
     .nc-item{display:flex;align-items:center;gap:16px;padding:0 10px 0 24px;border:0;background:none;cursor:pointer;
       text-align:left;font-family:var(--disp);font-weight:400;font-size:14px;line-height:1.4;color:#1F1F1F}
     .nc-ico{display:flex;align-items:center;justify-content:center;flex:none;height:20px}
@@ -10987,7 +10989,7 @@
       }
       function poe(p) {
         pac = p ? { id: p.id, name: p.name } : null;
-        txt.textContent = pac ? pac.name : ''; txt.hidden = !pac;   // sem paciente: só o ícone (o aria-label diz "Paciente")
+        txt.textContent = pac ? String(pac.name).trim().split(/\s+/)[0] : ''; txt.hidden = !pac;   // na pílula só o primeiro nome (o inteiro fica na lista e no title); sem paciente, só o ícone
         btn.setAttribute('aria-label', pac ? 'Paciente: ' + pac.name : 'Paciente'); btn.classList.toggle('tem', !!pac);   // escolhido: nome e ícone na cor do "Ask"
         btn.title = pac ? pac.name : '';
       }
