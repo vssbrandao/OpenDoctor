@@ -181,6 +181,13 @@ def test_varfarina_icfer_e_itu_no_homem():
 
 def test_icfer_sem_aterosclerose_nao_inicia_estatina_so_pela_ic():
     f = tools.clinical_facts("homem, 76 anos; insuficiência cardíaca com fração de ejeção reduzida (FE 30%)")
-    assert "não iniciar estatina só pela IC" in f
+    assert "a IC sozinha não indica estatina" in f
     g = tools.clinical_facts("insuficiência cardíaca com fração de ejeção reduzida (FE 30%); infarto em 2019")
-    assert "não iniciar estatina só pela IC" not in g
+    assert "a IC sozinha não indica estatina" not in g
+
+
+def test_drc_com_50_anos_ou_mais_indica_estatina_pela_kdigo():
+    f = tools.clinical_facts("homem, 76 anos; TFG estimada 48 mL/min/1,73 m²")
+    assert "estatina (ou estatina + ezetimiba) INDICADA pela DRC, independentemente do LDL" in f
+    assert "INDICADA pela DRC" not in (tools.clinical_facts("mulher, 45 anos; TFG estimada 48 mL/min") or "")
+    assert "não INICIAR estatina" in tools.clinical_facts("homem, 70 anos; hemodiálise; TFG estimada 8 mL/min")

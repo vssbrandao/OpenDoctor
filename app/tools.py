@@ -152,6 +152,14 @@ def _avisos_dose(t, tfg, k):
                    "\"tríade\" de lesão renal aguda → evitar; se inevitável, o menor tempo e creatinina/K em poucos dias")
     if tfg is not None and tfg < 30:
         out.append(f"- TFG {_br(tfg, 0)} (<30): AINE sistêmico contraindicado")
+    # DRC e estatina (KDIGO Lipídios 2013, 1A): ≥50 anos com TFG <60 sem diálise → estatina indicada, qualquer LDL
+    if tfg is not None and tfg < 60 and idade and idade >= 50:
+        if re.search(r"di[áa]lise", t, re.I):
+            out.append("- Em diálise: não INICIAR estatina (KDIGO Lipídios); se já usava ao entrar em diálise, pode manter")
+        else:
+            out.append(f"- {idade} anos com TFG {_br(tfg, 0)} (<60, sem diálise): estatina (ou estatina + ezetimiba) INDICADA pela "
+                       "DRC, independentemente do LDL (KDIGO Lipídios 2013) — o lipidograma serve de base e para a adesão, não "
+                       "para decidir se trata")
     # dados que valem quando o assunto é aquele (não são ALERTA: não entram em toda resposta)
     if _primeira_em_uso(_VARFARINA_RE, t):
         out.append("- Em uso de varfarina: AINE contraindicado (sangramento); paracetamol regular >2 g/dia por vários dias sobe o "
@@ -162,8 +170,8 @@ def _avisos_dose(t, tfg, k):
                    "tempo e vigiar peso/congestão), glitazona e diltiazem/verapamil (pioram a IC) — ESC/SBC IC")
         if not _ATEROSCLEROSE_RE.search(t):
             out.append("- IC com FE reduzida sem doença aterosclerótica no cadastro: estatina não reduz desfechos na IC (CORONA, "
-                       "GISSI-HF) → não iniciar estatina só pela IC; a indicação vem do risco aterosclerótico, com lipidograma "
-                       "antes (peça); se já usa, pode manter")
+                       "GISSI-HF) → a IC sozinha não indica estatina; a indicação vem de outra condição (DRC — veja a linha da "
+                       "KDIGO, se houver —, diabetes, risco aterosclerótico), com lipidograma antes; se já usa, pode manter")
     if _HOMEM_RE.search(t) and _ITU_RE.search(t):
         out.append("- ITU em homem é sempre complicada: tratar por 7 dias (não os esquemas de 3–5 dias da cistite da mulher; "
                    "fosfomicina em dose única não serve); urocultura antes; pensar em prostatite se houver febre ou sintomas "
