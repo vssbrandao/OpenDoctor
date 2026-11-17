@@ -70,8 +70,10 @@ o **X** branco à esquerda (`.cs-x`, "Cancelar a transcrição": confirma, apaga
 `RR.agone` — e volta ao Prontuário), as ondas, o tempo, o pausar redondo de 48 e a seta azul de 60 × 48 (`.cs-env`) que
 finaliza e gera a evolução (saiu a pílula "Finalizar"). Os três têm a dica escura (`.nav-tip`). Pronta, o "Assinar" é a
 pílula preta de 64 a 24 do pé; assinar volta ao Prontuário, na aba Consultas, com a consulta aberta. O aviso "Evolução
-preenchida…" e o "Salvo às…" saíram (as falhas continuam). O E2E `tests/e2e/gravacao.mjs` só tem o cenário novo do X
-(`SO=27`) no desenho de agora; os outros ainda procuram o gravador antigo e precisam ser atualizados.
+preenchida…" e o "Salvo às…" saíram (as falhas continuam). O E2E `tests/e2e/gravacao.mjs` (27 cenários) está no desenho de
+agora: começa pelo `#prIniciar` e finaliza pela seta (`.cs-env`). Um clique no "Iniciar consulta" antes de o cartão estar
+pronto (prontuário carregando, troca de paciente) fica guardado (`csQuer`) e grava quando o botão da consulta aberta aparecer;
+cada botão do cartão sabe de qual consulta é (`_ctx`), para nunca gravar na consulta anterior.
 
 A gravação fica na **lateral "Transcrição"** do prontuário (`#prTx`, teste de 14/11/2026, Figma Concept 1349:13256): a
 coluna da direita, de 520, com o título e o expandir (que põe a transcrição na largura toda). O controle do meio ficou

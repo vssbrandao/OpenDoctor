@@ -36,7 +36,9 @@ async function ate(expr, ms, oque) {
   throw new Error('esperou demais: ' + oque);
 }
 const srv = async (p) => (await fetch(BASE + p)).json();
-// A tela é o cartão "Consulta" (Figma): no pé (#prRec), "Iniciar consulta" (.cs-go) ou, gravando, "Finalizar" (.cs-fim) acima da
+// A tela (17/11): o "Iniciar consulta" flutua no prontuário (#prIniciar); ele clica o .cs-go do cartão, que fica no meio
+// com o controle de cima em Transcrição | SOAP. Gravando, a barra preta (.cs-bar) tem o X (.cs-x), o pausar (.cs-stop) e a
+// seta que finaliza (.cs-env). Antes (cartão "Consulta"): no pé (#prRec), "Iniciar consulta" (.cs-go) ou, gravando, "Finalizar" (.cs-fim) acima da
 // barra preta (.cs-bar) com o botão redondo .cs-stop (aria-label "Pausar a gravação" / "Continuar gravando"); enviando e gerando,
 // .cs-msg na barra; pronta, o player (#csPlay); o "Assinar" da evolução flutua (#csFlut .cs-fim). Não há marca de autorização:
 // "Iniciar consulta" grava direto.
@@ -63,7 +65,10 @@ async function clica(sel, txt, opcional) {                // botão visível e a
   return ok;
 }
 const est = (s) => `${UI}.st === ${JSON.stringify(s)}`;      // situação do cartão: iniciar, gravando, pausada, interrompida, enviando, gerando, pronta
-const PE = `[...document.querySelectorAll('#prRec .cs-go, #prRec .cs-bar')].some((b) => b.offsetParent !== null)`;   // o pé do cartão na tela
+// o gravador na tela: o Iniciar consulta flutuante ou, com a consulta iniciada, o pé do cartão
+const PE = `(() => { const v = (b) => !!b && b.offsetParent !== null; return v(document.getElementById('prIniciar')) ||
+  [...document.querySelectorAll('#prRec .cs-go, #prRec .cs-bar')].some(v); })()`;
+const INICIAR = `(() => { const b = document.getElementById('prIniciar'); return !!b && b.offsetParent !== null; })()`;
 // a evolução é só em SOAP: o texto da médica vai nos campos S, O, A e P (o antigo #prNote, texto livre, saiu da tela)
 const escreve = (f, txt, soma) => ev(`(() => { const t = document.querySelector('#prSoap textarea[data-f=${f}]'); t.value = ${soma ? 't.value + ' : ''}${JSON.stringify(txt)};
   t.dispatchEvent(new Event('input', { bubbles: true })); return t.value; })()`);
@@ -76,12 +81,12 @@ async function abre(url) {
 }
 async function grava(url, segundos) {
   if (url) await abre(url);
-  await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && b.textContent.includes('Iniciar consulta'))`, 10000, 'Iniciar consulta');
-  await clica('#prRec .cs-go', 'Iniciar consulta');                               // grava direto, sem marcar autorização
+  await ate(INICIAR, 10000, 'Iniciar consulta');
+  await clica('#prIniciar');                                                      // grava direto, sem marcar autorização
   await ate(est('gravando'), 10000, 'começar a gravar');
   await sleep(segundos * 1000);
 }
-const fimGravacao = () => clica('#prRec.bar .cs-fim', 'Finalizar');   // gravando: o Finalizar acima da barra encerra e gera
+const fimGravacao = () => clica('#prRec .cs-env');   // gravando: a seta da barra encerra e gera
 const finalizaEvo = () => clica('#csFlut .cs-fim', 'Assinar');           // pronta: o Assinar que flutua no pé assina a evolução
 async function encerra() {
   await fimGravacao();
@@ -221,20 +226,19 @@ const cenarios = [
     if (!g.length || !g[0].trechos.length) throw new Error('o trecho até a saída não foi guardado');
     return `pausou; ${g[0].trechos[0].dur.toFixed(1)} s guardados`;
   }],
-  ['a gravação fica à vista na lateral Transcrição em qualquer aba do prontuário (sem o aviso "Gravando")', async () => {
-    // teste do Figma Concept 1349:13256: a antiga aba Consulta está sempre na lateral; o controle tem Prontuário e Prescrição
+  ['gravando, o controle de cima é Transcrição | SOAP e a barra fica à vista nas duas abas (sem o aviso "Gravando")', async () => {
     await grava('/_preview/pr?pid=9003&ev=evA', 3);
-    for (const aba of ['geral', 'prescricoes']) {
+    for (const aba of ['soap', 'tx']) {
       await ev(`document.querySelector('#prTabs [data-tab=${aba}]').click()`); await sleep(600);
       const r = await ev(`(() => ({ pill: (document.getElementById('rcPill') && !document.getElementById('rcPill').hidden) ? 'aviso' : '',
-        lateral: !!document.getElementById('prTx').getClientRects().length && document.getElementById('prTx').contains(document.getElementById('prRec')),
         barra: !!document.querySelector('#prRec button[aria-label^="Pausar"]') && !!document.querySelector('#prRec button[aria-label^="Pausar"]').getClientRects().length,
-        abas: [...document.querySelectorAll('#prTabs [data-tab]')].map((b) => b.dataset.tab).join() }))()`);
-      if (r.pill || !r.lateral || !r.barra || r.abas !== 'geral,prescricoes') throw new Error(`aba ${aba}: ` + JSON.stringify(r));
+        painel: !document.getElementById('${aba === 'tx' ? 'csTx' : 'csSoap'}').hidden,
+        abas: [...document.querySelectorAll('#prTabs [data-tab]')].filter((b) => !b.hidden).map((b) => b.dataset.tab).join() }))()`);
+      if (r.pill || !r.barra || !r.painel || r.abas !== 'tx,soap') throw new Error(`aba ${aba}: ` + JSON.stringify(r));
     }
     if (process.env.FOTO) { const f = await send('Page.captureScreenshot', { format: 'png' }); (await import('node:fs')).writeFileSync(process.env.FOTO, Buffer.from(f.data, 'base64')); }
     await clica('#prRec button[aria-label^="Pausar"]');
-    return 'Prontuário e Prescrição com a gravação na lateral, sem o aviso';
+    return 'Transcrição e SOAP com a barra no pé, sem o aviso';
   }],
   ['consulta avulsa (sem agenda): a gravação volta ao reabrir', async () => {
     await grava('/_preview/pr?pid=9003', 20);
@@ -276,7 +280,7 @@ const cenarios = [
     await clica('#prRec button[aria-label^="Pausar"]'); await sleep(1500);
     await ev(`window.__foneDesligado = true`);                                    // AirPods de volta no estojo
     await ev(`window.__openProntuario({ patient_id: 9004, patient: 'x', from: 'pacientes', event_id: 'evB', title: 'Retorno' })`);
-    await ate(`${PE} && [...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null)`, 20000, 'gravador da consulta 2');
+    await ate(INICIAR, 20000, 'gravador da consulta 2');
     await grava('', 2);                                                            // mesma página: o fone escolhido continua lembrado
     const s = await ev(UI);
     if (s.st !== 'gravando') throw new Error('não gravou: ' + JSON.stringify(s));
@@ -300,19 +304,18 @@ const cenarios = [
     await ate(est('interrompida'), 15000, 'achar a gravação pela evolução dela');
     return 'ficou na evolução dela e só aparece nela';
   }],
-  ['o aviso da IA não tem Desfazer e fecha no X, sem mexer no texto da médica', async () => {
+  // 17/11: a evolução preenchida não mostra mais aviso (o ponto laranja no SOAP avisa); o texto da médica fica antes
+  ['a gravação entra depois do texto da médica, sem o aviso "Evolução preenchida"', async () => {
     await abre('/_preview/pr?pid=9003&ev=evD');
     await escreve('s', 'Texto da médica antes.');
     await grava('', 18); await encerra();
     const gerado = await soap();
-    if (!gerado.s.startsWith('Texto da médica antes.') || !/Refere boa adesão/.test(gerado.s)) throw new Error('a gravação não entrou depois do texto da médica: ' + JSON.stringify(gerado.s));
-    const aviso = await ev(`(() => { const n = document.getElementById('rcNote'), b = document.getElementById('rcNoteBtn');
-      return { visivel: !n.hidden, texto: document.getElementById('rcNoteT').textContent, desfazer: !b.hidden && b.offsetParent !== null }; })()`);
-    if (!aviso.visivel || !/revise na aba SOAP/.test(aviso.texto) || aviso.desfazer) throw new Error('aviso errado: ' + JSON.stringify(aviso));
-    await clica('#rcNoteX'); await sleep(400);
-    if (!(await ev(`document.getElementById('rcNote').hidden`))) throw new Error('o X não fechou o aviso');
-    if (JSON.stringify(await soap()) !== JSON.stringify(gerado)) throw new Error('fechar o aviso mexeu no texto');
-    return 'aviso sem Desfazer; o X fecha e o texto fica como estava';
+    // o texto gerado pelo modelo simulado muda com o número de trechos: basta que venha depois do da médica
+    if (!gerado.s.startsWith('Texto da médica antes.') || gerado.s.length < 'Texto da médica antes.'.length + 40) throw new Error('a gravação não entrou depois do texto da médica: ' + JSON.stringify(gerado.s));
+    if (!(await ev(`document.getElementById('rcNote').hidden`))) throw new Error('o aviso "Evolução preenchida" apareceu');
+    const ponto = await ev(`document.querySelector('#prTabs [data-tab=soap]').classList.contains('dot')`);
+    if (!ponto) throw new Error('sem o ponto laranja no SOAP');
+    return 'gravação depois do texto da médica; sem aviso, com o ponto no SOAP';
   }],
   ['destaques do player: cada parte do SOAP no trecho de onde veio, com o card, as setas e o Ouvir', async () => {
     await grava('/_preview/pr?pid=9003&ev=evH', 36); await encerra();
@@ -387,8 +390,7 @@ const cenarios = [
     await clica('#prRec button[aria-label^="Pausar"]'); await sleep(2500);
     // o paciente do evento foi corrigido (9003 → 9004) e o prontuário reaberto sem recarregar a página
     await ev(`window.__openProntuario({ patient_id: 9004, patient: 'x', from: 'pacientes', event_id: 'evP', title: 'Retorno' })`);
-    await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && b.textContent.includes('Iniciar consulta'))`,
-      15000, 'gravação nova do paciente novo (e não a pausada do anterior)');
+    await ate(INICIAR, 15000, 'gravação nova do paciente novo (e não a pausada do anterior)');
     const a = (await ev(UI)).alerta;
     if (!/gravação de outro paciente/.test(a)) throw new Error('sem aviso da gravação do paciente anterior: ' + a);
     await grava('', 20); await encerra();
@@ -503,7 +505,7 @@ const cenarios = [
         || !/Fora da faixa de referência: .+\. Faça uma avaliação integrada do caso: /.test(aq.v) || /^Por que|caiu \d/.test(aq.v) || !/intervalo de retorno\.$/.test(aq.v) || aq.v.length > 2000 || !aq.nm || nomeNa(aq.v, aq.nm))
       throw new Error('a pergunta geral ao assistente: ' + JSON.stringify({ nm: aq.nm, n: aq.v.length, v: aq.v.slice(0, 400) }));
     const r = await ev(`(() => { const g = document.querySelector('.pr-panel[data-panel=geral]');
-      return { abas: [...document.querySelectorAll('#prTabs [data-tab]')].map((b) => b.dataset.tab).join(), painelAnalise: !!document.querySelector('.pr-panel[data-panel=analise]'),
+      return { abas: [...document.querySelectorAll('#prTabs [data-tab]')].filter((b) => !b.hidden).map((b) => b.dataset.tab).join(), painelAnalise: !!document.querySelector('.pr-panel[data-panel=analise]'),
                dentro: ['ovTop', 'gaTable', 'csSinais'].every((i) => g.contains(document.getElementById(i))) && !document.getElementById('gaFuSec'), vazioRepetido: !!document.getElementById('gaEmpty'),
                titulo: !!document.querySelector('#ovcP-ana #ovAnaSec #ovTop') && !document.querySelector('#ovAnaSec > .ov-h') ? 'Análise' : 'fora da aba',
                // saíram do Resumo os cards de sinais vitais e de exames (as Evoluções recentes e os laudos voltam como abas do painel)
@@ -551,10 +553,10 @@ const cenarios = [
     if (['sum', 'ana', 'evo'].some((t) => esp[t][0] !== 40 || esp[t][1] !== 40) || esp.cartao !== 40) throw new Error('os espaços das abas (título, linha): ' + JSON.stringify(esp));
     // os 3 botões do topo: da largura das abas do painel, os 3 iguais e o texto no meio; a pílula na aba escolhida
     const nav = await ev(`(() => { const n = document.getElementById('prTabs'), on = n.querySelector('button.on').getBoundingClientRect(), pl = n.querySelector('.pr-nav-pill').getBoundingClientRect();
-      return { pads: [...n.querySelectorAll('button')].map((b) => { const r = document.createRange(); r.selectNodeContents(b); const t = r.getBoundingClientRect(), x = b.getBoundingClientRect(); return [Math.round(t.left - x.left), Math.round(x.right - t.right)]; }),
+      return { pads: [...n.querySelectorAll('button')].filter((b) => !b.hidden).map((b) => { const r = document.createRange(); r.selectNodeContents(b); const t = r.getBoundingClientRect(), x = b.getBoundingClientRect(); return [Math.round(t.left - x.left), Math.round(x.right - t.right)]; }),
         pilula: Math.abs(pl.left - on.left) < 1 && Math.abs(pl.width - on.width) < 1, cabe: n.getBoundingClientRect().width <= n.parentElement.getBoundingClientRect().width + 0.5,
         larg: Math.round(n.getBoundingClientRect().width - document.querySelector('#ovComp .ovc-tabw').getBoundingClientRect().width),
-        iguais: new Set([...n.querySelectorAll('button')].map((b) => Math.round(b.getBoundingClientRect().width))).size }; })()`);
+        iguais: new Set([...n.querySelectorAll('button')].filter((b) => !b.hidden).map((b) => Math.round(b.getBoundingClientRect().width))).size }; })()`);
     if (!nav.pilula || !nav.cabe || Math.abs(nav.larg) > 1 || nav.iguais !== 1 || nav.pads.some(([l, r]) => l < 6 || Math.abs(l - r) > 1)) throw new Error('os botões do topo: ' + JSON.stringify(nav));
     const topo1 = await ev(`Math.round(parseFloat(getComputedStyle(document.querySelector('#ovcSumGrid .ovc-st')).paddingTop))`);
     // a linha embaixo dos pontos, 40 px depois das colunas, e Diagnósticos 40 px abaixo dela
@@ -644,10 +646,10 @@ const cenarios = [
   }],
   ['a paciente de exemplo continua com a demonstração', async () => {
     await send('Page.navigate', { url: BASE + '/_preview/pr?pid=9001&ev=evnext' });
-    await ate(`[...document.querySelectorAll('#prRec .cs-go')].some((b) => b.offsetParent !== null && !b.disabled)`, 20000, 'gravador');
+    await ate(INICIAR, 20000, 'gravador');
     await sleep(1500);                                                              // (a gravação real, se fosse ligar, já teria aparecido)
     if (await ev(`!!document.querySelector('#prRec .cs-nota')`)) throw new Error('não está na demonstração');
-    await clica('#prRec .cs-go', 'Iniciar consulta');
+    await clica('#prIniciar');
     await ate(`/dona Maria/.test(document.getElementById('rcTx').textContent)`, 15000, 'o roteiro da demonstração');
     if (await ev(`window.__mic.tracks.length`)) throw new Error('a demonstração ligou o microfone');
     await clica('#prRec .cs-stop[aria-label="Pausar a gravação"]');

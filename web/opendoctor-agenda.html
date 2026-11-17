@@ -6368,7 +6368,14 @@
       // a aba SOAP ganha um ponto quando a evolução gerada pela gravação fica pronta, até ser aberta
       function csDot(r) { $('csSeg').children[1].classList.toggle('dot', !!r && !!r.gerou && !r.soapVisto && csAba !== 'soap'); csModo(); }
       // a consulta iniciada (o botão de baixo, ou a gravação já começada): o controle de cima vira Transcrição | SOAP
+      var csQuer = null;                                   // "Iniciar consulta" clicado antes de o cartão estar pronto: grava quando ficar
       function csModo() {
+        if (csQuer) {
+          var b0 = csQuer === ctx && $('prRec').querySelector('.cs-go.cs-iniciar');
+          if (b0 && b0._ctx !== ctx) b0 = null;              // o botão ainda é da consulta anterior: espera o desta
+          if (csQuer !== ctx || (b0 && b0.disabled)) csQuer = null;
+          else if (b0) { csQuer = null; var r0 = csRec(); if (r0) r0.cs = true; b0.click(); return; }
+        }
         var r = ctx && ready ? csRec() : null, on = !!r && !locked() && (r.cs || r.st !== 'idle'), main = $('prMain');   // assinada: volta ao prontuário
         main.classList.toggle('consulta', on); main.classList.toggle('assinada', !!ctx && ready && locked());
         [].forEach.call($('prTabs').querySelectorAll('button[data-tab]'), function (b) {
@@ -6412,10 +6419,11 @@
       // o cartão da consulta fica no meio do prontuário (a lateral Transcrição saiu)
       $('prMain').appendChild(document.querySelector('.pr-panel[data-panel=atual]'));
       $('prIniciar').addEventListener('click', function () {
-        var r = ready ? csRec() : null; if (!r) return;
-        r.cs = true; csTab('tx');
+        var r = ctx ? csRec() : null; if (r) r.cs = true;   // com o prontuário ainda carregando, o botão do cartão já sabe o que fazer
+        csTab('tx');
         var b = $('prRec').querySelector('.cs-go.cs-iniciar');
-        if (b && !b.disabled) b.click(); else csModo();
+        if (b && b._ctx !== ctx) b = null;                   // trocou de consulta e o cartão ainda não foi redesenhado
+        if (b && !b.disabled) b.click(); else { if (b == null && ctx) csQuer = ctx; csModo(); }
       });
       // o cartão aparece sempre na consulta aberta. Com a evolução finalizada, a aba SOAP mostra a assinada e o pé some;
       // devolve se ainda há gravação a desenhar (aberta, ou finalizada depois de gravada)
@@ -6439,7 +6447,7 @@
         if (o.nota) box.appendChild(el('div', 'cs-nota', o.nota));
         var ini = label === 'Iniciar consulta';             // na lateral Transcrição: a pílula laranja com o microfone (Figma)
         var b = el('button', 'cs-go' + (ini ? ' cs-iniciar' : '')); b.type = 'button'; b.innerHTML = ini ? CSI_MIC : CSI.dots; b.appendChild(el('span', null, label));
-        b.disabled = !!o.off; b.addEventListener('click', function () { f(b); });
+        b.disabled = !!o.off; b._ctx = ctx; b.addEventListener('click', function () { f(b); });   // _ctx: de qual consulta é o botão
         if (o.cancel) {                                    // sem microfone na consulta iniciada: o X volta ao prontuário
           var row = el('div', 'cs-gorow'), cx = el('button', 'cs-x'); cx.type = 'button'; cx.innerHTML = CSI.x;
           cx.setAttribute('aria-label', 'Cancelar a transcrição'); cx.setAttribute('data-tip', 'Cancelar a transcrição');
