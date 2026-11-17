@@ -105,6 +105,16 @@ _ICFER_RE = re.compile(r"\bICFEr\b|\bIC ?FEr\b|insufici[êe]ncia card[ií]aca[^.
 _ATEROSCLEROSE_RE = re.compile(r"infarto|\bIAM\b|doen[çc]a arterial coronari|\bDAC\b|coronariopatia|angina|angioplastia|"
                                r"\bstent|revasculariza|ponte de safena|\bAVC\b|acidente vascular|\bAIT\b|doen[çc]a arterial "
                                r"perif[ée]rica|\bDAP\b|claudica[çc]|aterosclero|cardiopatia isqu[êe]mica|placa", re.I)
+_GESTA_RE = re.compile(r"gesta[çc][ãa]o de (\d{1,2})\s*semanas|(\d{1,2})\s*semanas de gesta|\bIG\s*[:=]?\s*(\d{1,2})\s*s|"
+                       r"gr[áa]vida de (\d{1,2})\s*semanas|\bgestante\b|\bgr[áa]vida\b|\bgesta[çc][ãa]o\b", re.I)
+_GESTA_NAO = re.compile(r"(?:pr[ée]vi[ao]|anterior|passad[ao]|[úu]ltim[ao]|ap[óo]s a|depois da|p[óo]s)\s*$", re.I)
+_ALERGIAS_RE = re.compile(r"\balergias?\s*:\s*([^.\n]{2,80})", re.I)
+_PA_TEMA = re.compile(r"\bPA\b|press[ãa]o|hipertens|anti-?hipertens|pr[ée]-?ecl", re.I)
+_VACINA_TEMA = re.compile(r"vacin|imuniza", re.I)
+_LIPIDIO_TEMA = re.compile(r"statina|colesterol|ezetimib|\bLDL|lip[íi]d|dislipid", re.I)
+_TSH_RE = re.compile(r"\bTSH\s*(?:de\s*)?[:=]?\s*(\d+(?:[.,]\d+)?)\s*(?:mUI|µUI|uUI|mU)", re.I)
+_HB_RE = re.compile(r"\bhemoglobina\s*(?:de\s*)?[:=]?\s*(\d+(?:[.,]\d+)?)\s*g/dL|\bHb\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*g/dL", re.I)
+_URO_POS_RE = re.compile(r"urocultura[^.;\n]{0,40}?(?:positiva|>\s*100\.?000|≥\s*10\^?5|10\^5|\bE\. ?coli\b|klebsiella|proteus)", re.I)
 _HOMEM_RE = re.compile(r"\bhomem\b|sexo masculino|\bmasculino\b", re.I)
 _ITU_RE = re.compile(r"infec[çc][ãa]o (?:do trato )?urin[áa]ria|\bITU\b|cistite", re.I)
 _DIURETICO_RE = re.compile(r"\b(hidroclorotiazida|clortalidona|indapamida|furosemida|bumetanida|espironolactona)\b", re.I)
@@ -152,6 +162,10 @@ def _avisos_dose(t, tfg, k):
                    "\"tríade\" de lesão renal aguda → evitar; se inevitável, o menor tempo e creatinina/K em poucos dias")
     if tfg is not None and tfg < 30:
         out.append(f"- TFG {_br(tfg, 0)} (<30): AINE sistêmico contraindicado")
+    if tfg is not None and tfg < 60 and _LIPIDIO_TEMA.search(t):
+        out.append(f"- Estatina com TFG {_br(tfg, 0)}: rosuvastatina no máximo 20 mg/dia com ClCr <60 (40 mg contraindicado em "
+                   "bula)" + ("; com ClCr <30 a bula brasileira contraindica (fora dela, no máximo 10 mg/dia)" if tfg < 30 else "") +
+                   "; atorvastatina não precisa de ajuste renal")
     # DRC e estatina (KDIGO Lipídios 2013, 1A): ≥50 anos com TFG <60 sem diálise → estatina indicada, qualquer LDL
     if tfg is not None and tfg < 60 and idade and idade >= 50:
         if re.search(r"di[áa]lise", t, re.I):
@@ -160,6 +174,60 @@ def _avisos_dose(t, tfg, k):
             out.append(f"- {idade} anos com TFG {_br(tfg, 0)} (<60, sem diálise): estatina (ou estatina + ezetimiba) INDICADA pela "
                        "DRC, independentemente do LDL (KDIGO Lipídios 2013) — o lipidograma serve de base e para a adesão, não "
                        "para decidir se trata")
+    # gestação (16/11/2026): o que muda em remédio, meta e vacina; o ALERTA entra em toda resposta, o resto só no assunto
+    g = next((m for m in _GESTA_RE.finditer(t) if not _GESTA_NAO.search(t[max(0, m.start() - 20):m.start()])
+              and not re.match(r"\s*(?:pr[ée]vias?|anteriore?s?|passadas?|em \d{4}|h[áa] \d)", t[m.end():m.end() + 20], re.I)), None)
+    if g:
+        sem = next((int(x) for x in g.groups() if x), None)
+        sem = sem if sem and 4 <= sem <= 42 else None
+        ig = f"de {sem} semanas" if sem else "(idade gestacional não informada)"
+        tema = t.split("\nPaciente:")[0]          # o assunto é o da pergunta (o perfil escolhido vem depois, com "Paciente:")
+        out.append(f"- ALERTA: Gestante {ig}: remédio, dose, meta e vacina são os da gestação. Contraindicados: estatina, "
+                   "IECA/BRA/aliscireno, varfarina, tetraciclinas, misoprostol, isotretinoína; evitar AINE a partir de 20 "
+                   "semanas (oligoidrâmnio; canal arterial no 3º trimestre), quinolonas, e SMX-TMP no 1º trimestre e no fim")
+        # o que o perfil da gestante já mostra fora da meta: entra em toda resposta (os revisores viram que ficava de fora)
+        tsh = _TSH_RE.search(t)
+        if tsh and re.search(r"levotiroxina|hipotireoid", t, re.I):
+            v = _f(tsh.group(1))
+            if 2.5 < v <= 100:
+                out.append(f"- ALERTA: Gestante em tratamento de hipotireoidismo com TSH {_br(v)} (>2,5, acima do alvo da gestação): "
+                           "aumentar a levotiroxina (ex.: +25–50 mcg/dia) e repetir o TSH em 4 semanas (ATA 2017); tomar longe do "
+                           "ferro e do cálcio (4 h)")
+        hb = _HB_RE.search(t)
+        if hb:
+            v = _f(hb.group(1) or hb.group(2))
+            limite = 10.5 if sem and 14 <= sem <= 27 else 11.0
+            if 4 <= v < limite:
+                out.append(f"- ALERTA: Anemia na gestação: Hb {_br(v)} g/dL (<{_br(limite)} " +
+                           ("no 2º trimestre" if limite == 10.5 else "no 1º/3º trimestre") + "): ferritina e adesão; ferro "
+                           "elementar de tratamento 60–120 mg/dia (a dose de profilaxia não basta); sem resposta ou ferritina muito "
+                           "baixa no 2º/3º trimestre, ferro endovenoso")
+        if _URO_POS_RE.search(t):
+            out.append("- ALERTA: Urocultura positiva na gestação (bacteriúria, mesmo sem sintomas): TRATAR já, guiado pelo "
+                       "antibiograma (fosfomicina 3 g dose única, cefalexina ou nitrofurantoína 5–7 dias), e urocultura de "
+                       "controle 1–2 semanas depois e periódica até o parto")
+        if _PA_TEMA.search(tema):
+            out.append("- PA na gestação: ≥140/90 = hipertensão (nova, a partir de 20 semanas: investigar pré-eclâmpsia — "
+                       "proteinúria/relação proteína-creatinina, plaquetas, creatinina, TGO/TGP e sintomas); ≥160/110 = GRAVE → "
+                       "tratar em até 30–60 min (nifedipino, hidralazina ou labetalol) e avaliar internação. Tratar a partir de "
+                       "140/90 com alvo <140/90 e PAD em torno de 85 (CHAP, CHIPS); remédios: metildopa, nifedipino, labetalol. "
+                       "160/110 é o limite do grave, NUNCA a meta")
+        if _VACINA_TEMA.search(tema):
+            out.append("- Vacinas na gestação (PNI/MS, Febrasgo): dTpa a partir de 20 semanas em toda gestação (pode já fazer "
+                       "nesse marco); influenza em qualquer fase; covid-19; hepatite B se não vacinada; vacinas de vírus vivo "
+                       "(tríplice viral, varicela; febre amarela salvo risco alto) contraindicadas")
+        if _LIPIDIO_TEMA.search(tema):
+            out.append("- Lipídios na gestação: o LDL sobe 25–50% no 2º–3º trimestres (fisiológico) → não interpretar nem tratar "
+                       "agora; estatina contraindicada (também na amamentação); reavaliar o perfil lipídico depois do parto e da "
+                       "amamentação")
+        if _ITU_RE.search(tema) or re.search(r"urocultura|bacteri[úu]ria", tema, re.I):
+            out.append("- Bacteriúria/ITU na gestação: tratar SEMPRE, inclusive a assintomática (fosfomicina 3 g dose única, "
+                       "cefalexina 5–7 dias ou nitrofurantoína 5–7 dias, esta evitada a partir de 38 semanas); urocultura de "
+                       "controle 1–2 semanas depois; evitar quinolonas e SMX-TMP no 1º trimestre e no fim")
+    al = _ALERGIAS_RE.search(t)
+    if al and not re.match(r"\s*(nenhum|nega|sem\b|n[ãa]o)", al.group(1), re.I):
+        out.append(f"- Alergia registrada: {al.group(1).strip()} → não prescrever nem sugerir como alternativa (nem da mesma "
+                   "classe, se houver risco cruzado)")
     # dados que valem quando o assunto é aquele (não são ALERTA: não entram em toda resposta)
     if _primeira_em_uso(_VARFARINA_RE, t):
         out.append("- Em uso de varfarina: AINE contraindicado (sangramento); paracetamol regular >2 g/dia por vários dias sobe o "

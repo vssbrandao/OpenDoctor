@@ -191,3 +191,28 @@ def test_drc_com_50_anos_ou_mais_indica_estatina_pela_kdigo():
     assert "estatina (ou estatina + ezetimiba) INDICADA pela DRC, independentemente do LDL" in f
     assert "INDICADA pela DRC" not in (tools.clinical_facts("mulher, 45 anos; TFG estimada 48 mL/min") or "")
     assert "não INICIAR estatina" in tools.clinical_facts("homem, 70 anos; hemodiálise; TFG estimada 8 mL/min")
+
+
+def test_gestacao_alerta_e_dados_pelo_assunto_da_pergunta():
+    perfil = ("\nPaciente: mulher, 32 anos.\nProblemas: gestação de 20 semanas; asma.\nAlergias: dipirona.\n"
+              "Últimos sinais: PA 128/82 mmHg.\nÚltimos exames: LDL-c 160 mg/dL; urocultura com E. coli.")
+    f = tools.clinical_facts("Qual a meta de pressão arterial?" + perfil)
+    assert "ALERTA: Gestante de 20 semanas" in f and "160/110 é o limite do grave, NUNCA a meta" in f
+    assert "Vacinas na gestação" not in f and "Lipídios na gestação" not in f      # o assunto é o da pergunta, não o do perfil
+    assert "Alergia registrada: dipirona" in f
+    v = tools.clinical_facts("Quais vacinas devo indicar?" + perfil)
+    assert "dTpa a partir de 20 semanas" in v and "PA na gestação" not in v
+    assert "Lipídios na gestação" in tools.clinical_facts("Qual estatina?" + perfil)
+    assert "Gestante" not in (tools.clinical_facts("mulher, 40 anos, gestação prévia em 2015; PA 150/95") or "")
+
+
+def test_gestante_com_exames_fora_da_meta_e_rosuvastatina_na_drc():
+    perfil = ("\nPaciente: mulher, 32 anos.\nProblemas: gestação de 20 semanas; hipotireoidismo.\nEm uso: levotiroxina 75 mcg/dia.\n"
+              "Últimos exames: TSH 3,8 mUI/L; hemoglobina 10,4 g/dL; urocultura com E. coli >100.000 UFC/mL.")
+    f = tools.clinical_facts("Quais vacinas devo indicar?" + perfil)
+    assert "ALERTA: Gestante em tratamento de hipotireoidismo com TSH 3,8" in f
+    assert "ALERTA: Anemia na gestação: Hb 10,4 g/dL (<10,5 no 2º trimestre)" in f
+    assert "ALERTA: Urocultura positiva na gestação" in f
+    r = tools.clinical_facts("sinvastatina 40 mg; TFG estimada 48 mL/min/1,73 m²")
+    assert "rosuvastatina no máximo 20 mg/dia com ClCr <60" in r
+    assert "rosuvastatina no máximo" not in (tools.clinical_facts("TFG estimada 48 mL/min; dor lombar") or "")
