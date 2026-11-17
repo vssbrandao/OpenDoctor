@@ -100,6 +100,13 @@ _SULFONAMIDAS = ("hidroclorotiazida", "clortalidona", "indapamida", "furosemida"
                  "gliclazida", "glimepirida", "glipizida", "celecoxibe", "acetazolamida")
 _ALERGIA_SULFA = re.compile(r"alergi[ao]s?[^.\n]{0,60}\b(sulfa|sulfonamida|sulfametoxazol|bactrim)", re.I)
 _IDADE_RE = re.compile(r"\b(\d{2,3})\s*anos\b", re.I)
+_ICFER_RE = re.compile(r"\bICFEr\b|\bIC ?FEr\b|insufici[êe]ncia card[ií]aca[^.;\n]{0,70}?(?:fra[cç][ãa]o de eje[cç][ãa]o reduzida|"
+                       r"FE(?:VE)?\s*(?:reduzida|de\s*)?\s*(?:[1-3]\d|40)\s*%)", re.I)
+_ATEROSCLEROSE_RE = re.compile(r"infarto|\bIAM\b|doen[çc]a arterial coronari|\bDAC\b|coronariopatia|angina|angioplastia|"
+                               r"\bstent|revasculariza|ponte de safena|\bAVC\b|acidente vascular|\bAIT\b|doen[çc]a arterial "
+                               r"perif[ée]rica|\bDAP\b|claudica[çc]|aterosclero|cardiopatia isqu[êe]mica|placa", re.I)
+_HOMEM_RE = re.compile(r"\bhomem\b|sexo masculino|\bmasculino\b", re.I)
+_ITU_RE = re.compile(r"infec[çc][ãa]o (?:do trato )?urin[áa]ria|\bITU\b|cistite", re.I)
 _DIURETICO_RE = re.compile(r"\b(hidroclorotiazida|clortalidona|indapamida|furosemida|bumetanida|espironolactona)\b", re.I)
 
 
@@ -145,6 +152,22 @@ def _avisos_dose(t, tfg, k):
                    "\"tríade\" de lesão renal aguda → evitar; se inevitável, o menor tempo e creatinina/K em poucos dias")
     if tfg is not None and tfg < 30:
         out.append(f"- TFG {_br(tfg, 0)} (<30): AINE sistêmico contraindicado")
+    # dados que valem quando o assunto é aquele (não são ALERTA: não entram em toda resposta)
+    if _primeira_em_uso(_VARFARINA_RE, t):
+        out.append("- Em uso de varfarina: AINE contraindicado (sangramento); paracetamol regular >2 g/dia por vários dias sobe o "
+                   "INR → prefira ≤2 g/dia e, se usar por mais de alguns dias, INR em 3–5 dias; antibióticos (sobretudo "
+                   "SMX-TMP, metronidazol, fluconazol, quinolonas, macrolídeos) também sobem o INR → INR em 3–5 dias")
+    if _ICFER_RE.search(t):
+        out.append("- IC com FE reduzida: evitar AINE, corticoide sistêmico (retenção de sódio e água; se inevitável, o menor "
+                   "tempo e vigiar peso/congestão), glitazona e diltiazem/verapamil (pioram a IC) — ESC/SBC IC")
+        if not _ATEROSCLEROSE_RE.search(t):
+            out.append("- IC com FE reduzida sem doença aterosclerótica no cadastro: estatina não reduz desfechos na IC (CORONA, "
+                       "GISSI-HF) → não iniciar estatina só pela IC; a indicação vem do risco aterosclerótico, com lipidograma "
+                       "antes (peça); se já usa, pode manter")
+    if _HOMEM_RE.search(t) and _ITU_RE.search(t):
+        out.append("- ITU em homem é sempre complicada: tratar por 7 dias (não os esquemas de 3–5 dias da cistite da mulher; "
+                   "fosfomicina em dose única não serve); urocultura antes; pensar em prostatite se houver febre ou sintomas "
+                   "prostáticos (aí 2–4 semanas de quinolona/SMX-TMP conforme a cultura)")
     if _ALERGIA_SULFA.search(t):
         em_uso = [n for n in _SULFONAMIDAS if _primeira_em_uso(re.compile(r"\b" + n + r"\b", re.I), t)]
         txt = "- ALERTA: Alergia a sulfa registrada: sulfametoxazol-trimetoprima (sulfonamida antibiótica) CONTRAINDICADO"

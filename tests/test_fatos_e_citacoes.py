@@ -168,3 +168,19 @@ def test_espironolactona_com_potassio_alto_e_glibenclamida_no_idoso():
     f = tools.clinical_facts("homem, 76 anos. espironolactona 25 mg/dia; potássio 5,6 mEq/L; glibenclamida 5 mg")
     assert "Espironolactona com K 5,6 (>5,5): reduzir à metade ou suspender" in f
     assert "Glibenclamida com 76 anos: evitar" in f
+
+
+def test_varfarina_icfer_e_itu_no_homem():
+    f = tools.clinical_facts("homem, 76 anos; insuficiência cardíaca com fração de ejeção reduzida (FE 30%); varfarina 5 mg/dia. "
+                             "Como tratar infecção urinária?")
+    assert "paracetamol regular >2 g/dia" in f and "corticoide sistêmico" in f and "ITU em homem é sempre complicada" in f
+    assert "ALERTA: Em uso de varfarina" not in f                 # só vale no assunto: não entra em toda resposta
+    g = tools.clinical_facts("mulher, 60 anos; cistite") or ""
+    assert "ITU em homem" not in g
+
+
+def test_icfer_sem_aterosclerose_nao_inicia_estatina_so_pela_ic():
+    f = tools.clinical_facts("homem, 76 anos; insuficiência cardíaca com fração de ejeção reduzida (FE 30%)")
+    assert "não iniciar estatina só pela IC" in f
+    g = tools.clinical_facts("insuficiência cardíaca com fração de ejeção reduzida (FE 30%); infarto em 2019")
+    assert "não iniciar estatina só pela IC" not in g
