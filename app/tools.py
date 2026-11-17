@@ -88,6 +88,78 @@ _PESO_NAO = re.compile(r"(perda|ganho|varia[çc][ãa]o|redu[çc][ãa]o|perdeu|ga
 _K_NAO = re.compile(r"(cloreto|citrato|reposi[çc][ãa]o|suplemento|xarope|KCl)[^.;\n]{0,15}$", re.I)
 
 
+# ===== avisos de dose (16/11/2026): só remédio EM USO, a partir do perfil/pergunta; o modelo recebe o aviso pronto =====
+_FREQ = ((re.compile(r"\b4\s*x|\b6/6\s*h|4 vezes", re.I), 4), (re.compile(r"\b3\s*x|\b8/8\s*h|3 vezes", re.I), 3),
+         (re.compile(r"\b2\s*x|\b12/12\s*h|2 vezes|duas vezes", re.I), 2))
+# dose diária máxima habitual (bula/diretriz): no máximo, não há como subir — intensificar é associar ou trocar
+_DOSE_MAX = {"losartana": 100, "valsartana": 320, "candesartana": 32, "olmesartana": 40, "telmisartana": 80,
+             "irbesartana": 300, "enalapril": 40, "ramipril": 10, "lisinopril": 40, "captopril": 150, "anlodipino": 10,
+             "atorvastatina": 80, "rosuvastatina": 40, "sinvastatina": 40, "metformina": 2550, "bisoprolol": 10,
+             "carvedilol": 50}
+_SULFONAMIDAS = ("hidroclorotiazida", "clortalidona", "indapamida", "furosemida", "bumetanida", "glibenclamida",
+                 "gliclazida", "glimepirida", "glipizida", "celecoxibe", "acetazolamida")
+_ALERGIA_SULFA = re.compile(r"alergi[ao]s?[^.\n]{0,60}\b(sulfa|sulfonamida|sulfametoxazol|bactrim)", re.I)
+_IDADE_RE = re.compile(r"\b(\d{2,3})\s*anos\b", re.I)
+_DIURETICO_RE = re.compile(r"\b(hidroclorotiazida|clortalidona|indapamida|furosemida|bumetanida|espironolactona)\b", re.I)
+
+
+def _dose_em_uso(nome, t):
+    """(mg por dose, doses por dia, mg/dia) do remédio em uso, ou None. Ex.: "metformina 850 mg 2x/dia" → (850, 2, 1700)."""
+    rx = re.compile(r"\b(" + nome + r")\b[^;\n]{0,20}?(\d+(?:[.,]\d+)?)\s*mg\b([^;\n]{0,25})", re.I)
+    m = _primeira_em_uso(rx, t)
+    if not m:
+        return None
+    mg, resto = _f(m.group(2)), m.group(3)
+    vezes = next((n for r, n in _FREQ if r.search(resto)), 1)
+    return mg, vezes, mg * vezes
+
+
+def _avisos_dose(t, tfg, k):
+    """Linhas dos avisos de dose (sem nada a dizer, lista vazia). tfg e k: números já lidos (ou None)."""
+    out = []
+    idade = _IDADE_RE.search(t)
+    idade = int(idade.group(1)) if idade and 18 <= int(idade.group(1)) <= 110 else None
+    met = _dose_em_uso("metformina", t)
+    if met and tfg is not None:
+        dia = _br(met[2], 0)
+        if tfg < 30:
+            out.append(f"- ALERTA: Metformina {dia} mg/dia com TFG {_br(tfg, 0)} (<30): CONTRAINDICADA → suspender (KDIGO 2022)")
+        elif tfg < 45:
+            acima = met[2] > 1000
+            out.append(f"- {'ALERTA: ' if acima else ''}Metformina {dia} mg/dia com TFG {_br(tfg, 0)} (30–44): dose máxima 1.000 mg/dia e não iniciar "
+                       f"nessa faixa (KDIGO 2022)" + (f" → a dose atual está ACIMA: reduzir para ≤1.000 mg/dia" if acima else ""))
+        elif tfg < 60:
+            out.append(f"- Metformina com TFG {_br(tfg, 0)} (45–59): manter a dose e reavaliar a TFG a cada 3–6 meses (KDIGO 2022)")
+    if _primeira_em_uso(re.compile(r"\bglibenclamida\b", re.I), t) and ((tfg is not None and tfg < 60) or (idade and idade >= 65)):
+        out.append("- ALERTA: Glibenclamida com " + ("TFG <60" if tfg is not None and tfg < 60 else f"{idade} anos") + ": evitar (hipoglicemia "
+                   "prolongada; Beers/SBD) → trocar por gliclazida ou por remédio sem hipoglicemia")
+    if _primeira_em_uso(re.compile(r"\bespironolactona\b", re.I), t):
+        if k is not None and k > 5.5:
+            out.append(f"- ALERTA: Espironolactona com K {_br(k)} (>5,5): reduzir à metade ou suspender e repetir o K em poucos dias")
+        elif k is not None and k > 5.0:
+            out.append(f"- Espironolactona com K {_br(k)} (>5,0): não aumentar a dose; repetir K e creatinina em 1–2 semanas")
+        if tfg is not None and tfg < 30:
+            out.append(f"- ALERTA: Espironolactona com TFG {_br(tfg, 0)} (<30): evitar (risco de hipercalemia grave)")
+    if _primeira_em_uso(_IECA_BRA_RE, t) and _primeira_em_uso(_DIURETICO_RE, t):
+        out.append("- Em uso de IECA/BRA + diurético: AINE (ibuprofeno, naproxeno, diclofenaco, cetoprofeno, celecoxibe) fecha a "
+                   "\"tríade\" de lesão renal aguda → evitar; se inevitável, o menor tempo e creatinina/K em poucos dias")
+    if tfg is not None and tfg < 30:
+        out.append(f"- TFG {_br(tfg, 0)} (<30): AINE sistêmico contraindicado")
+    if _ALERGIA_SULFA.search(t):
+        em_uso = [n for n in _SULFONAMIDAS if _primeira_em_uso(re.compile(r"\b" + n + r"\b", re.I), t)]
+        txt = "- ALERTA: Alergia a sulfa registrada: sulfametoxazol-trimetoprima (sulfonamida antibiótica) CONTRAINDICADO"
+        if em_uso:
+            txt += ("; em uso de " + ", ".join(em_uso) + " (sulfonamida NÃO antibiótica): reação cruzada é rara — se já usa "
+                    "sem reação, pode manter (confirme e registre a tolerância); ao trocar, prefira opção sem sulfonamida")
+        out.append(txt)
+    for nome, teto in _DOSE_MAX.items():
+        d = _dose_em_uso(nome, t)
+        if d and d[2] >= teto:
+            out.append(f"- ALERTA: {nome.capitalize()} {_br(d[2], 0)} mg/dia = dose máxima habitual ({_br(teto, 0)} mg/dia): não há como "
+                       "subir → para intensificar, associe outro remédio ou troque")
+    return out
+
+
 def _primeira_em_uso(rx, t):
     """1ª menção de rx que parece USO (não pergunta sobre iniciar, alergia, suspensão, troca, alternativa)."""
     for m in rx.finditer(t):
@@ -233,6 +305,14 @@ def clinical_facts(text):
     if _primeira_em_uso(_VARFARINA_RE, t):
         lines.append("- Em uso de varfarina: na troca por DOAC, suspender a varfarina e iniciar o DOAC só com INR <2,0 "
                      "(apixabana, dabigatrana), ≤2,5 (edoxabana) ou ≤3,0 (rivaroxabana) — diga o número, nunca sobreponha")
+    try:
+        v_tfg = _f(tfg.group(1)) if tfg else None
+        v_tfg = v_tfg if v_tfg is not None and 1 <= v_tfg <= 200 else None
+        v_k = _f(k.group(1)) if k else None
+        v_k = v_k if v_k is not None and 1.5 <= v_k <= 9 else None
+        lines += _avisos_dose(t, v_tfg, v_k)
+    except ValueError:
+        pass
     if not lines:
         return None
     return ("DADOS CALCULADOS (use exatamente estas classificações; não as altere):\n" + "\n".join(lines))

@@ -131,3 +131,40 @@ def test_frase_quebrada_em_duas_linhas_e_uma_so():
 
 def test_titulo_em_negrito_nao_continua_a_linha_anterior():
     assert len(validate._logical_lines("Use 10 mg ao dia\n**Metas:** HbA1c <7% [1]\n")) == 2
+
+
+# ===== avisos de dose (16/11/2026): só remédio em uso, a partir do perfil =====
+def test_metformina_acima_do_teto_renal():
+    f = tools.clinical_facts("Em uso: metformina 850 mg 2x/dia. TFG estimada 34 mL/min/1,73 m²")
+    assert "Metformina 1700 mg/dia com TFG 34 (30–44)" in f and "ACIMA: reduzir para ≤1.000 mg/dia" in f
+    assert "CONTRAINDICADA" in tools.clinical_facts("metformina 500 mg 1x/dia; TFG estimada 25 mL/min")
+    assert "ACIMA" not in tools.clinical_facts("metformina 500 mg 2x/dia; TFG estimada 40 mL/min")
+
+
+def test_metformina_so_em_uso():
+    assert "Metformina" not in (tools.clinical_facts("Posso iniciar metformina 500 mg? TFG estimada 34 mL/min") or "")
+
+
+def test_dose_maxima_e_frequencia():
+    f = tools.clinical_facts("losartana 50 mg 2x/dia; anlodipino 5 mg/dia")
+    assert "Losartana 100 mg/dia = dose máxima habitual" in f and "Anlodipino" not in f
+    assert "Enalapril" not in (tools.clinical_facts("enalapril 10 mg 12/12h") or "")
+    assert "Atorvastatina 80 mg/dia = dose máxima" in tools.clinical_facts("atorvastatina 80 mg à noite")
+
+
+def test_alergia_a_sulfa_com_sulfonamida_em_uso():
+    f = tools.clinical_facts("Em uso: hidroclorotiazida 25 mg/dia; gliclazida 60 mg. Alergias: sulfa.")
+    assert "sulfametoxazol-trimetoprima (sulfonamida antibiótica) CONTRAINDICADO" in f
+    assert "hidroclorotiazida, gliclazida (sulfonamida NÃO antibiótica)" in f
+    assert "sulfametoxazol" not in (tools.clinical_facts("Em uso: hidroclorotiazida 25 mg/dia. Alergias: penicilina.") or "")
+
+
+def test_aine_com_ieca_e_diuretico_e_tfg_baixa():
+    assert "tríade" in tools.clinical_facts("enalapril 10 mg 2x/dia; furosemida 40 mg/dia")
+    assert "AINE sistêmico contraindicado" in tools.clinical_facts("TFG estimada 22 mL/min")
+
+
+def test_espironolactona_com_potassio_alto_e_glibenclamida_no_idoso():
+    f = tools.clinical_facts("homem, 76 anos. espironolactona 25 mg/dia; potássio 5,6 mEq/L; glibenclamida 5 mg")
+    assert "Espironolactona com K 5,6 (>5,5): reduzir à metade ou suspender" in f
+    assert "Glibenclamida com 76 anos: evitar" in f
