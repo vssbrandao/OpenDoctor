@@ -14,7 +14,7 @@
 // os 8 botões de cima (Agenda e Assistente) mostram no mouseover a dica escura com o que fazem e o atalho (⇧⌘ + letra),
 // sem a dica do navegador, e cada atalho aperta o seu botão (como o clique: fecha a janela do evento), nunca o escondido;
 // o Expandir agenda volta ao nome certo quando o assistente reaparece pelo prontuário; a busca (lupa, ⇧⌘F, Buscar do
-// menu e agenda#buscar) abre no meio da tela com Tudo · Consultas · Pacientes · Receitas, o trecho em negrito, e o
+// menu e agenda#buscar) abre no meio da tela com Tudo · Chat · Consultas · Pacientes · Receitas, o trecho em negrito, e o
 // termo nunca vai na URL (as receitas: no corpo do POST); escolher abre a consulta, o paciente ou a receita; a lupa
 // (e o ⇧⌘F) abre já em Consultas, o Buscar do menu em Tudo; sem agenda conectada, nada de pedir para conectar;
 // o + do campo do assistente anexa imagem e PDF (cartões acima do texto, o x tira, limites na tela), o /ask leva só
@@ -1206,7 +1206,7 @@ const cenarios = [
                foco: document.activeElement && document.activeElement.id, abas: [...document.querySelectorAll('#bsAbas [data-aba]')].map((b) => b.textContent + (b.classList.contains('on') ? '*' : '')),
                limpa: document.getElementById('bsLimpa').hidden, sep: getComputedStyle(document.querySelector('.bs-sep')).display }; })()`);
     certo(g.w === 780 && g.h === 572 && g.x === 330 && g.y === 164 && g.inert && g.foco === 'bsIn' && g.limpa && g.sep === 'none' &&
-          g.abas.join() === 'Tudo*,Consultas,Pacientes,Receitas', 'janela: ' + JSON.stringify(g));
+          g.abas.join() === 'Tudo*,Chat,Consultas,Pacientes,Receitas', 'janela: ' + JSON.stringify(g));
     let L = await linhas();
     certo(L[0].on && L.filter((x) => x.on).length === 1, 'a primeira linha vem marcada: ' + JSON.stringify(L));
     certo(L.some((x) => x.tipo === 'consulta') && L.filter((x) => x.tipo === 'paciente').map((x) => x.t).join() === 'Joana Prado,Maria Silva',

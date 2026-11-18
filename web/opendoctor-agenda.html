@@ -2322,6 +2322,7 @@
     .nc-all-ico svg{display:block}
     .nc-all-chev{display:none}
     .stage.expanded .rp-title{visibility:hidden}
+    .stage.expanded .right > .rp-head .hd-actions{visibility:hidden}   /* no chat em tela cheia, sem os ícones do topo à direita (pedido do usuário, 18/11) */
     .nc-all > span#ncAllTxt{max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     /* a lista de pacientes (o menu da Sana, medido): 6 abaixo do botão, 268 de largura, 8 de respiro, cantos 24, borda e
        sombra leves; itens de 40 com cantos 17, 8 8 8 16 de respiro, 14/21; o mouse com rgba(10,18,23,.05) */
@@ -4698,6 +4699,11 @@
         msgs.scrollTop = msgs.scrollHeight;
         renderHist();
       }
+      // a busca (⇧⌘F) procura nas conversas guardadas neste navegador e abre a escolhida como o histórico do menu
+      window.__chatsBusca = {
+        lista: loadConvs,
+        abre: function (id) { if (window.__ncAbreConversa) window.__ncAbreConversa(); openConv(id); }
+      };
 
       function addMsg(cls, text) {
         var el = document.createElement('div');
@@ -11450,7 +11456,7 @@
   <div class="bs-ov" id="busca" hidden>
     <div class="bs" id="bsCard" role="dialog" aria-modal="true" aria-label="Buscar">
       <div class="bs-top">
-        <input class="bs-in" id="bsIn" type="text" enterkeyhint="search" placeholder="Buscar consultas, pacientes e receitas"
+        <input class="bs-in" id="bsIn" type="text" enterkeyhint="search" placeholder="Buscar chats, consultas, pacientes e receitas"
           autocomplete="off" spellcheck="false" aria-label="Buscar">
         <button class="bs-limpa" id="bsLimpa" type="button" hidden>Limpar</button>
         <span class="bs-sep" aria-hidden="true"></span>
@@ -11458,6 +11464,7 @@
       </div>
       <div class="bs-abas" id="bsAbas" role="tablist" aria-label="Onde buscar">
         <button type="button" role="tab" data-aba="tudo">Tudo</button>
+        <button type="button" role="tab" data-aba="chats">Chat</button>
         <button type="button" role="tab" data-aba="consultas">Consultas</button>
         <button type="button" role="tab" data-aba="pacientes">Pacientes</button>
         <button type="button" role="tab" data-aba="receitas">Receitas</button>
@@ -11466,7 +11473,8 @@
     </div>
   </div>
   <script>
-    // ===== buscar consultas, pacientes e receitas (a lupa da agenda, ⇧⌘F e o Buscar do menu) =====
+    // ===== buscar chats, consultas, pacientes e receitas (a lupa da agenda, ⇧⌘F e o Buscar do menu) =====
+    // Chat: as conversas guardadas neste navegador (localStorage), filtradas aqui; o termo não sai do navegador.
     // Consultas: busca local — baixa os eventos de 6 meses atrás a 1 ano à frente e filtra no navegador, então o termo
     // buscado (ex.: nome do paciente) não vai em URL nem sai do navegador. Pacientes: a lista do /patients, filtrada aqui
     // (veio cortada: o servidor procura o nome entre todos, no corpo de um POST). Receitas: POST /prontuario/receitas/busca,
@@ -11478,10 +11486,10 @@
       if (!ov || !card || !input || !list || !stage) return;
       var MON = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
       var DOWS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-      var IC = {"consulta": "<svg width=\"15\" height=\"14\" viewBox=\"0 0 15 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z\" fill=\"#0F0F0F\"/></svg>", "paciente": "<svg width=\"13\" height=\"14\" viewBox=\"0 0 13 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z\" fill=\"#0F0F0F\"/></svg>", "receita": "<svg width=\"17\" height=\"14\" viewBox=\"0 0 17 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.43415 13.8229C0.8315 13.8229 0.000494646 12.9993 0.000494646 11.4115V2.36688C0.000494646 0.808747 0.816661 0 2.20414 0H4.30392C5.07556 0 5.46139 0.140974 5.98077 0.571316L6.41111 0.912622C6.81919 1.24651 7.13082 1.37264 7.66504 1.37264H14.5654C16.168 1.37264 16.999 2.19623 16.999 3.78404V11.4115C16.999 12.9993 16.1754 13.8229 14.7583 13.8229H2.43415ZM2.52319 12.3686H14.4837C15.1663 12.3686 15.5448 12.0125 15.5448 11.2928V3.91018C15.5448 3.18305 15.1663 2.8269 14.4837 2.8269H7.27921C6.50757 2.8269 6.1069 2.68593 5.59494 2.26301L5.1646 1.91428C4.7491 1.57297 4.44489 1.45426 3.91809 1.45426H2.49351C1.82574 1.45426 1.45475 1.81041 1.45475 2.49302V11.2928C1.45475 12.0125 1.83316 12.3686 2.52319 12.3686ZM2.35996 5.15669V4.62989C2.35996 4.16245 2.59739 3.93986 3.07225 3.93986H13.9273C14.4021 3.93986 14.6321 4.16245 14.6321 4.62989V5.15669H2.35996Z\" fill=\"#0F0F0F\"/></svg>"};
+      var IC = {"chat": "<svg width=\"15\" height=\"14\" viewBox=\"0 0 15.07 14.15\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M4.204 14.144C4.539 14.144 4.771 13.966 5.188 13.597L7.547 11.498L11.936 11.498C13.973 11.498 15.066 10.370 15.066 8.367L15.066 3.131C15.066 1.128 13.973 0.000 11.936 0.000L3.131 0.000C1.094 0.000 0.000 1.121 0.000 3.131L0.000 8.367C0.000 10.377 1.094 11.498 3.131 11.498L3.459 11.498L3.459 13.275C3.459 13.802 3.726 14.144 4.204 14.144ZM4.484 12.893L4.484 10.910C4.484 10.541 4.341 10.397 3.972 10.397L3.131 10.397C1.750 10.397 1.101 9.693 1.101 8.360L1.101 3.131C1.101 1.798 1.750 1.101 3.131 1.101L11.936 1.101C13.310 1.101 13.966 1.798 13.966 3.131L13.966 8.360C13.966 9.693 13.310 10.397 11.936 10.397L7.506 10.397C7.123 10.397 6.932 10.452 6.672 10.719Z\" fill=\"#0F0F0F\"/></svg>", "consulta": "<svg width=\"15\" height=\"14\" viewBox=\"0 0 15 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z\" fill=\"#0F0F0F\"/></svg>", "paciente": "<svg width=\"13\" height=\"14\" viewBox=\"0 0 13 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z\" fill=\"#0F0F0F\"/></svg>", "receita": "<svg width=\"17\" height=\"14\" viewBox=\"0 0 17 14\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M2.43415 13.8229C0.8315 13.8229 0.000494646 12.9993 0.000494646 11.4115V2.36688C0.000494646 0.808747 0.816661 0 2.20414 0H4.30392C5.07556 0 5.46139 0.140974 5.98077 0.571316L6.41111 0.912622C6.81919 1.24651 7.13082 1.37264 7.66504 1.37264H14.5654C16.168 1.37264 16.999 2.19623 16.999 3.78404V11.4115C16.999 12.9993 16.1754 13.8229 14.7583 13.8229H2.43415ZM2.52319 12.3686H14.4837C15.1663 12.3686 15.5448 12.0125 15.5448 11.2928V3.91018C15.5448 3.18305 15.1663 2.8269 14.4837 2.8269H7.27921C6.50757 2.8269 6.1069 2.68593 5.59494 2.26301L5.1646 1.91428C4.7491 1.57297 4.44489 1.45426 3.91809 1.45426H2.49351C1.82574 1.45426 1.45475 1.81041 1.45475 2.49302V11.2928C1.45475 12.0125 1.83316 12.3686 2.52319 12.3686ZM2.35996 5.15669V4.62989C2.35996 4.16245 2.59739 3.93986 3.07225 3.93986H13.9273C14.4021 3.93986 14.6321 4.16245 14.6321 4.62989V5.15669H2.35996Z\" fill=\"#0F0F0F\"/></svg>"};
       var TIPO = { especial: 'Controle especial', antimicrobiano: 'Antimicrobiano' };
       var SIT = { emitida: 'Emitida', cancelada: 'Cancelada', rascunho: 'Rascunho' };
-      var NOME = { consulta: 'Consulta', paciente: 'Paciente', receita: 'Receita' };
+      var NOME = { chat: 'Chat', consulta: 'Consulta', paciente: 'Paciente', receita: 'Receita' };   // o ícone do Chat: SF "bubble.left" Regular
       var cache, cacheAt = 0, loading = null;                // consultas (60 s)
       var evsR, evsPronto = false;                           // a última leitura das consultas (com o 'morta', que não fica no cache)
       var pacs = null, pacsAt = 0, pacsMais = false, pacsCarga = null, pacsErro = false, pacsServ = {};
@@ -11612,6 +11620,26 @@
           .then(function () { if (m === rxs && !ov.hidden && termo() === q && (aba === 'tudo' || aba === 'receitas')) desenha(); });
       }
 
+      // ----- chats: as conversas guardadas neste navegador (o termo não sai daqui); o título, as perguntas e as respostas -----
+      function chats(q, n) {
+        var cs = (window.__chatsBusca && window.__chatsBusca.lista()) || [];
+        return cs.filter(function (c) {
+          return bate([c.title].concat((c.turns || []).map(function (t) { return (t.q || '') + ' ' + (t.a || ''); })).join(' '), q);
+        }).sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); }).slice(0, n);
+      }
+      function semMd(t) {                                    // a resposta sem as marcas do texto (#, *, `, |, as citações [1])
+        return (t || '').replace(/```[a-z]*/g, ' ').replace(/\[\d+(?:[,–-]\s*\d+)*\]/g, '').replace(/[#*`>|]+/g, ' ');
+      }
+      function linhaChat(c, q) {
+        var nT = (c.turns || []).length, sub = '';
+        if (q && !bate(c.title, q)) {                        // achou dentro da conversa: o trecho em volta do termo
+          (c.turns || []).some(function (t) { sub = trecho(t.q, q) || trecho(semMd(t.a), q); return !!sub; });
+        }
+        if (!sub) sub = nT === 1 ? '1 pergunta' : nT + ' perguntas';
+        linha('chat', c.title || 'Conversa', sub, c.ts ? new Date(c.ts) : null,
+              function () { window.__chatsBusca.abre(c.id); }, q, c.id);   // abre como o histórico do menu (no New chat)
+      }
+
       // ----- a lista -----
       function msg(html) { list.innerHTML = '<div class="bs-msg">' + html + '</div>'; items = []; active = -1; }
       var LUPA = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.25" stroke="#848484" stroke-width="1.5"/><path d="M11 11l3.5 3.5" stroke="#848484" stroke-width="1.5" stroke-linecap="round"/></svg>';
@@ -11659,7 +11687,11 @@
         ultimo = aba + '\n' + q;
         list.innerHTML = ''; list.scrollTop = 0; items = []; active = -1;
         var aviso = carregando ? '' : avisoConsultas(evs), rs = rxs[q];
-        if (aba === 'consultas') {
+        if (aba === 'chats') {
+          var hs = chats(q, 50);
+          if (!hs.length) return vazio(q ? 'Nenhum resultado' : 'Nenhuma conversa ainda');
+          hs.forEach(function (c) { linhaChat(c, q); });
+        } else if (aba === 'consultas') {
           if (carregando) return msg('Carregando…');
           if (aviso) return msg(aviso);
           var cs = consultas(evs, q, q ? 30 : 8, 30);
@@ -11677,6 +11709,7 @@
           rs.forEach(function (r) { linhaReceita(r, q); });
         } else {                                             // Tudo: com termo, pacientes, consultas e receitas; sem, as próximas e os recentes
           if (q) {
+            chats(q, 4).forEach(function (c) { linhaChat(c, q); });
             pacientes(q, 4).forEach(function (p) { linhaPaciente(p, q); });
             consultas(evs, q, 4, 4).forEach(function (x) { linhaConsulta(x, q); });
             if (Array.isArray(rs)) rs.slice(0, 4).forEach(function (r) { linhaReceita(r, q); });

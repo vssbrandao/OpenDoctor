@@ -101,7 +101,7 @@ def test_semana_e_busca_da_pagina_pedem_o_teto():
     assert len(leituras) == 3                                      # dia, semana e busca
     assert sum(p == f"limit={integrations.EVENTS_MAX}&start=" for p in leituras) == 2   # semana e busca: sem corte
     # a busca lê as próximas consultas à parte (a partir de hoje), sem o passado tomar o lugar delas
-    busca = html[html.index("// ===== buscar consultas"):]
+    busca = html[html.index("// ===== buscar chats, consultas"):]
     assert "Promise.all([get(t0, b), get(m, t0), get(a, m)])" in busca
 
 
