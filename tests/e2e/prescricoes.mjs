@@ -182,7 +182,7 @@ const cenarios = [
   ['marca pela busca entra como "Marca (substância)", com a embalagem', async () => {
     await abre(false); await busca('glifage 850'); await ate(n('#rxNew .fz-row') + ' > 0', 6000, 'resultados');
     const r = await ev(`[...document.querySelectorAll('#rxNew .fz-row')].map((b) => b.querySelector('.fz-t').textContent + ' / ' + b.querySelector('.fz-s').textContent)[0]`);
-    certo(r === 'Glifage (cloridrato de metformina) 850 mg / comprimido revestido · Merck', 'resultado: ' + r);
+    certo(r === 'Glifage (cloridrato de metformina) 850 mg / Comprimido revestido · Merck · 30 Comprimidos', 'resultado: ' + r);
     await item('glifage 850', '1 comprimido de 12/12 h, uso contínuo'); await salvo();
     const l = await ev(linhas);
     certo(l[0] === 'Glifage (cloridrato de metformina) 850 mg | 60 comprimidos', 'na receita: ' + l.join('; '));

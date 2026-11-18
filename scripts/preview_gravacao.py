@@ -270,12 +270,15 @@ def _tab_js():
 def _ctl_js():
     js = """(function(){var b=document.createElement('div');
       b.style.cssText='position:fixed;left:16px;bottom:16px;z-index:99;display:flex;gap:8px;align-items:center;padding:8px 12px;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);font:13px/18px system-ui;color:#3C4043';
-      b.innerHTML='<b style="font-weight:600">Preview</b><span>transcrição simulada</span>';
+      b.innerHTML='<b style="font-weight:600;cursor:pointer">Preview</b><span>transcrição simulada</span>';
+      b.style.bottom='64px';b.title='Preview: clique para abrir ou fechar';   // recolhido na lateral (fora da barra da Prescrição); o clique abre
+      function rec(on){b._rec=on;[].slice.call(b.children,1).forEach(function(c){c.style.display=on?'none':''});b.style.padding=on?'4px 10px':'8px 12px';}
+      b.firstChild.addEventListener('click',function(){rec(!b._rec)});
       function t(k,lab){var x=document.createElement('button');x.type='button';x.style.cssText='height:28px;padding:0 10px;border-radius:14px;border:1px solid #DADCE0;background:#fff;cursor:pointer;font:inherit';
         function paint(on){x.textContent=lab+(on?': ligada':': caiu');x.style.color=on?'#137333':'#C5221F';x._on=on;}
         x.addEventListener('click',function(){fetch('/_preview/sim?'+k+'='+(x._on?'off':'on')).then(function(r){return r.json()}).then(function(j){paint(j[k]==='on')})});
         fetch('/_preview/sim').then(function(r){return r.json()}).then(function(j){paint(j[k]==='on')});b.appendChild(x);}
-      t('rede','Internet');t('ia','IA');document.body.appendChild(b);})();"""
+      t('rede','Internet');t('ia','IA');rec(true);document.body.appendChild(b);})();"""
     return Response(js, media_type="application/javascript")
 
 
