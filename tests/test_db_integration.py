@@ -166,7 +166,7 @@ def test_gravacao_da_consulta(novo_usuario):
     db.rec_link_note(ana, p["id"], [rid], nid)
     r = db.rec_list(ana, p["id"], note_id=nid)[0]
     assert r["status"] == "gerada" and r["note_id"] == nid
-    assert db.rec_delete(beto, rid) is None and db.rec_delete(ana, rid) == p["id"]
+    assert db.rec_delete(beto, rid) is None and db.rec_delete(ana, rid) == {"patient_id": p["id"]}
     assert db.rec_segment(ana, rid, 1) is None
 
 
@@ -452,7 +452,7 @@ def test_exemplo_so_sai_com_o_que_e_do_exemplo(novo_usuario):
     rid = str(uuid.uuid4())
     assert db.rec_open(uid, pid, rid, None, None, "2026-10-15T10:00:00Z")
     _exemplo_fica(uid, pid)                                               # gravação (mesmo sem trecho)
-    assert db.rec_delete(uid, rid) == pid
+    assert db.rec_delete(uid, rid) == {"patient_id": pid}
     assert db.cancel_receita(uid, db.list_receitas(uid, pid)[0]["id"], "Teste")   # cancelar a fictícia: continua fictícia
     db.upsert_note(uid, pid, db.EXAMPLE_KEY, db.EXAMPLE_NAME, None, None, None, "")   # avulsa aberta e não escrita
     assert db.delete_patient(uid, pid) == "ok"                            # só o exemplo: sai inteiro
@@ -1061,7 +1061,7 @@ def test_audio_da_gravacao(novo_usuario):
     (r,) = db.rec_list(ana, p["id"], event_id="ev1")
     assert r["audio"] == [{"part": 0, "at": 0.0, "upto": 10.0}, {"part": 1, "at": 40.0, "upto": 45.0}]
     assert db.delete_patient(ana, p["id"]) == "has_notes"            # gravação só com áudio também é prontuário
-    assert db.rec_delete(ana, rid) == p["id"]
+    assert db.rec_delete(ana, rid) == {"patient_id": p["id"]}
     with db.connection() as c:
         assert c.execute("select count(*) from recording_audio where rec_id = %s", (rid,)).fetchone()[0] == 0
     assert db.rec_audio(ana, rid, 0) is None
@@ -1268,3 +1268,147 @@ def test_sem_a_migracao_0023_falas_ficam_de_fora(novo_usuario, monkeypatch):
     monkeypatch.setattr(db, "connection", real)
     with db.connection() as c:                                     # com a coluna no banco: entrou vazia (o padrão)
         assert c.execute("select falas from recording_segments where rec_id = %s", (rid,)).fetchone()[0] == []
+
+
+# ----- gravação sem paciente (migração 0024, tela Nova consulta; docs/gravacao.md) -----
+def test_gravacao_sem_paciente_liga_o_paciente_uma_vez_e_nao_mistura(novo_usuario):
+    """rec_open sem paciente cria patient_id nulo + sem_paciente; só o dono vê, ouve e liga; ligar só a um paciente dele,
+    de nulo para um paciente (refazer com o mesmo vale), tudo ou nada; nunca de um paciente para outro."""
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    p, outro = db.create_patient(ana, "Paciente da Ana"), db.create_patient(ana, "Outro da Ana")
+    pb = db.create_patient(beto, "Paciente do Beto")
+    rid, rid2, rcom = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    assert db.sem_paciente_pronto()
+    assert db.rec_open(ana, None, rid, None, None, "2026-11-19T10:00:00Z")
+    assert db.rec_open(ana, None, rid)                                       # reabrir sem paciente vale
+    assert not db.rec_open(beto, None, rid)                                  # id de outro médico: não mistura
+    assert not db.rec_open(ana, p["id"], rid)                                # ainda sem paciente: com paciente não entra
+    assert db.rec_info(ana, rid) == {"patient_id": None, "sem_paciente": True} and db.rec_info(beto, rid) is None
+    with db.connection() as c:
+        assert c.execute("select patient_id, sem_paciente, event_id from recordings where id = %s",
+                         (rid,)).fetchone() == (None, True, None)
+    db.rec_add_segment(ana, rid, 1, 0.0, 20.0, "Pressão 128 por 82.", [])
+    db.rec_add_segment(beto, rid, 2, 20.0, 20.0, "invasão", [])             # de outro médico: ignorado
+    assert _add(ana, None, rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, 10 ** 9) == "ok"
+    assert _add(beto, None, rid, 0, 1, 0.0, 10.0, None, b"x", 10 ** 9) == "sem_gravacao"
+    # a gravação feita com paciente não recebe nada sem ele
+    assert db.rec_open(ana, p["id"], rcom, None, None, "2026-11-19T09:00:00Z")
+    assert not db.rec_open(ana, None, rcom)
+    assert _add(ana, None, rcom, 0, 0, 0.0, 5.0, "audio/webm", WEBM, 10 ** 9) == "sem_gravacao"
+    assert db.rec_info(ana, rcom) == {"patient_id": p["id"], "sem_paciente": False}
+    # sem paciente não casa em nada por paciente
+    assert db.rec_list(ana, None, rec_ids=[rid]) == [] and db.rec_list(ana, p["id"], rec_ids=[rid]) == []
+    assert db.rec_set_fala(ana, p["id"], rid, 1, 0, "m") is None
+    (r,) = db.rec_list(ana, None, rec_ids=[rid, rcom], sem_paciente=True)
+    assert r["rec_id"] == rid and [s["seq"] for s in r["segments"]] == [1] and r["audio"] == [{"part": 0, "at": 0.0, "upto": 5.0}]
+    assert db.rec_list(beto, None, rec_ids=[rid], sem_paciente=True) == []
+    assert db.rec_list(ana, None, sem_paciente=True) == []
+    assert db.rec_audio(ana, rid, 0)["patient_id"] is None and db.rec_audio(beto, rid, 0) is None
+    assert db.rec_open(beto, None, rid2, None, None, "2026-11-19T11:00:00Z")    # pendente do Beto
+    assert [x["rec_id"] for x in db.rec_pendentes(ana)] == [rid]
+    assert set(db.rec_pendentes(ana)[0]) == {"rec_id", "created_at", "updated_at", "seconds"}
+    assert [x["rec_id"] for x in db.rec_pendentes(beto)] == [rid2]
+    # ligar: paciente de outro médico, gravação de outro médico, gravação feita com paciente → nada muda
+    assert db.rec_set_patient(ana, [rid], pb["id"]) == ("paciente", 0)
+    assert db.rec_set_patient(ana, [rid, rid2], p["id"]) == ("conflito", 0)
+    assert db.rec_set_patient(ana, [rid, rcom], outro["id"]) == ("conflito", 0)
+    assert db.rec_set_patient(beto, [rid], pb["id"]) == ("conflito", 0)
+    assert db.rec_set_patient(ana, [str(uuid.uuid4())], p["id"]) == ("conflito", 0)
+    assert db.rec_info(ana, rid)["patient_id"] is None
+    assert db.rec_set_patient(ana, [rid], p["id"]) == ("ok", 1)
+    assert db.rec_set_patient(ana, [rid], p["id"]) == ("ok", 1)              # refazer com o mesmo vale
+    assert db.rec_set_patient(ana, [rid], outro["id"]) == ("conflito", 0)    # nunca de um para outro
+    assert db.rec_info(ana, rid) == {"patient_id": p["id"], "sem_paciente": True}
+    assert db.rec_pendentes(ana) == [] and [x["rec_id"] for x in db.rec_pendentes(beto)] == [rid2]
+    # depois de ligar: trecho e áudio cortados antes chegam sem o paciente, os novos com ele
+    assert db.rec_open(ana, None, rid) and db.rec_open(ana, p["id"], rid) and not db.rec_open(ana, outro["id"], rid)
+    assert _add(ana, None, rid, 0, 1, 0.0, 10.0, None, b"meio", 10 ** 9) == "ok"
+    assert _add(ana, p["id"], rid, 0, 2, 0.0, 15.0, None, b"meio", 10 ** 9) == "ok"
+    assert _add(ana, outro["id"], rid, 0, 3, 0.0, 20.0, None, b"meio", 10 ** 9) == "sem_gravacao"
+    assert db.rec_list(ana, None, rec_ids=[rid], sem_paciente=True) == []    # já tem paciente
+    assert [x["rec_id"] for x in db.rec_list(ana, p["id"], rec_ids=[rid])] == [rid]
+    assert db.rec_list(ana, outro["id"], rec_ids=[rid]) == []
+    assert db.delete_patient(ana, p["id"]) == "has_notes"                    # ligada, é prontuário do paciente
+
+
+def test_apagar_gravacao_sem_paciente_e_limpeza_nunca_tira_a_transcricao(novo_usuario):
+    ana, beto = novo_usuario("Ana")["id"], novo_usuario("Beto")["id"]
+    rid, velha = str(uuid.uuid4()), str(uuid.uuid4())
+    assert db.rec_open(ana, None, rid, None, None, "2026-11-19T10:00:00Z")
+    assert db.rec_delete(beto, rid) is None
+    assert db.rec_delete(ana, rid) == {"patient_id": None}                   # achou (sem paciente não é "não achou")
+    assert db.rec_delete(ana, rid) is None and db.rec_info(ana, rid) is None
+    assert db.rec_open(ana, None, velha, None, None, "2025-10-15T10:00:00Z")
+    with db.connection() as c:
+        c.execute("""insert into recording_segments (rec_id, seq, at_s, dur_s, text, created_at)
+                     values (%s, 1, 0, 30, 'trecho antigo', now() - interval '13 months')""", (velha,))
+        c.execute("""insert into recording_audio (rec_id, part, n, user_id, at_s, upto_s, mime, size, data, created_at)
+                     values (%s, 0, 0, %s, 0, 5, 'audio/webm', 4, %s, now() - interval '13 months')""", (velha, ana, WEBM[:4]))
+        c.execute("update recordings set created_at = now() - interval '13 months' where id = %s", (velha,))
+        c.commit()
+    db.cleanup_old_records()
+    with db.connection() as c:
+        audio = c.execute("select count(*) from recording_audio where rec_id = %s", (velha,)).fetchone()[0]
+        trechos = c.execute("select count(*) from recording_segments where rec_id = %s", (velha,)).fetchone()[0]
+        gravacoes = c.execute("select count(*) from recordings where id = %s", (velha,)).fetchone()[0]
+    assert audio == 0 and trechos == 1 and gravacoes == 1                    # só o áudio de mais de 1 ano saiu
+
+
+def test_migracao_0024_aplicada_e_idempotente(test_db):
+    with db.connection() as c:
+        nulo = c.execute("""select is_nullable from information_schema.columns where table_schema = 'public'
+                            and table_name = 'recordings' and column_name = 'patient_id'""").fetchone()[0]
+        sp = c.execute("""select data_type, is_nullable, column_default from information_schema.columns
+                          where table_schema = 'public' and table_name = 'recordings' and column_name = 'sem_paciente'""").fetchone()
+        idx = c.execute("select 1 from pg_indexes where indexname = 'recordings_sem_paciente_idx'").fetchone()
+        rls = c.execute("select relrowsecurity from pg_class where relname = 'recordings'").fetchone()[0]
+    assert nulo == "YES" and sp[0] == "boolean" and sp[1] == "NO" and "false" in sp[2] and idx and rls
+
+
+def test_sem_a_migracao_0024_so_a_gravacao_sem_paciente_espera(novo_usuario, monkeypatch):
+    """Sem a 0024 (db.tem_sem_paciente falso): os caminhos sem paciente dão MigracaoPendente (503 na rota) e a gravação
+    com paciente segue igual, sem citar a coluna sem_paciente."""
+    uid = novo_usuario()["id"]
+    p = db.create_patient(uid, "Paciente Teste")
+    rid = str(uuid.uuid4())
+    monkeypatch.setattr(db, "tem_sem_paciente", lambda conn: False)
+    assert not db.sem_paciente_pronto()
+    for f in (lambda: db.rec_open(uid, None, str(uuid.uuid4())), lambda: db.rec_pendentes(uid),
+              lambda: db.rec_set_patient(uid, [rid], p["id"]), lambda: db.rec_list(uid, None, rec_ids=[rid], sem_paciente=True),
+              lambda: _add(uid, None, rid, 0, 0, 0.0, 5.0, "audio/webm", WEBM, 10 ** 9)):
+        with pytest.raises(db.MigracaoPendente):
+            f()
+    assert db.rec_open(uid, p["id"], rid, "ev1", None, "2026-11-19T10:00:00Z")
+    assert db.rec_info(uid, rid) == {"patient_id": p["id"], "sem_paciente": False}
+    assert [r["rec_id"] for r in db.rec_list(uid, p["id"], event_id="ev1")] == [rid]
+
+
+def test_caminho_com_paciente_roda_no_esquema_de_antes_da_0024(novo_usuario, test_db, monkeypatch):
+    """O esquema de produção hoje (sem a 0024): numa transação desfeita no fim, a coluna sem_paciente sai de verdade e o
+    caminho com paciente (abrir, trecho, áudio, lista, estado, apagar) tem de rodar sem citá-la. Só o banco de testes."""
+    import contextlib
+    uid = novo_usuario()["id"]
+    p = db.create_patient(uid, "Paciente Teste")
+    rid = str(uuid.uuid4())
+    with db.connection() as conn:
+        conn.execute("alter table recordings drop column sem_paciente")
+
+        class _Sem:                                  # a mesma conexão (transação aberta) para todas as funções do db
+            def __getattr__(self, k):
+                return getattr(conn, k)
+            def commit(self):
+                pass
+        monkeypatch.setattr(db, "connection", lambda: contextlib.nullcontext(_Sem()))
+        monkeypatch.setitem(db._SEM_PAC, "ok", None)
+        monkeypatch.setitem(db._SEM_PAC, "t", 0.0)
+        try:
+            assert not db.tem_sem_paciente(conn)
+            assert db.rec_open(uid, p["id"], rid, "ev1", None, "2026-11-19T10:00:00Z") == {"patient_id": p["id"], "sem_paciente": False}
+            db.rec_add_segment(uid, rid, 1, 0.0, 20.0, "texto", [], [])
+            assert db.rec_info(uid, rid) == {"patient_id": p["id"], "sem_paciente": False}
+            assert [r["rec_id"] for r in db.rec_list(uid, p["id"], event_id="ev1")] == [rid]
+            assert [r["rec_id"] for r in db.rec_list(uid, p["id"], rec_ids=[rid])] == [rid]
+            assert db.rec_delete(uid, rid) == {"patient_id": p["id"]}
+        finally:
+            conn.rollback()
+    monkeypatch.setitem(db._SEM_PAC, "ok", None)

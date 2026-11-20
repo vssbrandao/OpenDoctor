@@ -1659,6 +1659,38 @@ def tem_falas(conn):
     return ok
 
 
+_SEM_PAC = {"ok": None, "t": 0.0}
+_MIG_SEM_PAC = "0024_gravacao_sem_paciente.sql"
+
+
+def tem_sem_paciente(conn):
+    """A migração 0024 (recordings.patient_id pode ser nulo + recordings.sem_paciente) já foi aplicada? Sem ela a
+    gravação sem paciente (tela Nova consulta) espera (MigracaoPendente → 503) e todo o resto segue como antes. Guardado
+    como tem_audio."""
+    if _SEM_PAC["ok"] or (_SEM_PAC["ok"] is False and time.monotonic() - _SEM_PAC["t"] < DISPENSA_RECHECA_S):
+        return _SEM_PAC["ok"]
+    ok = bool(conn.execute("""select 1 from information_schema.columns where table_schema = 'public'
+                              and table_name = 'recordings' and column_name = 'sem_paciente'""").fetchone())
+    _SEM_PAC.update(ok=ok, t=time.monotonic())
+    return ok
+
+
+def sem_paciente_pronto():
+    """A gravação sem paciente já pode ser usada (a 0024 foi aplicada)?"""
+    with connection() as conn:
+        return tem_sem_paciente(conn)
+
+
+def rec_info(user_id, rec_id):
+    """A gravação rec_id DESTE médico: {patient_id (None = ainda sem paciente), sem_paciente (começou sem paciente)} ou
+    None (não existe ou é de outro médico). Sem a 0024: sem_paciente sempre False."""
+    with connection() as conn:
+        sp = "sem_paciente" if tem_sem_paciente(conn) else "false"
+        r = conn.execute(f"select patient_id, {sp} from recordings where id = %s and user_id = %s",
+                         (rec_id, user_id)).fetchone()
+    return {"patient_id": r[0], "sem_paciente": bool(r[1])} if r else None
+
+
 def _ligar(conn, user_id, patient_id, rec_ids, note_id, trocar=False):
     """A regra (única) de ligar gravação e evolução: só evolução deste médico e deste paciente (id inexistente ou de
     outro é ignorado); sem trocar, só a gravação que ainda não tem evolução ganha esta — a que já tem fica com a dela.
@@ -1674,15 +1706,31 @@ def _ligar(conn, user_id, patient_id, rec_ids, note_id, trocar=False):
 
 def rec_open(user_id, patient_id, rec_id, event_id=None, note_id=None, consent_at=None):
     """Garante a gravação rec_id deste médico e paciente. Devolve False se o id já é de outro médico ou
-    paciente (não mistura), True se existe ou foi criada. A evolução vem pela regra de _ligar."""
+    paciente (não mistura); se existe ou foi criada, o que está guardado: {patient_id, sem_paciente} (sempre verdadeiro;
+    lido no mesmo select, para a rota decidir o rótulo sem outra consulta). A evolução vem pela regra de _ligar.
+    patient_id None (tela Nova consulta, migração 0024): cria a gravação sem paciente (patient_id nulo, sem_paciente true,
+    sem consulta e sem evolução); a que já existe vale se é deste médico e começou sem paciente (ainda sem paciente ou
+    já ligada: trechos cortados antes de ligar chegam sem o paciente). Sem a 0024: MigracaoPendente."""
     with connection() as conn:
+        if patient_id is None:
+            if not tem_sem_paciente(conn):
+                raise MigracaoPendente(_MIG_SEM_PAC)
+            conn.execute("""insert into recordings (id, user_id, patient_id, event_id, consent_at, sem_paciente)
+                            values (%s,%s,null,null,coalesce(%s::timestamptz, now()),true) on conflict (id) do nothing""",
+                         (rec_id, user_id, consent_at))
+            r = conn.execute("select user_id::text, patient_id, sem_paciente from recordings where id = %s", (rec_id,)).fetchone()
+            conn.commit()
+            ok = bool(r) and r[0] == str(user_id) and (r[1] is None or bool(r[2]))
+            return {"patient_id": r[1], "sem_paciente": bool(r[2])} if ok else False
         conn.execute("""insert into recordings (id, user_id, patient_id, event_id, consent_at)
                         values (%s,%s,%s,%s,coalesce(%s::timestamptz, now())) on conflict (id) do nothing""",
                      (rec_id, user_id, patient_id, event_id, consent_at))
         _ligar(conn, user_id, patient_id, [rec_id], note_id)
-        r = conn.execute("select user_id::text, patient_id from recordings where id = %s", (rec_id,)).fetchone()
+        sp = "sem_paciente" if tem_sem_paciente(conn) else "false"     # sem a 0024 a coluna não existe
+        r = conn.execute(f"select user_id::text, patient_id, {sp} from recordings where id = %s", (rec_id,)).fetchone()
         conn.commit()
-    return bool(r) and r[0] == str(user_id) and r[1] == patient_id
+    ok = bool(r) and r[0] == str(user_id) and r[1] is not None and r[1] == patient_id
+    return {"patient_id": r[1], "sem_paciente": bool(r[2])} if ok else False
 
 
 def rec_segment(user_id, rec_id, seq):
@@ -1759,7 +1807,9 @@ def rec_add_audio(user_id, patient_id, rec_id, part, n, at, upto, mime, data, ma
     """Guarda um pedaço do áudio da gravação (uma vez só por rec_id + part + n). NUNCA cria a gravação: ela nasce no
     primeiro trecho transcrito (rec_open). sess: o id da sessão do MediaRecorder que a página gerou (o n = 0 grava; os
     outros pedaços da parte precisam ter o mesmo). Devolve:
-    - "sem_gravacao": a gravação deste médico e paciente ainda não existe (a página tenta de novo depois);
+    - "sem_gravacao": a gravação deste médico e paciente ainda não existe (a página tenta de novo depois); patient_id None:
+      só vale a gravação deste médico que começou sem paciente (sem_paciente; ainda sem paciente ou já ligada) — sem a 0024,
+      MigracaoPendente;
     - "repetido": o pedaço já estava guardado, da mesma sessão;
     - "ocupada": a parte é de outra sessão (o n = 0 dela tem outro sess; ou este pedaço já existe com outro sess):
       a página renumera a sessão para uma parte livre, e nada se mistura;
@@ -1771,8 +1821,15 @@ def rec_add_audio(user_id, patient_id, rec_id, part, n, at, upto, mime, data, ma
     with connection() as conn:
         if not tem_audio(conn):
             raise MigracaoPendente("0022_gravacao_audio.sql")
-        if not conn.execute("select 1 from recordings where id = %s and user_id = %s and patient_id = %s",
-                            (rec_id, user_id, patient_id)).fetchone():
+        if patient_id is None:                        # sem o paciente (Nova consulta): só a gravação que começou sem ele
+            if not tem_sem_paciente(conn):
+                raise MigracaoPendente(_MIG_SEM_PAC)
+            achou = conn.execute("select 1 from recordings where id = %s and user_id = %s and sem_paciente",
+                                 (rec_id, user_id)).fetchone()
+        else:
+            achou = conn.execute("select 1 from recordings where id = %s and user_id = %s and patient_id = %s",
+                                 (rec_id, user_id, patient_id)).fetchone()
+        if not achou:
             return "sem_gravacao"
         ja = {r[0]: (r[1], r[2]) for r in conn.execute(
             "select n, sess, mime from recording_audio where rec_id = %s and part = %s and n in (0, %s)",
@@ -1848,13 +1905,28 @@ def rec_seconds_today(user_id):
     return float(r[0] or 0)
 
 
-def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=(), orphans=False):
+def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=(), orphans=False, sem_paciente=False):
     """Gravações de uma consulta (pela consulta da agenda, pela evolução ou pelos ids que a página conhece),
     da mais antiga para a mais nova, com os trechos. orphans: também as gravações sem consulta e sem evolução
-    deste paciente das últimas 12 h (consulta avulsa que ainda não foi salva)."""
+    deste paciente das últimas 12 h (consulta avulsa que ainda não foi salva).
+    sem_paciente=True (Nova consulta): só pelos ids, só as gravações deste médico que começaram sem paciente e AINDA
+    estão sem (patient_id é ignorado). Sem a 0024: MigracaoPendente."""
     ids = [str(x) for x in rec_ids or ()][:20]
-    if not (event_id or note_id or ids or orphans):
+    if sem_paciente:
+        with connection() as conn:
+            if not tem_sem_paciente(conn):
+                raise MigracaoPendente(_MIG_SEM_PAC)
+        if not ids:
+            return []
+        where, args = "r.user_id = %s and r.patient_id is null and r.sem_paciente and r.id::text = any(%s::text[])", (user_id, ids)
+    elif patient_id is None or not (event_id or note_id or ids or orphans):
         return []
+    else:
+        where = """r.user_id = %s and r.patient_id = %s
+                 and ((%s::text is not null and r.event_id = %s) or (%s::bigint is not null and r.note_id = %s)
+                      or r.id::text = any(%s::text[])
+                      or (%s and r.event_id is null and r.note_id is null and r.updated_at > now() - interval '12 hours'))"""
+        args = (user_id, patient_id, event_id, event_id, note_id, note_id, ids, bool(orphans))
     with connection() as conn:
         falas = "s.falas" if tem_falas(conn) else "'[]'::jsonb"      # sem a 0023: os trechos vêm sem rótulo
         rows = conn.execute(
@@ -1863,12 +1935,8 @@ def rec_list(user_id, patient_id, event_id=None, note_id=None, rec_ids=(), orpha
                                                                   'duvidas', s.duvidas, 'falas', """ + falas + """) order by s.seq)
                                 from recording_segments s where s.rec_id = r.id), '[]'::json)
                from recordings r
-               where r.user_id = %s and r.patient_id = %s
-                 and ((%s::text is not null and r.event_id = %s) or (%s::bigint is not null and r.note_id = %s)
-                      or r.id::text = any(%s::text[])
-                      or (%s and r.event_id is null and r.note_id is null and r.updated_at > now() - interval '12 hours'))
-               order by r.created_at""",
-            (user_id, patient_id, event_id, event_id, note_id, note_id, ids, bool(orphans))).fetchall()
+               where """ + where + """
+               order by r.created_at""", args).fetchall()
         aud = {}
         if rows and tem_audio(conn):                    # só os números de cada parte: os bytes ficam no banco
             for rid, part, n, at, upto in conn.execute(
@@ -1909,11 +1977,51 @@ def rec_link_orphans(user_id, patient_id, rec_ids, note_id):
 
 
 def rec_delete(user_id, rec_id):
-    """Apaga a transcrição (gravação + trechos + o áudio, pela cascata de recording_audio). Devolve o patient_id ou None."""
+    """Apaga a transcrição (gravação + trechos + o áudio, pela cascata de recording_audio). Devolve {"patient_id": ...}
+    (None na gravação ainda sem paciente) ou None (não achou: não existe ou é de outro médico)."""
     with connection() as conn:
         r = conn.execute("delete from recordings where user_id = %s and id = %s returning patient_id", (user_id, rec_id)).fetchone()
         conn.commit()
-    return r[0] if r else None
+    return {"patient_id": r[0]} if r else None
+
+
+def rec_pendentes(user_id, limit=100):
+    """As gravações deste médico ainda sem paciente (Nova consulta), da mais nova para a mais antiga: só ids, datas e
+    segundos (nada de texto). Sem a 0024: MigracaoPendente."""
+    with connection() as conn:
+        if not tem_sem_paciente(conn):
+            raise MigracaoPendente(_MIG_SEM_PAC)
+        rows = conn.execute("""select id::text, created_at, updated_at, seconds from recordings
+                               where user_id = %s and patient_id is null order by created_at desc limit %s""",
+                            (user_id, limit)).fetchall()
+    return [{"rec_id": r[0], "created_at": r[1].isoformat(), "updated_at": r[2].isoformat(), "seconds": r[3]} for r in rows]
+
+
+def rec_set_patient(user_id, rec_ids, patient_id):
+    """Liga o paciente às gravações que começaram sem ele (Nova consulta). Em UMA transação: o paciente precisa ser deste
+    médico; cada gravação precisa ser deste médico, ter começado sem paciente e estar sem paciente ou já com ESTE (refazer
+    vale). Qualquer uma de outro médico, inexistente ou com outro paciente: nada muda. Só de nulo para um paciente,
+    nunca de um para outro. Devolve ("ok", n), ("paciente", 0) ou ("conflito", 0). Sem a 0024: MigracaoPendente."""
+    ids = sorted({str(x) for x in rec_ids or ()})[:20]
+    with connection() as conn:
+        if not tem_sem_paciente(conn):
+            raise MigracaoPendente(_MIG_SEM_PAC)
+        if not conn.execute("select 1 from patients where id = %s and user_id = %s for share",
+                            (patient_id, user_id)).fetchone():
+            conn.rollback()
+            return "paciente", 0
+        rows = conn.execute("""select id::text, user_id::text, patient_id, sem_paciente from recordings
+                               where id::text = any(%s::text[]) order by id for update""", (ids,)).fetchall()
+        ok = bool(ids) and len(rows) == len(ids) and all(
+            r[1] == str(user_id) and r[3] and (r[2] is None or r[2] == patient_id) for r in rows)
+        if not ok:
+            conn.rollback()
+            return "conflito", 0
+        conn.execute("""update recordings set patient_id = %s, updated_at = now()
+                        where user_id = %s and id::text = any(%s::text[]) and sem_paciente and patient_id is null""",
+                     (patient_id, user_id, ids))
+        conn.commit()
+    return "ok", len(ids)
 
 
 def last_note_content(user_id, patient_id, exclude_note_id=None, exclude_event_id=None):

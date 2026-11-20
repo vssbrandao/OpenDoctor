@@ -103,6 +103,13 @@
     #prTabs{width:100%}                                   /* da largura das abas do painel; os 3 botões iguais */
     #prTabs button{flex:1 1 0}
     #prTabs button::before,#prTabs button::after{flex:1 1 0;width:auto}
+    /* Transcrição | SOAP (consulta iniciada): cada aba do tamanho do texto, 42 de cada lado; o controle centralizado (19/11) */
+    .pr:has(> #prMain.consulta) #prTabs{width:max-content}
+    .pr:has(> #prMain.consulta) #prTabs button{flex:none;padding-left:42px;padding-right:42px}
+    .pr:has(> #prMain.consulta) #prTabs button::before,.pr:has(> #prMain.consulta) #prTabs button::after{display:none}
+    /* Nova consulta (20/11): Transcrição | SOAP com a largura da barra de baixo (800, no mesmo eixo), as abas meio a meio */
+    .stage.nova-cs .pr:has(> #prMain.consulta) #prTabs{width:800px;max-width:calc(100vw - 48px);position:relative;left:50%;transform:translateX(-50%);margin:0}
+    .stage.nova-cs .pr:has(> #prMain.consulta) #prTabs button{flex:1 1 0;padding-left:0;padding-right:0}
     .pr-nav button.on{color:#000}
     .pr-nav button:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px}
     .pr-nav-pill{position:absolute;top:0;left:0;height:36px;box-sizing:border-box;border:1px solid rgba(0,0,0,.08);border-radius:24px;background:#fff}
@@ -1305,6 +1312,18 @@
     .cs-bar .cs-x{width:48px;height:48px;background:#fff;color:#000}   /* o cancelar: branco com o X preto, redondo de 48 */
     .cs-bar .cs-x:hover{background:#F3F3F3}
     .cs-bar.com-x{padding-left:8px}
+    .cs-bar .cs-x + .cs-mic{margin-left:-8px}                    /* gravando: o microfone a 8 do X, como o play e a seta (19/11) */
+    .cs-bar .cs-mic svg{width:11.09px;height:16px}              /* antes de gravar: o microfone no lugar do X; 16 de altura, o peso visual do play (14, cheio) do mesmo círculo, 19/11 */
+    .cs-bar .cs-ini svg{width:17.54px;height:19.39px}           /* a onda (18) na pílula azul, que inicia (19/11) */
+    .cs-bar .cs-stop:disabled{cursor:default}
+    .cs-bar:has(.cs-ini) .cs-tm{display:none}                   /* antes de gravar, sem o tempo (19/11) */
+    .cs-bar:has(.cs-ini):not(.com-x){padding-left:24px}           /* os pontos a 24 da borda… */
+    .cs-bar .cs-ini{margin-left:8px}                            /* …e a 24 da pílula azul (16 do vão + 8) */
+    .cs-bar:has(.cs-stop:not(.cs-ini)) .cs-ini{margin-left:-8px}  /* com o play antes: a 8 dele, como o enviar gravando */
+    .cs-bar:has(.cs-ini) .cs-mic{margin-right:8px}              /* com o microfone: os pontos a 24 dele também */
+    .cs-bar .cs-x:disabled{cursor:default}
+    .cs-bar:has(.cs-ini) .cs-stop:not(.cs-ini){margin-left:8px}    /* os pontos a 24 do play, como da pílula */
+    .cs-bar .rc-devmenu{top:auto;bottom:calc(100% + 8px);left:0;color:#000}   /* a lista dos microfones abre para cima */
     .cs-gorow{display:flex;align-items:center;gap:8px}
     .cs-gorow .cs-x{width:48px;height:48px;background:#fff;color:#000;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}   /* no branco, com a borda */                                /* o X a 8 da borda, como os botões da direita */
     /* o player: trilha de 416 (#F7F8F8) com o progresso preto e a bolinha de 10; marcadores laranja de 36 (O, A e P); os
@@ -2349,6 +2368,7 @@
       border-radius:12px;background:none;cursor:pointer;text-align:left;font-family:var(--disp);font-weight:400;
       font-size:14px;line-height:20px;color:#1F2023}
     .nc-op:hover,.nc-op:focus-visible{background:rgba(10,18,23,.05);outline:0}
+    .nc-op,.nc-busca-l{border-radius:999px}                       /* o destaque redondo (20/11), aqui e na Nova consulta */
     .nc-op > .nc-op-tx{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .nc-op .nc-ok{width:24px;height:24px;flex:none;display:flex;align-items:center;justify-content:center;color:#717173}
     .nc-vazio{padding:9px 15px;font-family:var(--disp);font-size:15px;line-height:20px;color:#6B7173}
@@ -2382,6 +2402,112 @@
     #prTx .cs-card{padding:0;margin-bottom:0;border-radius:0;background:none}
     #prTx .cs-main{border-radius:0}
     #prTx .cs-go.cs-iniciar{width:235px}
+    /* ===== Nova consulta (19/11): o campo Paciente em cima do cartão da gravação; sem paciente, o cabeçalho sai ===== */
+    #prMain > .pr-nova[hidden]{display:none}
+    #prMain > .pr-nova:not(:has(> :not([hidden]))){display:none}   /* sem aviso nem lista: não ocupa lugar (o pé fica a 24 da tela) */
+    .stage.nova-cs .right:not(.novo){display:none}  /* sem o assistente na Nova consulta, antes e depois do paciente (19/11); o cadastro aparece ali */
+    #prMain.sem-pac > .pr-head{display:none!important}
+    .pr-nova{display:flex;flex-direction:column;gap:16px;margin:0}
+    /* os botões do canto (medidas do "Help" do Sana: 36 de altura, 6 16 de respiro, borda rgba(10,18,23,.1), 14/20 Medium;
+       com ícone, 12 à esquerda, como o "Invite" dele; 12 do topo, 16 da direita e 8 entre eles) */
+    .pn-top{display:flex;justify-content:space-between;gap:8px}
+    .pn-top[hidden]{display:none}
+    .pn-dd{position:relative}
+    .pn-ob{display:flex;align-items:center;gap:6px;height:36px;box-sizing:border-box;padding:6px 16px;border:1px solid rgba(10,18,23,.1);
+      border-radius:999px;background:transparent;cursor:pointer;white-space:nowrap;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:rgb(10,18,23)}
+    .pn-ob.ico{padding-left:12px}
+    .pn-ob svg{flex:none}
+    .pn-ob .chev{color:rgba(10,18,23,.6)}
+    .pn-ob:disabled{cursor:default}
+    .pn-ob:focus-visible{outline:2px solid #0B57D0;outline-offset:2px}
+    .pn-pop{position:absolute;bottom:calc(100% + 6px);right:0;z-index:30;box-sizing:border-box;padding:6px;border:1px solid rgba(0,0,0,.08);
+      border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+    .pn-pop[hidden]{display:none}
+    .pn-pop-pac{width:320px}
+    .pn-dd:first-child .pn-pop{right:auto;left:0}
+    .pn-dd:has(#pnMic){display:none}                            /* o microfone fica na barra */
+    /* Paciente e Presencial (20/11): no canto de cima à esquerda, a 32 da borda, na linha do Transcrição | SOAP; como a aba
+       escolhida dele (branco, borda rgba(0,0,0,.08), 36 de altura, canto 24, 14 Medium preto); as listas abrem para baixo */
+    .stage.nova-cs .pn-top{position:absolute;top:8px;left:24px;right:24px;z-index:20;justify-content:space-between;gap:8px;pointer-events:none}
+    .stage.nova-cs .pn-top > *{pointer-events:auto}                  /* Paciente à esquerda, Presencial à direita (20/11) */
+    .stage.nova-cs .pn-top .pn-ob{height:36px;padding:0 32px;gap:6px;border:1px solid rgba(0,0,0,.08);border-radius:24px;background:#fff;
+      font-weight:500;font-size:14px;line-height:19.6px;color:#000}
+    .stage.nova-cs .pn-top #pnBtn{padding-left:32px}
+    .pn-modo-i{display:flex;align-items:center;justify-content:center;width:20px;height:20px;flex:none;color:#071216}   /* como os ícones da sidebar */
+    .pn-modo-i svg{display:block}             /* 32 dos dois lados (20/11), o ícone de Pacientes à esquerda */
+    .stage.nova-cs .pn-top .pn-ob .chev{display:none}               /* sem o chevron (20/11) */
+    .stage.nova-cs .pn-top .pn-ob:not(:disabled):hover{background:#F7F8F8}
+    .stage.nova-cs .pn-top .pn-ob:disabled{cursor:default}
+    .stage.nova-cs .pn-top .pn-ob:disabled .chev{display:none}
+    .stage.nova-cs .pn-top .pn-pop{top:calc(100% + 6px);bottom:auto;left:0;right:auto}
+    .stage.nova-cs .pn-top .pn-dd:last-child .pn-pop{left:auto;right:0}   /* o menu do Presencial, alinhado à direita */
+    .rc-devmenu.nc-menu{right:auto;left:0;width:300px;padding:7px;border:1px solid rgba(10,18,23,.08);border-radius:22px;box-shadow:0 6px 20px rgba(0,0,0,.06);color:#1F2023}
+
+    .pn-pop.nc-menu{width:300px;padding:7px;border:1px solid rgba(10,18,23,.08);border-radius:22px;box-shadow:0 6px 20px rgba(0,0,0,.06)}   /* o do chat */
+    .pn-pop.nc-menu[hidden]{display:none}
+    .pn-ncpop .nc-op.on{background:rgba(10,18,23,.05)}
+    #pnModoM .nc-op-ico{width:20px;height:20px;color:#071216}       /* Presencial / Telemedicina: SF Semibold 15, como a sidebar */
+    /* o coração do Presencial com 14 de altura, a do ícone do Paciente (o svg tem 0,5 de folga de cada lado: 14 × 17,3 / 16,3) */
+    #pnModoM [data-modo=presencial] .nc-op-ico svg,#pnModoI svg[viewBox^="-0.5 -0.5 18.67"]{width:auto;height:16.98px}   /* 16 de desenho: contorno, parece do tamanho do Paciente (cheio, 14) */
+    /* o vídeo da Telemedicina na mesma escala do coração (16 / 16,3), na lista e no botão */
+    #pnModoM [data-modo=telemedicina] .nc-op-ico svg,#pnModoI svg[viewBox^="-0.5 -0.5 19.52"]{width:19.16px;height:13.14px}
+    .pn-ncpop .nc-op-ico svg[viewBox="0 0 13 14"]{width:13px;height:14px}
+    .stage.nova-cs .pn-top #pnBtnT{max-width:200px;overflow:hidden;text-overflow:ellipsis}
+    .pn-dd .rc-devmenu{top:auto;bottom:calc(100% + 6px);left:0;right:auto}   /* a lista dos microfones abre para cima */
+    #pnMicT{max-width:220px;overflow:hidden;text-overflow:ellipsis}               /* Selecionar paciente, à esquerda: a busca abre para cima, à esquerda */
+    /* a caixa (medidas da caixa do assistente da Sana): 16 16 12 de respiro, canto 24, 8 da barra à linha dos botões;
+       os botões da linha como os dela (36, 6 16 6 12, 14/20 Regular, sem borda) */
+    .pn-box{display:contents}
+    .stage.nova-cs .pn-box{display:flex;flex-direction:column;gap:8px;flex:none;margin-top:16px;padding:16px 16px 12px;border-radius:40px;background:none}   /* sem a parte cinza (20/11) */
+    .stage.nova-cs #prMain .pn-box > .cs-foot{padding:0}
+    .stage.nova-cs .pn-box .pn-ob{border:0;font-weight:400;padding:6px 16px 6px 12px}
+    .stage.nova-cs .pn-box #pnModo{padding:6px 12px 6px 16px}
+    .stage.nova-cs .pn-box .pn-ob:not(:disabled):hover{background:rgba(10,18,23,.05)}
+    /* teste (20/11): antes de gravar, a caixa no meio da tela (na altura do cartão); gravando, volta ao pé */
+    .stage.nova-cs .pn-box:has(.cs-bar){position:absolute;left:50%;bottom:0;width:800px;max-width:calc(100vw - 48px);box-sizing:border-box;
+      padding:0;transform:translateX(-50%);margin:0;z-index:2}   /* antes de gravar e gravando: do tamanho da barra do chat (800 × 64, no mesmo eixo), a 24 do pé */
+    .stage.nova-cs .pn-box .cs-bar{height:64px}
+    .stage.nova-cs #prMain .cs-pane{padding-bottom:88px}          /* o fim da transcrição não fica atrás da barra */
+    /* o texto (transcrição e SOAP) no eixo da barra e do controle de cima (800), a 24 da borda deles, como os pontos da barra */
+    .stage.nova-cs #prMain .cs-pane{box-sizing:border-box;width:800px;max-width:calc(100vw - 48px);margin-left:calc((100% - min(800px, 100vw - 48px)) / 2);
+      padding-left:24px;padding-right:24px}
+    /* Nova consulta (20/11): o SOAP escrito direto na tela, no ritmo da transcrição — o título como o da fala (12/16 Medium
+       #0A0A0A), o texto 14/22 #36373A, sem as caixas dos campos (os de texto crescem com o que se escreve); os sinais vitais
+       em grade, rótulo 12 cinza e o valor embaixo; 24 entre as partes */
+    .stage.nova-cs #prSoap{gap:24px}
+    .stage.nova-cs #prSoap .pr-soapf{gap:4px}
+    .stage.nova-cs #prSoap .pr-soapf > span{font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#0A0A0A}
+    .stage.nova-cs #prSoap textarea,.stage.nova-cs #prSoap .pr-in,.stage.nova-cs #prSoap .pr-imc{border:0;border-radius:0;background:none;box-shadow:none;
+      padding:0;outline:none;resize:none;font-family:var(--disp);font-size:14px;line-height:22px;color:#36373A}
+    .stage.nova-cs #prSoap textarea{min-height:22px;field-sizing:content}
+    .stage.nova-cs #prSoap .pr-in,.stage.nova-cs #prSoap .pr-imc{height:22px}
+    .stage.nova-cs #prSoap textarea::placeholder,.stage.nova-cs #prSoap .pr-in::placeholder{color:#9AA0A6}
+    .stage.nova-cs #prSoap textarea:focus,.stage.nova-cs #prSoap .pr-in:focus{box-shadow:none;border:0}
+    .stage.nova-cs #prSoap .pr-vitals{gap:12px 24px;margin:4px 0 8px}
+    .stage.nova-cs #prSoap .pr-vital{gap:2px}
+    .stage.nova-cs #prSoap .pr-vital > span:first-child{font-family:var(--disp);font-weight:400;font-size:12px;line-height:16px;color:#666C6F}
+    .stage.nova-cs #prSoap .pr-pa{gap:2px}
+    .stage.nova-cs #prSoap .pr-pa .pr-in{width:auto;min-width:2ch;flex:none;field-sizing:content}   /* 128/82, sem o vão dos campos */
+    .stage.nova-cs #prSoap .pr-labhint{display:none}
+    .pn-menu{min-width:180px}
+    .pn-pop .pn-list{position:static;margin:6px 0 0;padding:0;border:0;border-radius:0;box-shadow:none}
+    .pn-in{height:44px;box-sizing:border-box;border:0;border-radius:12px;background:#F7F8F8;padding:0 14px;outline:none;
+      font-family:var(--disp);font-weight:400;font-size:14px;line-height:20px;color:#000;caret-color:#0B57D0}
+    .pn-in::placeholder{color:#666C6F}
+    .pn-in:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px}
+    .pn-list{position:absolute;top:100%;left:0;right:0;margin-top:4px;z-index:30;box-sizing:border-box;max-height:300px;overflow:auto;
+      padding:6px;border:1px solid rgba(0,0,0,.08);border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+    .pn-list[hidden]{display:none}
+    .pn-op,.pn-pi{display:block;width:100%;box-sizing:border-box;border:0;background:none;border-radius:12px;padding:10px 12px;text-align:left;
+      cursor:pointer;font-family:var(--disp);font-weight:500;font-size:14px;line-height:20px;color:#000}
+    .pn-op small,.pn-pi small{display:block;font-weight:400;font-size:12px;line-height:16px;color:#666C6F}
+    .pn-op.on,.pn-op:hover,.pn-pi:hover{background:#F7F8F8}
+    .pn-op:focus-visible,.pn-pi:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px}
+    .pn-msg{padding:10px 12px;font-family:var(--disp);font-size:12px;line-height:16px;color:#666C6F}
+    .pn-aviso{font-family:var(--disp);font-size:12px;line-height:16px;color:#666C6F}
+    .pn-ph{margin:0 0 6px;padding:0 12px;font-family:var(--disp);font-weight:500;font-size:12px;line-height:16px;color:#666C6F}   /* alinhado ao texto dos itens */
+    .pn-pl{display:flex;flex-direction:column;gap:2px}
     /* recolher/expandir painéis */
     /* botão do painel (Figma IconButton 36x36 em x 226, y 8; ícone 20x20 no centro) */
     .nav-toggle{position:absolute;top:8px;right:6px;width:36px;height:36px;border:0;padding:0;
@@ -2393,6 +2519,14 @@
     .nav.collapsed{width:52px}
     .nav.collapsed .nav-top svg.nav-logo{visibility:hidden}
     .nav.collapsed .nav-toggle{left:8px;right:auto}
+    /* a busca ao lado do botão do painel: mesmo botão de 36, 1 px à esquerda dele; com o menu aberto o item Buscar sai */
+    .nav-busca{position:absolute;top:8px;right:43px;width:36px;height:36px;border:0;padding:0;background:none;cursor:pointer;
+      border-radius:8px;display:flex;align-items:center;justify-content:center}
+    .nav-busca:hover{background:rgba(0,0,0,.05)}
+    .nav-top .nav-busca svg{width:15px;height:15px;flex:none}
+    .nav-busca:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px}
+    .nav.collapsed .nav-busca{display:none}
+    .nav:not(.collapsed) #navBuscar{display:none}
     /* dica dos botões de ícone (mouseover): pílula escura de 30 px, 6 px abaixo do botão e centrada nele; a do menu
        tem também o atalho */
     .nav-tip{position:fixed;left:0;top:0;z-index:1000;display:flex;align-items:center;gap:9px;height:30px;
@@ -2409,6 +2543,30 @@
     @media (prefers-reduced-motion:reduce){.nav-tip,.nav-tip.on{transition:none}}
     .nav.collapsed .item>span:not(.ico){display:none}
     .nav.collapsed .item{width:40px}
+    /* Chat | Pacientes no topo do menu: o visual do Prontuário | Prescrição (.pr-nav): trilho #F7F8F8 de 36, o escolhido branco com borda */
+    .nav-top{position:relative}
+    .nav-seg{margin:4px 10px 0;display:flex;height:36px;border-radius:24px;background:#F7F8F8}
+    .nav-seg button{flex:1 1 0;min-width:0;height:36px;box-sizing:border-box;padding:0 8px;border:1px solid transparent;border-radius:24px;background:none;cursor:pointer;
+      font-family:var(--disp);font-weight:500;font-size:14px;line-height:19.6px;color:#666C6F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .nav-seg button:hover{color:#000}
+    .nav-seg button.on{color:#000}
+    /* a troca Chat ↔ Consulta (20/11): a pílula branca desliza até a aba (280 ms) e o texto escurece junto */
+    .nav-seg{position:relative}
+    .nav-seg button{position:relative;z-index:1;transition:color .2s cubic-bezier(.2,.8,.2,1)}
+    .nav-seg .seg-pill{position:absolute;top:0;left:0;height:36px;box-sizing:border-box;border:1px solid rgba(0,0,0,.08);border-radius:24px;
+      background:#fff;pointer-events:none;transition:transform .28s cubic-bezier(.2,.8,.2,1),width .28s cubic-bezier(.2,.8,.2,1)}
+    .nav-seg .seg-pill.sem-anim{transition:none}
+    @media (prefers-reduced-motion:reduce){.nav-seg .seg-pill,.nav-seg button{transition:none}}
+    .nav-seg button:focus-visible{outline:2px solid #0B57D0;outline-offset:-2px}
+    .nav.collapsed .nav-seg{display:none}                 /* menu recolhido: só os ícones */
+    .nav:not(.seg-chat) #navNovo{display:none}            /* o Novo chat só na aba Chat (pedido do usuário, 18/11) */
+    .nav:not(.seg-pac) #navNovoPac{display:none}          /* o Nova consulta só na aba Consulta */
+    /* Pacientes, Consultas e Prescrições nas duas abas, Chat e Consulta (pedido do usuário, 19/11) */
+    .nav:not(.seg-chat) #navHist{display:none}            /* o histórico de conversas só na aba Chat */
+    .nav.seg-chat .nav-hist{margin-top:24px}              /* na aba Chat sobram 2 itens: o histórico logo abaixo deles */
+    .nav-top + .nav-main{margin-top:20px}                 /* 20 entre o Chat | Consulta e os itens de baixo */
+    .nav.collapsed .nav-top + .nav-main{margin-top:0}
+    .nav .item:hover,.nav .item.active{border-radius:100px}   /* os itens do menu com as pontas 100% redondas, como o Chat | Pacientes */
     .right.collapsed{display:none}
     /* Consultas e Pacientes sem o assistente (pedidos do usuário, 14/11): a coluna da direita só aparece com a janela de
        Nova consulta ou Novo paciente aberta; no prontuário (.pr) o assistente volta (16/11) */
@@ -2633,13 +2791,21 @@
       <div class="nav-top">
         <svg class="nav-logo" viewBox="0 0 268 52" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OpenDoctor">
           <svg x="17" y="16" width="20" height="20" viewBox="0 0 1000 1000"><path fill="#0D0D0D" fill-rule="evenodd" d="M489.304 340.358 A160.000 160.000 0 0 1 504.085 340.052 L408.739 51.064 L395.532 11.035 A500.000 500.000 0 0 0 304.474 39.816 L313.108 56.600 A330.000 330.000 0 0 1 375.759 49.816 L489.304 340.358Z M249.547 67.249 A500.000 500.000 0 0 0 215.073 89.127 L418.745 362.168 A160.000 160.000 0 0 1 435.135 353.738 L249.547 67.249Z M128.077 165.824 A500.000 500.000 0 0 0 107.828 189.837 L369.905 406.858 A160.000 160.000 0 0 1 378.665 395.704 L128.077 165.824Z M43.015 297.110 A500.000 500.000 0 0 0 28.447 333.755 L341.930 475.225 A160.000 160.000 0 0 1 345.658 457.828 L43.015 297.110Z M2.685 448.257 A500.000 500.000 0 0 0 0.019 495.637 L299.766 541.363 A330.000 330.000 0 0 1 305.976 519.419 L2.685 448.257Z M11.035 604.468 A500.000 500.000 0 0 0 25.617 657.990 L290.223 623.385 A330.000 330.000 0 0 1 291.181 594.892 L11.035 604.468Z M419.180 638.087 A160.000 160.000 0 0 1 418.927 637.939 L295.222 677.516 L67.249 750.453 A500.000 500.000 0 0 0 102.475 803.272 L303.326 712.327 A330.000 330.000 0 0 1 295.289 677.896 L419.180 638.087Z M480.657 658.827 A160.000 160.000 0 0 1 477.486 658.408 L323.226 764.089 L165.824 871.923 A500.000 500.000 0 0 0 222.287 915.783 L345.608 803.223 A330.000 330.000 0 0 1 325.608 768.904 L480.657 658.827Z M533.337 656.488 A160.000 160.000 0 0 1 528.762 657.394 L381.407 847.966 L297.110 956.985 A500.000 500.000 0 0 0 372.108 983.367 L424.238 885.718 A330.000 330.000 0 0 1 389.644 856.302 L533.337 656.488Z M568.755 644.474 A160.000 160.000 0 0 1 564.456 646.443 L475.005 916.546 L448.257 997.315 A500.000 500.000 0 0 0 535.749 998.720 L542.603 940.953 A330.000 330.000 0 0 1 493.083 924.739 L568.755 644.474Z M561.850 352.438 A160.000 160.000 0 0 1 571.898 357.064 L557.372 101.646 L551.744 2.685 A500.000 500.000 0 0 0 464.251 1.280 L477.324 64.534 A330.000 330.000 0 0 1 535.774 88.983 L561.850 352.438Z M620.440 394.671 A160.000 160.000 0 0 1 625.075 400.219 L665.500 214.652 L702.890 43.015 A500.000 500.000 0 0 0 627.892 16.633 L617.706 151.107 A330.000 330.000 0 0 1 656.787 200.422 L620.440 394.671Z M653.350 454.351 A160.000 160.000 0 0 1 654.290 457.639 L709.028 357.356 L834.176 128.077 A500.000 500.000 0 0 0 777.713 84.217 L697.803 291.650 A330.000 330.000 0 0 1 708.396 349.476 L653.350 454.351Z M659.494 512.711 A160.000 160.000 0 0 1 659.477 512.930 L694.459 479.214 L932.751 249.547 A500.000 500.000 0 0 0 897.525 196.728 L705.025 435.682 A330.000 330.000 0 0 1 694.593 478.787 L659.494 512.711Z M988.965 395.532 A500.000 500.000 0 0 0 974.383 342.010 L654.551 541.401 A160.000 160.000 0 0 1 650.592 554.055 L988.965 395.532Z M997.315 551.744 A500.000 500.000 0 0 0 999.981 504.363 L641.975 573.777 A160.000 160.000 0 0 1 638.235 580.568 L997.315 551.744Z M956.985 702.890 A500.000 500.000 0 0 0 971.553 666.245 L629.321 594.213 A160.000 160.000 0 0 1 626.441 598.044 L956.985 702.890Z M871.923 834.176 A500.000 500.000 0 0 0 892.172 810.163 L617.396 608.712 A160.000 160.000 0 0 1 615.109 611.130 L871.923 834.176Z M750.453 932.751 A500.000 500.000 0 0 0 784.927 910.873 L606.214 619.660 A160.000 160.000 0 0 1 602.817 622.592 L750.453 932.751Z M590.930 631.650 A160.000 160.000 0 0 1 587.244 634.121 L602.564 949.736 L604.468 988.965 A500.000 500.000 0 0 0 695.526 960.184 L690.360 942.665 A330.000 330.000 0 0 1 632.273 949.988 L590.930 631.650Z"/></svg>
-          <path d="M249 18C251.209 18 253 19.7909 253 22V29C253 31.2091 251.209 33 249 33H240C237.791 33 236 31.2091 236 29V22C236 19.7909 237.791 18 240 18H249ZM240 19.5C238.619 19.5 237.5 20.6193 237.5 22V29C237.5 30.3807 238.619 31.5 240 31.5H249C250.381 31.5 251.5 30.3807 251.5 29V22C251.5 20.6193 250.381 19.5 249 19.5H240ZM241.75 22C242.164 22 242.5 22.3358 242.5 22.75V28.25C242.5 28.6642 242.164 29 241.75 29C241.336 29 241 28.6642 241 28.25V22.75C241 22.3358 241.336 22 241.75 22Z" fill="#8B8B8B"/>
+          <!-- esconder o menu: SF "rectangle.lefthalf.inset.filled" (pedido do usuário, 19/11) --><path transform="translate(235.000 18.974) scale(0.7816)" d="M3.760 15.078L10.674 15.078C11.289 15.078 11.533 14.824 11.533 14.199L11.533 3.789C11.533 3.164 11.289 2.910 10.674 2.910L3.760 2.910C3.154 2.910 2.910 3.164 2.910 3.789L2.910 14.199C2.910 14.824 3.154 15.078 3.760 15.078ZM3.066 17.979L19.961 17.979C22.012 17.979 23.027 16.973 23.027 14.961L23.027 3.027C23.027 1.016 22.012 0.000 19.961 0.000L3.066 0.000C1.025 0.000 0.000 1.016 0.000 3.027L0.000 14.961C0.000 16.973 1.025 17.979 3.066 17.979ZM3.086 16.406C2.109 16.406 1.572 15.889 1.572 14.873L1.572 3.115C1.572 2.100 2.109 1.572 3.086 1.572L19.941 1.572C20.908 1.572 21.455 2.100 21.455 3.115L21.455 14.873C21.455 15.889 20.908 16.406 19.941 16.406Z" fill="#8B8B8B"/>
         </svg>
-        <button class="nav-toggle" id="navToggle" aria-label="Recolher menu"><svg width="20" height="20" viewBox="234 16 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M249 18C251.209 18 253 19.7909 253 22V29C253 31.2091 251.209 33 249 33H240C237.791 33 236 31.2091 236 29V22C236 19.7909 237.791 18 240 18H249ZM240 19.5C238.619 19.5 237.5 20.6193 237.5 22V29C237.5 30.3807 238.619 31.5 240 31.5H249C250.381 31.5 251.5 30.3807 251.5 29V22C251.5 20.6193 250.381 19.5 249 19.5H240ZM241.75 22C242.164 22 242.5 22.3358 242.5 22.75V28.25C242.5 28.6642 242.164 29 241.75 29C241.336 29 241 28.6642 241 28.25V22.75C241 22.3358 241.336 22 241.75 22Z" fill="#8B8B8B"/></svg></button>
+        <!-- Chat | Consulta abaixo do logo: atalho para o Novo chat e para a tela Pacientes (pedido do usuário, 18/11) -->
+        <div class="nav-seg" id="navSeg" role="group" aria-label="Ir para">
+          <button type="button" data-ir="navNovo">Chat</button>
+          <button type="button" data-ir="navNovoPac">Consulta</button>   <!-- o nome é Consulta (18/11); abre a Nova consulta, a tela inicial da consulta (19/11) -->
+        </div>
+        <!-- a busca ao lado do ícone de esconder o menu (pedido do usuário, 19/11); abre a mesma busca do item Buscar -->
+        <button type="button" class="nav-busca" id="navBuscaTop" aria-label="Buscar"><svg width="16" height="16" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.00100402 6.12952C0.00100402 2.74849 2.7495 0 6.13052 0C9.51155 0 12.26 2.74849 12.26 6.12952C12.26 7.44729 11.8308 8.66717 11.1155 9.65361L14.5567 13.1024C14.76 13.3133 14.8655 13.5919 14.8655 13.8931C14.8655 14.5181 14.4061 15 13.7661 15C13.4724 15 13.1787 14.9021 12.9679 14.6837L9.50402 11.2199C8.54016 11.875 7.38805 12.259 6.13052 12.259C2.7495 12.259 0.00100402 9.51054 0.00100402 6.12952ZM1.56727 6.12952C1.56727 8.65211 3.60793 10.6928 6.13052 10.6928C8.65311 10.6928 10.6938 8.65211 10.6938 6.12952C10.6938 3.60693 8.65311 1.56627 6.13052 1.56627C3.60793 1.56627 1.56727 3.60693 1.56727 6.12952Z" fill="#8B8B8B"/></svg></button>
+        <button class="nav-toggle" id="navToggle" aria-label="Recolher menu"><svg width="20" height="20" viewBox="-1.279 -3.804 25.589 25.589" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.760 15.078L10.674 15.078C11.289 15.078 11.533 14.824 11.533 14.199L11.533 3.789C11.533 3.164 11.289 2.910 10.674 2.910L3.760 2.910C3.154 2.910 2.910 3.164 2.910 3.789L2.910 14.199C2.910 14.824 3.154 15.078 3.760 15.078ZM3.066 17.979L19.961 17.979C22.012 17.979 23.027 16.973 23.027 14.961L23.027 3.027C23.027 1.016 22.012 0.000 19.961 0.000L3.066 0.000C1.025 0.000 0.000 1.016 0.000 3.027L0.000 14.961C0.000 16.973 1.025 17.979 3.066 17.979ZM3.086 16.406C2.109 16.406 1.572 15.889 1.572 14.873L1.572 3.115C1.572 2.100 2.109 1.572 3.086 1.572L19.941 1.572C20.908 1.572 21.455 2.100 21.455 3.115L21.455 14.873C21.455 15.889 20.908 16.406 19.941 16.406Z" fill="#8B8B8B"/></svg></button>
       </div>
       <div class="nav-main">
         <div class="nav-sec">
           <div class="item" id="navNovo" data-tip="Novo chat"><span class="ico"><svg width="12.36" height="12.36" viewBox="0 0 12.36 12.36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.826 7.002L5.349 7.002L5.349 11.524C5.349 11.974 5.725 12.351 6.175 12.351C6.625 12.351 7.002 11.974 7.002 11.524L7.002 7.002L11.524 7.002C11.974 7.002 12.351 6.633 12.351 6.175C12.351 5.725 11.974 5.349 11.524 5.349L7.002 5.349L7.002 0.826C7.002 0.376 6.625 0.000 6.175 0.000C5.725 0.000 5.349 0.376 5.349 0.826L5.349 5.349L0.826 5.349C0.376 5.349 0.000 5.725 0.000 6.175C0.000 6.633 0.376 7.002 0.826 7.002Z" fill="#071216"/></svg></span><span>Novo chat</span></div>
+          <div class="item" id="navNovoPac" data-tip="Nova consulta"><!-- abre a Nova consulta: gravar antes de informar o paciente (19/11) --><span class="ico"><svg width="12.36" height="12.36" viewBox="0 0 12.36 12.36" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.826 7.002L5.349 7.002L5.349 11.524C5.349 11.974 5.725 12.351 6.175 12.351C6.625 12.351 7.002 11.974 7.002 11.524L7.002 7.002L11.524 7.002C11.974 7.002 12.351 6.633 12.351 6.175C12.351 5.725 11.974 5.349 11.524 5.349L7.002 5.349L7.002 0.826C7.002 0.376 6.625 0.000 6.175 0.000C5.725 0.000 5.349 0.376 5.349 0.826L5.349 5.349L0.826 5.349C0.376 5.349 0.000 5.725 0.000 6.175C0.000 6.633 0.376 7.002 0.826 7.002Z" fill="#071216"/></svg></span><span>Nova consulta</span></div>   <!-- só na aba Pacientes: abre o novo paciente (o + da tela Pacientes) -->
           <div class="item" id="navBuscar" data-tip="Buscar"><span class="ico"><svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.00100402 6.12952C0.00100402 2.74849 2.7495 0 6.13052 0C9.51155 0 12.26 2.74849 12.26 6.12952C12.26 7.44729 11.8308 8.66717 11.1155 9.65361L14.5567 13.1024C14.76 13.3133 14.8655 13.5919 14.8655 13.8931C14.8655 14.5181 14.4061 15 13.7661 15C13.4724 15 13.1787 14.9021 12.9679 14.6837L9.50402 11.2199C8.54016 11.875 7.38805 12.259 6.13052 12.259C2.7495 12.259 0.00100402 9.51054 0.00100402 6.12952ZM1.56727 6.12952C1.56727 8.65211 3.60793 10.6928 6.13052 10.6928C8.65311 10.6928 10.6938 8.65211 10.6938 6.12952C10.6938 3.60693 8.65311 1.56627 6.13052 1.56627C3.60793 1.56627 1.56727 3.60693 1.56727 6.12952Z" fill="#071216"/></svg></span><span>Buscar</span></div>
           <div class="item" id="navPacientes" data-tip="Pacientes"><span class="ico"><svg width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z" fill="#071216"/></svg></span><span>Pacientes</span></div>
           <div class="item active" id="navConsultas" data-tip="Consultas"><span class="ico"><svg width="15" height="14" viewBox="0 0 15 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.42175 13.782C0.827264 13.782 0.000492126 12.9626 0.000492126 11.3829V2.39911C0.000492126 0.81939 0.827264 0 2.42175 0H12.5792C14.1737 0 15.0005 0.81939 15.0005 2.39911V11.3829C15.0005 12.9552 14.1737 13.782 12.5792 13.782H2.42175ZM2.39961 12.3351H12.5866C13.2067 12.3351 13.5536 12.0103 13.5536 11.3681V4.54724C13.5536 3.89764 13.2067 3.58022 12.5866 3.58022H2.39961C1.78691 3.58022 1.44734 3.89764 1.44734 4.54724V11.3681C1.44734 12.0103 1.78691 12.3351 2.39961 12.3351ZM6.07579 6.14173C5.81742 6.14173 5.72884 6.06053 5.72884 5.79478V5.36663C5.72884 5.10089 5.81742 5.01969 6.07579 5.01969H6.51132C6.77707 5.01969 6.86565 5.10089 6.86565 5.36663V5.79478C6.86565 6.06053 6.77707 6.14173 6.51132 6.14173H6.07579ZM8.49705 6.14173C8.2313 6.14173 8.14272 6.06053 8.14272 5.79478V5.36663C8.14272 5.10089 8.2313 5.01969 8.49705 5.01969H8.9252C9.19094 5.01969 9.27953 5.10089 9.27953 5.36663V5.79478C9.27953 6.06053 9.19094 6.14173 8.9252 6.14173H8.49705ZM10.9109 6.14173C10.6452 6.14173 10.5566 6.06053 10.5566 5.79478V5.36663C10.5566 5.10089 10.6452 5.01969 10.9109 5.01969H11.3391C11.6048 5.01969 11.6934 5.10089 11.6934 5.36663V5.79478C11.6934 6.06053 11.6048 6.14173 11.3391 6.14173H10.9109ZM3.66191 8.5187C3.40354 8.5187 3.31496 8.4375 3.31496 8.17175V7.7436C3.31496 7.47785 3.40354 7.39665 3.66191 7.39665H4.09744C4.36319 7.39665 4.45177 7.47785 4.45177 7.7436V8.17175C4.45177 8.4375 4.36319 8.5187 4.09744 8.5187H3.66191ZM6.07579 8.5187C5.81742 8.5187 5.72884 8.4375 5.72884 8.17175V7.7436C5.72884 7.47785 5.81742 7.39665 6.07579 7.39665H6.51132C6.77707 7.39665 6.86565 7.47785 6.86565 7.7436V8.17175C6.86565 8.4375 6.77707 8.5187 6.51132 8.5187H6.07579ZM8.49705 8.5187C8.2313 8.5187 8.14272 8.4375 8.14272 8.17175V7.7436C8.14272 7.47785 8.2313 7.39665 8.49705 7.39665H8.9252C9.19094 7.39665 9.27953 7.47785 9.27953 7.7436V8.17175C9.27953 8.4375 9.19094 8.5187 8.9252 8.5187H8.49705ZM10.9109 8.5187C10.6452 8.5187 10.5566 8.4375 10.5566 8.17175V7.7436C10.5566 7.47785 10.6452 7.39665 10.9109 7.39665H11.3391C11.6048 7.39665 11.6934 7.47785 11.6934 7.7436V8.17175C11.6934 8.4375 11.6048 8.5187 11.3391 8.5187H10.9109ZM3.66191 10.8957C3.40354 10.8957 3.31496 10.8145 3.31496 10.5487V10.1206C3.31496 9.85482 3.40354 9.77362 3.66191 9.77362H4.09744C4.36319 9.77362 4.45177 9.85482 4.45177 10.1206V10.5487C4.45177 10.8145 4.36319 10.8957 4.09744 10.8957H3.66191ZM6.07579 10.8957C5.81742 10.8957 5.72884 10.8145 5.72884 10.5487V10.1206C5.72884 9.85482 5.81742 9.77362 6.07579 9.77362H6.51132C6.77707 9.77362 6.86565 9.85482 6.86565 10.1206V10.5487C6.86565 10.8145 6.77707 10.8957 6.51132 10.8957H6.07579ZM8.49705 10.8957C8.2313 10.8957 8.14272 10.8145 8.14272 10.5487V10.1206C8.14272 9.85482 8.2313 9.77362 8.49705 9.77362H8.9252C9.19094 9.77362 9.27953 9.85482 9.27953 10.1206V10.5487C9.27953 10.8145 9.19094 10.8957 8.9252 10.8957H8.49705Z" fill="#071216"/></svg></span><span>Consultas</span></div>
@@ -2664,6 +2830,29 @@
 
     <!-- ===== CENTER: DAY AGENDA ===== -->
     <div class="center">
+      <!-- Nova consulta (20/11): Paciente e Presencial no canto de cima à esquerda, a 32 da borda, como a aba Transcrição -->
+              <div class="pn-top" id="pnTop" hidden>
+              <!-- teste (19/11): o microfone (o nome do escolhido; a lista abre para cima) no lugar do Selecionar paciente -->
+              <div class="pn-dd"><button type="button" class="pn-ob ico" id="pnMic" aria-haspopup="menu" title="Escolher o microfone"><svg aria-hidden="true" width="9.71" height="14" viewBox="0 0 13.36 19.27" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.671 12.472C8.455 12.472 9.756 11.145 9.756 9.193L9.756 3.278C9.756 1.336 8.455 0.000 6.671 0.000C4.887 0.000 3.586 1.336 3.586 3.278L3.586 9.193C3.586 11.145 4.887 12.472 6.671 12.472ZM2.637 19.266L10.705 19.266C11.162 19.266 11.540 18.896 11.540 18.448C11.540 17.991 11.162 17.622 10.705 17.622L7.479 17.622L7.479 15.812C10.960 15.486 13.351 12.999 13.351 9.396L13.351 7.655C13.351 7.198 12.981 6.838 12.524 6.838C12.067 6.838 11.689 7.198 11.689 7.655L11.689 9.334C11.689 12.322 9.668 14.300 6.671 14.300C3.674 14.300 1.652 12.322 1.652 9.334L1.652 7.655C1.652 7.198 1.283 6.838 0.826 6.838C0.369 6.838 0.000 7.198 0.000 7.655L0.000 9.396C0.000 12.999 2.391 15.486 5.871 15.812L5.871 17.622L2.637 17.622C2.188 17.622 1.811 17.991 1.811 18.448C1.811 18.896 2.188 19.266 2.637 19.266Z" fill="currentColor"/></svg><span id="pnMicT">Microfone</span></button></div>
+              <div class="pn-dd">
+              <button type="button" class="pn-ob ico" id="pnBtn" aria-haspopup="dialog" aria-expanded="false" aria-controls="pnPop"><svg aria-hidden="true" width="13" height="14" viewBox="0 0 13 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.5 6.75331C4.82321 6.75331 3.40024 5.25343 3.40024 3.34589C3.40024 1.46911 4.8309 0 6.5 0C8.1691 0 9.59976 1.43835 9.59976 3.33051C9.59976 5.25343 8.18448 6.75331 6.5 6.75331ZM1.37733 13.8989C0.515857 13.8989 0.00051278 13.4912 0.00051278 12.8144C0.00051278 10.8376 2.50801 8.11474 6.5 8.11474C10.4843 8.11474 12.9995 10.8376 12.9995 12.8144C12.9995 13.4912 12.4765 13.8989 11.615 13.8989H1.37733Z" fill="#071216"/></svg><span id="pnBtnT">Paciente</span><svg class="chev" aria-hidden="true" width="16" height="16" viewBox="-4.07 -7.04 21.73 21.73" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.789 7.641C6.984 7.641 7.180 7.562 7.312 7.414L13.359 1.219C13.492 1.086 13.570 0.914 13.570 0.719C13.570 0.312 13.266 0.000 12.859 0.000C12.664 0.000 12.484 0.078 12.352 0.203L6.367 6.320L7.203 6.320L1.219 0.203C1.094 0.078 0.914 0.000 0.711 0.000C0.305 0.000 0.000 0.312 0.000 0.719C0.000 0.914 0.078 1.086 0.211 1.227L6.258 7.414C6.406 7.562 6.586 7.641 6.789 7.641Z" fill="currentColor"/></svg></button>
+              <!-- como o seletor de paciente do chat (20/11): a busca com a lupa, a linha e a lista -->
+              <div class="pn-pop nc-menu pn-ncpop" id="pnPop" hidden>
+              <label class="nc-busca-l"><span class="nc-op-ico"><svg aria-hidden="true" width="13.36" height="13.49" viewBox="0 0 13.36 13.49" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.000 5.455C0.000 8.463 2.447 10.910 5.455 10.910C6.645 10.910 7.731 10.527 8.627 9.885L11.990 13.255C12.147 13.412 12.353 13.487 12.571 13.487C13.036 13.487 13.357 13.139 13.357 12.681C13.357 12.462 13.275 12.264 13.132 12.120L9.789 8.757C10.493 7.841 10.910 6.699 10.910 5.455C10.910 2.447 8.463 0.000 5.455 0.000C2.447 0.000 0.000 2.447 0.000 5.455ZM1.169 5.455C1.169 3.090 3.090 1.169 5.455 1.169C7.820 1.169 9.741 3.090 9.741 5.455C9.741 7.820 7.820 9.741 5.455 9.741C3.090 9.741 1.169 7.820 1.169 5.455Z" fill="currentColor"/></svg></span><input class="nc-busca" id="pnIn" type="text" autocomplete="off" spellcheck="false"
+              placeholder="Buscar paciente" role="combobox" aria-label="Buscar paciente" aria-autocomplete="list" aria-expanded="false" aria-controls="pnList"></label>
+              <div class="nc-sep"></div>
+              <div class="nc-lista" id="pnList" role="listbox" aria-label="Pacientes"></div>
+              </div>
+              </div>
+              <div class="pn-dd">
+              <button type="button" class="pn-ob" id="pnModo" aria-haspopup="menu" aria-expanded="false" aria-controls="pnModoM"><span class="pn-modo-i" id="pnModoI" aria-hidden="true"></span><span id="pnModoT">Presencial</span><svg class="chev" aria-hidden="true" width="16" height="16" viewBox="-4.07 -7.04 21.73 21.73" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.789 7.641C6.984 7.641 7.180 7.562 7.312 7.414L13.359 1.219C13.492 1.086 13.570 0.914 13.570 0.719C13.570 0.312 13.266 0.000 12.859 0.000C12.664 0.000 12.484 0.078 12.352 0.203L6.367 6.320L7.203 6.320L1.219 0.203C1.094 0.078 0.914 0.000 0.711 0.000C0.305 0.000 0.000 0.312 0.000 0.719C0.000 0.914 0.078 1.086 0.211 1.227L6.258 7.414C6.406 7.562 6.586 7.641 6.789 7.641Z" fill="currentColor"/></svg></button>
+              <!-- como o seletor de paciente (20/11): ícone, nome e o ✓ na escolhida -->
+              <div class="pn-pop nc-menu pn-ncpop pn-menu" id="pnModoM" role="menu" hidden>
+              <button type="button" class="nc-op" role="menuitemradio" data-modo="presencial"><span class="nc-op-ico"><svg aria-hidden="true" width="18.67" height="17.30" viewBox="-0.5 -0.5 18.67 17.30" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.470 5.330C11.470 5.535 11.638 5.681 11.851 5.681L14.194 5.681L12.949 9.014C12.751 9.527 13.301 9.812 13.638 9.402L17.542 4.583C17.622 4.488 17.666 4.370 17.666 4.268C17.666 4.063 17.505 3.916 17.292 3.916L14.941 3.916L16.194 0.584C16.392 0.071 15.842 -0.215 15.498 0.196L11.602 5.015C11.514 5.110 11.470 5.227 11.470 5.330ZM12.195 10.098C11.125 11.709 9.587 13.108 7.625 14.419C7.566 14.463 7.522 14.485 7.500 14.485C7.471 14.485 7.427 14.463 7.368 14.419C4.270 12.361 1.707 9.556 1.707 7.058C1.707 5.271 2.893 4.063 4.490 4.063C5.771 4.063 6.475 4.817 6.936 5.498C7.141 5.791 7.288 5.901 7.500 5.901C7.705 5.901 7.837 5.784 8.057 5.498C8.540 4.832 9.229 4.063 10.503 4.063C10.649 4.063 10.796 4.070 10.928 4.092L12.107 2.649C11.653 2.488 11.162 2.400 10.657 2.400C9.236 2.400 8.145 3.037 7.500 3.990C6.848 3.045 5.757 2.400 4.336 2.400C1.919 2.400 0.000 4.304 0.000 7.073C0.000 10.208 2.637 13.313 6.702 15.950C6.973 16.126 7.288 16.294 7.500 16.294C7.705 16.294 8.020 16.126 8.291 15.950C10.767 14.361 12.905 12.449 13.989 10.413C13.367 10.896 12.539 10.640 12.195 10.098Z" fill="currentColor"/></svg></span><span class="nc-op-tx">Presencial</span><span class="nc-ok"></span></button>
+              <button type="button" class="nc-op" role="menuitemradio" data-modo="telemedicina"><span class="nc-op-ico"><svg aria-hidden="true" width="19.52" height="13.39" viewBox="-0.5 -0.5 19.52 13.39" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3.040 12.385L10.635 12.385C12.568 12.385 13.667 11.301 13.667 9.419L13.667 8.621L16.223 10.789C16.597 11.104 16.970 11.316 17.351 11.316C18.040 11.316 18.516 10.825 18.516 10.078L18.516 2.373C18.516 1.626 18.040 1.135 17.351 1.135C16.970 1.135 16.597 1.348 16.223 1.663L13.667 3.831L13.667 2.974C13.667 1.091 12.568 0.000 10.635 0.000L3.040 0.000C1.157 0.000 0.000 1.091 0.000 2.974L0.000 9.500C0.000 11.375 1.099 12.385 3.040 12.385ZM3.303 10.928C2.190 10.928 1.560 10.327 1.560 9.185L1.560 3.208C1.560 2.036 2.190 1.458 3.303 1.458L10.364 1.458C11.477 1.458 12.107 2.065 12.107 3.208L12.107 9.185C12.107 10.327 11.462 10.928 10.364 10.928ZM16.772 9.456L13.667 6.929L13.667 5.522L16.772 2.996C16.831 2.952 16.875 2.922 16.934 2.922C17.014 2.922 17.051 2.981 17.051 3.069L17.051 9.382C17.051 9.470 17.014 9.529 16.934 9.529C16.875 9.529 16.831 9.492 16.772 9.456Z" fill="currentColor"/></svg></span><span class="nc-op-tx">Telemedicina</span><span class="nc-ok"></span></button>
+              </div>
+              </div>
+              </div>
       <div class="ag-head">
         <div class="cal-head" id="calHead"><span class="date">Seg, 30 Junho</span></div>
         <div class="ag-actions hd-actions">
@@ -2702,6 +2891,11 @@
           <div class="pr-msg" id="prMsg" hidden></div>
 
           <div id="prMain" hidden data-tab="geral">
+            <!-- Nova consulta (19/11): grava antes de saber o paciente; o campo Paciente pode ser preenchido a qualquer momento
+                 (escolher ou cadastrar). Sem paciente, as gravações ficam guardadas e aparecem na lista pela data e hora -->
+            <div class="pr-nova" id="prNova" hidden>
+              <div class="pn-aviso" id="pnAviso" hidden></div>
+            </div>
             <!-- identificação (separa homônimos) -->
             <div class="pr-head">
               <div class="pr-avatar" id="prAvatar"></div>
@@ -3095,7 +3289,12 @@
                       <button type="button" role="tab" data-cs="tx" class="on" aria-selected="true" aria-controls="csTx">Transcrição</button>
                       <button type="button" role="tab" data-cs="soap" aria-selected="false" aria-controls="csSoap">SOAP</button>
                     </div>
-                    <div class="cs-pane" id="csTx" role="tabpanel"><div class="rc-tx" id="rcTx"></div><div class="cs-vazio" id="csTxLk">Esta consulta não foi gravada.</div></div>
+                    <div class="cs-pane" id="csTx" role="tabpanel"><div class="rc-tx" id="rcTx"></div><div class="cs-vazio" id="csTxLk">Esta consulta não foi gravada.</div>
+                      <!-- Nova consulta vazia (19/11): as gravações ainda sem paciente, no lugar da transcrição (não empurram o cartão) -->
+                      <div class="pn-pend" id="pnPend" hidden>
+                        <div class="pn-ph">Gravações sem paciente</div>
+                        <div class="pn-pl" id="pnPendL"></div>
+                      </div></div>
                     <div class="cs-pane" id="csSoap" role="tabpanel" hidden>
                       <div class="pr-locked" id="prLocked" hidden>
                         <div class="pr-signed" id="prSigned"></div>
@@ -3132,7 +3331,11 @@
                   <label class="pr-soapf"><span>P — Plano</span><textarea data-f="p" placeholder="Conduta, prescrições, exames solicitados, retorno…"></textarea></label>
                 </div>
                     </div>
+                    <!-- Nova consulta (19/11): a caixa #F7F8F8 em volta da barra de gravação (como a caixa do assistente da Sana),
+                         com Selecionar paciente e Presencial embaixo dela; nas outras consultas, só a barra -->
+                    <div class="pn-box" id="pnBox">
                     <div class="cs-foot" id="prRec"></div>
+                    </div>
                     <!-- flutua por cima do conteúdo (sem máscara): o aviso de que a IA preencheu a evolução e o Assinar / Adicionar adendo -->
                     <div class="cs-flut" id="csFlut">
                       <div class="rc-note" id="rcNote" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h9v-2H5V5h14v6h2V5c0-1.1-.9-2-2-2M7 7h10v2H7zm0 4h10v2H7zm0 4h6v2H7z" fill="currentColor"/><path d="M19.5 14l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="currentColor"/></svg><span id="rcNoteT"></span><button class="pr-ghost" type="button" id="rcNoteBtn"></button><button class="rc-x" type="button" id="rcNoteX" aria-label="Fechar o aviso" title="Fechar"><svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2 2l10 10M12 2L2 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
@@ -3301,7 +3504,7 @@
       el.addEventListener('click', function () { location.href = el.getAttribute('data-href'); });
     });
     // dica dos botões de ícone (mouseover): o que o botão faz e o atalho (⇧⌘ + letra no Mac, Ctrl+Shift + letra nos
-    // outros), que aperta o botão. O do menu diz "Alternar barra lateral"; os das barras de cima (.hd-btn), o aria-label,
+    // outros), que aperta o botão. O do menu diz "Esconder menu" (aberto) ou "Abrir menu" (recolhido); os das barras de cima (.hd-btn), o aria-label,
     // que muda com o estado; os ícones do menu retraído, o nome (data-tip), sem atalho. Letras fora das que o navegador reserva (N, T, W, R) e do ⇧⌘V (colar sem formatação).
     (function () {
       var ATALHO = { navToggle: 'S', agCreate: 'E', ptNew: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', ptBusca: 'F', agExpand: 'A',
@@ -3316,7 +3519,7 @@
       function mostra(b) {
         var r = b.getBoundingClientRect(), k = ATALHO[b.id] || '', item = b.classList.contains('item');
         if (item && !(nav && nav.classList.contains('collapsed'))) return;   // menu aberto: o nome já está escrito
-        txt.textContent = b.id === 'navToggle' ? 'Alternar barra lateral' : (b.getAttribute('data-tip') || b.getAttribute('aria-label') || '');
+        txt.textContent = b.id === 'navToggle' ? (nav && nav.classList.contains('collapsed') ? 'Abrir menu' : 'Esconder menu') : (b.getAttribute('data-tip') || b.getAttribute('aria-label') || '');
         if (!txt.textContent || !r.width) return;     // sem texto ou botão escondido
         var dk = b.getAttribute('data-kbd');              // atalho que não é letra (o pausar da gravação: Espaço)
         kbd.textContent = dk ? (mac ? '\u21e7\u2318' + dk : 'Ctrl+Shift+' + dk) : k ? (mac ? '\u21e7\u2318' + k : 'Ctrl+Shift+' + k) : '';
@@ -3341,7 +3544,7 @@
         b.addEventListener('blur', esconde);
         b.addEventListener('click', esconde);   // abre um painel ou o botão muda de lugar
       }
-      [].forEach.call(document.querySelectorAll('#navToggle, .hd-btn, .nav .item[data-tip]'), liga);
+      [].forEach.call(document.querySelectorAll('#navToggle, #navBuscaTop, .hd-btn, .nav .item[data-tip]'), liga);
       window.__navTip = liga;                            // botões criados depois (a barra de gravar)
       document.addEventListener('pointerdown', function () { peloTab = false; }, true);
       window.addEventListener('resize', esconde);
@@ -6391,7 +6594,7 @@
       var csQuer = null;                                   // "Iniciar consulta" clicado antes de o cartão estar pronto: grava quando ficar
       function csModo() {
         if (csQuer) {
-          var b0 = csQuer === ctx && $('prRec').querySelector('.cs-go.cs-iniciar');
+          var b0 = csQuer === ctx && $('prRec').querySelector('.cs-ini');
           if (b0 && b0._ctx !== ctx) b0 = null;              // o botão ainda é da consulta anterior: espera o desta
           if (csQuer !== ctx || (b0 && b0.disabled)) csQuer = null;
           else if (b0) { csQuer = null; var r0 = csRec(); if (r0) r0.cs = true; b0.click(); return; }
@@ -6434,6 +6637,8 @@
           if (recPb && recPb.r === r) recStopPb();
           recs.forEach(function (v, k) { if (v === r) recs.delete(k); });
         }
+        if (ctx && ctx.semPac && !ctx.patient_id) { delete ctx.rid; persistCtx(); novaAbre(); return; }   // Nova consulta: a tela vazia
+        if (ctx && ctx.semPac) { delete ctx.rid; persistCtx(); var rc = rrCur(); if (rc) rc.cs = true; recRender(); csModo(); return; }   // com paciente: a consulta vazia
         setTab('geral'); recRender(); csModo();
       }
       // o cartão da consulta fica no meio do prontuário (a lateral Transcrição saiu)
@@ -6441,7 +6646,7 @@
       $('prIniciar').addEventListener('click', function () {
         var r = ctx ? csRec() : null; if (r) r.cs = true;   // com o prontuário ainda carregando, o botão do cartão já sabe o que fazer
         csTab('tx');
-        var b = $('prRec').querySelector('.cs-go.cs-iniciar');
+        var b = $('prRec').querySelector('.cs-ini');
         if (b && b._ctx !== ctx) b = null;                   // trocou de consulta e o cartão ainda não foi redesenhado
         if (b && !b.disabled) b.click(); else { if (b == null && ctx) csQuer = ctx; csModo(); }
       });
@@ -6460,6 +6665,12 @@
       function mm2(x) { x = Math.max(0, Math.floor(x)); return pad(Math.floor(x / 60)) + ':' + pad(x % 60); }   // 00:06, como no Figma
       // o pé: a pílula preta ("Iniciar consulta", "Tentar de novo"…); o.nota vai acima dela, o.off a desativa
       var CSI_MIC = '<svg aria-hidden="true" width="11.13" height="16.06" viewBox="0 0 11.13 16.06" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5.559 10.393C7.046 10.393 8.130 9.287 8.130 7.661L8.130 2.732C8.130 1.113 7.046 0.000 5.559 0.000C4.072 0.000 2.988 1.113 2.988 2.732L2.988 7.661C2.988 9.287 4.072 10.393 5.559 10.393ZM2.197 16.055L8.921 16.055C9.302 16.055 9.617 15.747 9.617 15.374C9.617 14.993 9.302 14.685 8.921 14.685L6.233 14.685L6.233 13.176C9.133 12.905 11.125 10.833 11.125 7.830L11.125 6.379C11.125 5.999 10.818 5.698 10.437 5.698C10.056 5.698 9.741 5.999 9.741 6.379L9.741 7.778C9.741 10.269 8.057 11.917 5.559 11.917C3.062 11.917 1.377 10.269 1.377 7.778L1.377 6.379C1.377 5.999 1.069 5.698 0.688 5.698C0.308 5.698 0.000 5.999 0.000 6.379L0.000 7.830C0.000 10.833 1.992 12.905 4.893 13.176L4.893 14.685L2.197 14.685C1.824 14.685 1.509 14.993 1.509 15.374C1.509 15.747 1.824 16.055 2.197 16.055Z" fill="currentColor"/></svg>';
+      // o microfone da barra antes de gravar (SF microphone.fill Medium 18) e a onda da pílula azul que inicia (SF waveform
+      // Bold 18, #0842A0), pelo scripts/sf_symbols.swift
+      var CSI_ONDA_INI = '<svg aria-hidden="true" width="17.54" height="19.39" viewBox="0 0 17.54 19.39" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7.189 19.389C7.699 19.389 8.095 18.993 8.095 18.492L8.095 0.905C8.095 0.404 7.699 0.000 7.189 0.000C6.688 0.000 6.293 0.404 6.293 0.905L6.293 18.492C6.293 18.993 6.688 19.389 7.189 19.389ZM13.482 17.473C13.992 17.473 14.388 17.077 14.388 16.567L14.388 2.830C14.388 2.320 13.992 1.916 13.482 1.916C12.981 1.916 12.586 2.320 12.586 2.830L12.586 16.567C12.586 17.077 12.981 17.473 13.482 17.473ZM4.043 16.189C4.553 16.189 4.948 15.794 4.948 15.293L4.948 4.104C4.948 3.604 4.553 3.190 4.043 3.190C3.542 3.190 3.146 3.604 3.146 4.104L3.146 15.293C3.146 15.794 3.542 16.189 4.043 16.189ZM10.336 14.933C10.846 14.933 11.241 14.537 11.241 14.036L11.241 5.361C11.241 4.860 10.846 4.456 10.336 4.456C9.835 4.456 9.439 4.860 9.439 5.361L9.439 14.036C9.439 14.537 9.835 14.933 10.336 14.933ZM16.629 13.307C17.139 13.307 17.534 12.911 17.534 12.410L17.534 6.987C17.534 6.486 17.139 6.073 16.629 6.073C16.128 6.073 15.732 6.486 15.732 6.987L15.732 12.410C15.732 12.911 16.128 13.307 16.629 13.307ZM0.896 12.428C1.406 12.428 1.802 12.023 1.802 11.522L1.802 7.866C1.802 7.365 1.406 6.952 0.896 6.952C0.396 6.952 0.000 7.365 0.000 7.866L0.000 11.522C0.000 12.023 0.396 12.428 0.896 12.428Z" fill="currentColor"/></svg>';
+      var CSI_MIC_LISTA = '<svg aria-hidden="true" width="9.79" height="14.57" viewBox="0 0 9.79 14.57" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.895 9.522C6.255 9.522 7.171 8.504 7.171 7.048L7.171 2.475C7.171 1.012 6.255 0.000 4.895 0.000C3.527 0.000 2.611 1.012 2.611 2.475L2.611 7.048C2.611 8.504 3.527 9.522 4.895 9.522ZM1.839 14.561L7.943 14.561C8.230 14.561 8.463 14.335 8.463 14.048C8.463 13.761 8.230 13.528 7.943 13.528L5.407 13.528L5.407 11.929C8.032 11.717 9.782 9.830 9.782 7.157L9.782 5.770C9.782 5.482 9.557 5.257 9.270 5.257C8.982 5.257 8.750 5.482 8.750 5.770L8.750 7.116C8.750 9.447 7.232 10.992 4.895 10.992C2.550 10.992 1.032 9.447 1.032 7.116L1.032 5.770C1.032 5.482 0.807 5.257 0.513 5.257C0.226 5.257 0.000 5.482 0.000 5.770L0.000 7.157C0.000 9.830 1.750 11.717 4.375 11.929L4.375 13.528L1.839 13.528C1.552 13.528 1.319 13.761 1.319 14.048C1.319 14.335 1.552 14.561 1.839 14.561Z" fill="currentColor"/></svg>';   // SF microphone.fill (Regular), na lista dos microfones
+      var CSI_OK = '<svg aria-hidden="true" width="11.78" height="11.69" viewBox="0 0 11.78 11.69" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.457 11.683C4.751 11.683 4.983 11.553 5.147 11.300L11.607 1.128C11.730 0.930 11.778 0.779 11.778 0.622C11.778 0.246 11.532 0.000 11.156 0.000C10.883 0.000 10.732 0.089 10.568 0.349L4.430 10.131L1.244 5.961C1.073 5.722 0.902 5.626 0.656 5.626C0.267 5.626 0.000 5.893 0.000 6.269C0.000 6.426 0.068 6.604 0.198 6.768L3.746 11.286C3.951 11.553 4.163 11.683 4.457 11.683Z" fill="currentColor"/></svg>';   // o ✓ do seletor de paciente do chat
+      var CSI_MICDEV = '<svg aria-hidden="true" width="13.36" height="19.27" viewBox="0 0 13.36 19.27" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6.671 12.472C8.455 12.472 9.756 11.145 9.756 9.193L9.756 3.278C9.756 1.336 8.455 0.000 6.671 0.000C4.887 0.000 3.586 1.336 3.586 3.278L3.586 9.193C3.586 11.145 4.887 12.472 6.671 12.472ZM2.637 19.266L10.705 19.266C11.162 19.266 11.540 18.896 11.540 18.448C11.540 17.991 11.162 17.622 10.705 17.622L7.479 17.622L7.479 15.812C10.960 15.486 13.351 12.999 13.351 9.396L13.351 7.655C13.351 7.198 12.981 6.838 12.524 6.838C12.067 6.838 11.689 7.198 11.689 7.655L11.689 9.334C11.689 12.322 9.668 14.300 6.671 14.300C3.674 14.300 1.652 12.322 1.652 9.334L1.652 7.655C1.652 7.198 1.283 6.838 0.826 6.838C0.369 6.838 0.000 7.198 0.000 7.655L0.000 9.396C0.000 12.999 2.391 15.486 5.871 15.812L5.871 17.622L2.637 17.622C2.188 17.622 1.811 17.991 1.811 18.448C1.811 18.896 2.188 19.266 2.637 19.266Z" fill="currentColor"/></svg>';
       function csGo(label, f, o) {
         o = o || {};
         var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot'; csPe();
@@ -6513,16 +6724,38 @@
       function csBar(o) {
         var box = $('prRec'); box.innerHTML = ''; box.hidden = false; box.className = 'cs-foot bar'; csPe();
         var bar = el('div', 'cs-bar'); box.appendChild(bar);
+        // o microfone (escolher outro): antes de gravar no lugar do X; gravando, ao lado dele (19/11)
+        function micBtn() {
+          if (!rrActive()) return;                         // a demonstração (paciente de exemplo) não abre o microfone de verdade
+          var mc = el('button', 'cs-x cs-mic'); mc.type = 'button'; mc.innerHTML = CSI_MICDEV;
+          mc.setAttribute('aria-label', 'Escolher o microfone'); mc.setAttribute('data-tip', 'Escolher o microfone'); mc.setAttribute('aria-haspopup', 'menu');
+          mc.addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(mc); });
+          bar.appendChild(mc); if (window.__navTip) window.__navTip(mc);
+          bar.classList.add('com-x');
+        }
+        if (o.ini) {                                       // antes de gravar, como gravando (20/11): o X (ainda sem o que cancelar) e o microfone
+          var x0 = el('button', 'cs-x'); x0.type = 'button'; x0.innerHTML = CSI.x; x0.disabled = true;
+          x0.setAttribute('aria-label', 'Cancelar a transcrição'); bar.appendChild(x0); bar.classList.add('com-x');
+          micBtn();
+        }
         // cancelar (17/11): o botão redondo branco com o X, à esquerda; apaga a gravação e a transcrição e volta ao prontuário
         if (o.cancel) {
           var cx = el('button', 'cs-x'); cx.type = 'button'; cx.innerHTML = CSI.x;
           cx.setAttribute('aria-label', 'Cancelar a transcrição'); cx.setAttribute('data-tip', 'Cancelar a transcrição');
           cx.addEventListener('click', o.cancel); bar.appendChild(cx); if (window.__navTip) window.__navTip(cx);
           bar.classList.add('com-x');
+          if (o.btn) micBtn();                               // gravando ou pausada: o microfone ao lado do X
         }
         if (o.msg != null) { var m = el('span', 'cs-msg', o.msg); m.id = 'rcStep'; bar.appendChild(m); }
         else bar.appendChild(el('canvas', 'cs-cv'));
         var t = el('span', 'cs-tm', o.t || ''); t.id = 'rcTime'; bar.appendChild(t);
+        if (o.ini) {                                       // a pílula azul (a onda) inicia; o play fica desabilitado até começar, como o X (20/11)
+          var pl = el('button', 'cs-stop'); pl.type = 'button'; pl.innerHTML = CSI.play; pl.disabled = true;
+          pl.setAttribute('aria-label', 'Pausar ou continuar (depois de começar)'); bar.appendChild(pl);
+          var ib = el('button', 'cs-stop cs-env cs-ini'); ib.type = 'button'; ib.innerHTML = CSI_ONDA_INI; ib._ctx = ctx; ib.disabled = !!o.off;
+          ib.setAttribute('aria-label', 'Iniciar consulta'); ib.setAttribute('data-tip', 'Iniciar consulta');
+          ib.addEventListener('click', function () { o.ini(ib); }); bar.appendChild(ib); if (window.__navTip) window.__navTip(ib);
+        }
         if (o.btn) {
           var lab = o.live ? 'Pausar a gravação' : 'Continuar gravando', b = el('button', 'cs-stop'); b.type = 'button';
           b.innerHTML = o.live ? CSI.stop : CSI.play; b.setAttribute('aria-label', lab);
@@ -6536,6 +6769,15 @@
           f.addEventListener('click', o.fim); bar.appendChild(f); if (window.__navTip) window.__navTip(f);
         }
         if (o.msg == null) recDraw({ amps: o.amps || [], st: o.live ? 'live' : 'paused' });
+      }
+      // o pé antes de gravar (19/11, pedido do usuário): a barra preta da gravação parada em 00:00, com o microfone no lugar
+      // do X. o.off: a gravação não está liberada (o play fica desligado e a nota explica)
+      function csIniciar(f, o) {
+        o = o || {};
+        csBar({ t: '00:00', amps: [], ini: f, off: !!o.off });
+        var box = $('prRec'), fe = csFimEvo(box); box.insertBefore(fe, box.firstChild);   // o Assinar (texto escrito à mão)
+        if (o.nota) box.insertBefore(el('div', 'cs-nota', o.nota), box.firstChild);
+        requestAnimationFrame(function () { recDraw({ amps: [], st: 'paused' }); });   // os pontos, quando a barra já tem largura
       }
       // ondas: barras de 2 px a cada 5 px, de 4 a 22 de altura, a mais nova à direita; antes do começo, pontos cinza
       function recDraw(r) {
@@ -6735,7 +6977,7 @@
           csBar({ live: r.st === 'live', t: mm2(recSecs(r)), amps: r.amps, fim: function () { recEnd(r); }, cancel: function () { csCancela(r); },
                   btn: function () { if (r.st === 'live') recPause(r); else recResume(r); recRender(); } });
         } else if (r.st === 'idle') {
-          if (!lk) csGo('Iniciar consulta', recStart, recDemo() ? null :
+          if (!lk) csIniciar(recStart, recDemo() ? null :
             { off: true, nota: 'A gravação chega em breve para os seus pacientes' + (temExemplo ? ': experimente na paciente de exemplo.' : '.') });
         } else if (r.st === 'proc') csBar({ t: mm2(recDur(r)), msg: r.step || 'Gerando a evolução…' });
         else {                                             // pronta: o player, com os marcadores no começo de O, A e P
@@ -7046,9 +7288,13 @@
         });
       }
       function listDevices() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-        navigator.mediaDevices.enumerateDevices().then(function (ds) {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
+        return navigator.mediaDevices.enumerateDevices().then(function (ds) {
           RR.devs = ds.filter(function (d) { return d.kind === 'audioinput' && d.deviceId !== 'default' && d.deviceId !== 'communications'; });
+          // o padrão do sistema (Chrome: "Padrão - MacBook Pro Microphone…"), para mostrar o nome antes de escolher
+          var df = ds.filter(function (d) { return d.kind === 'audioinput' && d.deviceId === 'default'; })[0];
+          RR.devPadrao = df && df.label ? df.label.replace(/^(padrão|default)\s*[-–—:]\s*/i, '') : '';
+          if (typeof pnMicPoe === 'function') pnMicPoe();
         }).catch(function () {});
       }
       if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
@@ -7064,10 +7310,14 @@
       }
       function pickDevice(btn) {                // menu "Microfone: … ▾"
         var old = document.querySelector('.rc-devmenu'); if (old) { old.remove(); return; }
-        var m = el('div', 'gq-menu rc-devmenu'); m.setAttribute('role', 'menu');
+        var m = el('div', 'nc-menu pn-ncpop rc-devmenu'); m.setAttribute('role', 'menu');   // como o seletor de paciente (20/11)
         var named = RR.devs.filter(function (d) { return d.label; });    // sem permissão ainda, o navegador não diz os nomes
         (named.length ? named : [{ deviceId: '', label: 'Padrão do computador' }]).forEach(function (d) {
-          var it = el('button', 'gq-mi' + (d.deviceId === RR.dev ? ' on' : ''), d.label || 'Microfone sem nome'); it.type = 'button';
+          var esc = d.deviceId === RR.dev || (!RR.dev && named.indexOf(d) === 0);
+          var it = el('button', 'nc-op'); it.type = 'button';
+          var ic = el('span', 'nc-op-ico'); ic.innerHTML = CSI_MIC_LISTA; it.appendChild(ic);
+          it.appendChild(el('span', 'nc-op-tx', (d.label && micCurto(d.label)) || d.label || 'Sem nome'));
+          var okm = el('span', 'nc-ok'); if (esc) okm.innerHTML = CSI_OK; it.appendChild(okm);
             it.setAttribute('role', 'menuitem');
           it.addEventListener('click', function (e) {
             e.stopPropagation(); m.remove(); RR.dev = d.deviceId; var r = rrCur();
@@ -7129,7 +7379,8 @@
       }
       function rrRow(r, seq, at, pcm) {
         return { k: r.recId + ':' + seq, rk: r.k, recId: r.recId, seq: seq, at: at, dur: pcm.length / SR16, wav: wav(pcm),
-                 pid: r.pid, eid: r.cx.event_id || '', nid: r.cx.note_id || '', consentAt: r.consentAt, created: Date.now() };
+                 pid: r.pid, eid: r.cx.event_id || '', nid: r.cx.note_id || '', consentAt: r.consentAt, created: Date.now(),
+                 sp: r.cx.semPac ? 1 : 0 };   // sp: da Nova consulta (sobe sem o paciente; o servidor liga depois, 19/11)
       }
       function rrPauseLive() { if (RR && RR.live && RR.live.st === 'live') rrPause(RR.live); }   // antes de trocar ou fechar a consulta
       function rrSavePart(r) {                 // trecho em andamento (substitui o anterior; some quando o trecho é cortado)
@@ -7240,13 +7491,13 @@
       }
       function audStart(r) {                   // com a gravação "live" e o microfone aberto (AE)
         audStop(r);
-        if (!AUD_MIME || !AE || !r.recId || !r.pid || RR.agone[r.recId]) return;
+        if (!AUD_MIME || !AE || !r.recId || (!r.pid && !r.cx.semPac) || RR.agone[r.recId]) return;   // a Nova consulta grava o som sem paciente
         var mr;
         try { mr = new MediaRecorder(AE.stream, { mimeType: AUD_MIME, audioBitsPerSecond: 24000 }); } catch (_) { return; }
         if (r.audPart == null) r.audPart = r.audMax != null ? r.audMax : -1;
         // a parte (pt) fica em "s": se o servidor disser que o número já é de outra sessão, a sessão inteira é renumerada
         var s = { pt: ++r.audPart, sess: audSessId() }, at0 = r.samples / SR16, n = 0,
-            base = { recId: r.recId, rk: r.k, pid: r.pid, eid: r.cx.event_id || '' };
+            base = { recId: r.recId, rk: r.k, pid: r.pid, eid: r.cx.event_id || '', sp: r.cx.semPac ? 1 : 0 };
         RR.asess[s.sess] = s;
         mr.ondataavailable = function (e) {
           if (!e.data || !e.data.size) return;
@@ -7280,7 +7531,7 @@
         var fim = function () { AQ.busy = false; aKick(); };
         audAll().catch(function () { return []; }).then(function (todas) {
           todas = todas.concat(RR.amem);
-          var rows = todas.filter(function (x) { return !x.dead && x.pid && x.sess && !RR.agone[x.recId]; });
+          var rows = todas.filter(function (x) { return !x.dead && (x.pid || x.sp) && x.sess && !RR.agone[x.recId]; });
           // a parte cujo primeiro pedaço foi recusado nunca completa: o resto dela também sai da fila
           var mortas = {}; todas.forEach(function (x) { if (x.dead && x.n === 0) mortas[x.sess] = 1; });
           var presos = rows.filter(function (x) { return mortas[x.sess]; });
@@ -7294,9 +7545,10 @@
             return;
           }
           return fetch('/prontuario/recordings/audio', { method: 'POST', credentials: 'same-origin', body: next.blob,
-            headers: { 'Content-Type': 'application/octet-stream', 'X-Patient-Id': String(next.pid), 'X-Rec-Id': next.recId,
+            headers: Object.assign({ 'Content-Type': 'application/octet-stream', 'X-Rec-Id': next.recId,
                        'X-Part': String(next.pt), 'X-N': String(next.n), 'X-Sess': next.sess, 'X-At': String(Math.round(next.at * 10) / 10),
-                       'X-Upto': String(Math.round(next.upto * 10) / 10), 'X-Event-Id': next.eid } })
+                       'X-Upto': String(Math.round(next.upto * 10) / 10), 'X-Event-Id': next.sp ? '' : next.eid },
+                       next.sp ? {} : { 'X-Patient-Id': String(next.pid) }) })   // da Nova consulta: sem o paciente (o servidor sabe pela gravação)
             .then(function (resp) {
               AQ.fails = 0;
               if (resp.ok) return audDrop(next).then(fim);
@@ -7352,7 +7604,7 @@
           // o paciente vai na hora do envio: o do trecho ou o da gravação dele; trecho ainda sem paciente espera (não vira 400)
           rows.forEach(function (x) { if (RR.agone[x.recId]) qDrop(x); });   // gravação cancelada ou apagada: o trecho não sobe
           rows = rows.filter(function (x) { return !RR.agone[x.recId]; });
-          var now = Date.now(), live = rows.filter(function (x) { return !x.dead && !x.part && (x.pid || (rrDe(x) || {}).pid); });
+          var now = Date.now(), live = rows.filter(function (x) { return !x.dead && !x.part && (x.pid || x.sp || (rrDe(x) || {}).pid); });
           Q.erro = live.filter(function (x) { return x.falhas; }).length;      // trechos que o servidor já recusou com erro
           var next = live.filter(function (x) { return !x.depois || x.depois <= now; }).sort(function (a, b) { return a.created - b.created; })[0];
           if (!next) {
@@ -7363,10 +7615,12 @@
           }
           var r = rrDe(next), seg = r && r.segs.filter(function (s) { return s.seq === next.seq && r.recId === next.recId; })[0];
           if (seg) { seg.st = 'sending'; }
+          // da Nova consulta (sp): sobe sem paciente, consulta e evolução; o paciente entra depois pela ligação (rrLiga)
+          var semP = !!(next.sp || (r && r.cx && r.cx.semPac));
           return fetch('/prontuario/transcribe', { method: 'POST', credentials: 'same-origin', body: next.wav,
-            headers: { 'Content-Type': 'audio/wav', 'X-Patient-Id': String(next.pid || r.pid), 'X-Rec-Id': next.recId, 'X-Seq': String(next.seq),
-                       'X-At': String(Math.round(next.at * 10) / 10), 'X-Event-Id': next.eid, 'X-Note-Id': String(next.nid || ''),
-                         'X-Consent': next.consentAt } })
+            headers: Object.assign({ 'Content-Type': 'audio/wav', 'X-Rec-Id': next.recId, 'X-Seq': String(next.seq),
+                       'X-At': String(Math.round(next.at * 10) / 10), 'X-Event-Id': semP ? '' : next.eid, 'X-Note-Id': semP ? '' : String(next.nid || ''),
+                         'X-Consent': next.consentAt }, semP ? {} : { 'X-Patient-Id': String(next.pid || r.pid) }) })
             .then(function (resp) {
               return resp.json().catch(function () { return {}; }).then(function (j) {
                 Q.down = false;
@@ -7374,6 +7628,7 @@
                   if (seg) { seg.st = 'ok'; seg.text = j.text || ''; seg.duvidas = j.duvidas || []; seg.falas = j.falas || []; }
                   Q.fails = 0; Q.auth = false;
                   if (next.falhas) Q.erro = Math.max(0, Q.erro - 1);
+                  if (semP && r && r.pid && !r.ligadoSrv) rrLiga(r);   // o paciente já foi escolhido: a gravação (agora no servidor) ganha ele
                   return qDrop(next).then(function () { Q.busy = false; qState(false); qKick(); });
                 }
                 if (seg) seg.st = 'local';
@@ -7412,13 +7667,14 @@
 
       // ----- ações -----
       function rrStart(r) {
-        if (!r.consent || locked() || r.starting) return;     // um início por vez: dois toques não abrem dois microfones
+        if (!r.consent || locked() || r.starting || r.travada) return;     // um início por vez: dois toques não abrem dois microfones
         r.starting = true; r.testing = false; r.warn = '';
         aeStart(function (p, v) { rrBlock(r, p, v); }, function () { rrMicLost(r); }).then(function () {
           r.starting = false;
           // trocou ou fechou a consulta enquanto o navegador pedia o microfone: não grava nesta consulta (a outra está na tela)
           if (r !== rrCur() || !isOpen() || locked() || !r.consent) { aeStop(); rrRender(r); return; }
           if (!r.recId) { r.recId = uuid(); r.consentAt = new Date().toISOString(); }
+          if (r.cx.semPac && r.cx.rid !== r.recId) { r.cx.rid = r.recId; if (r.cx === ctx) persistCtx(); }   // Nova consulta: volta ao recarregar
           r.st = 'live'; RR.live = r; r.blocos = []; r.blocosRms = [];
           audStart(r);
           rrWake(); rrRender(r);
@@ -7445,6 +7701,10 @@
         rrPause(r); r.warn = 'micoff'; rrRender(r);
       }
       function rrEnd(r) {
+        if (r.cx.semPac && !r.pid) {                       // Nova consulta sem paciente: a evolução só com o paciente (19/11)
+          if (r.st === 'live') rrPause(r);
+          r.warn = 'semPac'; rrRender(r); pnAbre(); return;
+        }
         if (r.st === 'live') rrPause(r);
         if (r.st !== 'paused' && r.st !== 'interrupted') return;
         r.st = 'ending'; r.warn = ''; r.endAt = Date.now(); rrRender(r);
@@ -7460,6 +7720,11 @@
       }
       function rrGenerate(r) {
         if (r.st !== 'ending' && r.st !== 'fail') return;
+        if (r.cx.semPac && !r.ligadoSrv) {                 // Nova consulta: liga a gravação ao paciente antes de gerar
+          if (!r.pid) { r.st = 'paused'; r.warn = 'semPac'; rrRender(r); return; }
+          rrLiga(r).then(function (ok) { if (ok) rrGenerate(r); else { r.st = 'fail'; r.err = 'ligar'; rrRender(r); } });
+          return;
+        }
         r.st = 'gen'; r.genStep = 'escrevendo'; rrRender(r);
         var my = r, buf = '', last = null;
         fetch('/prontuario/scribe', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
@@ -7658,21 +7923,33 @@
         var my = r, cx = r.cx; r.loading = true;
         // consulta avulsa: a gravação feita antes de a evolução ser salva não tem consulta nem evolução; acha pelo paciente
         // (consulta que já tem evolução acha as suas por ela: nunca pega a gravação de outra consulta avulsa)
-        var orfa = function (x) { return !cx.event_id && !cx.note_id && x.pid === my.pid && !x.eid && !x.nid; };
+        var orfa = function (x) { return !cx.semPac && !cx.event_id && !cx.note_id && !x.sp && x.pid === my.pid && !x.eid && !x.nid; };
         // trecho guardado antes de a chave levar o paciente ('e' + consulta): só se for deste paciente
-        var antiga = function (x) { return !!cx.event_id && x.rk === 'e' + cx.event_id && !!x.pid && String(x.pid) === String(my.pid); };
+        var antiga = function (x) { return !cx.semPac && !!cx.event_id && x.rk === 'e' + cx.event_id && !!x.pid && String(x.pid) === String(my.pid); };
         idbAll().catch(function () { return []; }).then(function (rows) {
           rows = rows.filter(function (x) { return !RR.agone[x.recId]; });   // cancelada ou apagada nesta aba: não volta
-          var ids = rows.filter(function (x) { return x.rk === my.k || orfa(x) || antiga(x); }).map(function (x) { return x.recId; })
+          // Nova consulta: só a gravação desta tela (cx.rid; a chave dela) — nunca a de outra consulta sem paciente
+          var dela = function (x) { return cx.semPac ? x.recId === cx.rid || (x.rk === my.k && (!cx.rid || x.recId === cx.rid)) : x.rk === my.k; };
+          var ids = rows.filter(function (x) { return dela(x) || orfa(x) || antiga(x); }).map(function (x) { return x.recId; })
                         .filter(function (x, i, a) { return a.indexOf(x) === i; });
-          return api('POST', '/prontuario/recordings/state', { patient_id: my.pid, event_id: cx.event_id || null,
+          // Nova consulta (19/11): a gravação é a desta tela (cx.rid); sem paciente, o servidor procura só entre as sem paciente.
+          // Com o paciente já escolhido, liga antes (a ligação pode ter ficado para depois, sem internet) e lê como a avulsa
+          if (cx.semPac && cx.rid && ids.indexOf(cx.rid) < 0) ids.push(cx.rid);
+          var semP = !!cx.semPac && !my.pid;
+          if (cx.semPac && !ids.length) { my.loaded = true; return; }   // ainda não gravou nada nesta tela
+          var liga = cx.semPac && my.pid && cx.rid ? api('POST', '/prontuario/recordings/patient', { rec_ids: [cx.rid], patient_id: my.pid })
+            .then(function (res) { if (res.ok && res.j && res.j.n > 0) my.ligadoSrv = true; }, function () {}) : Promise.resolve();
+          return liga.then(function () { return api('POST', '/prontuario/recordings/state', semP ? { sem_paciente: true, rec_ids: ids } :
+                                                             cx.semPac ? { patient_id: my.pid, rec_ids: ids, orfas: false } :
+                                                             { patient_id: my.pid, event_id: cx.event_id || null,
                                                                note_id: cx.note_id || null, rec_ids: ids, orfas: !cx.event_id &&
-                                                                 !cx.note_id }).then(function (res) {
+                                                                 !cx.note_id }); }).then(function (res) {
             if (!(res.ok && res.j)) throw new Error('estado ' + res.status);      // sem internet: tenta de novo na próxima vez
             my.loaded = true;
-            var recs = (res.j.recordings || []).filter(function (x) { return !RR.agone[x.rec_id]; }), last = recs[recs.length - 1];
+            var recs = (res.j.recordings || []).filter(function (x) { return !RR.agone[x.rec_id] && (!cx.semPac || x.rec_id === cx.rid); }),
+                last = recs[recs.length - 1];
             {
-              var mine = rows.filter(function (x) { return x.rk === my.k || orfa(x) || antiga(x) || (last && x.recId === last.rec_id); });
+              var mine = rows.filter(function (x) { return dela(x) || orfa(x) || antiga(x) || (last && x.recId === last.rec_id); });
               if (!last && !mine.length) return;
               if (my.st !== 'idle') return;
               var rid = last ? last.rec_id : mine[0].recId;
@@ -7823,7 +8100,7 @@
             rcAlert('warn', 'micoff', r.err === 'NotFoundError' ? '<b>Nenhum microfone encontrado.</b> Conecte um microfone e toque em Tentar de novo.'
               : '<b>O navegador não deixou usar o microfone.</b> Clique no cadeado ao lado do endereço do site, escolha <b>Permitir</b> em Microfone e toque em Tentar de novo.');
           } else if (!lk) {
-            csGo('Iniciar consulta', function () { rrIniciar(r); });
+            csIniciar(function () { rrIniciar(r); });
           }
         } else if (r.st === 'live') {
           csBar({ live: true, t: t, amps: r.amps, fim: fim, cancel: function () { csCancela(r); }, btn: function () { rrPause(r); } });
@@ -7867,6 +8144,7 @@
         }
         csDot(r);
         rrAlert(r, pend, lk);
+        pnSync(r);
       }
       // "Iniciar consulta" grava direto: a marca "O paciente autorizou a gravação" saiu da tela (20/10/2026, pedido do usuário);
       // consentAt guarda a hora em que a gravação começou e segue em cada trecho (X-Consent), como antes
@@ -7887,6 +8165,10 @@
             ' e a gravação foi pausada.</b> O que já foi gravado está salvo.', [['Escolher microfone', 1]]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); });
         } else if (r.warn === 'outro') rcAlert('bad', 'err', RRTXT.outro);
+        else if (r.warn === 'semPac') rcAlert('warn', 'warn', '<b>Informe o paciente para gerar a evolução.</b> A gravação está guardada: ' +
+          'escolha ou cadastre o paciente em Selecionar paciente, no alto.');
+        else if (r.warn === 'travada') rcAlert('bad', 'err', '<b>Esta gravação já foi ligada a outro paciente</b> (em outra aba ou outro aparelho). ' +
+          'Ela fica no prontuário dele; nada mais gravado aqui entra nela.');
         else if (r.warn === 'silencio' && r.st === 'live') { rcAlert('warn', 'warn',
           '<b>Não estamos ouvindo nada há 20 segundos.</b> Confira se o microfone certo está ligado e perto de vocês.', [['Trocar microfone']]);
           $('rcAlert').querySelector('button').addEventListener('click', function (e) { e.stopPropagation(); listDevices(); pickDevice(this); }); }
@@ -10580,6 +10862,277 @@
       });
       window.addEventListener('afterprint', prPrintFim);
 
+      // ===== Nova consulta (19/11): gravar antes de informar o paciente =====
+      // O prontuário abre sem paciente (ctx.semPac): só o campo Paciente e o cartão da gravação. Os trechos e o som sobem sem
+      // o paciente (o servidor guarda a gravação sem ele e sem os rótulos Médico/Paciente, que precisariam do nome para
+      // mascarar); escolhido ou cadastrado o paciente, a gravação é ligada a ele (/prontuario/recordings/patient) e a tela vira
+      // a consulta avulsa dele, com a mesma gravação. A evolução só é gerada com o paciente. Sem paciente, as gravações ficam
+      // na lista "Gravações sem paciente", pela data e hora. O nome só vai no corpo do POST e no sessionStorage (ctx).
+      function novaAbre() {
+        main.hidden = false; msg.hidden = true;
+        fillEditor(null); cur = null; saved = snap(); ready = true; setEditable(false); setStatus('');
+        $('prExport').hidden = true; $('prVisits').innerHTML = '';
+        pnFecha(); $('pnIn').value = ''; $('pnAviso').hidden = true; pnTopSync();
+        csTab('tx');
+        var r = rrCur(); if (r) r.cs = true;               // o cartão no meio, com o "Iniciar consulta"
+        recRender(); csModo(); pnPendentes();
+        if (window.__ncDoProntuario) window.__ncDoProntuario(null, '');   // o assistente da lateral sem paciente
+        if (location.hash !== '#prontuario') { history.pushState({ pr: 1 }, '', '#prontuario'); direct = false; }
+      }
+      window.__novaConsulta = function () {
+        if (isOpen() && ctx && ctx.semPac && !ctx.patient_id) { pnAbre(); return; }   // já está nela
+        open({ from: 'nova', semPac: 1 });
+      };
+      // liga a gravação ao paciente escolhido (só ids no corpo). Devolve se a gravação ficou ligada no servidor; sem nada no
+      // servidor ainda (nenhum trecho subiu), fica para depois do primeiro envio (o qKick chama de novo)
+      function rrLiga(r) {
+        if (!r || !r.cx.semPac || !r.pid || !r.recId) return Promise.resolve(!!(r && r.ligadoSrv));
+        if (r.ligadoSrv) return Promise.resolve(true);
+        if (r.travada) return Promise.resolve(false);
+        // a gravação só existe no servidor depois do primeiro trecho transcrito: antes, não há o que ligar (o qKick liga
+        // quando ele subir; sem nenhuma fala, a geração diz que não há fala)
+        if (!r.segs.some(function (x) { return x.st === 'ok'; })) return Promise.resolve(true);
+        if (r.ligando) return r.ligando;
+        clearTimeout(r.ligaTimer);
+        r.ligando = api('POST', '/prontuario/recordings/patient', { rec_ids: [r.recId], patient_id: r.pid }).then(function (res) {
+          r.ligando = null;
+          if (res.ok && res.j && res.j.ok) { r.ligadoSrv = true; return true; }
+          if (res.status === 409) {                        // ligada a outro paciente (outra aba): nada mais entra nela por esta tela
+            r.travada = true; if (r.st === 'live') rrPause(r); r.warn = 'travada'; rrRender(r);
+            return false;
+          }
+          r.ligaTimer = setTimeout(function () { rrLiga(r); }, 15000);   // servidor ou limite: tenta de novo sozinho
+          return false;
+        }, function () { r.ligando = null; r.ligaTimer = setTimeout(function () { rrLiga(r); }, 15000); return false; });
+        return r.ligando;
+      }
+      // voltou a internet: a gravação desta tela que ainda não foi ligada ao paciente é ligada (e o prontuário que não carregou, carrega)
+      window.addEventListener('online', function () {
+        var r = isOpen() && ctx && ctx.semPac ? rrCur() : null; if (!r) return;
+        if (ctx.patient_id && !ready) load();
+        if (r.pid && !r.ligadoSrv) rrLiga(r);
+      });
+      // o paciente escolhido (ou cadastrado agora): a mesma consulta passa a ser dele, sem pausar a gravação
+      function pnEscolhe(p) {
+        if (!p || p.example || !ctx || !ctx.semPac || ctx.patient_id) return;
+        var r = rrCur();                                   // a chave (ctx._rk) não muda: é a mesma gravação
+        pnFecha();
+        ctx.patient_id = p.id; ctx.patient = p.name; persistCtx();
+        if (r) { r.pid = p.id; if (r.warn === 'semPac') r.warn = ''; rrLiga(r); qKick(); aKick(); }
+        stage.classList.remove('nova'); main.classList.remove('sem-pac'); $('prNova').hidden = true; pnTopSync();
+        load();                                            // o prontuário do paciente, com esta consulta (a avulsa) aberta
+      }
+      // o campo Paciente: busca entre os pacientes do médico (GET /patients) e, digitado um nome, "Cadastrar paciente"
+      var PN = { pats: null, at: 0, more: false, op: [], i: -1, tok: 0 };
+      function pnNorm(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+      function pnCarrega() {
+        if (PN.pats && Date.now() - PN.at < 60e3) return Promise.resolve(PN.pats);
+        return api('GET', '/patients').then(function (res) {
+          if (res.ok && res.j) { PN.pats = res.j.patients || []; PN.more = !!res.j.more; PN.at = Date.now(); }
+          return PN.pats || [];
+        }, function () { return PN.pats || []; });
+      }
+      function pnBusca(raw) {                              // lista cortada: o servidor procura o nome (no corpo do POST)
+        if (!PN.more || !pnNorm(raw)) return Promise.resolve(PN.pats || []);
+        return api('POST', '/patients/search', { q: raw }).then(function (res) {
+          var tem = {}; (PN.pats || []).forEach(function (p) { tem[p.id] = 1; });
+          if (res.ok && res.j) PN.pats = (PN.pats || []).concat((res.j.patients || []).filter(function (p) { return !tem[p.id]; }));
+          return PN.pats;
+        }, function () { return PN.pats || []; });
+      }
+      function pnFecha() {
+        var l = $('pnList'); if (!l) return;
+        PN.tok++; l.innerHTML = ''; PN.op = []; PN.i = -1; $('pnIn').setAttribute('aria-expanded', 'false');
+        $('pnIn').removeAttribute('aria-activedescendant');
+        $('pnPop').hidden = true; $('pnBtn').setAttribute('aria-expanded', 'false');   // a janelinha do Selecionar paciente
+      }
+      function pnAbre() {                                  // "Selecionar paciente": a busca abre embaixo do botão
+        if (!ctx || !ctx.semPac || ctx.patient_id) return;
+        pnModoFecha();
+        $('pnPop').hidden = false; $('pnBtn').setAttribute('aria-expanded', 'true');
+        $('pnIn').focus(); pnMostra();
+      }
+      $('pnBtn').addEventListener('click', function () { if ($('pnPop').hidden) pnAbre(); else pnFecha(); });
+      // Presencial | Telemedicina (o que cada uma muda vem depois): por enquanto só a escolha, guardada na consulta (ctx)
+      var MODOS = { presencial: 'Presencial', telemedicina: 'Telemedicina' };
+      function pnModoFecha() { $('pnModoM').hidden = true; $('pnModo').setAttribute('aria-expanded', 'false'); }
+      function pnModoPoe() {
+        var m = ctx && MODOS[ctx.modalidade] ? ctx.modalidade : 'presencial';
+        $('pnModoT').textContent = MODOS[m];
+        var ico = $('pnModoM').querySelector('[data-modo="' + m + '"] .nc-op-ico');   // o ícone da escolhida, no botão (20/11)
+        if ($('pnModoI') && ico) $('pnModoI').innerHTML = ico.innerHTML;
+        [].forEach.call($('pnModoM').querySelectorAll('[data-modo]'), function (b) {
+          var on = b.getAttribute('data-modo') === m; b.setAttribute('aria-checked', on ? 'true' : 'false');
+          var ok = b.querySelector('.nc-ok'); if (ok) ok.innerHTML = on ? CSI_OK : '';   // o ✓ do seletor de paciente
+        });
+      }
+      $('pnModo').addEventListener('click', function () {
+        if (!$('pnModoM').hidden) { pnModoFecha(); return; }
+        pnFecha(); pnModoPoe(); $('pnModoM').hidden = false; $('pnModo').setAttribute('aria-expanded', 'true');
+      });
+      [].forEach.call($('pnModoM').querySelectorAll('[data-modo]'), function (b) {
+        b.addEventListener('click', function () {
+          if (ctx) { ctx.modalidade = b.getAttribute('data-modo'); persistCtx(); }
+          pnModoPoe(); pnModoFecha(); $('pnModo').focus();
+        });
+      });
+      document.addEventListener('mousedown', function (e) {   // clique fora fecha as duas
+        if (e.target.closest && e.target.closest('.pn-dd')) return;
+        if (!$('pnPop').hidden) pnFecha();
+        if (!$('pnModoM').hidden) pnModoFecha();
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !$('pnModoM').hidden) { e.preventDefault(); pnModoFecha(); $('pnModo').focus(); }
+      });
+      function micNome() {                                 // o nome curto do microfone ("MacBook Pro Microphone (Built-in)" → sem o "(…)")
+        var d = RR.devs.filter(function (x) { return x.deviceId === RR.dev; })[0];
+        var t = (d && d.label) || (!RR.dev && RR.devPadrao) || (AE && AE.label) || (RR.devs.filter(function (x) { return x.label; })[0] || {}).label || '';
+        return micCurto(t) || 'Padrão';
+      }
+      // só o nome do aparelho (19/11): "Microfone (MacBook Pro) (Built-in)" → "MacBook Pro", "Microfone do iPhone 3" → "iPhone 3",
+      // "MacBook Pro Microphone (Built-in)" → "MacBook Pro"
+      function micCurto(t) {
+        return String(t || '').replace(/^(padrão|default)\s*[-–—:]\s*/i, '')
+          .replace(/\((built-in|integrado|interno|embutido)\)/gi, '')
+          .replace(/\b(microphone|microfone|mic)\b(\s+(do|da|de|of)\b)?/gi, '')
+          .replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+      function pnMicPoe() { var t = $('pnMicT'); if (t) t.textContent = micNome(); }
+      // sem a permissão do microfone, o navegador não diz os nomes: o clique pede a permissão (o microfone fecha na hora) e a
+      // lista abre com os aparelhos (o do computador, o celular…)
+      $('pnMic').addEventListener('click', function (e) {
+        e.stopPropagation(); pnFecha(); pnModoFecha();
+        var aberta = document.querySelector('.rc-devmenu'); if (aberta) { aberta.remove(); return; }
+        var temNome = RR.devs.some(function (d) { return d.label; });
+        var pede = temNome || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia ? Promise.resolve() :
+          navigator.mediaDevices.getUserMedia({ audio: true }).then(function (st) { st.getTracks().forEach(function (t) { t.stop(); }); }, function () {});
+        pede.then(listDevices).then(function () { if (!document.querySelector('.rc-devmenu')) pickDevice($('pnMic')); pnMicPoe(); });
+      });
+      document.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('.rc-devmenu')) setTimeout(pnMicPoe, 0); }, true);
+      // os botões só na Nova consulta; escolhido o paciente, o primeiro mostra o nome (não troca mais)
+      function pnTabsCabe() {                              // o Transcrição | SOAP no meio, sem encostar nos botões do canto
+        var t = $('prTabs'), b = $('pnTop'), c = document.querySelector('.center');
+        if (!t || !b || !c || b.hidden) { if (t) t.style.maxWidth = ''; return; }
+        var lado = Math.max($('pnBtn').offsetWidth, $('pnModo').offsetWidth);   // Paciente à esquerda, Presencial à direita
+        var livre = c.clientWidth - 2 * (24 + lado + 24);   // 24 da borda e 24 de folga
+        t.style.maxWidth = Math.max(200, Math.min(800, livre)) + 'px';
+      }
+      window.addEventListener('resize', pnTabsCabe);
+      function pnTopSync() {
+        var on = isOpen() && !!ctx && !!ctx.semPac;
+        stage.classList.toggle('nova-cs', on);           // a tela da Nova consulta (sem o assistente)
+        // no menu, "Nova consulta" fica aceso nela; ao sair, volta o que estava aceso (se a tela seguinte não acendeu outro)
+        var nn = $('navNovoPac'), outros = ['navConsultas', 'navPacientes', 'navPrescricoes', 'navNovo'].map($).filter(Boolean);
+        if (nn && on) {
+          if (!nn.classList.contains('active')) PN.acesos = outros.filter(function (x) { return x.classList.contains('active'); });
+          var acende = function () { if (!stage.classList.contains('nova-cs')) return; outros.forEach(function (x) { x.classList.remove('active'); }); nn.classList.add('active'); };
+          acende(); setTimeout(acende, 0);                 // quem saiu do chat acende Consultas logo depois (observador): vale este
+        } else if (nn && !on && nn.classList.contains('active')) {
+          nn.classList.remove('active');
+          if (!outros.some(function (x) { return x.classList.contains('active'); })) (PN.acesos || []).forEach(function (x) { x.classList.add('active'); });
+          PN.acesos = null;
+        }
+        $('pnTop').hidden = !on; if (!on) { pnFecha(); pnModoFecha(); pnTabsCabe(); return; }
+        $('pnBtnT').textContent = ctx.patient_id && ctx.patient ? ctx.patient : 'Paciente';
+        $('pnBtn').disabled = !!ctx.patient_id; pnModoPoe(); pnMicPoe(); listDevices();   // o nome do microfone, se já há permissão
+        pnTabsCabe();
+      }
+      function pnMarca(i) {
+        PN.i = i;
+        PN.op.forEach(function (o, j) { o.b.classList.toggle('on', j === i); o.b.setAttribute('aria-selected', j === i ? 'true' : 'false'); });
+        if (PN.op[i]) { $('pnIn').setAttribute('aria-activedescendant', PN.op[i].b.id); PN.op[i].b.scrollIntoView({ block: 'nearest' }); }
+      }
+      function pnIdade(d) {
+        var b = d ? new Date(d + 'T12:00:00') : null; if (!b || isNaN(b)) return '';
+        var n = new Date(), a = n.getFullYear() - b.getFullYear();
+        if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--;
+        return a + (a === 1 ? ' ano' : ' anos');
+      }
+      function pnDesenha(raw) {
+        var l = $('pnList'), q = pnNorm(raw), list = PN.pats || [];
+        l.innerHTML = ''; PN.op = []; PN.i = -1;
+        // a paciente de exemplo fica de fora: ela só tem a demonstração (uma gravação de verdade não entra nela)
+        var hits = list.filter(function (p) { return !p.example && (!q || pnNorm(p.name).indexOf(q) >= 0); }).slice(0, q ? 6 : 5);
+        var ICO = document.querySelector('#navPacientes .ico'), MAIS = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+        var add = function (label, sub, pick, novo) {      // a linha do seletor do chat: o ícone e o nome
+          var b = el('button', 'nc-op'); b.type = 'button'; b.id = 'pnOp' + PN.op.length; b.setAttribute('role', 'option');
+          var ic = el('span', 'nc-op-ico'); ic.innerHTML = novo ? MAIS : (ICO ? ICO.innerHTML : ''); b.appendChild(ic);
+          b.appendChild(el('span', 'nc-op-tx', label)); b.appendChild(el('span', 'nc-ok'));
+          b.addEventListener('mousedown', function (e) { e.preventDefault(); });   // não tira o foco do campo
+          b.addEventListener('click', pick);
+          l.appendChild(b); PN.op.push({ b: b, pick: pick });
+        };
+        hits.forEach(function (p) {
+          add(p.name, null, function () { pnEscolhe(p); });
+        });
+        if (q) add('Cadastrar "' + raw + '"', null, function () { pnCadastra(raw); }, true);
+        if (!PN.op.length) l.appendChild(el('div', 'nc-vazio', 'Nenhum paciente cadastrado'));
+        l.hidden = false; $('pnIn').setAttribute('aria-expanded', 'true');
+        if (q && PN.op.length) pnMarca(0);
+      }
+      function pnMostra() {
+        var raw = $('pnIn').value.trim(), g = ++PN.tok;
+        var vale = function () { return g === PN.tok && document.activeElement === $('pnIn') && raw === $('pnIn').value.trim(); };
+        pnCarrega().then(function () {
+          if (!vale()) return;
+          pnDesenha(raw);
+          if (PN.more && pnNorm(raw)) pnBusca(raw).then(function () { if (vale()) pnDesenha(raw); });
+        });
+      }
+      function pnCadastra(raw) {                           // o formulário do novo paciente (coluna da direita), com o nome digitado
+        pnFecha();
+        if (!window.__novoPacienteDaConsulta) return;
+        var my = ctx;
+        window.__novoPacienteDaConsulta(raw.split(/\s+/).filter(Boolean).join(' '), function (p) {
+          PN.at = 0;                                       // a lista do campo volta a ser lida com ele
+          if (ctx === my && isOpen()) pnEscolhe(p);
+        }, function (semFoco) { if (!semFoco && ctx === my && isOpen()) $('pnBtn').focus(); });
+      }
+      $('pnIn').addEventListener('focus', pnMostra);
+      $('pnIn').addEventListener('input', pnMostra);
+      $('pnIn').addEventListener('blur', function () {
+        setTimeout(function () { if (document.activeElement !== $('pnIn') && !(document.activeElement && document.activeElement.closest && document.activeElement.closest('#pnPop'))) pnFecha(); }, 0);
+      });
+      $('pnIn').addEventListener('keydown', function (e) {
+        if (e.isComposing || e.keyCode === 229) return;
+        var n = PN.op.length;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          e.preventDefault(); if ($('pnList').hidden) { pnMostra(); return; }
+          if (n) pnMarca(((PN.i < 0 ? (e.key === 'ArrowDown' ? -1 : 0) : PN.i) + (e.key === 'ArrowDown' ? 1 : -1) + n) % n);
+        } else if (e.key === 'Enter') {
+          if (PN.i >= 0 && PN.op[PN.i]) { e.preventDefault(); PN.op[PN.i].pick(); }
+        } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); pnFecha(); $('pnBtn').focus(); }
+      });
+      // a lista das gravações ainda sem paciente (data e hora; nenhum texto, nenhum nome): só com a tela vazia
+      function pnPendentes() {
+        var my = ctx, box = $('pnPend'), l = $('pnPendL');
+        box.hidden = true; l.innerHTML = '';
+        if (!RR.on) { pnSync(rrCur()); return; }
+        api('POST', '/prontuario/recordings/pendentes', {}).then(function (res) {
+          if (ctx !== my || !(res.ok && res.j)) return;
+          var recs = (res.j.recordings || []).filter(function (x) { return x.rec_id !== my.rid && !RR.agone[x.rec_id]; });
+          l.innerHTML = '';
+          recs.forEach(function (x) {
+            var d = new Date(x.created_at), b = el('button', 'pn-pi'); b.type = 'button';
+            var min = Math.round((x.seconds || 0) / 60);
+            b.appendChild(document.createTextNode(isNaN(d) ? 'Gravação' : dayMon(d) + ', ' + hm(d)));
+            b.appendChild(el('small', null, (x.seconds || 0) < 60 ? 'Menos de 1 min' : min + ' min'));
+            b.addEventListener('click', function () { open({ from: 'nova', semPac: 1, rid: x.rec_id }); });
+            l.appendChild(b);
+          });
+          pnSync(rrCur());
+        }, function () {});
+      }
+      // a lista aparece só antes de gravar (a tela vazia); gravando ou com uma gravação aberta, sai
+      function pnSync(r) {
+        var box = $('pnPend'); if (!box) return;
+        var sem = !!(ctx && ctx.semPac && !ctx.patient_id);
+        box.hidden = !(sem && r && r.st === 'idle' && !r.recId && $('pnPendL').children.length);
+        var av = $('pnAviso');
+        av.hidden = !(sem && !RR.on);
+        if (!av.hidden) av.textContent = 'A gravação da consulta não está liberada nesta conta.';
+      }
+
       // ===== carregar / abrir / trocar de consulta / fechar =====
       function load() {
         var my = ctx, reenvia = !apos409; apos409 = false; ready = false; setEditable(false); setStatus('Carregando…');
@@ -10604,6 +11157,7 @@
             persistCtx();
             fillEditor(cur); saved = snap(); csAbaInicial();
             ready = true; setEditable(true); setStatus('');
+            if (ctx.semPac) { var rn = rrCur(); if (rn) rn.cs = true; csModo(); }   // Nova consulta com paciente: fica na consulta (o cartão)
             $('prExport').hidden = false;
             renderHeader(); renderSummary(); renderEvo(); renderHist(); renderVisit(); renderKpis(); updCount(compose().content.length); rxLoad();
             // rascunho não salvo (queda de internet / aba fechada): volta para o editor e salva — nunca na recarga
@@ -10642,7 +11196,11 @@
         stage.classList.add('prontuario');
         $('prView').scrollTop = 0;
         $('prForm').hidden = true; $('prAllergyBar').hidden = true; $('prProbTags').innerHTML = ''; $('prExport').hidden = true;
-        visits = null; calOn = null; setTab(c && c.tab === 'prescricoes' ? 'prescricoes' : c && c.event_id ? 'atual' : 'geral');   // tab: da busca (Receitas)
+        var nova = !!(c && c.semPac && !c.patient && !c.patient_id);   // Nova consulta ainda sem paciente
+        stage.classList.toggle('nova', nova); main.classList.toggle('sem-pac', nova); $('prNova').hidden = !nova;
+        visits = null; calOn = null; setTab(c && c.tab === 'prescricoes' ? 'prescricoes' : c && (c.event_id || c.semPac) ? 'atual' : 'geral');   // tab: da busca (Receitas)
+        pnTopSync();
+        if (nova) { novaAbre(); return; }
         if (!ctx || (!ctx.patient && !ctx.patient_id)) {
           msg.innerHTML = 'Abra o prontuário a partir de uma consulta na agenda ou da lista de Pacientes.'; msg.hidden = false; main.hidden = true; return;
         }
@@ -10666,7 +11224,8 @@
         rx.fechaMenu();                                    // o ⋯ de uma receita não fica aberto sobre a agenda
         rrPauseLive();                                     // saiu do prontuário: a gravação pausa (não grava o próximo paciente)
         save();
-        stage.classList.remove('prontuario');
+        if (stage.classList.contains('nova') && window.__fechaNovoPaciente) window.__fechaNovoPaciente();   // o cadastro aberto por ela
+        stage.classList.remove('prontuario'); stage.classList.remove('nova'); pnFecha(); pnTopSync();
         if (fromPop || location.hash !== '#prontuario') return;
         if (!direct) { history.back(); return; }
         direct = false;                                    // "voltar" sem sair do app: troca o endereço e avisa as telas
@@ -10923,7 +11482,7 @@
       // sair de Pacientes (o menu, o voltar do navegador) ou abrir um prontuário fecha o formulário
       new MutationObserver(function () {             // (o aberto pela consulta fica em Consultas: fecha ao ir para Pacientes)
         var fora = daConsulta ? stage.classList.contains('pacientes') : !stage.classList.contains('pacientes');
-        if (!newRow.hidden && (fora || stage.classList.contains('prontuario'))) toggleNew(false, true);
+        if (!newRow.hidden && (fora || (stage.classList.contains('prontuario') && !(daConsulta && stage.classList.contains('nova'))))) toggleNew(false, true);   // a Nova consulta cadastra aqui
       }).observe(stage, { attributes: true, attributeFilter: ['class'] });
       function createNew(force) {
         if (salvando) return;                              // Enter duas vezes: um cadastro só
@@ -11277,7 +11836,49 @@
         antes = agora;
       }
       new MutationObserver(acende).observe(stage, { attributes: true, attributeFilter: ['class'] });
-      if ($('navHist')) new MutationObserver(acende).observe($('navHist'), { childList: true, subtree: true });   // a lista redesenhada (abriu ou saiu de uma conversa)
+      if ($('navHist')) new MutationObserver(acende).observe($('navHist'), { childList: true, subtree: true });
+      // Chat | Consulta: cada lado aperta o item do menu (Novo chat / Nova consulta); Chat aceso no chat, Consulta no resto (19/11)
+      (function () {
+        var seg = $('navSeg'); if (!seg) return;
+        var bs = [].slice.call(seg.querySelectorAll('button'));
+        // a aba escolhida fica (20/11): Pacientes, Consultas e Prescrições não trocam; o chat acende Chat e a Nova consulta, Consulta
+        var aba = emChat() ? 'chat' : 'consulta', abaAntes = aba;
+        var pill = document.createElement('span'); pill.className = 'seg-pill sem-anim'; pill.setAttribute('aria-hidden', 'true'); seg.insertBefore(pill, seg.firstChild);
+        var calmo = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        function pillEm(b) { if (!b || !b.offsetWidth) return; pill.style.width = b.offsetWidth + 'px'; pill.style.transform = 'translateX(' + b.offsetLeft + 'px)'; }
+        function surge() {                                 // a tela nova: só um fade (200 ms), sem movimento; o menu não anima (20/11)
+          if (calmo || !document.body.animate) return;
+          [document.querySelector('.center'), document.querySelector('.right')].forEach(function (x) {
+            if (x && x.offsetParent !== null) x.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease-out' });
+          });
+        }
+        function marca() {
+          if (emChat()) aba = 'chat'; else if (stage.classList.contains('nova-cs') || stage.classList.contains('nova')) aba = 'consulta';
+          bs.forEach(function (b) {
+            var on = (b.getAttribute('data-ir') === 'navNovo') === (aba === 'chat');
+            b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          if (nav) nav.classList.toggle('seg-chat', aba === 'chat');      // o Novo chat e o histórico com o Chat escolhido
+          if (nav) nav.classList.toggle('seg-pac', aba === 'consulta');   // e o Nova consulta com Consulta
+          pillEm(seg.querySelector('button.on'));
+          if (aba !== abaAntes) { abaAntes = aba; surge(); }
+          if (pill.classList.contains('sem-anim')) setTimeout(function () { pill.classList.remove('sem-anim'); }, 60);   // a 1ª posição sem deslizar
+        }
+        function pillSalta() { pill.classList.add('sem-anim'); pillEm(seg.querySelector('button.on')); setTimeout(function () { pill.classList.remove('sem-anim'); }, 60); }
+        window.addEventListener('resize', pillSalta);
+        var recolhido = nav && nav.classList.contains('collapsed');   // o menu volta a abrir: a pílula no lugar, sem deslizar
+        if (nav) new MutationObserver(function () { var r = nav.classList.contains('collapsed'); if (r !== recolhido) { recolhido = r; if (!r) pillSalta(); } })
+          .observe(nav, { attributes: true, attributeFilter: ['class'] });
+        bs.forEach(function (b) { b.addEventListener('click', function () { var it = $(b.getAttribute('data-ir')); if (it) it.click(); }); });
+        var novoPac = $('navNovoPac');                       // Nova consulta: grava a consulta e o paciente é informado depois (19/11)
+        if (novoPac) novoPac.addEventListener('click', function () {
+          if (expandido()) raExpand.click();                 // sai do chat em tela cheia (o prontuário fica no meio)
+          if (window.__novaConsulta) window.__novaConsulta();
+        });
+        document.querySelectorAll('.nav-sec .item').forEach(function (it) { new MutationObserver(marca).observe(it, { attributes: true, attributeFilter: ['class'] }); });
+        new MutationObserver(marca).observe(stage, { attributes: true, attributeFilter: ['class'] });
+        marca();
+      })();   // a lista redesenhada (abriu ou saiu de uma conversa)
       function abre(nova) {
         if (window.__closeProntuario) window.__closeProntuario();
         if (stage.classList.contains('pacientes')) stage.classList.remove('pacientes');
@@ -11839,6 +12440,8 @@
       if (rxN) rxN.addEventListener('click', function (e) { e.stopPropagation(); if (ov.hidden) { abre('pacientes', rxN); abaPr = 'prescricoes'; } else fecha(); });
       window.__abreReceita = abreReceita;
       if (navB) navB.addEventListener('click', function () { abre('tudo'); });
+      var navBT = $('navBuscaTop');                          // a lupa do topo do menu: o mesmo Buscar (sai do chat em tela cheia e abre em Tudo)
+      if (navBT && navB) navBT.addEventListener('click', function (e) { e.stopPropagation(); navB.click(); });
       // as outras telas levam a agenda#buscar: abre a busca e o endereço volta ao normal (recarregar não reabre)
       if (location.hash === '#buscar') { history.replaceState(history.state, '', location.pathname + location.search + '#consultas'); abre('tudo'); }
     })();

@@ -153,3 +153,16 @@ regras do prontuário (correções por adendo).
 - [ ] Revisão jurídica do prazo de 1 ano do áudio frente ao prazo do prontuário, do acesso do titular ao som e da
   guarda da voz (dado biométrico em potencial).
 - [ ] Avaliar cifrar o áudio guardado na aplicação.
+- [ ] Gravação sem paciente (abaixo): revisar este RIPD e a Política de Privacidade antes de publicar.
+
+## Pendente (19/11/2026): gravação sem paciente
+
+Decisão do usuário: na tela "Nova consulta" o médico grava **antes** de escolher o paciente. A gravação (texto e áudio)
+fica no servidor sem paciente (`recordings.patient_id` nulo, `sem_paciente`), só do médico (filtro por `user_id`, só ids
+na URL), até ele ligar um paciente dele, durante ou depois de gravar (só de nenhum paciente para um, nunca de um para
+outro). Sem o nome não há como mascarar o texto, então essa gravação **nunca** vai ao rotulador de quem fala, nem depois
+de ligar; a evolução (SOAP) só é gerada depois de ligar, com o texto mascarado pelo nome como sempre. O áudio vai à
+transcrição como nas outras gravações e fica 1 ano. A gravação que nunca for ligada fica sem paciente: o texto, como
+prontuário, não entra na limpeza; o áudio sai em 1 ano. **[pendente]** revisão deste RIPD (fluxo, finalidade, risco de
+ligar ao paciente errado e de gravações que nunca são ligadas) e da Política de Privacidade antes de publicar. A
+migração 0024 foi aplicada só no banco de testes.

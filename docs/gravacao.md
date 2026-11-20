@@ -190,6 +190,30 @@ nunca vai.
 - Mesmo `rec_id` + `seq` já transcrito: devolve o texto guardado sem cobrar.
 - Mesmo trecho chegando ao mesmo tempo: o segundo espera o primeiro (`_EM_ANDAMENTO`).
 - Teto: 6 h de gravação por médico em 24 h.
+- **Sem paciente (tela Nova consulta, 19/11/2026; migração 0024):** `X-Patient-Id` ausente ou vazio. Aí `X-Event-Id` e
+  `X-Note-Id` precisam vir vazios (senão 400) e a gravação nasce com `patient_id` nulo e `sem_paciente = true`.
+  Gravação que já existe só recebe trecho sem o paciente se for deste médico e tiver começado sem paciente (ainda sem
+  ou já ligada: o trecho cortado antes de ligar chega sem o cabeçalho). Com `X-Patient-Id`, só depois de ligado e só o
+  mesmo paciente; a gravação de um paciente nunca recebe trecho de outro. Palavras-chave do transcritor:
+  `scribe.keywords(None)`; contexto: `scribe.mask_docs`, como sempre.
+- **Gravação que começou sem paciente nunca tem rótulo de quem fala**, nem depois de ligar: sem o nome o texto não pode
+  ser mascarado antes do rotulador (CLAUDE.md, regra 3). `falas` fica `[]`. O registro de acesso leva o paciente ligado
+  ou nenhum.
+- Sem a 0024 aplicada (`db.tem_sem_paciente`): só os caminhos sem paciente respondem 503; o resto segue igual.
+
+**Rotas da gravação sem paciente** (todas com login, sob `/prontuario/recordings/`, só ids):
+- `POST /prontuario/recordings/state` `{sem_paciente: true, rec_ids}`: as gravações deste médico que começaram sem
+  paciente e ainda estão sem, no formato de sempre (trechos, segundos, partes do áudio, `scribe`).
+- `POST /prontuario/recordings/pendentes` `{}`: `{recordings: [{rec_id, created_at, updated_at, seconds}]}`, as deste
+  médico com `patient_id` nulo, da mais nova para a mais antiga, até 100. Sem texto e sem nome.
+- `POST /prontuario/recordings/patient` `{rec_ids, patient_id}`: liga um paciente do médico (400 "paciente obrigatório"
+  se não é dele) às gravações que começaram sem paciente (`db.rec_set_patient`, uma transação). Só de nenhum paciente
+  para este; refazer com o mesmo vale. Gravação de outro médico, inexistente, feita com paciente ou já de outro
+  paciente → 409 e nada muda. Devolve `{ok, n}`; registra `recording_patient`; teto próprio por conta.
+- `DELETE /prontuario/recordings/{id}` apaga também a gravação ainda sem paciente (`db.rec_delete` devolve
+  `{patient_id}` ou None).
+- `/prontuario/scribe` e `/prontuario/recordings/fala` continuam exigindo o paciente: a evolução só é gerada depois de
+  ligar (pelos `rec_ids`, como sempre).
 
 **`data.scribe`** (na evolução) e **`recordings.scribe`** (na gravação) usam o mesmo rastreio, definido em
 `server._scribe_rastreio`:
@@ -203,7 +227,7 @@ nunca vai.
 `alto/medio/info`, `conferidos` e `pendentes`.
 
 **Ligação gravação ↔ evolução** (`db._ligar`, a única regra):
-- só vale evolução do mesmo médico e do mesmo paciente;
+- só vale evolução do mesmo médico e do mesmo paciente (gravação ainda sem paciente nunca tem evolução);
 - a gravação ainda sem evolução ganha a que chegar: pelo cabeçalho do trecho, ao salvar a evolução (`rec_ids`) ou ao
   gerar;
 - a evolução salva com `data.scribe` passa a ser a das gravações que a geraram.
@@ -278,6 +302,7 @@ python -m app.scribe_eval --comparar
 | 22/10/2026 | Gravação sem fala: aviso próprio e "Gravar de novo", em vez do erro genérico que dizia "a transcrição está guardada" | o usuário testou com o microfone sem som e recebeu o erro genérico |
 | 20/10/2026 | O botão que assina a evolução passa de "Finalizar" para "Assinar" (também a confirmação e os avisos) | pedido do usuário: "Finalizar" fica só o da gravação, que encerra e gera; assinar sozinho ao finalizar trancaria o texto da IA antes da revisão |
 | 13/11/2026 | O áudio original de cada consulta fica guardado por 1 ano (`recording_audio`), e o player toca o som real; consultas sem áudio são lidas pela voz do computador | decisão do usuário. A leitura pela voz da OpenAI, testada no mesmo dia, foi descartada. O RIPD e a Política foram revistos; o prazo fica pendente de revisão jurídica |
+| 19/11/2026 | Tela "Nova consulta": grava antes de escolher o paciente; a gravação fica no servidor sem paciente (`patient_id` nulo, `sem_paciente`) até o médico ligar um, durante ou depois de gravar; lista das gravações ainda sem paciente por data e hora; nenhum rótulo Médico/Paciente nessas gravações, nem depois de ligar; o SOAP (`/prontuario/scribe`) continua exigindo o paciente; migração 0024 aplicada só no banco de testes | decisões do usuário. Sem o nome o texto não pode ser mascarado antes do rotulador (regra 3); ligar é só de nenhum paciente para um, nunca de um para outro. RIPD e Política pendentes antes de publicar |
 | 13/11/2026 | Desenho do áudio: uma parte por sessão do microfone, pedaços de 5 s (`part`, `n`, `at_s`, `upto_s`); tipo fixado pelos bytes do 1º pedaço (webm, ogg, mp4); a rota do áudio nunca cria a gravação (409 até ela existir); sai com "Apagar transcrição" (cascata), com a exclusão da conta e pela limpeza de 1 ano; o player busca a parte por `fetch` e toca por `blob:` (`media-src 'self' blob:`) | pedaços pequenos tocam sozinhos e sem buracos (os silêncios também têm som); um áudio atrasado não recria a gravação apagada; o tipo do navegador não decide o que o servidor devolve |
 
 ## Pendências

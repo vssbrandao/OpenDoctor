@@ -285,7 +285,7 @@ def _ctl_js():
 # ----- banco em memória para a gravação: o mesmo dos testes das rotas (tests/fake_gravacao.py) -----
 _LAST = {}                                  # amostras e volume do último trecho transcrito (o teste confere que nada se perde)
 GRAV = FakeGravacao(nota_ok=lambda uid, pid, nid: nid in NOTES and NOTES[nid]["pid"] == pid,
-                    extra_trecho=lambda: _LAST.pop("x", {}))
+                    extra_trecho=lambda: _LAST.pop("x", {}), paciente_ok=lambda uid, pid: uid == UID and pid in PATS)
 GRAV.install(setattr)
 db.get_patient = lambda uid, pid: dict(PATS[pid]) if pid in PATS else None
 db.recent_notes = lambda uid, limit=30: [{"content": n["content"], "data": n["data"]} for n in NOTES.values()][:limit]
@@ -486,10 +486,11 @@ def _sim(rede: str = "", ia: str = "", lento: str = "", erro_seq: str = None, re
 
 @mock.get("/_preview/estado")
 def _estado():
-    """Para o teste: gravações (com paciente, consulta, trechos e os pedaços do áudio guardado, só números e o tipo) e
-    evoluções salvas."""
-    return {"gravacoes": {rid: {"pid": r["pid"], "event_id": r["event_id"], "note_id": r["note_id"], "status": r["status"],
-                                "trechos": [{k: s.get(k) for k in ("seq", "at", "dur", "samples")} for (q, _), s in sorted(GRAV.segs.items()) if q == rid],
+    """Para o teste: gravações (com paciente — None na gravação da Nova consulta ainda sem paciente —, se começou sem
+    paciente, consulta, trechos e os pedaços do áudio guardado, só números e o tipo) e evoluções salvas."""
+    return {"gravacoes": {rid: {"pid": r["pid"], "sem_paciente": bool(r.get("sem_paciente")), "event_id": r["event_id"], "note_id": r["note_id"], "status": r["status"],
+                                "trechos": [dict({k: s.get(k) for k in ("seq", "at", "dur", "samples")}, nfalas=len(s.get("falas") or []))
+                                            for (q, _), s in sorted(GRAV.segs.items()) if q == rid],
                                 "audio": [{"part": p, "n": n, "at": a["at"], "upto": a["upto"], "mime": a["mime"], "bytes": a["size"],
                                            "sess": a.get("sess")}
                                           for (q, p, n), a in sorted(GRAV.audio.items()) if q == rid]}

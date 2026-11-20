@@ -258,6 +258,44 @@ def test_log_so_com_numeros(fake, capsys):
     assert "Maria" not in log and REC not in log and "\\x" not in log and "OggS" not in log
 
 
+def test_sem_paciente_so_na_gravacao_que_comecou_sem_ele(fake):
+    """Sem X-Patient-Id (Nova consulta): só na gravação deste médico que começou sem paciente — ainda sem ou já ligada.
+    Nunca cria a gravação; a feita com paciente nunca recebe pedaço sem ele."""
+    from tests.test_scribe_routes import SEM, hs
+    c = TestClient(server.app)
+    sem = lambda **kw: ah(**dict({"X-Patient-Id": None, "X-Event-Id": None, "X-Rec-Id": SEM}, **kw))   # noqa: E731
+    assert c.post(URL, content=WEBM, headers=sem()).status_code == 409 and fake.recs == {}           # nunca cria
+    assert c.post("/prontuario/transcribe", content=wav(1), headers=hs(1)).status_code == 200
+    assert c.post(URL, content=WEBM, headers=sem(**{"X-Event-Id": "ev9"})).status_code == 400        # sem paciente, sem consulta
+    assert c.post(URL, content=WEBM, headers=sem(**{"X-Patient-Id": ""})).json() == {"ok": True}
+    assert c.post(URL, content=MEIO, headers=sem(n=1, upto=10)).json() == {"ok": True}
+    assert c.post(URL, content=MEIO, headers=ah(n=2, upto=15, **{"X-Rec-Id": SEM, "X-Event-Id": None})).status_code == 409  # com paciente antes de ligar
+    r = c.get(URL, params={"rec_id": SEM, "part": 0})
+    assert r.status_code == 200 and r.content == WEBM + MEIO and ("recording_listen", None, None) in fake.log
+    (st,) = c.post("/prontuario/recordings/state", json={"sem_paciente": True, "rec_ids": [SEM]}).json()["recordings"]
+    assert st["audio"] == [{"part": 0, "at": 0.0, "upto": 10.0}]
+    assert c.post("/prontuario/recordings/patient", json={"rec_ids": [SEM], "patient_id": 7}).json()["ok"]
+    assert c.post(URL, content=MEIO, headers=sem(n=2, upto=15)).json() == {"ok": True}                # cortado antes de ligar
+    assert c.post(URL, content=MEIO, headers=ah(n=3, upto=20, **{"X-Rec-Id": SEM, "X-Event-Id": None})).json() == {"ok": True}
+    c.get(URL, params={"rec_id": SEM, "part": 0})
+    assert ("recording_listen", 7, None) in fake.log
+    _gravacao(c)                                                                                       # REC: com paciente
+    assert c.post(URL, content=WEBM, headers=sem(**{"X-Rec-Id": REC})).status_code == 409
+    assert (REC, 0, 0) not in fake.audio
+    fake.recs[SEM]["uid"] = "outro-medico"
+    assert c.post(URL, content=MEIO, headers=sem(n=4, upto=25)).status_code == 409                    # de outro médico
+    assert (SEM, 0, 4) not in fake.audio
+
+
+def test_sem_paciente_sem_a_migracao_0024_503(fake):
+    from tests.test_scribe_routes import SEM
+    c = TestClient(server.app)
+    fake.sem_0024 = True
+    assert c.post(URL, content=WEBM, headers=ah(**{"X-Patient-Id": None, "X-Event-Id": None, "X-Rec-Id": SEM})).status_code == 503
+    _gravacao(c)
+    assert c.post(URL, content=WEBM, headers=ah()).json() == {"ok": True}                              # com paciente: igual
+
+
 def test_tipo_pelos_bytes_e_partes():
     assert server._audio_mime(WEBM) == "audio/webm" and server._audio_mime(OGG) == "audio/ogg"
     assert server._audio_mime(MP4) == "audio/mp4" and server._audio_mime(b"RIFF....WAVE") is None

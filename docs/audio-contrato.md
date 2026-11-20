@@ -31,7 +31,8 @@ alter table recording_audio enable row level security;
 - `db.RETENTION["recording_audio"] = "1 year"` (por `created_at`). `recordings`/`recording_segments` nunca entram.
 - Apagar a gravação (`rec_delete`, "Apagar transcrição") leva o áudio pela cascata.
 - Excluir a conta apaga `recording_audio` do médico (o texto fica pelo prazo legal, como hoje).
-- Excluir paciente: gravação com áudio conta como prontuário (bloqueia como `recording_segments`).
+- Excluir paciente: gravação com áudio conta como prontuário (bloqueia como `recording_segments`). A gravação ainda sem
+  paciente (Nova consulta) não conta para nenhum paciente até ser ligada; o áudio dela sai igual em 1 ano.
 
 ## `POST /prontuario/recordings/audio` — um pedaço
 
@@ -48,6 +49,12 @@ alter table recording_audio enable row level security;
   `audio/mp4`; outro → 415). Os `n > 0` herdam o tipo da parte. Nunca do `Content-Type` do navegador.
 - Reenvio do mesmo `(rec_id, part, n)` → `{"ok": true, "repetido": true}` (on conflict do nothing).
 - Log só com números (`[audio] pedaço p/n: N bytes`).
+- **Sem `X-Patient-Id` (tela Nova consulta, 19/11/2026; migração 0024):** cabeçalho ausente ou vazio. Aí `X-Event-Id`
+  precisa vir vazio (senão 400) e o pedaço só entra na gravação **deste médico que começou sem paciente**
+  (`recordings.sem_paciente`), ainda sem paciente ou já ligada (pedaços cortados antes de ligar chegam sem o
+  cabeçalho). Continua sem criar a gravação: sem a linha → 409 "gravação ainda não começou". A gravação feita com
+  paciente nunca recebe pedaço sem ele (409). Sem a 0024 aplicada → 503. `recording_audio` não muda (não tem
+  `patient_id`); o GET também não: registra `recording_listen` com o paciente ligado ou nenhum.
 
 ### Correções da revisão (13/11/2026)
 

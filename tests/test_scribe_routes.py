@@ -1,6 +1,7 @@
 """Rotas da gravação da consulta (transcrever, estado, gerar, apagar) com banco em memória e transcritor/modelo
 falsos: nada sai para a OpenAI nem toca banco."""
 import json
+import os
 import re
 import struct
 
@@ -28,7 +29,7 @@ def wav(seconds, rate=16000, channels=1):
 class FakeDB(FakeGravacao):
     """O banco da gravação em memória (tests/fake_gravacao.py, o mesmo do preview) + o resto que as rotas leem."""
     def __init__(self):
-        super().__init__()
+        super().__init__(paciente_ok=lambda uid, pid: uid == UID and pid == PAC["id"])
         self.log, self.today, self.outro = [], 0.0, {}     # outro: consulta → paciente dono da evolução dela
 
     def install(self, mp):
@@ -597,3 +598,191 @@ def test_associacao_dita_junto_dos_componentes_nao_repete(fake, monkeypatch):
     assert gera(dict(SAIDA, meds=[m("losartana + hidroclorotiazida", "50/12,5 mg", "ajustado"), m("losartana", "50 mg", "mantido"),
                                   m("hidroclorotiazida", "25 mg", "mantido")]))["receita"] == 1
     assert [i["nome"] for i in db.list_receitas(UID, 7)[0]["itens"]] == ["Losartana + hidroclorotiazida"]
+
+
+# ----- gravação sem paciente (tela Nova consulta, migração 0024; docs/gravacao.md) -----
+SEM = "0b6f8f2e-1c1a-4c7e-9d2b-1a2b3c4d5e6f"
+LIGAR, PEND, STATE = "/prontuario/recordings/patient", "/prontuario/recordings/pendentes", "/prontuario/recordings/state"
+
+
+def hs(seq=1, rid=SEM, **kw):
+    """Cabeçalhos do trecho sem paciente: sem X-Patient-Id, sem consulta da agenda."""
+    return hdr(seq, **dict({"X-Patient-Id": None, "X-Event-Id": None, "X-Rec-Id": rid}, **kw))
+
+
+def test_sem_paciente_grava_sem_paciente_e_nunca_rotula(fake):
+    """Sem o paciente o nome não pode ser mascarado: o rotulador nunca roda nesta gravação, nem depois de ligar."""
+    c = TestClient(server.app)
+    r = c.post("/prontuario/transcribe", content=wav(20), headers=hs(1))
+    assert r.status_code == 200 and r.json()["falas"] == [] and r.json()["text"]
+    assert fake.recs[SEM]["pid"] is None and fake.recs[SEM]["sem_paciente"] and fake.recs[SEM]["event_id"] is None
+    assert fake.calls[0]["keywords"] == scribe.keywords(None)                # nada do cadastro (não há paciente)
+    assert ("recording", None, None) in fake.log
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(2, **{"X-Patient-Id": ""}))   # vazio = sem paciente
+    assert fake.calls[1]["prompt"] == scribe.mask_docs(fake.segs[(SEM, 1)]["text"])
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hs(2)).json()["repetido"]  # reenvio não cobra
+    assert len(fake.calls) == 2
+    # com paciente antes de ligar: não entra (a página liga primeiro)
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hdr(3, **{"X-Rec-Id": SEM, "X-Event-Id": None})).status_code == 404
+    assert c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7}).json() == {"ok": True, "n": 1}
+    assert fake.recs[SEM]["pid"] == 7 and ("recording_patient", 7, None) in fake.log
+    fake.log.clear()
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hs(3)).status_code == 200     # cortado antes de ligar
+    assert ("recording", 7, None) in fake.log                                                       # já é do paciente
+    r = c.post("/prontuario/transcribe", content=wav(20), headers=hdr(4, **{"X-Rec-Id": SEM, "X-Event-Id": None}))
+    assert r.status_code == 200 and r.json()["falas"] == []
+    assert [s["seq"] for (q, _), s in sorted(fake.segs.items()) if q == SEM] == [1, 2, 3, 4]
+    assert fake.falante == [] and all(s["falas"] == [] for s in fake.segs.values())
+
+
+def test_rotulo_fecha_sem_a_informacao_da_gravacao(fake, monkeypatch):
+    """O rótulo só roda com o que rec_open acabou de ler dizendo que a gravação não começou sem paciente; sem essa
+    informação (gravação sumiu, resposta inesperada), fecha: nada vai ao rotulador. E não há segunda consulta."""
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(1))
+    c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7})
+    monkeypatch.setattr(db, "rec_info", lambda *a: (_ for _ in ()).throw(AssertionError("rec_info no caminho do trecho")))
+    for i, volta in enumerate((True, {"patient_id": 7}, {"patient_id": 7, "sem_paciente": None}), start=2):
+        monkeypatch.setattr(db, "rec_open", lambda *a, _v=volta, **k: _v)
+        r = c.post("/prontuario/transcribe", content=wav(20), headers=hdr(i, **{"X-Rec-Id": SEM, "X-Event-Id": None}))
+        assert r.status_code == 200 and r.json()["falas"] == []
+    assert fake.falante == []
+    monkeypatch.setattr(db, "rec_open", lambda *a, **k: {"patient_id": 7, "sem_paciente": False})
+    c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1))           # com paciente desde o início: rotula
+    assert len(fake.falante) == 1
+
+
+def test_sem_paciente_nao_leva_consulta_nem_evolucao_nem_entra_em_outra(fake):
+    c = TestClient(server.app)
+    assert c.post("/prontuario/transcribe", content=wav(1), headers=hs(1, **{"X-Event-Id": "ev9"})).status_code == 400
+    assert c.post("/prontuario/transcribe", content=wav(1), headers=hs(1, **{"X-Note-Id": "3"})).status_code == 400
+    assert c.post("/prontuario/transcribe", content=wav(1), headers=hs(1, **{"X-Patient-Id": "abc"})).status_code == 400
+    assert c.post("/prontuario/transcribe", content=wav(1), headers=hs(1, **{"X-Consent": None})).status_code == 400
+    assert fake.recs == {} and fake.calls == []
+    c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1))              # REC: gravação com o paciente 7
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hs(2, rid=REC)).status_code == 404
+    fake.recs[SEM] = {"uid": "outro-medico", "pid": None, "sem_paciente": True, "event_id": None, "note_id": None,
+                      "consent_at": None, "status": "gravando", "seconds": 0}
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hs(1)).status_code == 404     # de outro médico
+    assert len(fake.calls) == 1 and (REC, 2) not in fake.segs and (SEM, 1) not in fake.segs
+
+
+def test_ligar_o_paciente(fake):
+    """Só um paciente do médico; só de nenhum para este (refazer vale); de outro paciente ou de outro médico → 409 e nada
+    muda; tudo ou nada."""
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(1))
+    assert c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 8}).status_code == 400          # paciente de outro médico
+    assert c.post(LIGAR, json={"rec_ids": [SEM]}).status_code == 400
+    assert c.post(LIGAR, json={"rec_ids": ["nao-e-uuid"], "patient_id": 7}).status_code == 400
+    assert c.post(LIGAR, json={"patient_id": 7}).status_code == 400
+    outra = "11111111-2222-4333-8444-555555555555"
+    fake.recs[outra] = {"uid": "outro-medico", "pid": None, "sem_paciente": True, "event_id": None, "note_id": None,
+                        "consent_at": None, "status": "gravando", "seconds": 0}
+    r = c.post(LIGAR, json={"rec_ids": [SEM, outra], "patient_id": 7})
+    assert r.status_code == 409 and "error" in r.json() and fake.recs[SEM]["pid"] is None        # tudo ou nada
+    assert c.post(LIGAR, json={"rec_ids": ["22222222-2222-4333-8444-555555555555"], "patient_id": 7}).status_code == 409
+    c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1))             # REC: começou com o paciente 7
+    assert c.post(LIGAR, json={"rec_ids": [REC], "patient_id": 7}).status_code == 409           # não começou sem paciente
+    assert c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7}).json() == {"ok": True, "n": 1}
+    assert c.post(LIGAR, json={"rec_id": SEM, "patient_id": 7}).json() == {"ok": True, "n": 1}   # refazer com o mesmo vale
+    fake.recs[SEM]["pid"] = 99                                                  # já ligada a outro paciente do médico
+    assert c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7}).status_code == 409 and fake.recs[SEM]["pid"] == 99
+    assert [a for a, *_ in fake.log].count("recording_patient") == 2
+
+
+def test_ligar_tem_teto_por_conta_e_porteiro(fake, monkeypatch):
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(1))
+    monkeypatch.setitem(server.RATE_LIMITS, "rec_patient", (2, 600))
+    assert [c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7}).status_code for _ in range(3)] == [200, 200, 429]
+    monkeypatch.setattr(config, "SCRIBE_EMAILS", set())
+    assert c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7}).status_code == 403
+
+
+def test_pendentes_so_as_deste_medico_ainda_sem_paciente(fake):
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1))              # com paciente: não é pendente
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(1))
+    fake.recs["33333333-2222-4333-8444-555555555555"] = {"uid": "outro-medico", "pid": None, "sem_paciente": True,
+                                                         "event_id": None, "note_id": None, "consent_at": None,
+                                                         "status": "gravando", "seconds": 0, "created": 0}
+    out = c.post(PEND, json={}).json()["recordings"]
+    assert [r["rec_id"] for r in out] == [SEM] and set(out[0]) == {"rec_id", "created_at", "updated_at", "seconds"}
+    assert out[0]["seconds"] == 20 and "Maria" not in json.dumps(out) and "Pressão" not in json.dumps(out)
+    c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7})
+    assert c.post(PEND, json={}).json()["recordings"] == []
+
+
+def test_estado_da_gravacao_sem_paciente(fake):
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1))
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(1))
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(2))
+    (st,) = c.post(STATE, json={"sem_paciente": True, "rec_ids": [SEM, REC]}).json()["recordings"]
+    assert st["rec_id"] == SEM and [s["seq"] for s in st["segments"]] == [1, 2] and st["seconds"] == 40
+    assert set(st) == {"rec_id", "status", "consent_at", "seconds", "updated_at", "segments", "scribe", "audio"}
+    assert c.post(STATE, json={"sem_paciente": True}).json()["recordings"] == []
+    assert c.post(STATE, json={"patient_id": 7, "rec_ids": [SEM]}).json()["recordings"] == []    # sem paciente ≠ do 7
+    c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7})
+    assert c.post(STATE, json={"sem_paciente": True, "rec_ids": [SEM]}).json()["recordings"] == []   # já ligada
+    assert [r["rec_id"] for r in c.post(STATE, json={"patient_id": 7, "rec_ids": [SEM]}).json()["recordings"]] == [SEM]
+
+
+def test_gerar_exige_o_paciente_e_depois_de_ligar_funciona(fake, monkeypatch):
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(1))
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(2))
+    sent = []
+    monkeypatch.setattr(scribe, "ask_model", lambda msgs, model=None: sent.append(msgs) or json.dumps(SAIDA))
+    assert c.post("/prontuario/scribe", json={"rec_id": SEM, "mode": "soap"}).status_code == 400
+    assert c.post("/prontuario/scribe", json={"patient_id": 7, "rec_id": SEM, "mode": "soap"}).status_code == 400   # ainda sem
+    assert sent == []
+    c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7})
+    out = _lines(c.post("/prontuario/scribe", json={"patient_id": 7, "rec_id": SEM, "mode": "soap"}))[-1]
+    assert out["ok"] and out["meta"]["rec_ids"] == [SEM] and fake.recs[SEM]["status"] == "gerada"
+    assert "Maria" not in json.dumps(sent[0], ensure_ascii=False)
+    assert fake.falante == []
+
+
+def test_apagar_a_gravacao_sem_paciente(fake):
+    c = TestClient(server.app)
+    c.post("/prontuario/transcribe", content=wav(20), headers=hs(1))
+    assert c.delete("/prontuario/recordings/" + SEM).json() == {"ok": True}
+    assert ("recording_delete", None, None) in fake.log and SEM not in fake.recs and fake.segs == {}
+    assert c.delete("/prontuario/recordings/" + SEM).status_code == 404
+
+
+def test_sem_a_migracao_0024_so_o_sem_paciente_espera(fake):
+    c = TestClient(server.app)
+    fake.sem_0024 = True
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hs(1)).status_code == 503
+    assert c.post(PEND, json={}).status_code == 503
+    assert c.post(LIGAR, json={"rec_ids": [SEM], "patient_id": 7}).status_code == 503
+    assert c.post(STATE, json={"sem_paciente": True, "rec_ids": [SEM]}).status_code == 503
+    assert fake.recs == {} and fake.calls == []
+    assert c.post("/prontuario/transcribe", content=wav(20), headers=hdr(1)).status_code == 200   # com paciente: igual
+    assert len(fake.falante) == 1
+
+
+def test_rotas_novas_sao_privadas(fake, monkeypatch):
+    monkeypatch.setattr(auth, "current_user", lambda request: None)
+    c = TestClient(server.app)
+    for url in (LIGAR, PEND):
+        assert url not in server.PUBLIC_PATHS and not any(url.startswith(x) for x in server.PUBLIC_PREFIXES)
+        assert c.post(url, json={"rec_ids": [SEM], "patient_id": 7}).status_code in (401, 302, 303)
+    assert c.post("/prontuario/transcribe", content=wav(1), headers=hs(1)).status_code in (401, 302, 303)
+    assert fake.recs == {}
+
+
+def test_migracao_0024_so_relaxa_e_acrescenta():
+    sql = open(os.path.join(os.path.dirname(__file__), "..", "supabase", "migrations", "0024_gravacao_sem_paciente.sql"),
+               encoding="utf-8").read()
+    linhas = [x for x in (l.split("--")[0].strip() for l in sql.splitlines()) if x]
+    assert linhas == ["alter table recordings alter column patient_id drop not null;",
+                      "alter table recordings add column if not exists sem_paciente boolean not null default false;",
+                      "create index if not exists recordings_sem_paciente_idx on recordings (user_id, created_at) where patient_id is null;",
+                      "alter table recordings enable row level security;"]
+    resto = " ".join(linhas).replace("alter column patient_id drop not null", "")    # o único "drop" permitido
+    assert not re.search(r"\b(drop|delete|truncate|update)\b", resto, re.I)
+    assert not re.search(r"drop\s+(table|column)", sql.split("--")[0] + " ".join(linhas), re.I)

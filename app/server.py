@@ -472,6 +472,7 @@ RATE_LIMITS = {"ask": (20, 600), "followups": (40, 600),   # (pedidos, janela em
                "login_check": (30, 600), "login_pw": (20, 600), "login_code": (10, 600), "login_verify": (30, 600),
                "transcribe": (240, 600), "scribe": (30, 600), "prescricao": (30, 600),      # trecho a cada 15–30 s; depois de cair a internet, vários de uma vez
                "audio": (480, 600),
+               "rec_patient": (60, 600),   # por conta: ligar o paciente à gravação feita sem ele (Nova consulta)
                "fala": (120, 600),    # por conta: trocas do rótulo de uma fala à mão (quem fala), com folga   # por conta: pedaço do áudio guardado a cada 5 s (120 em 10 min), com folga para a fila depois da internet cair
                "cfm": (10, 3600),     # conferências do CRM no CFM (cadastro): o Validar responde se um CPF é de um CRM
                "codigo_email": (5, 3600),
@@ -3290,7 +3291,10 @@ def _years(bd):
 async def prontuario_transcribe(request: Request):
     """Transcreve um trecho da gravação. O corpo é o WAV; paciente, gravação e ordem vão em cabeçalhos (nunca
     o nome). Reenvio do mesmo rec_id + seq devolve o texto já guardado, sem transcrever (nem cobrar) de novo.
-    Cabeçalho próprio + tipo não-JSON obrigam o pre-flight: outro site não consegue enviar."""
+    Cabeçalho próprio + tipo não-JSON obrigam o pre-flight: outro site não consegue enviar.
+    Sem X-Patient-Id (tela Nova consulta, docs/gravacao.md): a gravação fica sem paciente até o médico ligar um
+    (/prontuario/recordings/patient); sem consulta da agenda nem evolução. Gravação que começou sem paciente nunca tem
+    rótulo de quem fala (sem o nome o texto não pode ser mascarado), nem depois de ligar."""
     u, err = _auth_or_401(request)
     if err:
         return err
@@ -3299,23 +3303,41 @@ async def prontuario_transcribe(request: Request):
         return gate
     h = request.headers
     pid, rid, seq = str(h.get("x-patient-id") or ""), str(h.get("x-rec-id") or "").lower(), str(h.get("x-seq") or "")
-    if not (pid.isdigit() and _UUID.fullmatch(rid) and seq.isdigit() and 0 < int(seq) <= 2000):
+    if not ((pid == "" or re.fullmatch(r"[0-9]{1,18}", pid)) and _UUID.fullmatch(rid) and seq.isdigit() and 0 < int(seq) <= 2000):
         return JSONResponse({"error": "trecho sem identificação"}, status_code=400)
     consent = _iso_or_none(h.get("x-consent"))
     if not consent:
         return JSONResponse({"error": "autorização do paciente obrigatória"}, status_code=400)
     # o servidor tem um processo só: o banco (no Canadá) roda fora do laço de eventos, para um trecho não segurar os outros
     seq, eid = int(seq), str(h.get("x-event-id") or "")[:300] or None
+    nid = str(h.get("x-note-id") or "")
+    sem_pac = pid == ""                      # Nova consulta: ainda sem paciente (nem consulta da agenda, nem evolução)
+    if sem_pac and (eid or nid):
+        return JSONResponse({"error": "trecho sem paciente não leva consulta nem evolução"}, status_code=400)
 
     def paciente_e_trecho():                 # o paciente do médico, se a consulta é dele e, se este trecho já subiu, o texto
+        if sem_pac:
+            if not db.sem_paciente_pronto():
+                return "migracao", None, None, None
+            info = db.rec_info(u["id"], rid)  # a gravação deste médico (None: ainda não existe ou é de outro)
+            if info and not (info["patient_id"] is None or info["sem_paciente"]):
+                return "outra", None, None, None     # gravação feita com paciente: o trecho sem ele não entra
+            return None, None, info, info and db.rec_segment(u["id"], rid, seq)
         pt = db.get_patient(u["id"], int(pid))
         outro = bool(pt) and db.event_note_other_patient(u["id"], eid, pt["id"], pt["key"])
-        return pt, outro, pt and not outro and db.rec_segment(u["id"], rid, seq)
-    p, outro, done = await run_in_threadpool(paciente_e_trecho)
-    if not p:
-        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
-    if outro:                                # o paciente do evento foi trocado: a gravação não vai para a consulta do outro
-        return _outro_paciente()
+        return None, (pt, outro), None, pt and not outro and db.rec_segment(u["id"], rid, seq)
+    why, po, _, done = await run_in_threadpool(paciente_e_trecho)
+    if why == "migracao":
+        return JSONResponse({"error": "gravação sem paciente indisponível no momento"}, status_code=503)
+    if why == "outra":
+        return JSONResponse({"error": "gravação não encontrada"}, status_code=404)
+    p = None
+    if not sem_pac:
+        p, outro = po
+        if not p:
+            return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+        if outro:                            # o paciente do evento foi trocado: a gravação não vai para a consulta do outro
+            return _outro_paciente()
     if done:
         return {"ok": True, "text": done["text"], "duvidas": done["duvidas"], "falas": done.get("falas") or [], "repetido": True}
     if _rate_limited(request, "transcribe"):
@@ -3333,19 +3355,28 @@ async def prontuario_transcribe(request: Request):
         return JSONResponse({"error": "formato não aceito: WAV 16 kHz mono"}, status_code=415)
     if dur > MAX_SEG_S:
         return JSONResponse({"error": "trecho longo demais"}, status_code=413)
-    nid = str(h.get("x-note-id") or "")
 
     def prepare():
         if db.rec_seconds_today(u["id"]) + dur > SCRIBE_DAY_S:
-            return "teto", None
-        if not db.rec_open(u["id"], p["id"], rid, eid, int(nid) if nid.isdigit() else None, consent):
-            return "outra", None
-        return None, db.rec_prev_segment(u["id"], rid, seq)
-    why, prev = await run_in_threadpool(prepare)
+            return "teto", None, None
+        try:
+            info = db.rec_open(u["id"], p["id"] if p else None, rid, eid, int(nid) if nid.isdigit() else None, consent)
+        except db.MigracaoPendente:
+            return "migracao", None, None
+        if not info:
+            return "outra", None, None
+        return None, db.rec_prev_segment(u["id"], rid, seq), info
+    why, prev, info = await run_in_threadpool(prepare)
     if why == "teto":
         return JSONResponse({"error": "limite de 6 horas de gravação em 24 horas"}, status_code=429)
+    if why == "migracao":
+        return JSONResponse({"error": "gravação sem paciente indisponível no momento"}, status_code=503)
     if why == "outra":
         return JSONResponse({"error": "gravação não encontrada"}, status_code=404)
+    # começou sem paciente (mesmo já ligada): nada de rótulo; o paciente do registro de acesso é o ligado, se já há
+    # fechado por padrão: só rotula com o que rec_open acabou de ler dizendo, explicitamente, que não começou sem paciente
+    rotula = bool(p) and isinstance(info, dict) and info.get("sem_paciente") is False
+    log_pid = p["id"] if p else (info.get("patient_id") if isinstance(info, dict) else None)
     key = (u["id"], rid, seq)
     if key in _EM_ANDAMENTO:      # o mesmo trecho já está sendo transcrito (outra aba, reenvio depois do corte de 100 s)
         r = await asyncio.shield(_EM_ANDAMENTO[key])
@@ -3361,7 +3392,7 @@ async def prontuario_transcribe(request: Request):
         # quem fala em cada fala (docs/falante-contrato.md): só o texto mascarado vai ao modelo; falhou ou passou de
         # FALANTE_TETO_S, o trecho segue sem rótulo (nunca derruba a transcrição)
         falas = []
-        if (r.get("text") or "").strip():
+        if rotula and (r.get("text") or "").strip():
             try:
                 falas = await asyncio.wait_for(falante.arotular(r["text"], p["name"], at, dur, prev), FALANTE_TETO_S)
             except Exception as e:                          # o log nunca leva conteúdo
@@ -3370,7 +3401,7 @@ async def prontuario_transcribe(request: Request):
 
         def save():
             gravou = db.rec_add_segment(u["id"], rid, seq, at, dur, r["text"], r["duvidas"], r["falas"])
-            db.log_access(u["id"], "recording", p["id"], dedupe_minutes=180)
+            db.log_access(u["id"], "recording", log_pid, dedupe_minutes=180)
             return None if gravou is not False else db.rec_segment(u["id"], rid, seq)
         ja = await run_in_threadpool(save)
         if ja:                                  # outro pedido gravou este trecho antes: vale o texto e as falas do banco
@@ -3407,13 +3438,66 @@ async def prontuario_recordings_state(request: Request):
     if err:
         return err
     b = await _json(request)
-    p = await run_in_threadpool(_rec_patient, u, b)
-    if not p:
-        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
-    recs = await run_in_threadpool(db.rec_list, u["id"], p["id"], *_rec_where(b))
+    if b.get("sem_paciente") is True:        # Nova consulta: só pelos ids, só as deste médico que ainda estão sem paciente
+        try:
+            recs = await run_in_threadpool(lambda: db.rec_list(u["id"], None, None, None, _rec_ids(b), sem_paciente=True))
+        except db.MigracaoPendente:
+            return JSONResponse({"error": "gravação sem paciente indisponível no momento"}, status_code=503)
+    else:
+        p = await run_in_threadpool(_rec_patient, u, b)
+        if not p:
+            return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+        recs = await run_in_threadpool(db.rec_list, u["id"], p["id"], *_rec_where(b))
     # audio: as partes do áudio guardado ({part, at, upto}, só números); vazio nas gravações de antes da mudança
     return {"recordings": [dict({k: r[k] for k in ("rec_id", "status", "consent_at", "seconds", "updated_at", "segments", "scribe")},
                                 audio=r.get("audio") or []) for r in recs]}
+
+
+@app.post("/prontuario/recordings/pendentes")
+async def prontuario_recordings_pendentes(request: Request):
+    """As gravações deste médico ainda sem paciente (Nova consulta), da mais nova para a mais antiga: só ids, datas e
+    segundos — nada de texto nem nome."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    await _json(request)
+    try:
+        recs = await run_in_threadpool(db.rec_pendentes, u["id"], 100)
+    except db.MigracaoPendente:
+        return JSONResponse({"error": "gravação sem paciente indisponível no momento"}, status_code=503)
+    return {"recordings": [{k: r[k] for k in ("rec_id", "created_at", "updated_at", "seconds")} for r in recs]}
+
+
+@app.post("/prontuario/recordings/patient")
+async def prontuario_recordings_patient(request: Request):
+    """Liga um paciente do médico às gravações que começaram sem paciente: {rec_ids, patient_id}. Só de nenhum paciente
+    para este (refazer com o mesmo vale); gravação de outro médico ou já com outro paciente → 409 e nada muda. O paciente
+    vai só por id; fica no histórico de acessos."""
+    u, err = _auth_or_401(request)
+    if err:
+        return err
+    gate = _scribe_gate(u, chave=False)
+    if gate:
+        return gate
+    b = await _json(request)
+    rids = _rec_ids(b)
+    if not rids:
+        return JSONResponse({"error": "gravação sem identificação"}, status_code=400)
+    if _rate_limited(request, "rec_patient", key=u["id"]):
+        return JSONResponse({"error": "muitos pedidos em pouco tempo"}, status_code=429)
+    p = await run_in_threadpool(_rec_patient, u, b)
+    if not p:
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    try:
+        st, n = await run_in_threadpool(db.rec_set_patient, u["id"], rids, p["id"])
+    except db.MigracaoPendente:
+        return JSONResponse({"error": "gravação sem paciente indisponível no momento"}, status_code=503)
+    if st == "paciente":
+        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+    if st != "ok":
+        return JSONResponse({"error": "gravação de outro paciente ou não encontrada"}, status_code=409)
+    await run_in_threadpool(db.log_access, u["id"], "recording_patient", p["id"])
+    return {"ok": True, "n": n}
 
 
 @app.post("/prontuario/recordings/fala")
@@ -3448,7 +3532,8 @@ async def prontuario_recording_audio_add(request: Request):
     """Guarda um pedaço do áudio original da gravação (1 ano, para o player do prontuário). O corpo são os bytes do
     pedaço (application/octet-stream: tipo não-JSON + cabeçalhos próprios obrigam o pre-flight); paciente, gravação,
     parte e pedaço vão em cabeçalhos (nunca o nome). Nunca cria a gravação: antes do primeiro trecho transcrito → 409
-    e a página tenta de novo. Não vai à OpenAI: não depende da chave."""
+    e a página tenta de novo. Não vai à OpenAI: não depende da chave. Sem X-Patient-Id (Nova consulta): só na gravação
+    deste médico que começou sem paciente (ainda sem ou já ligada)."""
     u, err = _auth_or_401(request)
     if err:
         return err
@@ -3459,20 +3544,24 @@ async def prontuario_recording_audio_add(request: Request):
     pid, rid = str(h.get("x-patient-id") or ""), str(h.get("x-rec-id") or "").lower()
     part, n, sess = str(h.get("x-part") or ""), str(h.get("x-n") or ""), str(h.get("x-sess") or "")
     at, upto = _num_or_none(h.get("x-at"), 0, 24 * 3600), _num_or_none(h.get("x-upto"), 0, 24 * 3600)
-    if not (re.fullmatch(r"[0-9]{1,18}", pid) and _UUID.fullmatch(rid) and re.fullmatch(r"[0-9]{1,3}", part)
+    if not ((pid == "" or re.fullmatch(r"[0-9]{1,18}", pid)) and _UUID.fullmatch(rid) and re.fullmatch(r"[0-9]{1,3}", part)
             and re.fullmatch(r"[0-9]{1,4}", n) and _SESS.fullmatch(sess) and at is not None and upto is not None
             and upto >= at):
         return JSONResponse({"error": "pedaço sem identificação"}, status_code=400)
     part, n, eid = int(part), int(n), str(h.get("x-event-id") or "")[:300] or None
-
-    def paciente():
-        pt = db.get_patient(u["id"], int(pid))
-        return pt, bool(pt) and db.event_note_other_patient(u["id"], eid, pt["id"], pt["key"])
-    p, outro = await run_in_threadpool(paciente)
-    if not p:
-        return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
-    if outro:                                # o paciente do evento foi trocado: o áudio não vai para a consulta do outro
-        return _outro_paciente()
+    p = None
+    if pid == "":                            # Nova consulta: sem paciente não há consulta da agenda
+        if eid:
+            return JSONResponse({"error": "pedaço sem paciente não leva consulta"}, status_code=400)
+    else:
+        def paciente():
+            pt = db.get_patient(u["id"], int(pid))
+            return pt, bool(pt) and db.event_note_other_patient(u["id"], eid, pt["id"], pt["key"])
+        p, outro = await run_in_threadpool(paciente)
+        if not p:
+            return JSONResponse({"error": "paciente obrigatório"}, status_code=400)
+        if outro:                            # o paciente do evento foi trocado: o áudio não vai para a consulta do outro
+            return _outro_paciente()
     if _rate_limited(request, "audio", key=u["id"]):     # por conta, não por IP: clínica com vários médicos atrás de um NAT
         return JSONResponse({"error": "muitos pedaços em pouco tempo"}, status_code=429)
     cl = h.get("content-length") or ""
@@ -3491,7 +3580,7 @@ async def prontuario_recording_audio_add(request: Request):
         if not mime:
             return JSONResponse({"error": "formato não aceito: webm, ogg ou mp4"}, status_code=415)
     try:
-        st = await run_in_threadpool(db.rec_add_audio, u["id"], p["id"], rid, part, n, at, upto, mime, bytes(body),
+        st = await run_in_threadpool(db.rec_add_audio, u["id"], p["id"] if p else None, rid, part, n, at, upto, mime, bytes(body),
                                      AUDIO_DAY_BYTES, sess=sess, max_part_bytes=MAX_PART_BYTES)
     except db.MigracaoPendente:
         return JSONResponse({"error": "áudio indisponível no momento"}, status_code=503)
@@ -3640,10 +3729,10 @@ def prontuario_recording_delete(rec_id: str, request: Request):
     u, err = _auth_or_401(request)
     if err:
         return err
-    pid = db.rec_delete(u["id"], rec_id.lower()) if _UUID.fullmatch(rec_id.lower()) else None
-    if pid is None:
+    apagou = db.rec_delete(u["id"], rec_id.lower()) if _UUID.fullmatch(rec_id.lower()) else None
+    if not apagou:                           # gravação ainda sem paciente também apaga (patient_id None não é "não achou")
         return JSONResponse({"error": "gravação não encontrada"}, status_code=404)
-    db.log_access(u["id"], "recording_delete", pid)
+    db.log_access(u["id"], "recording_delete", apagou.get("patient_id"))
     return {"ok": True}
 
 

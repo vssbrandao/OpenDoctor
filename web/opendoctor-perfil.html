@@ -267,7 +267,7 @@
       el.addEventListener('click', function () { location.href = el.getAttribute('data-href'); });
     });
     // dica dos botões de ícone (mouseover): o que o botão faz e o atalho (⇧⌘ + letra no Mac, Ctrl+Shift + letra nos
-    // outros), que aperta o botão. O do menu diz "Alternar barra lateral"; os das barras de cima (.hd-btn), o aria-label,
+    // outros), que aperta o botão. O do menu diz "Esconder menu" (aberto) ou "Abrir menu" (recolhido); os das barras de cima (.hd-btn), o aria-label,
     // que muda com o estado; os ícones do menu retraído, o nome (data-tip), sem atalho. Letras fora das que o navegador reserva (N, T, W, R) e do ⇧⌘V (colar sem formatação).
     (function () {
       var ATALHO = { navToggle: 'S', agCreate: 'E', ptNew: 'E', calBtn: 'D', viewSel: 'U', agSearch: 'F', ptBusca: 'F', agExpand: 'A',
@@ -282,7 +282,7 @@
       function mostra(b) {
         var r = b.getBoundingClientRect(), k = ATALHO[b.id] || '', item = b.classList.contains('item');
         if (item && !(nav && nav.classList.contains('collapsed'))) return;   // menu aberto: o nome já está escrito
-        txt.textContent = b.id === 'navToggle' ? 'Alternar barra lateral' : (b.getAttribute('data-tip') || b.getAttribute('aria-label') || '');
+        txt.textContent = b.id === 'navToggle' ? (nav && nav.classList.contains('collapsed') ? 'Abrir menu' : 'Esconder menu') : (b.getAttribute('data-tip') || b.getAttribute('aria-label') || '');
         if (!txt.textContent || !r.width) return;     // sem texto ou botão escondido
         kbd.textContent = k ? (mac ? '\u21e7\u2318' + k : 'Ctrl+Shift+' + k) : '';
         tip.classList.toggle('sem-atalho', !k);

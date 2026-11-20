@@ -10,7 +10,7 @@
 // Sair vai a /auth/logout e cai no login; Excluir conta abre a confirmação, que só acende com o e-mail da conta (sem
 // diferença de maiúsculas e espaços), fecha sem pedir nada (Cancelar, Esc, fora da janela), avisa quando o servidor
 // recusa e, confirmada, manda só o e-mail num POST JSON e sai pelo /auth/logout; o menu lateral de todas as telas tem o Perfil no menu do Configurações do pé (e
-// leva a ele), aberto e recolhido; o botão do menu mostra a dica "Alternar barra lateral" com o atalho (⇧⌘S) no
+// leva a ele), aberto e recolhido; o botão do menu mostra a dica "Esconder menu" (aberto) ou "Abrir menu" (recolhido) com o atalho (⇧⌘S) no
 // mouseover, sem sair da tela, e o atalho recolhe e abre o menu (menos com uma janela aberta).
 import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync, readFileSync, existsSync, writeFileSync } from 'node:fs';
@@ -347,7 +347,7 @@ const cenarios = [
     await ev(`localStorage.setItem('od_nav_collapsed', '0'); 1`);
     return vistas.join(', ') + ' → Configurações → Perfil';
   }],
-  ['o botão do menu mostra "Alternar barra lateral" com o atalho no mouseover, e o atalho recolhe e abre o menu', async () => {
+  ['o botão do menu mostra "Esconder menu" / "Abrir menu" com o atalho no mouseover, e o atalho recolhe e abre o menu', async () => {
     const mac = await ev(`/Mac|iPhone|iPad/.test(navigator.platform || '')`);
     const mods = (mac ? 4 : 2) + 8;                              // ⌘ (ou Ctrl) + Shift
     const tecla = async (key, code, vk, m = 0) => {
@@ -382,7 +382,7 @@ const cenarios = [
         certo(!(await ev(ligada)), `${onde}: a dica apareceu sem a espera`);
         await ate(ligada, 2000, `${onde}: dica no mouseover`);
         d = await ev(dica);
-        certo(d.texto === 'Alternar barra lateral' && d.atalho === (mac ? '⇧⌘S' : 'Ctrl+Shift+S') && d.fundo === 'rgb(15, 15, 15)',
+        certo(d.texto === (fechado ? 'Abrir menu' : 'Esconder menu') && d.atalho === (mac ? '⇧⌘S' : 'Ctrl+Shift+S') && d.fundo === 'rgb(15, 15, 15)',
               `${onde}: texto ` + JSON.stringify(d));
         certo(d.h === 30 && d.kh === 18 && d.kdir === 6 && d.vao === 6 && d.esq >= 8 && d.dir >= 8, `${onde}: medidas ` + JSON.stringify(d));
         // aberto, centrada no botão; recolhido, o botão fica na beira e a dica encosta a 8 px da tela
@@ -441,7 +441,7 @@ const cenarios = [
       await abre(pagina);
       await mouse(900, 500);
       certo(await ev(`document.querySelector('.nav').classList.contains('collapsed')`), `${pagina}: o menu não abriu retraído`);
-      certo(await ev(`document.querySelectorAll('.nav .item[data-tip]').length === 6 && !document.querySelector('.nav .item[title]')`),
+      certo(await ev(`document.querySelectorAll('.nav .item[data-tip]').length === ${pagina === 'opendoctor-agenda.html' ? 7 : 6} && !document.querySelector('.nav .item[title]')`),   // a agenda tem também o Novo paciente
             `${pagina}: itens do menu sem data-tip ou ainda com title`);
       // o Buscar abre a busca: na agenda, a janela; nas outras telas, leva à agenda com ela aberta (#buscar, sem dado nenhum)
       const busca = await ev(`(() => { const b = document.querySelector('.nav .item[data-tip="Buscar"]'); return b && { id: b.id, href: b.getAttribute('data-href') }; })()`);

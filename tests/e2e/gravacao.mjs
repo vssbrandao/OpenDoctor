@@ -46,8 +46,8 @@ const srv = async (p) => (await fetch(BASE + p)).json();
 const UI = `(() => { const q = (s) => document.querySelector(s);
   const on = (e) => { if (!e) return false; for (let x = e; x && !(x.classList && x.classList.contains('pr-panel')); x = x.parentElement) if (x.hidden) return false; return true; };
   const t = (s) => { const e = q(s); return on(e) ? e.textContent.trim() : ''; };
-  const stop = q('#prRec .cs-stop'), lab = on(q('#prRec .cs-bar')) && on(stop) ? stop.getAttribute('aria-label') : '', msg = t('#prRec .cs-msg');
-  const st = lab === 'Pausar a gravação' ? 'gravando' : lab === 'Continuar gravando' ? (/interrompida/.test(t('#rcAlert')) ? 'interrompida' : 'pausada')
+  const stop = q('#prRec .cs-stop:not(:disabled)'), lab = on(q('#prRec .cs-bar')) && on(stop) ? stop.getAttribute('aria-label') : '', msg = t('#prRec .cs-msg');
+  const st = lab === 'Iniciar consulta' ? 'iniciar' : lab === 'Pausar a gravação' ? 'gravando' : lab === 'Continuar gravando' ? (/interrompida/.test(t('#rcAlert')) ? 'interrompida' : 'pausada')
     : msg ? (/Gerando/.test(msg) ? 'gerando' : 'enviando')
     : on(q('#csPlay')) ? 'pronta'
     : [...document.querySelectorAll('#prRec .cs-go')].some(on) ? 'iniciar' : '';
@@ -98,6 +98,29 @@ async function limpa() {
   await srv('/_preview/reset');
   await send('Page.navigate', { url: BASE + '/health' }); await sleep(300);
   await ev(`(async () => { for (const d of await indexedDB.databases()) await new Promise((ok) => { const r = indexedDB.deleteDatabase(d.name); r.onsuccess = r.onerror = r.onblocked = ok; }); sessionStorage.clear(); return 1; })()`);
+}
+
+// a Nova consulta (o item do menu): o prontuário sem paciente, com o campo Paciente e o "Iniciar consulta" do cartão
+async function novaConsulta(naMesmaPagina) {
+  if (!naMesmaPagina) {
+    await send('Page.navigate', { url: BASE + '/opendoctor-agenda.html#consultas' });
+    await ate(`typeof window.__novaConsulta === 'function'`, 20000, 'a página carregar');
+  }
+  await ev(`(window.__novaConsulta(), 1)`);
+  await ate(`!document.getElementById('prNova').hidden && [...document.querySelectorAll('#prRec .cs-ini')].some((b) => b.offsetParent !== null)`,
+    20000, 'a Nova consulta com o Iniciar consulta');
+}
+// "Selecionar paciente" (o botão do canto, 19/11): abre a busca embaixo dele
+async function abreBusca() {
+  if (await ev(`document.getElementById('pnPop').hidden`)) await clica('#pnBtn');
+  await ate(`!document.getElementById('pnPop').hidden && document.activeElement === document.getElementById('pnIn')`, 5000, 'a busca do paciente aberta');
+}
+// a busca do paciente: digita, espera o paciente na lista e escolhe
+async function escolhePaciente(q, nome) {
+  await abreBusca();
+  await ev(`(() => { const i = document.getElementById('pnIn'); i.focus(); i.value = ${JSON.stringify(q)}; i.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+  await ate(`[...document.querySelectorAll('#pnList .nc-op')].some((b) => b.textContent.includes(${JSON.stringify(nome)}))`, 10000, 'o paciente na lista');
+  await clica('#pnList .nc-op', nome);
 }
 
 const cenarios = [
@@ -663,6 +686,9 @@ const cenarios = [
     await ev(`document.getElementById('prIniciar').click()`);
     await ate(est('gravando'), 10000, 'começar a gravar');
     const abas = await ev(`[...document.querySelectorAll('#prTabs button')].filter((b) => !b.hidden).map((b) => b.textContent.trim()).join('|')`);
+    // gravando (19/11): à esquerda, o X (cancelar) e o microfone (escolher outro), nessa ordem
+    const esq = await ev(`[...document.querySelectorAll('#prRec .cs-bar .cs-x')].map((b) => b.getAttribute('aria-label')).join('|')`);
+    if (esq !== 'Cancelar a transcrição|Escolher o microfone') throw new Error('gravando, a barra não tem o X e o microfone à esquerda: ' + esq);
     if (abas !== 'Transcrição|SOAP') throw new Error('o controle não virou Transcrição | SOAP: ' + abas);
     await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes).some((g) => g.trechos.length > 0))`, 30000, 'um trecho subir');
     await sleep(3000);                                            // um trecho a caminho na hora do X
@@ -680,6 +706,108 @@ const cenarios = [
     if (tela.c || tela.abas !== 'Prontuário|Prescrição' || tela.ini === 'none') throw new Error('não voltou ao prontuário: ' + JSON.stringify(tela));
     if (tela.mic) throw new Error('o microfone ficou ligado depois do X');
     return 'apagada no servidor e no navegador; Prontuário | Prescrição e o Iniciar consulta de volta; microfone desligado';
+  }],  // Nova consulta (19/11): grava antes de saber o paciente. O menu abre a tela (o prontuário sem paciente: o campo Paciente em
+  // cima do cartão); os trechos e o som sobem sem o paciente e sem os rótulos Médico/Paciente; o Finalizar sem paciente pede o
+  // paciente; escolhido (ou cadastrado), a gravação é ligada a ele e a evolução é gerada. Sem paciente, a gravação fica na lista
+  // "Gravações sem paciente" (data e hora) e volta ao recarregar
+  ['Nova consulta: grava sem paciente, o Finalizar pede o paciente, escolhido gravando a gravação é dele e gera (sem rótulos)', async () => {
+    await novaConsulta();
+    await clica('#prRec .cs-ini');
+    await ate(est('gravando'), 10000, 'começar a gravar');
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes).some((g) => g.trechos.length > 0))`, 40000, 'um trecho subir');
+    let g = Object.values((await estado()).gravacoes);
+    if (g.length !== 1 || g[0].pid !== null || !g[0].sem_paciente || g[0].event_id) throw new Error('a gravação não está sem paciente: ' + JSON.stringify(g));
+    const ruins = (await ev(IDB)).filter((x) => x.dead);
+    if (ruins.length) throw new Error('trecho recusado sem paciente: ' + JSON.stringify(ruins));
+    await fimGravacao();                                         // sem paciente: pausa e pede o paciente (nada é gerado)
+    await ate(`${UI}.alerta.includes('Informe o paciente')`, 10000, 'o aviso pedindo o paciente');
+    if ((await ev(UI)).st !== 'pausada') throw new Error('o Finalizar sem paciente não deixou pausada: ' + JSON.stringify(await ev(UI)));
+    if (!(await ev(`!document.getElementById('pnPop').hidden && document.activeElement === document.getElementById('pnIn')`))) throw new Error('o Finalizar não abriu a busca do paciente');
+    await clica('#prRec .cs-stop[aria-label="Continuar gravando"]'); await ate(est('gravando'), 10000, 'voltar a gravar');
+    await sleep(4000);
+    await escolhePaciente('Carlos', 'Carlos Eduardo Nunes');      // gravando: a gravação continua, agora do Carlos
+    await ate(`document.getElementById('prName').textContent.includes('Carlos Eduardo Nunes')`, 10000, 'o prontuário do Carlos');
+    if ((await ev(UI)).st !== 'gravando') throw new Error('escolher o paciente parou a gravação: ' + JSON.stringify(await ev(UI)));
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes).every((g) => g.pid === 9004))`, 20000, 'a gravação ficar do Carlos');
+    await sleep(14000);                                           // mais um trecho, já com o paciente
+    await encerra();
+    g = Object.values((await estado()).gravacoes);
+    if (g.length !== 1 || g[0].pid !== 9004 || g[0].status !== 'gerada' || !g[0].sem_paciente) throw new Error('esperava 1 gravação do Carlos gerada: ' + JSON.stringify(g));
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes)[0].audio.length > 0)`, 30000, 'o som subir (sem paciente e depois)');
+    const rot = g[0].trechos.filter((t) => t.nfalas);
+    if (rot.length) throw new Error('trecho com rótulo de quem fala numa gravação começada sem paciente: ' + JSON.stringify(rot));
+    if (await ev(`!!document.querySelector('#rcTx .rc-q')`)) throw new Error('a transcrição mostra rótulos Médico/Paciente');
+    const t = g[0].trechos, buracos = t.slice(1).filter((s, i) => Math.abs(s.at - (t[i].at + t[i].dur)) > 0.06);
+    if (buracos.length) throw new Error('buraco entre trechos: ' + JSON.stringify(buracos));
+    const ctx = await ev(`JSON.parse(sessionStorage.getItem('od_prontuario_ctx'))`);
+    if (await ev(`location.href.includes('Carlos')`)) throw new Error('o nome do paciente foi para o endereço');
+    return `${t.length} trechos sem rótulo, sem buracos; ligada ao paciente gravando (ctx ${ctx.patient_id}) e gerada`;
+  }],
+  ['Nova consulta: sem paciente, recarregar volta à gravação; ela fica na lista "Gravações sem paciente" e reabre por ela', async () => {
+    await novaConsulta();
+    await clica('#prRec .cs-ini');
+    await ate(est('gravando'), 10000, 'começar a gravar');
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes).some((g) => g.trechos.length > 0))`, 40000, 'um trecho subir');
+    await clica('#prRec .cs-stop[aria-label="Pausar a gravação"]'); await sleep(1500);
+    await ate(`${IDB}.then((l) => l.filter((x) => !x.part).length === 0)`, 30000, 'a fila esvaziar');
+    await send('Page.reload', { ignoreCache: true });
+    await ate(est('interrompida'), 20000, 'recuperar como interrompida (ainda sem paciente)');
+    const n1 = await ev(`document.querySelectorAll('#rcTx .rc-u').length`);
+    if (!n1) throw new Error('a transcrição não voltou depois de recarregar');
+    if (!(await ev(`!document.getElementById('prNova').hidden && document.getElementById('pnPend').hidden`))) throw new Error('a tela sem paciente não voltou (ou a lista apareceu com a gravação aberta)');
+    // outra Nova consulta (vazia): a gravação está na lista, pela data e hora
+    await ev(`(sessionStorage.removeItem('od_prontuario_ctx'), window.__closeProntuario(), 1)`);
+    await novaConsulta(true);
+    await ate(`!document.getElementById('pnPend').hidden && document.querySelectorAll('#pnPendL .pn-pi').length === 1`, 10000, 'a lista das gravações sem paciente');
+    const item = await ev(`document.querySelector('#pnPendL .pn-pi').textContent`);
+    if (!/\d{1,2} \w{3} \d{4}, \d{2}:\d{2}/.test(item)) throw new Error('o item da lista não tem data e hora: ' + item);
+    await clica('#pnPendL .pn-pi');
+    await ate(est('interrompida'), 20000, 'reabrir a gravação pela lista');
+    const n2 = await ev(`document.querySelectorAll('#rcTx .rc-u').length`);
+    if (n2 !== n1) throw new Error(`a gravação reaberta tem ${n2} falas, esperava ${n1}`);
+    return `${n1} trechos de volta ao recarregar e pela lista ("${item.slice(0, 30)}…")`;
+  }],
+  ['Nova consulta: a tela nova (vazia) nunca pega os trechos guardados de outra gravação sem paciente', async () => {
+    await novaConsulta();
+    await clica('#prRec .cs-ini');
+    await ate(est('gravando'), 10000, 'começar a gravar');
+    await rede(false);                                            // sem internet: os trechos ficam no computador
+    await sleep(20000);
+    await clica('#prRec .cs-stop[aria-label="Pausar a gravação"]'); await sleep(1500);
+    const guardados = (await ev(IDB)).filter((x) => !x.part).length;
+    if (!guardados) throw new Error('nada ficou guardado no computador');
+    await ev(`(sessionStorage.removeItem('od_prontuario_ctx'), window.__closeProntuario(), 1)`);
+    await novaConsulta(true);
+    await sleep(2500);
+    const tela = await ev(`({ st: ${UI}.st, falas: document.querySelectorAll('#rcTx .rc-u').length })`);
+    if (tela.st !== 'iniciar' || tela.falas) throw new Error('a Nova consulta vazia pegou a gravação anterior: ' + JSON.stringify(tela));
+    await rede(true);
+    await ate(`${IDB}.then((l) => l.filter((x) => !x.part).length === 0)`, 40000, 'os trechos da anterior subirem');
+    const g = Object.values((await estado()).gravacoes);
+    if (g.length !== 1 || g[0].pid !== null) throw new Error('a gravação anterior devia continuar sem paciente: ' + JSON.stringify(g));
+    const t2 = await ev(`({ st: ${UI}.st, falas: document.querySelectorAll('#rcTx .rc-u').length })`);
+    if (t2.st !== 'iniciar' || t2.falas) throw new Error('a tela nova recebeu a gravação anterior depois da internet: ' + JSON.stringify(t2));
+    return `${guardados} trechos da anterior subiram para ela; a tela nova ficou vazia`;
+  }],
+  ['Nova consulta: cadastrar o paciente pelo campo (depois de gravar) liga a gravação ao paciente novo', async () => {
+    await novaConsulta();
+    await clica('#prRec .cs-ini');
+    await ate(est('gravando'), 10000, 'começar a gravar');
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes).some((g) => g.trechos.length > 0))`, 40000, 'um trecho subir');
+    await clica('#prRec .cs-stop[aria-label="Pausar a gravação"]'); await sleep(1500);
+    await abreBusca();
+    await ev(`(() => { const i = document.getElementById('pnIn'); i.focus(); i.value = 'Joana Teste Nova'; i.dispatchEvent(new Event('input', { bubbles: true })); return 1; })()`);
+    await ate(`[...document.querySelectorAll('#pnList .nc-op')].some((b) => b.textContent.includes('Cadastrar "'))`, 10000, 'a opção Cadastrar paciente');
+    await clica('#pnList .nc-op', 'Cadastrar "');
+    await ate(`!document.getElementById('ptNewRow').hidden && document.getElementById('ptNewName').value === 'Joana Teste Nova'`, 10000, 'o formulário do novo paciente com o nome');
+    await clica('#ptNewSave');
+    await ate(`document.getElementById('prName').textContent.includes('Joana Teste Nova')`, 15000, 'o prontuário da paciente nova');
+    await ate(`fetch('/_preview/estado').then((r) => r.json()).then((e) => Object.values(e.gravacoes).every((g) => g.pid !== null))`, 20000, 'a gravação ficar da paciente nova');
+    const g = Object.values((await estado()).gravacoes)[0];
+    await encerra();
+    const g2 = Object.values((await estado()).gravacoes)[0];
+    if (g2.status !== 'gerada' || g2.pid !== g.pid) throw new Error('a evolução não foi gerada para a paciente nova: ' + JSON.stringify(g2));
+    return `paciente novo ${g.pid}; gravação ligada e gerada`;
   }],
 ];
 
